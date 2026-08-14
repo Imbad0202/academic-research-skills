@@ -17,11 +17,23 @@
     "overall"
   ],
   "properties": {
-    "schema_version": {"const": "claim-standing-stance-score-report/0.1"},
-    "suite": {"const": "claim_standing_probe"},
-    "subject_run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
-    "not_a_measurement_contract_row": {"const": true},
-    "items": {"const": 32},
+    "schema_version": {
+      "const": "claim-standing-stance-score-report/0.1"
+    },
+    "suite": {
+      "const": "claim_standing_probe"
+    },
+    "subject_run_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"
+    },
+    "not_a_measurement_contract_row": {
+      "const": true
+    },
+    "items": {
+      "type": "integer",
+      "minimum": 1
+    },
     "replicates": {
       "type": "object",
       "additionalProperties": false,
@@ -31,40 +43,75 @@
         "decision_relevant_two_replicates"
       ],
       "properties": {
-        "min_scored_per_item": {"type": "integer", "minimum": 0},
-        "max_scored_per_item": {"type": "integer", "minimum": 0},
-        "decision_relevant_two_replicates": {"type": "boolean"}
+        "min_scored_per_item": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_scored_per_item": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decision_relevant_two_replicates": {
+          "type": "boolean"
+        }
       }
     },
     "rows": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["scored", "blocked", "partial"],
+      "required": [
+        "scored",
+        "blocked",
+        "partial"
+      ],
       "properties": {
-        "scored": {"type": "integer", "minimum": 0},
-        "blocked": {"type": "integer", "minimum": 0},
-        "partial": {"type": "integer", "minimum": 0}
+        "scored": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partial": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "by_language": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["en", "zh-TW"],
+      "required": [
+        "en",
+        "zh-TW"
+      ],
       "properties": {
-        "en": {"$ref": "#/$defs/block"},
-        "zh-TW": {"$ref": "#/$defs/block"}
+        "en": {
+          "$ref": "#/$defs/block"
+        },
+        "zh-TW": {
+          "$ref": "#/$defs/block"
+        }
       }
     },
-    "overall": {"$ref": "#/$defs/block"}
+    "overall": {
+      "$ref": "#/$defs/block"
+    }
   },
   "$defs": {
     "count_map": {
       "type": "object",
-      "additionalProperties": {"type": "integer", "minimum": 0}
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
     },
     "nested_count_map": {
       "type": "object",
-      "additionalProperties": {"$ref": "#/$defs/count_map"}
+      "additionalProperties": {
+        "$ref": "#/$defs/count_map"
+      }
     },
     "block": {
       "type": "object",
@@ -80,30 +127,62 @@
         "evidence_scope_agreement"
       ],
       "properties": {
-        "scored_rows": {"type": "integer", "minimum": 0},
+        "scored_rows": {
+          "type": "integer",
+          "minimum": 0
+        },
         "micro_full_row_accuracy": {
           "anyOf": [
-            {"type": "number", "minimum": 0, "maximum": 1},
-            {"type": "null"}
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "stance_macro_recall": {
           "anyOf": [
-            {"type": "number", "minimum": 0, "maximum": 1},
-            {"type": "null"}
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "stance_confusion": {"$ref": "#/$defs/nested_count_map"},
-        "relevance_confusion": {"$ref": "#/$defs/nested_count_map"},
-        "check_state_confusion": {"$ref": "#/$defs/nested_count_map"},
-        "failure_state_distribution": {"$ref": "#/$defs/count_map"},
+        "stance_confusion": {
+          "$ref": "#/$defs/nested_count_map"
+        },
+        "relevance_confusion": {
+          "$ref": "#/$defs/nested_count_map"
+        },
+        "check_state_confusion": {
+          "$ref": "#/$defs/nested_count_map"
+        },
+        "failure_state_distribution": {
+          "$ref": "#/$defs/count_map"
+        },
         "evidence_scope_agreement": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["agree", "disagree"],
+          "required": [
+            "agree",
+            "disagree"
+          ],
           "properties": {
-            "agree": {"type": "integer", "minimum": 0},
-            "disagree": {"type": "integer", "minimum": 0}
+            "agree": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "disagree": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         }
       }

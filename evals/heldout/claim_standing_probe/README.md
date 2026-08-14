@@ -51,8 +51,12 @@ exist.** Accordingly:
   design §8 — compares the frozen subject enum to the adjudicated label with
   no model in the loop; reports confusion counts and rates by stance,
   language, evidence scope, and failure class; macro recall and micro accuracy
-  stay separate; blocked/partial rows are counted, never imputed; the
-  two-replicate decision-relevance flag is computed, not assumed.
+  stay separate; an abstention on a gold-performed row lands in an explicit
+  `NOT_CHECKED` confusion column so abstaining can never inflate recall;
+  full-row accuracy includes evidence scope; blocked/partial rows keep their
+  failure classes visible and are never imputed; the two-replicate
+  decision-relevance flag is computed, not assumed; the adjudication file must
+  bind at least two distinct expert label files.
 
 ## design_target is not ground truth
 
@@ -73,6 +77,22 @@ manifest (hash-frozen before dispatch); expert recruitment, labeling, and
 adjudication; the baseline stance-classification measurement row under the
 #654/#664 contract; and suite registration. Any model or human dispatch
 requires separate consent to the exact frozen plan.
+
+## Accepted seed boundaries
+
+- Static text can only realize the `abstract_missing` failure family; the
+  runtime failure classes (`source_missing`, `access_failed`,
+  `retrieval_failed`, `judge_timeout`, `judge_error`, `parse_error`) are
+  subject/harness vocabulary, to be exercised by fault injection in the
+  implementation PR's run plan, not by fixtures.
+- The scorer verifies that the adjudication file names two distinct experts
+  and covers every item, but does not verify the referenced expert files'
+  bytes — sealing and hash-verifying expert packets is the implementation
+  PR's labeling-workflow tooling.
+- Design §5.1's "at least one evidence-row reference" applies to the
+  implemented probe's #656 evidence rows; the eval subject output carries a
+  bounded rationale and evidence scope instead, because no evidence-row
+  surface exists in the seed.
 
 ## Offline validation
 

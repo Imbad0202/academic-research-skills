@@ -5,17 +5,31 @@
   "description": "The strict enum surface the future subject emits, mechanically comparable against adjudicated expert labels. Deliberately closed: no confidence, probability, or scalar score field exists, matching the design's no-scalar rule.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "suite", "subject_run_id", "rows"],
+  "required": [
+    "schema_version",
+    "suite",
+    "subject_run_id",
+    "rows"
+  ],
   "properties": {
-    "schema_version": {"const": "claim-standing-subject-output/0.1"},
-    "suite": {"const": "claim_standing_probe"},
-    "subject_run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "schema_version": {
+      "const": "claim-standing-subject-output/0.1"
+    },
+    "suite": {
+      "const": "claim_standing_probe"
+    },
+    "subject_run_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"
+    },
     "rows": {
       "type": "array",
       "minItems": 1,
       "maxItems": 512,
       "uniqueItems": true,
-      "items": {"$ref": "#/$defs/row"}
+      "items": {
+        "$ref": "#/$defs/row"
+      }
     }
   },
   "$defs": {
@@ -34,14 +48,47 @@
         "rationale"
       ],
       "properties": {
-        "item_id": {"type": "string", "pattern": "^csp-(en|zh)-[a-z]+-[0-9]$"},
-        "replicate": {"type": "integer", "minimum": 1, "maximum": 9},
-        "row_state": {"enum": ["scored", "blocked", "partial"]},
+        "item_id": {
+          "type": "string",
+          "pattern": "^csp-(en|zh)-[a-z]+-[0-9]$"
+        },
+        "replicate": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "row_state": {
+          "enum": [
+            "scored",
+            "blocked",
+            "partial"
+          ]
+        },
         "relevance": {
-          "anyOf": [{"enum": ["relevant", "not_relevant"]}, {"type": "null"}]
+          "anyOf": [
+            {
+              "enum": [
+                "relevant",
+                "not_relevant"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "check_state": {
-          "anyOf": [{"enum": ["performed", "not_checked"]}, {"type": "null"}]
+          "anyOf": [
+            {
+              "enum": [
+                "performed",
+                "not_checked"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "stance": {
           "anyOf": [
@@ -55,7 +102,9 @@
                 "AMBIGUOUS"
               ]
             },
-            {"type": "null"}
+            {
+              "type": "null"
+            }
           ]
         },
         "failure_state": {
@@ -71,45 +120,137 @@
                 "parse_error"
               ]
             },
-            {"type": "null"}
+            {
+              "type": "null"
+            }
           ]
         },
         "evidence_scope": {
           "anyOf": [
-            {"enum": ["abstract", "session_held_full_text", "metadata_only"]},
-            {"type": "null"}
+            {
+              "enum": [
+                "abstract",
+                "session_held_full_text",
+                "metadata_only"
+              ]
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "rationale": {
-          "anyOf": [{"type": "string", "minLength": 1, "maxLength": 1200}, {"type": "null"}]
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1200
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "allOf": [
         {
-          "if": {"properties": {"row_state": {"const": "scored"}}},
+          "if": {
+            "properties": {
+              "row_state": {
+                "const": "scored"
+              }
+            }
+          },
           "then": {
             "properties": {
-              "relevance": {"type": "string"},
-              "check_state": {"type": "string"}
+              "relevance": {
+                "type": "string"
+              },
+              "check_state": {
+                "type": "string"
+              }
             }
           }
         },
         {
-          "if": {"properties": {"check_state": {"const": "performed"}}},
+          "if": {
+            "properties": {
+              "check_state": {
+                "const": "performed"
+              }
+            }
+          },
           "then": {
             "properties": {
-              "stance": {"type": "string"},
-              "failure_state": {"const": null},
-              "evidence_scope": {"type": "string"},
-              "rationale": {"type": "string"}
+              "stance": {
+                "type": "string"
+              },
+              "failure_state": {
+                "const": null
+              },
+              "evidence_scope": {
+                "type": "string"
+              },
+              "rationale": {
+                "type": "string"
+              }
             }
           }
         },
         {
-          "if": {"properties": {"check_state": {"const": "not_checked"}}},
+          "if": {
+            "properties": {
+              "check_state": {
+                "const": "not_checked"
+              }
+            }
+          },
           "then": {
             "properties": {
-              "stance": {"const": null}
+              "stance": {
+                "const": null
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "relevance": {
+                "const": "relevant"
+              },
+              "check_state": {
+                "const": "not_checked"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "failure_state": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "relevance": {
+                "const": "not_relevant"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "check_state": {
+                "const": "not_checked"
+              },
+              "stance": {
+                "const": null
+              },
+              "failure_state": {
+                "const": null
+              }
             }
           }
         }

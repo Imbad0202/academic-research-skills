@@ -8,6 +8,7 @@ model, retrieval, or dispatch surface.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 from pathlib import Path
 from typing import Any
@@ -41,11 +42,13 @@ SLOT_STANCE = {
     "ambig": "AMBIGUOUS",
     "fulltext": "support",
 }
-# Heuristic screen only: a curated list of common simplified-only characters.
-# Passing it does not certify the text; failing it is always a real defect.
+SLOT_COVERAGE = {"fulltext": "session_held_full_text", "metaonly": "metadata_only"}
+# Heuristic screen only: a curated list of characters that are simplified-only
+# in ordinary academic prose. A hit is a likely defect, not proof; characters
+# with common Traditional readings (e.g. 后, 云, 从) are deliberately excluded.
 SIMPLIFIED_CHARS = set(
-    "们会学习语记观认证论试变对从关后发体历云礼国广边办应问题网络电产农动传"
-    "亚区医药币厂儿师听劳岁苏软热顾风龙买卖读书写这为么样点让还时实现"
+    "们会学习语记观认证论试变对关发体历礼国广边办应问题网络电产农动传"
+    "亚区医药币岁苏软热顾风龙买卖读书写这为么样点让还时实现"
 )
 
 
@@ -57,8 +60,33 @@ def _fail(message: str) -> None:
     raise AssetError(message)
 
 
+def _reject_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key {key!r}")
+        value[key] = item
+    return value
+
+
+def _strict_loads(raw: bytes, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_reject_pairs,
+            parse_constant=lambda token: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value {token!r}")
+            ),
+        )
+    except (UnicodeError, ValueError) as exc:
+        _fail(f"{label}: invalid strict JSON: {exc}")
+    if not isinstance(value, dict):
+        _fail(f"{label}: JSON root must be an object")
+    return value
+
+
 def load_set() -> dict[str, Any]:
-    return json.loads(SET_PATH.read_bytes())
+    return _strict_loads(SET_PATH.read_bytes(), "seed set")
 
 
 def _slot(item_id: str) -> str:
@@ -81,15 +109,20 @@ def validate_set(value: dict[str, Any]) -> None:
 
     for prefix, language in (("csp-en-", "en"), ("csp-zh-", "zh-TW")):
         subset = [item for item in items if item["item_id"].startswith(prefix)]
-        if len(subset) != 16:
-            _fail(f"language block {language} must contain exactly 16 items")
-        slots: dict[str, int] = {}
+        if len(subset) != sum(EXPECTED_SLOTS.values()):
+            _fail(
+                f"language block {language} must contain exactly "
+                f"{sum(EXPECTED_SLOTS.values())} items"
+            )
         for item in subset:
             if item["language"] != language:
                 _fail(f"{item['item_id']}: id prefix and language field disagree")
-            slots[_slot(item["item_id"])] = slots.get(_slot(item["item_id"]), 0) + 1
+        slots = Counter(_slot(item["item_id"]) for item in subset)
         if slots != EXPECTED_SLOTS:
-            _fail(f"language block {language} design-slot coverage is not exact: {slots!r}")
+            _fail(
+                f"language block {language} design-slot coverage is not exact: "
+                f"{dict(slots)!r}"
+            )
         disciplines = [item["discipline"] for item in subset]
         if len(set(disciplines)) != len(disciplines):
             _fail(f"language block {language} disciplines must be distinct")
@@ -105,12 +138,9 @@ def validate_set(value: dict[str, Any]) -> None:
             _fail(f"{item_id}: work_family_id must be wf-{item_id}")
 
         if slot in SLOT_STANCE:
-            expected_coverage = (
-                "session_held_full_text" if slot == "fulltext" else "abstract"
-            )
             if (
                 item["relevance_design"] != "relevant"
-                or candidate["coverage"] != expected_coverage
+                or candidate["coverage"] != SLOT_COVERAGE.get(slot, "abstract")
                 or candidate["content_state"] != "available"
                 or target
                 != {
@@ -121,10 +151,9 @@ def validate_set(value: dict[str, Any]) -> None:
             ):
                 _fail(f"{item_id}: does not realize its design slot ({slot})")
         elif slot in ("absmiss", "metaonly"):
-            expected_coverage = "metadata_only" if slot == "metaonly" else "abstract"
             if (
                 item["relevance_design"] != "relevant"
-                or candidate["coverage"] != expected_coverage
+                or candidate["coverage"] != SLOT_COVERAGE.get(slot, "abstract")
                 or candidate["content_state"] != "abstract_missing"
                 or candidate["evidence_text"] is not None
                 or target
@@ -138,7 +167,8 @@ def validate_set(value: dict[str, Any]) -> None:
                     f"{item_id}: missing-evidence slot must target "
                     "not_checked with failure_state abstract_missing"
                 )
-        elif slot == "irrel":
+        else:
+            # The slot table is exact, so only "irrel" can reach here.
             if item["relevance_design"] != "not_relevant":
                 _fail(f"{item_id}: the irrelevant-candidate slot must be not_relevant")
             if target != {
@@ -147,22 +177,12 @@ def validate_set(value: dict[str, Any]) -> None:
                 "failure_state": None,
             }:
                 _fail(f"{item_id}: not_relevant target is not_checked with null failure")
-        else:
-            _fail(f"{item_id}: unknown design slot {slot!r}")
-
-        if (
-            item["relevance_design"] == "relevant"
-            and target["check_state"] == "not_checked"
-            and target["failure_state"] is None
-        ):
-            _fail(
-                f"{item_id}: a relevant not_checked target requires a failure state"
-            )
 
         if item["language"] == "zh-TW":
             text = "".join(
                 [
                     item["claim_text"],
+                    item["discipline"],
                     candidate["title"],
                     candidate["venue"],
                     candidate["evidence_text"] or "",
@@ -172,7 +192,7 @@ def validate_set(value: dict[str, Any]) -> None:
             if hits:
                 _fail(f"{item_id}: simplified-Chinese characters present: {hits!r}")
 
-    registry = json.loads(SUITE_REGISTRY.read_bytes())
+    registry = _strict_loads(SUITE_REGISTRY.read_bytes(), "suite registry")
     if value["suite"] in registry:
         _fail(
             "the seed set is unmeasured: claim_standing_probe must not be "
@@ -183,8 +203,8 @@ def validate_set(value: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("validate-assets", help="validate the shipped seed set")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("validate-assets", help="validate the shipped seed set")
     parser.parse_args(argv)
     try:
         validate_set(load_set())

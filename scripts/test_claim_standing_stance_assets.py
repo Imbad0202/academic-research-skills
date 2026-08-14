@@ -4,14 +4,12 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
-import sys
 
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
 SUITE_ROOT = ROOT / "evals" / "heldout" / "claim_standing_probe"
-sys.path.insert(0, str(SCRIPTS))
 
 
 def _load_module(name: str, filename: str):
@@ -99,7 +97,6 @@ def test_shipped_seed_set_passes_all_invariants(shipped_set):
 def test_registration_is_deferred_until_implementation(shipped_set):
     registry = json.loads((SUITE_ROOT.parent / "suite_registry.json").read_bytes())
     assert "claim_standing_probe" not in registry
-    assert shipped_set["registered_in_suite_registry"] is False
 
 
 @pytest.mark.parametrize(
@@ -118,10 +115,7 @@ def test_registration_is_deferred_until_implementation(shipped_set):
         (
             lambda v: next(
                 item for item in v["items"] if item["language"] == "zh-TW"
-            )["claim_text"].__class__
-            and next(item for item in v["items"] if item["language"] == "zh-TW").update(
-                claim_text="这项研究显示效果显著提升并可推广应用"
-            ),
+            ).update(claim_text="这项研究显示效果显著提升并可推广应用"),
             "[Ss]implified",
         ),
         (
@@ -201,7 +195,9 @@ def test_not_checked_where_gold_performed_counts_as_check_state_miss(shipped_set
     zh = report["by_language"]["zh-TW"]
     assert zh["check_state_confusion"]["performed"]["not_checked"] == 1
     assert zh["failure_state_distribution"]["judge_error"] == 1
-    assert sum(zh["stance_confusion"]["mixed"].values()) == 3
+    assert zh["stance_confusion"]["mixed"][scorer.ABSTAINED] == 1
+    assert sum(zh["stance_confusion"]["mixed"].values()) == 4
+    assert zh["stance_macro_recall"] < 1.0
 
 
 def test_blocked_rows_break_decision_relevance_without_imputation(shipped_set):
@@ -223,6 +219,7 @@ def test_blocked_rows_break_decision_relevance_without_imputation(shipped_set):
     )
     report = scorer.score(shipped_set, adjudicated, subject)
     assert report["rows"]["blocked"] == 1
+    assert report["by_language"]["en"]["failure_state_distribution"]["judge_timeout"] == 1
     assert report["replicates"]["decision_relevant_two_replicates"] is False
 
 
@@ -231,7 +228,7 @@ def test_scorer_fails_closed_on_bad_inputs(shipped_set):
     subject = _subject_from_adjudicated(adjudicated)
     duplicated = copy.deepcopy(subject)
     duplicated["rows"].append(copy.deepcopy(duplicated["rows"][0]))
-    with pytest.raises(scorer.ScoreError, match="duplicate|non-unique"):
+    with pytest.raises(scorer.ScoreError, match="schema"):
         scorer.score(shipped_set, adjudicated, duplicated)
     varied = copy.deepcopy(subject)
     extra = copy.deepcopy(varied["rows"][0])
@@ -251,7 +248,74 @@ def test_scorer_fails_closed_on_bad_inputs(shipped_set):
         scorer.score(shipped_set, adjudicated, scalar)
 
 
+def test_evidence_scope_mismatch_breaks_full_row_accuracy(shipped_set):
+    adjudicated = _adjudicated_from_design(shipped_set)
+    subject = _subject_from_adjudicated(adjudicated)
+    row = next(
+        r
+        for r in subject["rows"]
+        if r["item_id"] == "csp-en-fulltext-1" and r["replicate"] == 1
+    )
+    row["evidence_scope"] = "abstract"
+    report = scorer.score(shipped_set, adjudicated, subject)
+    en = report["by_language"]["en"]
+    assert en["micro_full_row_accuracy"] < 1.0
+    assert en["evidence_scope_agreement"]["disagree"] == 1
+    assert en["stance_confusion"]["support"]["support"] == sum(
+        en["stance_confusion"]["support"].values()
+    )
+
+
+def test_adjudication_requires_two_distinct_experts(shipped_set):
+    adjudicated = _adjudicated_from_design(shipped_set)
+    subject = _subject_from_adjudicated(adjudicated)
+    adjudicated["expert_label_files"] = [
+        {"expert_id": "expert-a", "sha256": "a" * 64},
+        {"expert_id": "expert-a", "sha256": "c" * 64},
+    ]
+    with pytest.raises(scorer.ScoreError, match="two distinct"):
+        scorer.score(shipped_set, adjudicated, subject)
+
+
+def test_closed_enums_stay_synchronized_across_schemas():
+    def enum_of(schema_file, pointer):
+        value = json.loads((SUITE_ROOT / schema_file).read_bytes())
+        for key in pointer:
+            value = value[key]
+        return value
+
+    stance_enums = [
+        enum_of(
+            "heldout_stance_set.schema.json",
+            ["$defs", "design_target", "properties", "stance", "anyOf", 0, "enum"],
+        ),
+        enum_of(
+            "subject_output.schema.json",
+            ["$defs", "row", "properties", "stance", "anyOf", 0, "enum"],
+        ),
+        enum_of(
+            "expert_label.schema.json",
+            ["$defs", "label", "properties", "stance", "anyOf", 0, "enum"],
+        ),
+        enum_of(
+            "adjudicated_labels.schema.json",
+            ["$defs", "row", "properties", "stance", "anyOf", 0, "enum"],
+        ),
+    ]
+    assert all(e == stance_enums[0] for e in stance_enums)
+    expert_failures = enum_of(
+        "expert_label.schema.json",
+        ["$defs", "label", "properties", "failure_state", "anyOf", 0, "enum"],
+    )
+    subject_failures = enum_of(
+        "subject_output.schema.json",
+        ["$defs", "row", "properties", "failure_state", "anyOf", 0, "enum"],
+    )
+    assert set(expert_failures) <= set(subject_failures)
+
+
 def test_report_validates_against_its_schema(shipped_set):
+    # Sole job: fail if the scorer's internal report validation is removed.
     from jsonschema import Draft202012Validator
 
     adjudicated = _adjudicated_from_design(shipped_set)

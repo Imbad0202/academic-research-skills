@@ -22,7 +22,16 @@ ADJUDICATED_SCHEMA = SUITE_ROOT / "adjudicated_labels.schema.json"
 SUBJECT_SCHEMA = SUITE_ROOT / "subject_output.schema.json"
 REPORT_SCHEMA = SUITE_ROOT / "stance_score_report.schema.json"
 
-FULL_ROW_FIELDS = ("relevance", "check_state", "stance", "failure_state")
+FULL_ROW_FIELDS = (
+    "relevance",
+    "check_state",
+    "stance",
+    "failure_state",
+    "evidence_scope",
+)
+# Column for a gold-performed row whose subject abstained: the abstention
+# stays in every stance-recall denominator instead of vanishing from it.
+ABSTAINED = "NOT_CHECKED"
 
 
 class ScoreError(RuntimeError):
@@ -31,6 +40,31 @@ class ScoreError(RuntimeError):
 
 def _fail(message: str) -> None:
     raise ScoreError(message)
+
+
+def _reject_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key {key!r}")
+        value[key] = item
+    return value
+
+
+def strict_loads(raw: bytes, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_reject_pairs,
+            parse_constant=lambda token: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON value {token!r}")
+            ),
+        )
+    except (UnicodeError, ValueError) as exc:
+        _fail(f"{label}: invalid strict JSON: {exc}")
+    if not isinstance(value, dict):
+        _fail(f"{label}: JSON root must be an object")
+    return value
 
 
 def _validate(schema_path: Path, value: dict[str, Any], label: str) -> None:
@@ -85,6 +119,13 @@ def score(
     _validate(ADJUDICATED_SCHEMA, adjudicated, "adjudicated labels")
     _validate(SUBJECT_SCHEMA, subject, "subject output")
 
+    expert_ids = {row["expert_id"] for row in adjudicated["expert_label_files"]}
+    if len(expert_ids) < 2:
+        _fail(
+            "adjudicated labels must bind at least two distinct independent "
+            "expert label files"
+        )
+
     language_by_item = {
         item["item_id"]: item["language"] for item in set_value["items"]
     }
@@ -94,12 +135,6 @@ def score(
             _fail(f"adjudicated labels carry duplicate item {row['item_id']}")
         if row["item_id"] not in language_by_item:
             _fail(f"adjudicated labels name an unknown item {row['item_id']}")
-        if (
-            row["relevance"] == "relevant"
-            and row["check_state"] == "not_checked"
-            and row["failure_state"] is None
-        ):
-            _fail(f"{row['item_id']}: relevant not_checked gold needs a failure state")
         gold_by_item[row["item_id"]] = row
     if set(gold_by_item) != set(language_by_item):
         _fail("adjudicated labels must cover exactly the seed set's items")
@@ -118,28 +153,28 @@ def score(
         if row["item_id"] not in language_by_item:
             _fail(f"subject output names an unknown item {row['item_id']}")
         rows_summary[row["row_state"]] += 1
-        if row["row_state"] != "scored":
-            continue
-        if (
-            row["relevance"] == "relevant"
-            and row["check_state"] == "not_checked"
-            and row["failure_state"] is None
-        ):
-            _fail(f"{row['item_id']}: relevant not_checked output needs a failure state")
-        scored_per_item[row["item_id"]] += 1
-        gold = gold_by_item[row["item_id"]]
         language = language_by_item[row["item_id"]]
-        for block in (blocks[language], blocks["overall"]):
-            block["scored_rows"] += 1
-            _bump(block["relevance_confusion"], gold["relevance"], row["relevance"])
-            _bump(block["check_state_confusion"], gold["check_state"], row["check_state"])
-            if gold["check_state"] == "performed" and row["check_state"] == "performed":
-                _bump(block["stance_confusion"], gold["stance"], row["stance"])
-            if row["failure_state"] is not None:
+        if row["failure_state"] is not None:
+            # Counted for every row state, so a blocked judge_timeout or a
+            # partial parse_error stays visible in the failure-class report.
+            for block in (blocks[language], blocks["overall"]):
                 distribution = block["failure_state_distribution"]
                 distribution[row["failure_state"]] = (
                     distribution.get(row["failure_state"], 0) + 1
                 )
+        if row["row_state"] != "scored":
+            continue
+        scored_per_item[row["item_id"]] += 1
+        gold = gold_by_item[row["item_id"]]
+        for block in (blocks[language], blocks["overall"]):
+            block["scored_rows"] += 1
+            _bump(block["relevance_confusion"], gold["relevance"], row["relevance"])
+            _bump(block["check_state_confusion"], gold["check_state"], row["check_state"])
+            if gold["check_state"] == "performed":
+                subject_stance = (
+                    row["stance"] if row["check_state"] == "performed" else ABSTAINED
+                )
+                _bump(block["stance_confusion"], gold["stance"], subject_stance)
             if row["evidence_scope"] == gold["evidence_scope"]:
                 block["evidence_scope_agreement"]["agree"] += 1
             else:
@@ -151,17 +186,17 @@ def score(
     for name, block in blocks.items():
         _finalize_block(block, correct[name])
 
-    scored_counts = sorted(scored_per_item.values())
+    scored_counts = scored_per_item.values()
     report = {
         "schema_version": "claim-standing-stance-score-report/0.1",
         "suite": "claim_standing_probe",
         "subject_run_id": subject["subject_run_id"],
         "not_a_measurement_contract_row": True,
-        "items": 32,
+        "items": len(set_value["items"]),
         "replicates": {
-            "min_scored_per_item": scored_counts[0],
-            "max_scored_per_item": scored_counts[-1],
-            "decision_relevant_two_replicates": scored_counts[0] >= 2,
+            "min_scored_per_item": min(scored_counts),
+            "max_scored_per_item": max(scored_counts),
+            "decision_relevant_two_replicates": min(scored_counts) >= 2,
         },
         "rows": rows_summary,
         "by_language": {"en": blocks["en"], "zh-TW": blocks["zh-TW"]},
@@ -180,9 +215,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         report = score(
-            json.loads(args.set.read_bytes()),
-            json.loads(args.adjudicated.read_bytes()),
-            json.loads(args.subject.read_bytes()),
+            strict_loads(args.set.read_bytes(), "seed set"),
+            strict_loads(args.adjudicated.read_bytes(), "adjudicated labels"),
+            strict_loads(args.subject.read_bytes(), "subject output"),
         )
     except ScoreError as exc:
         print(str(exc))
@@ -192,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.output.exists():
             print(f"refusing to overwrite {args.output}")
             return 1
-        args.output.write_text(rendered)
+        args.output.write_text(rendered, encoding="utf-8", newline="\n")
     else:
         print(rendered, end="")
     return 0
