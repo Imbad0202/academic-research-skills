@@ -442,6 +442,85 @@ def test_fixture_transport_supports_base64_bodies(tmp_path):
     assert body == _arxiv_body()
 
 
+def test_tampered_roster_block_fails_closed_before_any_call():
+    plan = _live_plan(index_ids=["semantic_scholar"])
+    plan["provider_roster"][0]["product_identity"] = "Someone Else's Index"
+    _rehash_plan(plan)
+    transport = FakeTransport({})
+    with pytest.raises(discovery.DiscoveryError, match="does not match"):
+        discovery.retrieve(plan, transport=transport)
+    assert transport.calls == []
+
+
+def test_provider_contract_violation_poisons_only_its_own_attempt():
+    plan = _live_plan(index_ids=["semantic_scholar", "crossref"])
+    bad = _s2_record(1)
+    bad["title"] = "x" * 5000
+    transport = FakeTransport(
+        {
+            "semanticscholar.org": (
+                200,
+                json.dumps({"total": 1, "data": [bad]}).encode("utf-8"),
+            ),
+            "crossref.org": (200, _crossref_body()),
+        }
+    )
+    retained = discovery.retrieve(plan, transport=transport)
+    outcomes = {row["index_id"]: row["outcome"] for row in retained["attempts"]}
+    assert outcomes == {
+        "semantic_scholar": "malformed_response",
+        "crossref": "success",
+    }
+    assert {hit["index_id"] for hit in retained["raw_hits"]} == {"crossref"}
+    ledger.validate_schema(
+        retained, "retrieval_input.schema.json", "retrieval input"
+    )
+
+
+def test_underreported_provider_count_is_malformed():
+    plan = _live_plan(index_ids=["semantic_scholar"])
+    transport = FakeTransport({"semanticscholar.org": (200, _s2_body(2, 1))})
+    retained = discovery.retrieve(plan, transport=transport)
+    assert retained["attempts"][0]["outcome"] == "malformed_response"
+    assert retained["raw_hits"] == []
+
+
+def test_arxiv_refuses_quote_bearing_queries_before_transport():
+    plan = _live_plan(index_ids=["arxiv"])
+    quoted = 'The term "X" improves outcomes.'
+    plan["claim"]["claim_text"] = quoted
+    plan["queries"][0]["accepted_query_text"] = quoted
+    plan["queries"][0]["original_query_text"] = quoted
+    _rehash_plan(plan)
+    transport = FakeTransport({})
+    retained = discovery.retrieve(plan, transport=transport)
+    assert retained["attempts"][0]["outcome"] == "unsupported_query"
+    assert transport.calls == []
+
+
+def test_plain_4xx_maps_to_unsupported_query():
+    plan = _live_plan(index_ids=["crossref"])
+    transport = FakeTransport({"crossref.org": (400, b"bad request")})
+    retained = discovery.retrieve(plan, transport=transport)
+    assert retained["attempts"][0]["outcome"] == "unsupported_query"
+
+
+def test_abstract_text_is_retained_exactly():
+    record = _s2_record(1)
+    record["abstract"] = "Line one.\n   Line   two."
+    plan = _live_plan(index_ids=["semantic_scholar"])
+    transport = FakeTransport(
+        {
+            "semanticscholar.org": (
+                200,
+                json.dumps({"total": 1, "data": [record]}).encode("utf-8"),
+            )
+        }
+    )
+    retained = discovery.retrieve(plan, transport=transport)
+    assert retained["raw_hits"][0]["abstract_text"] == "Line one.\n   Line   two."
+
+
 def test_discovery_module_never_touches_the_pinned_resolver_clients():
     source = (SCRIPTS / "claim_standing_discovery.py").read_text(encoding="utf-8")
     for forbidden in (

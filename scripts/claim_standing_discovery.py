@@ -44,6 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_claim_standing_candidate_ledger as substrate  # noqa: E402
 
 USER_AGENT = "ars-claim-standing-discovery/0.1"
+MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 TIMEOUT_SECONDS = 30.0
 RETRIEVAL_INPUT_SUFFIX = ".retrieval-input.json"
 Transport = Callable[[str, dict[str, str], float], tuple[int, bytes]]
@@ -80,6 +81,13 @@ def _clean(value: Any) -> str | None:
         return None
     stripped = " ".join(value.split())
     return stripped or None
+
+
+def _exact_text(value: Any) -> str | None:
+    """Abstract fidelity: keep the provider's exact string; blank becomes None."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value
 
 
 def _hit(
@@ -167,7 +175,7 @@ def _s2_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
                 language=None,
                 document_type=_clean(types[0]) if types else None,
                 publication_status="unknown",
-                abstract_text=_clean(record.get("abstract")),
+                abstract_text=_exact_text(record.get("abstract")),
                 landing_url=_clean(record.get("url")),
                 raw_record=record,
             )
@@ -195,6 +203,8 @@ def _openalex_abstract(inverted: Any) -> str | None:
     for word, indexes in inverted.items():
         for index in indexes:
             positions.append((index, word))
+    # Reconstruction from the inverted index is derived text, not provider
+    # bytes, so whitespace normalization here loses nothing exact.
     return _clean(" ".join(word for _, word in sorted(positions)))
 
 
@@ -260,9 +270,9 @@ def _crossref_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
                 language=_clean(record.get("language")),
                 document_type=record_type,
                 publication_status=_CROSSREF_STATUS.get(record_type or "", "unknown"),
-                # Crossref abstracts arrive as JATS-tagged text; the tags are
-                # kept, whitespace is collapsed like every other adapter field.
-                abstract_text=_clean(record.get("abstract")),
+                # Crossref abstracts arrive as JATS-tagged text, retained
+                # exactly as returned.
+                abstract_text=_exact_text(record.get("abstract")),
                 landing_url=_clean(record.get("URL")),
                 raw_record=record,
             )
@@ -280,6 +290,11 @@ _ARXIV_NS = "{http://arxiv.org/schemas/atom}"
 def _arxiv_request(query: str, date_filter: dict[str, Any], cap: int) -> str:
     if date_filter["from_year"] is not None or date_filter["through_year"] is not None:
         raise UnsupportedQuery("the arXiv API query interface has no year filter")
+    if '"' in query:
+        raise UnsupportedQuery(
+            "a double quote inside the accepted query would change the arXiv "
+            "phrase-query grammar; refusing rather than rewriting the query"
+        )
     params = {
         "search_query": f'all:"{query}"',
         "start": "0",
@@ -305,12 +320,14 @@ def _arxiv_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
             node = entry.find(tag)
             return _clean(node.text) if node is not None else None
 
+        summary_node = entry.find(f"{_ATOM}summary")
+        summary = _exact_text(summary_node.text if summary_node is not None else None)
         published = _text(f"{_ATOM}published") or ""
         year = int(published[:4]) if published[:4].isdigit() else None
         raw_record = {
             "id": _text(f"{_ATOM}id"),
             "title": _text(f"{_ATOM}title"),
-            "summary": _text(f"{_ATOM}summary"),
+            "summary": summary,
             "published": published or None,
             "authors": [
                 _clean(node.text)
@@ -429,11 +446,14 @@ def live_transport(url: str, headers: dict[str, str], timeout: float) -> tuple[i
     request = urllib.request.Request(url, headers=headers)
     try:
         with _OPENER.open(request, timeout=timeout) as response:
-            return response.status, response.read()
+            body = response.read(MAX_RESPONSE_BYTES + 1)
+            if len(body) > MAX_RESPONSE_BYTES:
+                raise MalformedResponse("provider body exceeds the bounded read")
+            return response.status, body
     except urllib.error.HTTPError as exc:
-        # A refused redirect surfaces here as its 3xx code and maps to
-        # service_unavailable through _status_outcome.
-        return exc.code, exc.read()
+        # A refused redirect surfaces here as its 3xx code and maps through
+        # _status_outcome (3xx falls into the service_unavailable arm).
+        return exc.code, exc.read(MAX_RESPONSE_BYTES)
     except urllib.error.URLError as exc:
         if isinstance(exc.reason, TimeoutError):
             raise TimeoutError(str(exc.reason)) from exc
@@ -468,7 +488,29 @@ def _status_outcome(status: int) -> str | None:
         return "authentication_failed"
     if status == 429:
         return "rate_limited"
+    if 400 <= status < 500:
+        # The provider judged the request itself invalid.
+        return "unsupported_query"
     return "service_unavailable"
+
+
+def _raw_hit_validator():
+    schema = json.loads(
+        (substrate.SCHEMA_DIR / "retrieval_input.schema.json").read_bytes()
+    )
+    from jsonschema import Draft202012Validator
+
+    return Draft202012Validator({"$defs": schema["$defs"], **schema["$defs"]["raw_hit"]})
+
+
+_ROW_VALIDATOR = None
+
+
+def _rows_conform(rows: list[dict[str, Any]]) -> bool:
+    global _ROW_VALIDATOR
+    if _ROW_VALIDATOR is None:
+        _ROW_VALIDATOR = _raw_hit_validator()
+    return all(_ROW_VALIDATOR.is_valid(row) for row in rows)
 
 
 def _run_attempt(
@@ -514,10 +556,16 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
     # entry point that must not trust its caller.
     substrate.validate_schema(plan, "query_plan.schema.json", "query plan")
     substrate.validate_plan(plan)
-    roster_ids = [provider["index_id"] for provider in plan["provider_roster"]]
-    for index_id in roster_ids:
+    for provider in plan["provider_roster"]:
+        index_id = provider["index_id"]
         if index_id not in ADAPTERS:
             _fail(f"no discovery adapter exists for index {index_id!r}")
+        if provider != ADAPTERS[index_id]["provider"]:
+            _fail(
+                f"the consented provider block for {index_id!r} does not match "
+                "this adapter's declared block; re-consent against "
+                "provider_roster_defaults()"
+            )
 
     cap = plan["caps"]["max_hits_per_query_index"]
     consent_receipt_id = plan["consent"]["consent_receipt_id"]
@@ -534,12 +582,23 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
                 ADAPTERS[index_id], query, cap, transport
             )
             completed_at = _now()
+            if (
+                provider_reported_count is not None
+                and provider_reported_count < len(provider_hits)
+            ):
+                outcome, provider_reported_count, provider_hits = (
+                    "malformed_response",
+                    None,
+                    [],
+                )
             retained = provider_hits[:cap]
+            hit_number_start = hit_number
+            attempt_rows: list[dict[str, Any]] = []
             for rank, hit in enumerate(retained, 1):
                 hit_number += 1
                 raw_record = hit.pop("raw_record")
                 abstract_text = hit["abstract_text"]
-                raw_hits.append(
+                attempt_rows.append(
                     {
                         "raw_hit_id": f"hit-{hit_number:03d}",
                         "probe_id": plan["probe_id"],
@@ -558,6 +617,13 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
                         "explicit_version_of_raw_hit_id": None,
                     }
                 )
+            if outcome == "success" and not _rows_conform(attempt_rows):
+                # A provider-contract violation (overlong field, bad type)
+                # poisons only its own attempt, never the whole fleet.
+                outcome, provider_reported_count = "malformed_response", None
+                provider_hits, retained, attempt_rows = [], [], []
+                hit_number = hit_number_start
+            raw_hits.extend(attempt_rows)
             attempts.append(
                 {
                     "attempt_id": attempt_id,
