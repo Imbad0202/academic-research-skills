@@ -405,6 +405,90 @@ def test_delivery_refuses_when_bundle_drifts_after_receipt(
         )
 
 
+def test_exposure_diagnostic_names_judge_but_never_blind_ids(
+    finalized_bundle, tmp_path
+):
+    run_dir = _copy_bundle(finalized_bundle, tmp_path)
+    ledger = _valid_ledger(run_dir)
+    pair_by_blind = _map_by_blind(run_dir, "pair_id")
+    rows = ledger["first_round_assignments"]
+    first = rows[0]
+    conflicting = next(
+        row
+        for row in rows
+        if row["judge_id"] != first["judge_id"]
+        and row["blind_session_id"] != first["blind_session_id"]
+        and pair_by_blind[row["blind_session_id"]]
+        == pair_by_blind[first["blind_session_id"]]
+    )
+    conflicting["judge_id"] = first["judge_id"]
+    with pytest.raises(gate.GateError) as caught:
+        gate.verify(_verify_args(run_dir, _write_ledger(tmp_path, ledger)))
+    message = str(caught.value)
+    assert "LEDGER-EXPOSURE" in message
+    assert first["judge_id"] in message
+    assert "blind-" not in message
+
+
+def test_fabricated_receipt_cannot_authorize_exposure_violating_delivery(
+    finalized_bundle, tmp_path
+):
+    run_dir = _copy_bundle(finalized_bundle, tmp_path)
+    ledger = _valid_ledger(run_dir)
+    pair_by_blind = _map_by_blind(run_dir, "pair_id")
+    rows = ledger["first_round_assignments"]
+    first = rows[0]
+    conflicting = next(
+        row
+        for row in rows
+        if row["judge_id"] != first["judge_id"]
+        and row["blind_session_id"] != first["blind_session_id"]
+        and pair_by_blind[row["blind_session_id"]]
+        == pair_by_blind[first["blind_session_id"]]
+    )
+    conflicting["judge_id"] = first["judge_id"]
+    ledger_raw = runner._json_bytes(ledger)
+    receipt = {
+        "schema_version": "ideation-diversity-assignment-gate-receipt/1.0",
+        "suite": runner.SUITE,
+        "verdict": "pass",
+        "ledger_sha256": hashlib.sha256(ledger_raw).hexdigest(),
+        "ledger": ledger,
+        "delivery_rule": (
+            "deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"
+        ),
+    }
+    receipt_path = _receipt_path(run_dir)
+    receipt_path.parent.mkdir(parents=True)
+    receipt_path.write_bytes(runner._json_bytes(receipt))
+    with pytest.raises(gate.GateError, match="LEDGER-EXPOSURE"):
+        gate.deliver(
+            _deliver_args(
+                run_dir,
+                first["judge_id"],
+                first["blind_session_id"],
+                tmp_path / "desk",
+            )
+        )
+
+
+def test_completed_delivery_is_never_reissued(finalized_bundle, tmp_path):
+    run_dir = _copy_bundle(finalized_bundle, tmp_path)
+    ledger = _valid_ledger(run_dir)
+    gate.verify(_verify_args(run_dir, _write_ledger(tmp_path, ledger)))
+    row = ledger["first_round_assignments"][0]
+    dest = tmp_path / "desk"
+    gate.deliver(
+        _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest)
+    )
+    delivered = dest / f"{row['blind_session_id']}.json"
+    delivered.unlink()
+    with pytest.raises(gate.GateError, match="DELIVERY-DUPLICATE"):
+        gate.deliver(
+            _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest)
+        )
+
+
 def test_gate_artifacts_live_outside_the_run_and_keep_validate_run_green(
     finalized_bundle, tmp_path
 ):

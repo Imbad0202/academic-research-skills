@@ -173,19 +173,19 @@ def _check_exposure(ledger: dict[str, Any], bundle: dict[str, Any]) -> None:
             row["blind_session_id"]
         )
     for judge_id in sorted(packets_by_judge):
-        seen: dict[str, str] = {}
-        for blind_id in sorted(packets_by_judge[judge_id]):
-            pair_id = pair_by_blind[blind_id]
-            if pair_id in seen:
-                # The diagnostic names only blind ids; it never prints the
-                # shared pair id, so the written word stays mapping-free.
-                _fail(
-                    "LEDGER-EXPOSURE",
-                    f"judge {judge_id} would receive packets "
-                    f"{seen[pair_id]} and {blind_id}, which share an "
-                    "equivalent scholar context (pair/scenario/role card)",
-                )
-            seen[pair_id] = blind_id
+        blinds = packets_by_judge[judge_id]
+        pairs = {pair_by_blind[blind_id] for blind_id in blinds}
+        if len(pairs) != len(blinds):
+            # The diagnostic names only the judge. Naming the conflicting
+            # blind ids would itself disclose that they share a pair, which
+            # is private-map information; the operator holds the map and can
+            # locate the offending rows.
+            _fail(
+                "LEDGER-EXPOSURE",
+                f"judge {judge_id} would receive two packets that share an "
+                "equivalent scholar context (pair/scenario/role card); "
+                "consult the private arm map to locate the conflict",
+            )
 
 
 def verify(args: argparse.Namespace) -> dict[str, Any]:
@@ -244,7 +244,7 @@ def _load_receipt(run_dir: Path) -> tuple[dict[str, Any], bytes]:
 
 def _check_delivery_bindings(
     run_dir: Path, ledger: dict[str, Any]
-) -> dict[str, str]:
+) -> dict[str, Any]:
     raws: dict[str, bytes] = {}
     for field, path in _binding_paths(run_dir).items():
         try:
@@ -257,10 +257,9 @@ def _check_delivery_bindings(
                 f"bundle {field} drifted after the receipt was sealed",
             )
     _check_private_map_modes(run_dir)
-    inventory = envelope._strict_loads(raws["inventory_sha256"])
     return {
-        row["blind_session_id"]: row["packet_sha256"]
-        for row in inventory["packets"]
+        "inventory": envelope._strict_loads(raws["inventory_sha256"]),
+        "private_map": envelope._strict_loads(raws["private_map_sha256"]),
     }
 
 
@@ -290,12 +289,23 @@ def _check_dest(
 
 def deliver(args: argparse.Namespace) -> dict[str, Any]:
     receipt, receipt_raw = _load_receipt(args.run_dir)
-    packet_sha_by_blind = _check_delivery_bindings(args.run_dir, receipt["ledger"])
+    ledger = receipt["ledger"]
+    bundle = _check_delivery_bindings(args.run_dir, ledger)
+    # The sealed receipt is evidence, not authority: a receipt file is plain
+    # bytes on disk, so every semantic gate check is replayed here against the
+    # embedded ledger before anything is delivered.
+    _check_roster(ledger)
+    _check_coverage(ledger, bundle)
+    _check_exposure(ledger, bundle)
+    packet_sha_by_blind = {
+        row["blind_session_id"]: row["packet_sha256"]
+        for row in bundle["inventory"]["packets"]
+    }
     assignment = {
         "judge_id": args.judge,
         "blind_session_id": args.blind_session_id,
     }
-    if assignment not in receipt["ledger"]["first_round_assignments"]:
+    if assignment not in ledger["first_round_assignments"]:
         _fail(
             "DELIVERY-UNASSIGNED",
             f"{args.judge} has no verified first-round assignment for "
@@ -332,6 +342,13 @@ def deliver(args: argparse.Namespace) -> dict[str, Any]:
     }
     _validate_against(MARKER_SCHEMA, marker_value, "DELIVERY-MARKER", "delivery marker")
     marker_raw = envelope._json_bytes(marker_value)
+    completion_path = marker_path.with_name(f"{args.blind_session_id}.completed.json")
+    if completion_path.exists():
+        _fail(
+            "DELIVERY-DUPLICATE",
+            f"the assignment for {args.judge} and {args.blind_session_id} "
+            "was already delivered to completion; it is never re-issued",
+        )
     resume = marker_path.exists()
     if resume and envelope._read_file(marker_path) != marker_raw:
         _fail(
@@ -359,6 +376,11 @@ def deliver(args: argparse.Namespace) -> dict[str, Any]:
         envelope._ensure_exact_new(delivered_path, packet_raw)
     except envelope.EnvelopeError as exc:
         _fail("DELIVERY-DEST", str(exc))
+    # A write-once completion marker (the exact claim bytes) closes the
+    # assignment: after this, even an identical command refuses, so a retired
+    # packet cannot be silently re-issued. A crash before this line leaves the
+    # claim marker resumable exactly once more.
+    envelope._ensure_exact_new(completion_path, marker_raw)
     return {
         "delivered": 1,
         "judge_id": args.judge,

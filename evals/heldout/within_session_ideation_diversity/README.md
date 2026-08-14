@@ -228,18 +228,24 @@ context, so blocking at pair level subsumes scenario and role-card sharing,
 including the same scenario appearing in both experiments. Only when every
 check passes does it seal a write-once pass receipt
 (`assignment_gate_receipt.schema.json`) embedding the exact accepted ledger. A
-failed check writes nothing, and failure diagnostics name blind ids only, never
-a pair value. Gate artifacts live in a sibling `<run>-assignment-gate/`
-directory, never inside the run directory, so the runner's exact run-inventory
-validation stays green.
+failed check writes nothing, and an exposure failure names the judge only —
+naming the conflicting blind ids would itself disclose pair structure. Gate
+artifacts live in a sibling `<run>-assignment-gate/` directory, never inside
+the run directory, so the runner's exact run-inventory validation stays green.
 
-`deliver` consumes only the sealed receipt (never a mutable ledger path),
-re-checks the four bindings plus the packet's sealed inventory hash, requires
-the exact `judge_id`/`blind_session_id` assignment, and publishes exactly one
-isolated packet into an empty destination outside the run and gate
-directories. Each assignment is claimed by a write-once delivery marker; a
-second delivery attempt for the same assignment fails closed (an interrupted
-identical delivery may exact-resume). The gate verifies structural exposure
+`deliver` consumes only the sealed receipt (never a mutable ledger path), but
+treats it as evidence rather than authority: it re-checks the four bindings
+and private-map permissions, then replays the roster, coverage, and exposure
+checks against the embedded ledger, so a hand-fabricated receipt cannot
+authorize a delivery that `verify` would refuse. It then requires the exact
+`judge_id`/`blind_session_id` assignment, verifies the packet's sealed
+inventory hash, and publishes exactly one isolated packet into an empty
+destination outside the run and gate directories. Each assignment is claimed
+by a write-once delivery marker (`first_round_delivery_marker.schema.json`)
+and closed by a write-once completion marker after publication: an
+interrupted identical delivery may exact-resume once, but a completed
+assignment is never re-issued, even by an identical command. The gate
+verifies structural exposure
 constraints only: it cannot authenticate that two handles are two distinct
 people, and judge/adjudicator independence remains a procedural
 responsibility, as the ledger's `identity_boundary` block states.
