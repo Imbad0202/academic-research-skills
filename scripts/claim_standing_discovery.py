@@ -17,6 +17,11 @@ work family. No stance classification, rendering, pipeline, or evidence-row
 surface exists here. Adapters are written against the providers' documented
 public APIs but have not been exercised live; the first live run is expected
 to surface mapping drift and must be treated as a diagnostic run.
+
+Known mapping limitation: Semantic Scholar, OpenAlex, and arXiv return
+display names, which land whole in the author `family` field; only Crossref
+supplies structured surnames. The ledger builder's weak author dedup key
+therefore cannot match a DOI-less record across those indexes and Crossref.
 """
 from __future__ import annotations
 
@@ -26,16 +31,21 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import sys
 from typing import Any, Callable
 import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ElementTree
 
-import build_claim_standing_candidate_ledger as substrate
+# Keep the sibling import working whether this file is executed directly or
+# imported as scripts.claim_standing_discovery (same bridge as sibling tools).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import build_claim_standing_candidate_ledger as substrate  # noqa: E402
 
 USER_AGENT = "ars-claim-standing-discovery/0.1"
 TIMEOUT_SECONDS = 30.0
+RETRIEVAL_INPUT_SUFFIX = ".retrieval-input.json"
 Transport = Callable[[str, dict[str, str], float], tuple[int, bytes]]
 
 
@@ -53,6 +63,10 @@ class UnsupportedQuery(Exception):
 
 class MalformedResponse(Exception):
     pass
+
+
+class ServiceUnreachable(Exception):
+    """DNS failure, refused connection, TLS failure: the service, not the body."""
 
 
 def _now() -> str:
@@ -100,6 +114,17 @@ def _hit(
 
 def _name_author(name: Any) -> dict[str, str | None]:
     return {"family": _clean(name), "given": None}
+
+
+def _year_filter(
+    date_filter: dict[str, Any], from_key: str, to_key: str
+) -> str | None:
+    filters = []
+    if date_filter["from_year"] is not None:
+        filters.append(f"{from_key}:{date_filter['from_year']}-01-01")
+    if date_filter["through_year"] is not None:
+        filters.append(f"{to_key}:{date_filter['through_year']}-12-31")
+    return ",".join(filters) if filters else None
 
 
 # --- Semantic Scholar -------------------------------------------------------
@@ -155,13 +180,11 @@ def _s2_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
 
 def _openalex_request(query: str, date_filter: dict[str, Any], cap: int) -> str:
     params = {"search": query, "per-page": str(cap)}
-    filters = []
-    if date_filter["from_year"] is not None:
-        filters.append(f"from_publication_date:{date_filter['from_year']}-01-01")
-    if date_filter["through_year"] is not None:
-        filters.append(f"to_publication_date:{date_filter['through_year']}-12-31")
-    if filters:
-        params["filter"] = ",".join(filters)
+    year_filter = _year_filter(
+        date_filter, "from_publication_date", "to_publication_date"
+    )
+    if year_filter:
+        params["filter"] = year_filter
     return "https://api.openalex.org/works?" + urllib.parse.urlencode(params)
 
 
@@ -208,13 +231,9 @@ def _openalex_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
 
 def _crossref_request(query: str, date_filter: dict[str, Any], cap: int) -> str:
     params = {"query": query, "rows": str(cap)}
-    filters = []
-    if date_filter["from_year"] is not None:
-        filters.append(f"from-pub-date:{date_filter['from_year']}-01-01")
-    if date_filter["through_year"] is not None:
-        filters.append(f"until-pub-date:{date_filter['through_year']}-12-31")
-    if filters:
-        params["filter"] = ",".join(filters)
+    year_filter = _year_filter(date_filter, "from-pub-date", "until-pub-date")
+    if year_filter:
+        params["filter"] = year_filter
     return "https://api.crossref.org/works?" + urllib.parse.urlencode(params)
 
 
@@ -241,8 +260,8 @@ def _crossref_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
                 language=_clean(record.get("language")),
                 document_type=record_type,
                 publication_status=_CROSSREF_STATUS.get(record_type or "", "unknown"),
-                # Crossref abstracts arrive as JATS-tagged text; the exact
-                # returned string is retained without cleaning.
+                # Crossref abstracts arrive as JATS-tagged text; the tags are
+                # kept, whitespace is collapsed like every other adapter field.
                 abstract_text=_clean(record.get("abstract")),
                 landing_url=_clean(record.get("URL")),
                 raw_record=record,
@@ -319,66 +338,70 @@ def _arxiv_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
 
 # --- Registry ---------------------------------------------------------------
 
+_SHARED_PROVIDER_FIELDS = {
+    "purpose": "scholarly_discovery",
+    "pagination_behavior": (
+        "single page up to the per-query cap; no follow-up page is requested"
+    ),
+    "adapter_version": "ars-discovery-0.1",
+    "retention_state": "unknown",
+    "retention_reference": None,
+}
+
+
+def _provider(
+    index_id: str,
+    product_identity: str,
+    query_capability: str,
+    *,
+    abstract_availability: str = "mixed",
+) -> dict[str, Any]:
+    return {
+        "index_id": index_id,
+        "product_identity": product_identity,
+        "query_capability": query_capability,
+        "abstract_availability": abstract_availability,
+        **_SHARED_PROVIDER_FIELDS,
+    }
+
+
 ADAPTERS: dict[str, dict[str, Any]] = {
     "semantic_scholar": {
         "request": _s2_request,
         "parse": _s2_parse,
-        "provider": {
-            "index_id": "semantic_scholar",
-            "product_identity": "Semantic Scholar Academic Graph API paper search",
-            "purpose": "scholarly_discovery",
-            "query_capability": "keyword relevance search over titles and abstracts",
-            "abstract_availability": "mixed",
-            "pagination_behavior": "single page up to the per-query cap; no follow-up page is requested",
-            "adapter_version": "ars-discovery-0.1",
-            "retention_state": "unknown",
-            "retention_reference": None,
-        },
+        "provider": _provider(
+            "semantic_scholar",
+            "Semantic Scholar Academic Graph API paper search",
+            "keyword relevance search over titles and abstracts",
+        ),
     },
     "openalex": {
         "request": _openalex_request,
         "parse": _openalex_parse,
-        "provider": {
-            "index_id": "openalex",
-            "product_identity": "OpenAlex works search API",
-            "purpose": "scholarly_discovery",
-            "query_capability": "full-text relevance search over work metadata",
-            "abstract_availability": "mixed",
-            "pagination_behavior": "single page up to the per-query cap; no follow-up page is requested",
-            "adapter_version": "ars-discovery-0.1",
-            "retention_state": "unknown",
-            "retention_reference": None,
-        },
+        "provider": _provider(
+            "openalex",
+            "OpenAlex works search API",
+            "full-text relevance search over work metadata",
+        ),
     },
     "crossref": {
         "request": _crossref_request,
         "parse": _crossref_parse,
-        "provider": {
-            "index_id": "crossref",
-            "product_identity": "Crossref REST API works query",
-            "purpose": "scholarly_discovery",
-            "query_capability": "bibliographic keyword query over registered works",
-            "abstract_availability": "mixed",
-            "pagination_behavior": "single page up to the per-query cap; no follow-up page is requested",
-            "adapter_version": "ars-discovery-0.1",
-            "retention_state": "unknown",
-            "retention_reference": None,
-        },
+        "provider": _provider(
+            "crossref",
+            "Crossref REST API works query",
+            "bibliographic keyword query over registered works",
+        ),
     },
     "arxiv": {
         "request": _arxiv_request,
         "parse": _arxiv_parse,
-        "provider": {
-            "index_id": "arxiv",
-            "product_identity": "arXiv API query interface",
-            "purpose": "scholarly_discovery",
-            "query_capability": "phrase search over all preprint fields; no year filter",
-            "abstract_availability": "available_when_returned",
-            "pagination_behavior": "single page up to the per-query cap; no follow-up page is requested",
-            "adapter_version": "ars-discovery-0.1",
-            "retention_state": "unknown",
-            "retention_reference": None,
-        },
+        "provider": _provider(
+            "arxiv",
+            "arXiv API query interface",
+            "phrase search over all preprint fields; no year filter",
+            abstract_availability="available_when_returned",
+        ),
     },
 }
 
@@ -392,19 +415,29 @@ def provider_roster_defaults() -> dict[str, dict[str, Any]]:
 # --- Transport --------------------------------------------------------------
 
 
+class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
+    """A redirect can send the consented query to an off-roster host; refuse."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        return None
+
+
+_OPENER = urllib.request.build_opener(_RefuseRedirects())
+
+
 def live_transport(url: str, headers: dict[str, str], timeout: float) -> tuple[int, bytes]:
     request = urllib.request.Request(url, headers=headers)
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with _OPENER.open(request, timeout=timeout) as response:
             return response.status, response.read()
     except urllib.error.HTTPError as exc:
+        # A refused redirect surfaces here as its 3xx code and maps to
+        # service_unavailable through _status_outcome.
         return exc.code, exc.read()
-    except TimeoutError:
-        raise
     except urllib.error.URLError as exc:
         if isinstance(exc.reason, TimeoutError):
             raise TimeoutError(str(exc.reason)) from exc
-        raise MalformedResponse(str(exc.reason)) from exc
+        raise ServiceUnreachable(str(exc.reason)) from exc
 
 
 def _fixture_transport(path: Path) -> Transport:
@@ -438,7 +471,47 @@ def _status_outcome(status: int) -> str | None:
     return "service_unavailable"
 
 
+def _run_attempt(
+    adapter: dict[str, Any],
+    query: dict[str, Any],
+    cap: int,
+    transport: Transport,
+) -> tuple[str, int | None, list[dict[str, Any]]]:
+    try:
+        url = adapter["request"](
+            query["accepted_query_text"], query["date_filter"], cap
+        )
+    except UnsupportedQuery:
+        return "unsupported_query", None, []
+    try:
+        status, body = transport(url, {"User-Agent": USER_AGENT}, TIMEOUT_SECONDS)
+    except TimeoutError:
+        return "timeout", None, []
+    except ServiceUnreachable:
+        return "service_unavailable", None, []
+    except MalformedResponse:
+        return "malformed_response", None, []
+    status_outcome = _status_outcome(status)
+    if status_outcome is not None:
+        return status_outcome, None, []
+    try:
+        provider_reported_count, provider_hits = adapter["parse"](body)
+    except (
+        MalformedResponse,
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        IndexError,
+        UnicodeError,
+    ):
+        return "malformed_response", None, []
+    return "success", provider_reported_count, provider_hits
+
+
 def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
+    # retrieve() re-validates even when the CLI already did: it is a public
+    # entry point that must not trust its caller.
     substrate.validate_schema(plan, "query_plan.schema.json", "query plan")
     substrate.validate_plan(plan)
     roster_ids = [provider["index_id"] for provider in plan["provider_roster"]]
@@ -454,47 +527,18 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
     hit_number = 0
     for query in plan["queries"]:
         for index_id in query["index_targets"]:
-            adapter = ADAPTERS[index_id]
             attempt_number += 1
             attempt_id = f"attempt-{attempt_number:03d}"
             started_at = _now()
-            outcome = "success"
-            provider_reported_count: int | None = None
-            provider_hits: list[dict[str, Any]] = []
-            try:
-                url = adapter["request"](
-                    query["accepted_query_text"], query["date_filter"], cap
-                )
-            except UnsupportedQuery:
-                outcome = "unsupported_query"
-            else:
-                try:
-                    status, body = transport(url, {"User-Agent": USER_AGENT}, TIMEOUT_SECONDS)
-                except TimeoutError:
-                    outcome = "timeout"
-                except MalformedResponse:
-                    outcome = "malformed_response"
-                else:
-                    status_outcome = _status_outcome(status)
-                    if status_outcome is not None:
-                        outcome = status_outcome
-                    else:
-                        try:
-                            provider_reported_count, provider_hits = adapter["parse"](body)
-                        except (
-                            MalformedResponse,
-                            ValueError,
-                            KeyError,
-                            TypeError,
-                            UnicodeError,
-                        ):
-                            outcome = "malformed_response"
-                            provider_hits = []
+            outcome, provider_reported_count, provider_hits = _run_attempt(
+                ADAPTERS[index_id], query, cap, transport
+            )
             completed_at = _now()
-            returned_count = len(provider_hits)
             retained = provider_hits[:cap]
             for rank, hit in enumerate(retained, 1):
                 hit_number += 1
+                raw_record = hit.pop("raw_record")
+                abstract_text = hit["abstract_text"]
                 raw_hits.append(
                     {
                         "raw_hit_id": f"hit-{hit_number:03d}",
@@ -503,24 +547,14 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
                         "index_id": index_id,
                         "attempt_id": attempt_id,
                         "provider_rank": rank,
-                        "provider_record_id": hit["provider_record_id"],
-                        "doi": hit["doi"],
-                        "title": hit["title"],
-                        "authors": hit["authors"],
-                        "year": hit["year"],
-                        "language": hit["language"],
-                        "document_type": hit["document_type"],
-                        "publication_status": hit["publication_status"],
-                        "abstract_state": hit["abstract_state"],
-                        "abstract_text": hit["abstract_text"],
+                        **hit,
                         "abstract_sha256": (
-                            substrate.text_digest(hit["abstract_text"])
-                            if hit["abstract_text"] is not None
+                            substrate.text_digest(abstract_text)
+                            if abstract_text is not None
                             else None
                         ),
-                        "landing_url": hit["landing_url"],
                         "returned_at": completed_at,
-                        "raw_metadata_sha256": substrate.digest(hit["raw_record"]),
+                        "raw_metadata_sha256": substrate.digest(raw_record),
                         "explicit_version_of_raw_hit_id": None,
                     }
                 )
@@ -533,9 +567,9 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
                     "completed_at": completed_at,
                     "outcome": outcome,
                     "provider_reported_count": provider_reported_count,
-                    "returned_count": returned_count,
+                    "returned_count": len(provider_hits),
                     "retained_hit_count": len(retained),
-                    "truncated_count": returned_count - len(retained),
+                    "truncated_count": len(provider_hits) - len(retained),
                     "retry_of_attempt_id": None,
                     "retry_authorization_receipt_id": None,
                     "consent_receipt_id": consent_receipt_id,
@@ -565,11 +599,9 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
 # --- CLI --------------------------------------------------------------------
 
 
-def _write_exclusive(path: Path, payload: dict[str, Any]) -> None:
-    rendered = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-        stream.write(rendered)
+def authorized_retrieval_input_path(plan: dict[str, Any]) -> Path:
+    """The only writable output path: derived from the hash-bound consent."""
+    return Path(plan["consent"]["authorized_output_path"] + RETRIEVAL_INPUT_SUFFIX)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -580,7 +612,15 @@ def main(argv: list[str] | None = None) -> int:
         help="run the consented discovery queries and write a retrieval input",
     )
     retrieve_parser.add_argument("--query-plan", type=Path, required=True)
-    retrieve_parser.add_argument("--output", type=Path, required=True)
+    retrieve_parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help=(
+            "must equal the consent's authorized_output_path plus "
+            f"'{RETRIEVAL_INPUT_SUFFIX}'; any other path is refused"
+        ),
+    )
     retrieve_parser.add_argument(
         "--transport-fixture",
         default=None,
@@ -596,16 +636,22 @@ def main(argv: list[str] | None = None) -> int:
                 "the hash-bound consent says session_only: this CLI refuses to "
                 "persist a retrieval input without explicit_local_export consent"
             )
+        expected_output = authorized_retrieval_input_path(plan)
+        if str(args.output) != str(expected_output):
+            _fail(
+                "output does not match the hash-bound consent: the retrieval "
+                f"input may be written only to {expected_output}"
+            )
         if args.output.exists():
             _fail(f"refusing to overwrite existing output {args.output}")
-        if args.transport_fixture and args.transport_fixture != "none":
+        if args.transport_fixture:
             transport = _fixture_transport(Path(args.transport_fixture))
         else:
             transport = live_transport
         retained = retrieve(plan, transport=transport)
-        _write_exclusive(args.output, retained)
+        substrate.write_new_ledger(args.output, retained)
     except (DiscoveryError, substrate.LedgerError, OSError, ValueError) as exc:
-        print(str(exc))
+        print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     print(
         json.dumps(

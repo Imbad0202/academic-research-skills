@@ -1,30 +1,16 @@
 from __future__ import annotations
 
-import copy
-import importlib.util
 import json
 from pathlib import Path
 
 import pytest
 
+from scripts import build_claim_standing_candidate_ledger as ledger
+from scripts import claim_standing_discovery as discovery
+
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
 FIXTURES = ROOT / "scripts/fixtures/claim_standing_candidate_ledger"
-
-
-def _load_module(name: str, filename: str):
-    spec = importlib.util.spec_from_file_location(name, SCRIPTS / filename)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-ledger = _load_module(
-    "claim_standing_ledger_for_discovery_tests",
-    "build_claim_standing_candidate_ledger.py",
-)
-discovery = _load_module("claim_standing_discovery", "claim_standing_discovery.py")
 
 LIVE_INDEX_IDS = ["semantic_scholar", "openalex", "crossref", "arxiv"]
 
@@ -47,7 +33,11 @@ def _rehash_plan(plan: dict) -> None:
     plan["plan_sha256"] = ledger.bound_digest(plan, "plan_sha256")
 
 
-def _live_plan(index_ids: list[str] | None = None, date_filter=None) -> dict:
+def _live_plan(
+    index_ids: list[str] | None = None,
+    date_filter=None,
+    authorized_output_path: str = "/operator-named/candidate-ledger.json",
+) -> dict:
     plan = json.loads((FIXTURES / "query_plan.json").read_text(encoding="utf-8"))
     targets = index_ids or LIVE_INDEX_IDS
     plan["provider_roster"] = [
@@ -62,7 +52,7 @@ def _live_plan(index_ids: list[str] | None = None, date_filter=None) -> dict:
     )
     plan["consent"]["local_persistence"] = "explicit_local_export"
     plan["consent"]["export_boundary"] = ledger.EXPLICIT_LOCAL_EXPORT_BOUNDARY
-    plan["consent"]["authorized_output_path"] = "/operator-named/candidate-ledger.json"
+    plan["consent"]["authorized_output_path"] = authorized_output_path
     _rehash_plan(plan)
     return plan
 
@@ -156,7 +146,7 @@ def _arxiv_body() -> bytes:
 
 
 class FakeTransport:
-    def __init__(self, routes: dict[str, tuple[int, bytes]]):
+    def __init__(self, routes: dict[str, tuple[int, bytes] | Exception]):
         self.routes = routes
         self.calls: list[str] = []
 
@@ -164,10 +154,9 @@ class FakeTransport:
         self.calls.append(url)
         for marker, response in self.routes.items():
             if marker in url:
-                result = response
-                if isinstance(result, Exception):
-                    raise result
-                return result
+                if isinstance(response, Exception):
+                    raise response
+                return response
         raise AssertionError(f"unrouted url {url}")
 
 
@@ -244,6 +233,7 @@ def test_provider_overflow_is_truncated_at_the_adapter_boundary():
         ((403, b"no"), "authentication_failed"),
         ((200, b"{not json"), "malformed_response"),
         (TimeoutError("slow"), "timeout"),
+        (discovery.ServiceUnreachable("dns"), "service_unavailable"),
     ],
 )
 def test_failure_vocabulary_is_closed_and_never_retried(response, outcome):
@@ -320,32 +310,27 @@ def test_session_only_consent_refuses_writing_retrieval_output(tmp_path):
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
     output = tmp_path / "retrieval-input.json"
     exit_code = discovery.main(
-        [
-            "retrieve",
-            "--query-plan",
-            str(plan_path),
-            "--output",
-            str(output),
-            "--transport-fixture",
-            "none",
-        ]
+        ["retrieve", "--query-plan", str(plan_path), "--output", str(output)]
     )
     assert exit_code == 1
     assert not output.exists()
 
 
-def test_cli_writes_exclusively_and_never_overwrites(tmp_path, monkeypatch):
-    plan = _live_plan(index_ids=["semantic_scholar"])
+def test_cli_writes_exclusively_and_never_overwrites(tmp_path):
+    authorized = str(tmp_path / "candidate-ledger.json")
+    plan = _live_plan(
+        index_ids=["semantic_scholar"], authorized_output_path=authorized
+    )
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
     fixture_path = tmp_path / "fixture.json"
     fixture_path.write_text(
         json.dumps(
-            {"semanticscholar.org": {"status": 200, "body_base64": None, "body_json": json.loads(_s2_body(2, 2))}}
+            {"semanticscholar.org": {"status": 200, "body_json": json.loads(_s2_body(2, 2))}}
         ),
         encoding="utf-8",
     )
-    output = tmp_path / "retrieval-input.json"
+    output = Path(authorized + discovery.RETRIEVAL_INPUT_SUFFIX)
     exit_code = discovery.main(
         [
             "retrieve",
@@ -376,6 +361,85 @@ def test_cli_writes_exclusively_and_never_overwrites(tmp_path, monkeypatch):
         )
         == 1
     )
+
+
+def test_output_path_must_match_the_hash_bound_consent(tmp_path):
+    authorized = str(tmp_path / "candidate-ledger.json")
+    plan = _live_plan(
+        index_ids=["semantic_scholar"], authorized_output_path=authorized
+    )
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    fixture_path = tmp_path / "fixture.json"
+    fixture_path.write_text(
+        json.dumps(
+            {"semanticscholar.org": {"status": 200, "body_json": json.loads(_s2_body(1, 1))}}
+        ),
+        encoding="utf-8",
+    )
+    elsewhere = tmp_path / "elsewhere.json"
+    exit_code = discovery.main(
+        [
+            "retrieve",
+            "--query-plan",
+            str(plan_path),
+            "--output",
+            str(elsewhere),
+            "--transport-fixture",
+            str(fixture_path),
+        ]
+    )
+    assert exit_code == 1
+    assert not elsewhere.exists()
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"data": ["oops"], "total": 1},
+        {"data": [{"title": "t", "authors": ["bob"]}], "total": 1},
+    ],
+)
+def test_malformed_provider_records_become_malformed_response(body):
+    plan = _live_plan(index_ids=["semantic_scholar"])
+    transport = FakeTransport(
+        {"semanticscholar.org": (200, json.dumps(body).encode("utf-8"))}
+    )
+    retained = discovery.retrieve(plan, transport=transport)
+    assert retained["attempts"][0]["outcome"] == "malformed_response"
+    assert retained["raw_hits"] == []
+
+
+def test_live_transport_refuses_provider_redirects():
+    handler = discovery._RefuseRedirects()
+    assert (
+        handler.redirect_request(None, None, 302, "Found", {}, "http://127.0.0.1/x")
+        is None
+    )
+    # A refused redirect surfaces as its 3xx status and maps into the closed
+    # vocabulary as service_unavailable.
+    assert discovery._status_outcome(302) == "service_unavailable"
+
+
+def test_fixture_transport_supports_base64_bodies(tmp_path):
+    import base64
+
+    fixture_path = tmp_path / "routes.json"
+    fixture_path.write_text(
+        json.dumps(
+            {
+                "arxiv.org": {
+                    "status": 200,
+                    "body_base64": base64.b64encode(_arxiv_body()).decode("ascii"),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    transport = discovery._fixture_transport(fixture_path)
+    status, body = transport("https://export.arxiv.org/api/query?x", {}, 1.0)
+    assert status == 200
+    assert body == _arxiv_body()
 
 
 def test_discovery_module_never_touches_the_pinned_resolver_clients():
