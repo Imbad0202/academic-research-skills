@@ -174,7 +174,9 @@ def _s2_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
                 year=record.get("year"),
                 language=None,
                 document_type=_clean(types[0]) if types else None,
-                publication_status="unknown",
+                publication_status=_S2_STATUS.get(
+                    _clean(types[0]) if types else "", "unknown"
+                ),
                 abstract_text=_exact_text(record.get("abstract")),
                 landing_url=_clean(record.get("url")),
                 raw_record=record,
@@ -227,7 +229,9 @@ def _openalex_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
                 year=record.get("publication_year"),
                 language=_clean(record.get("language")),
                 document_type=_clean(record.get("type")),
-                publication_status="unknown",
+                publication_status=_OPENALEX_STATUS.get(
+                    _clean(record.get("type")) or "", "unknown"
+                ),
                 abstract_text=_openalex_abstract(record.get("abstract_inverted_index")),
                 landing_url=_clean(record.get("id")),
                 raw_record=record,
@@ -248,6 +252,10 @@ def _crossref_request(query: str, date_filter: dict[str, Any], cap: int) -> str:
 
 
 _CROSSREF_STATUS = {"journal-article": "published", "posted-content": "preprint"}
+# Conservative approximations of each provider's type vocabulary; anything
+# outside the mapped set stays "unknown" rather than guessing.
+_OPENALEX_STATUS = {"preprint": "preprint", "article": "published"}
+_S2_STATUS = {"JournalArticle": "published"}
 
 
 def _crossref_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
@@ -506,11 +514,37 @@ def _raw_hit_validator():
 _ROW_VALIDATOR = None
 
 
+def _row_text_conforms(row: dict[str, Any]) -> bool:
+    checks = [
+        row["provider_record_id"] is None
+        or substrate.has_visible_semantic_text(
+            row["provider_record_id"], allow_symbols=False
+        ),
+        row["title"] is None
+        or substrate.has_visible_semantic_text(row["title"], allow_symbols=True),
+        row["abstract_text"] is None
+        or substrate.has_visible_semantic_text(
+            row["abstract_text"], allow_symbols=True
+        ),
+    ]
+    for author in row["authors"]:
+        for field in ("family", "given"):
+            checks.append(
+                author[field] is None
+                or substrate.has_visible_semantic_text(
+                    author[field], allow_symbols=False
+                )
+            )
+    return all(checks)
+
+
 def _rows_conform(rows: list[dict[str, Any]]) -> bool:
     global _ROW_VALIDATOR
     if _ROW_VALIDATOR is None:
         _ROW_VALIDATOR = _raw_hit_validator()
-    return all(_ROW_VALIDATOR.is_valid(row) for row in rows)
+    return all(
+        _ROW_VALIDATOR.is_valid(row) and _row_text_conforms(row) for row in rows
+    )
 
 
 def _run_attempt(
@@ -582,9 +616,10 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
                 ADAPTERS[index_id], query, cap, transport
             )
             completed_at = _now()
-            if (
-                provider_reported_count is not None
-                and provider_reported_count < len(provider_hits)
+            if provider_reported_count is not None and (
+                not isinstance(provider_reported_count, int)
+                or isinstance(provider_reported_count, bool)
+                or provider_reported_count < len(provider_hits)
             ):
                 outcome, provider_reported_count, provider_hits = (
                     "malformed_response",
@@ -594,32 +629,37 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
             retained = provider_hits[:cap]
             hit_number_start = hit_number
             attempt_rows: list[dict[str, Any]] = []
-            for rank, hit in enumerate(retained, 1):
-                hit_number += 1
-                raw_record = hit.pop("raw_record")
-                abstract_text = hit["abstract_text"]
-                attempt_rows.append(
-                    {
-                        "raw_hit_id": f"hit-{hit_number:03d}",
-                        "probe_id": plan["probe_id"],
-                        "query_id": query["query_id"],
-                        "index_id": index_id,
-                        "attempt_id": attempt_id,
-                        "provider_rank": rank,
-                        **hit,
-                        "abstract_sha256": (
-                            substrate.text_digest(abstract_text)
-                            if abstract_text is not None
-                            else None
-                        ),
-                        "returned_at": completed_at,
-                        "raw_metadata_sha256": substrate.digest(raw_record),
-                        "explicit_version_of_raw_hit_id": None,
-                    }
-                )
-            if outcome == "success" and not _rows_conform(attempt_rows):
-                # A provider-contract violation (overlong field, bad type)
-                # poisons only its own attempt, never the whole fleet.
+            try:
+                for rank, hit in enumerate(retained, 1):
+                    hit_number += 1
+                    raw_record = hit.pop("raw_record")
+                    abstract_text = hit["abstract_text"]
+                    attempt_rows.append(
+                        {
+                            "raw_hit_id": f"hit-{hit_number:03d}",
+                            "probe_id": plan["probe_id"],
+                            "query_id": query["query_id"],
+                            "index_id": index_id,
+                            "attempt_id": attempt_id,
+                            "provider_rank": rank,
+                            **hit,
+                            "abstract_sha256": (
+                                substrate.text_digest(abstract_text)
+                                if abstract_text is not None
+                                else None
+                            ),
+                            "returned_at": completed_at,
+                            "raw_metadata_sha256": substrate.digest(raw_record),
+                            "explicit_version_of_raw_hit_id": None,
+                        }
+                    )
+                rows_ok = outcome != "success" or _rows_conform(attempt_rows)
+            except (ValueError, TypeError, UnicodeError, substrate.LedgerError):
+                rows_ok = False
+            if outcome == "success" and not rows_ok:
+                # A provider-contract violation (overlong field, bad type,
+                # undigestible value) poisons only its own attempt, never
+                # the whole fleet.
                 outcome, provider_reported_count = "malformed_response", None
                 provider_hits, retained, attempt_rows = [], [], []
                 hit_number = hit_number_start

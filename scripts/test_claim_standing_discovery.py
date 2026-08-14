@@ -521,6 +521,52 @@ def test_abstract_text_is_retained_exactly():
     assert retained["raw_hits"][0]["abstract_text"] == "Line one.\n   Line   two."
 
 
+def test_publication_status_maps_conservatively():
+    plan = _live_plan()
+    retained = discovery.retrieve(plan, transport=_happy_transport())
+    status_by_index = {}
+    for hit in retained["raw_hits"]:
+        status_by_index.setdefault(hit["index_id"], set()).add(
+            hit["publication_status"]
+        )
+    assert status_by_index["semantic_scholar"] == {"published"}
+    assert status_by_index["openalex"] == {"published", "unknown"}
+    assert status_by_index["crossref"] == {"published"}
+    assert status_by_index["arxiv"] == {"preprint"}
+
+
+def test_untyped_provider_count_is_malformed():
+    plan = _live_plan(index_ids=["semantic_scholar"])
+    body = json.dumps(
+        {"total": "1", "data": [_s2_record(1)]}
+    ).encode("utf-8")
+    transport = FakeTransport({"semanticscholar.org": (200, body)})
+    retained = discovery.retrieve(plan, transport=transport)
+    assert retained["attempts"][0]["outcome"] == "malformed_response"
+    assert retained["raw_hits"] == []
+
+
+def test_nonsemantic_provider_record_id_poisons_only_its_attempt():
+    record = _s2_record(1)
+    record["paperId"] = "---"
+    plan = _live_plan(index_ids=["semantic_scholar", "crossref"])
+    transport = FakeTransport(
+        {
+            "semanticscholar.org": (
+                200,
+                json.dumps({"total": 1, "data": [record]}).encode("utf-8"),
+            ),
+            "crossref.org": (200, _crossref_body()),
+        }
+    )
+    retained = discovery.retrieve(plan, transport=transport)
+    outcomes = {row["index_id"]: row["outcome"] for row in retained["attempts"]}
+    assert outcomes == {
+        "semantic_scholar": "malformed_response",
+        "crossref": "success",
+    }
+
+
 def test_discovery_module_never_touches_the_pinned_resolver_clients():
     source = (SCRIPTS / "claim_standing_discovery.py").read_text(encoding="utf-8")
     for forbidden in (
