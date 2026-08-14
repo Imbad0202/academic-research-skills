@@ -162,7 +162,8 @@ def _parse_judge_output(raw_output: str, evidence_text: str) -> dict[str, Any]:
     """Strict four-line grammar, in order, nothing else; deviations are parse
     errors, and the record schema's own bounds are enforced here so a verbose
     judge degrades one row instead of aborting the run."""
-    lines = raw_output.strip("\n").splitlines()
+    body = raw_output[:-1] if raw_output.endswith("\n") else raw_output
+    lines = body.split("\n")
     prefixes = ("STANCE: ", "EVIDENCE: ", "CONDITIONS: ", "RATIONALE: ")
     if len(lines) != len(prefixes) or any(not line.strip() for line in lines):
         raise ValueError("expected exactly four labeled lines and nothing else")
@@ -184,8 +185,8 @@ def _parse_judge_output(raw_output: str, evidence_text: str) -> dict[str, Any]:
     if not rationale or len(rationale) > 2000:
         raise ValueError("RATIONALE must be non-empty and at most 2000 characters")
     conditions = fields["CONDITIONS"]
-    if len(conditions) > 1000:
-        raise ValueError("CONDITIONS exceeds 1000 characters")
+    if not conditions or len(conditions) > 1000:
+        raise ValueError("CONDITIONS must be 'none' or a non-empty description")
     return {
         "stance": fields["STANCE"],
         "quote": quote,
@@ -477,6 +478,22 @@ def validate_stance_record(
             "rows must cover exactly the ledger's selected work families, "
             "once each, in work_family_id order"
         )
+    ledger_families = {
+        family["work_family_id"]: family
+        for family in ledger_value["work_families"]
+    }
+    for row in record["rows"]:
+        family = ledger_families[row["work_family_id"]]
+        if row["canonical_raw_hit_id"] != family["canonical_raw_hit_id"]:
+            _fail(
+                f"row {row['work_family_id']}: canonical_raw_hit_id disagrees "
+                "with the ledger family"
+            )
+        if row["evidence_scope"] != family["coverage"]:
+            _fail(
+                f"row {row['work_family_id']}: evidence_scope disagrees with "
+                "the ledger family's coverage"
+            )
 
     distribution = record["distribution"]
     for bucket, value in _tally(record["rows"]).items():
@@ -548,6 +565,13 @@ def validate_stance_record(
                     _fail(f"evidence row {ref['row_id']}: no inspected text exists")
                 span = excerpt["source_span_utf8"]
                 source_bytes = evidence_text.encode("utf-8")
+                if (
+                    span["end"] > len(source_bytes)
+                    or span["start"] >= span["end"]
+                    or evidence["source"]["source_content_utf8_bytes"]
+                    != len(source_bytes)
+                ):
+                    _fail(f"evidence row {ref['row_id']}: span is out of bounds")
                 try:
                     replay = source_bytes[span["start"] : span["end"]].decode("utf-8")
                 except (UnicodeError, ValueError):
@@ -562,8 +586,27 @@ def validate_stance_record(
 
     # Performed rows must replay from their retained raw output: a resealed
     # stance/rationale/conditions that the judge never produced cannot pass.
+    # Symmetrically, a parse_error row whose retained output parses cleanly
+    # is a downgrade forgery.
     for row in record["rows"]:
         if row["check_state"] != "performed":
+            if (
+                row["failure_state"] == "parse_error"
+                and row["raw_output"] is not None
+            ):
+                hit = hits_by_id[row["canonical_raw_hit_id"]]
+                if hit["abstract_text"] is not None:
+                    try:
+                        _parse_judge_output(
+                            row["raw_output"], hit["abstract_text"]
+                        )
+                    except (ValueError, TypeError):
+                        pass
+                    else:
+                        _fail(
+                            f"row {row['work_family_id']}: retained output "
+                            "parses cleanly; parse_error cannot stand"
+                        )
             continue
         family = families_by_id[row["work_family_id"]]
         hit = hits_by_id[row["canonical_raw_hit_id"]]

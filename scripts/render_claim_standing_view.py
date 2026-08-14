@@ -22,6 +22,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import unicodedata
 from typing import Any
 
 try:
@@ -61,9 +62,13 @@ def _inert(value: Any) -> str:
     if value is None:
         return "(none)"
     text = _LINE_BREAKS.sub(" ", str(value))
-    # Terminal escapes and bidi controls are stripped: a provider title must
-    # not be able to clear a terminal or reorder rendered text.
-    text = _CONTROL_OR_FORMAT.sub("", text)
+    # Every control (Cc) and format (Cf) character is stripped — terminal
+    # escapes, bidi controls, zero-width marks — with tab flattened to space.
+    text = "".join(
+        " " if ch == "\t" else ch
+        for ch in text
+        if ch == "\t" or unicodedata.category(ch) not in ("Cc", "Cf")
+    )
     return (
         text.replace("&", "&amp;")
         .replace("<", "&lt;")
