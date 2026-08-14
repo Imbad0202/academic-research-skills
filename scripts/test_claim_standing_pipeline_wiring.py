@@ -90,14 +90,16 @@ def _imported_names(tree: ast.Module) -> set[str]:
     names: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            names.update(alias.name.split(".")[0] for alias in node.names)
+            for alias in node.names:
+                names.update(alias.name.split("."))
         elif isinstance(node, ast.ImportFrom):
             if node.module is not None:
-                names.add(node.module.split(".")[0])
+                names.update(node.module.split("."))
             names.update(
                 alias.name.split(".")[0]
                 for alias in node.names
-                if node.module == "scripts"
+                if node.module is not None
+                and node.module.split(".")[0] == "scripts"
             )
     return names
 
@@ -144,6 +146,25 @@ def test_discovery_reach_is_limited_to_the_pure_roster_constant() -> None:
                 assert node.attr in ALLOWED_DISCOVERY_ATTRIBUTES, (
                     f"{path.name} reaches discovery.{node.attr}; only "
                     f"{sorted(ALLOWED_DISCOVERY_ATTRIBUTES)} is allowed"
+                )
+            # An alias must not escape the attribute scan by rebinding or
+            # dynamic lookup.
+            if (
+                isinstance(node, ast.Assign)
+                and isinstance(node.value, ast.Name)
+                and node.value.id in aliases
+            ):
+                raise AssertionError(
+                    f"{path.name} rebinds a discovery alias"
+                )
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "getattr"
+            ):
+                raise AssertionError(
+                    f"{path.name} uses getattr(); the capability scan "
+                    "requires static attribute access"
                 )
 
 
