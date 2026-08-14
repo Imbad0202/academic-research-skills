@@ -588,7 +588,9 @@ def _run_attempt(
 def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
     # retrieve() re-validates even when the CLI already did: it is a public
     # entry point that must not trust its caller.
-    substrate.validate_schema(plan, "query_plan.schema.json", "query plan")
+    substrate.validate_schema(
+        plan, substrate.plan_schema_filename(plan), "query plan"
+    )
     substrate.validate_plan(plan)
     for provider in plan["provider_roster"]:
         index_id = provider["index_id"]
@@ -735,7 +737,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         plan = substrate.load_json(args.query_plan)
-        substrate.validate_schema(plan, "query_plan.schema.json", "query plan")
+        substrate.validate_schema(
+            plan, substrate.plan_schema_filename(plan), "query plan"
+        )
         substrate.validate_plan(plan)
         if plan["consent"]["local_persistence"] != "explicit_local_export":
             _fail(

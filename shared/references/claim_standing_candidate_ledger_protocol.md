@@ -1,6 +1,6 @@
 # Claim-standing candidate-ledger protocol
 
-Status: Track A offline substrate and live discovery adapters implemented; relevance assessment, stance classification, and claim-standing measurement remain unimplemented.
+Status: Track A offline substrate, live discovery adapters, and the stance-side contracts (query-plan 1.1, stance record, evidence-row 1.3) implemented; the relevance assessor, the stance runner, presentation, pipeline wiring, and claim-standing measurement remain unimplemented.
 
 This protocol fixes the deterministic boundary between a consent-bound search plan, already-retained adapter-neutral retrieval records, and a candidate ledger. It does not retrieve records, call a model, infer stance, render claim standing, or dispatch a held-out evaluation.
 
@@ -9,6 +9,8 @@ This protocol fixes the deterministic boundary between a consent-bound search pl
 - `claim-standing-query-plan/1.0`: the frozen checkpoint, tier rule, query/index envelope, caps, and consent receipt.
 - `claim-standing-retrieval-input/1.0`: explicit attempts, retained raw hits, caller-supplied relevance assessments bound to exact claim/candidate/prompt bytes, and a whole-input digest.
 - `claim-standing-candidate-ledger/1.0`: an auditable terminal state for every attempt and raw hit plus deterministic work-family selection.
+- `claim-standing-query-plan/1.1`: the stance-authorizable consent — identical to 1.0 except the decision may be `retrieval_plus_stance`, binding a top-level `stance_plan` (exact provider/model, prompt contract, retention disclosure) by hash and extending the authorized content classes by exactly the stance transmission class. The validator accepts both versions; 1.0 semantics are unchanged.
+- `claim-standing-stance-record/1.0`: the future stance runner's output contract — §7 probe-identity hashes, per-family rows under the closed §5.1 vocabulary with mandatory evidence-row references, the all-selected distribution, and the mandatory `STANCE CLASSIFICATION UNMEASURED` banner. No stance runner exists yet; the contract precedes it.
 
 All three contracts are closed Draft 2020-12 JSON Schemas. Hashes are lowercase SHA-256 over canonical JSON (UTF-8; sorted keys; compact separators; the digest field omitted from the object being hashed). The consent receipt additionally binds a closed consentable-plan projection containing the probe id, exact claim and eligibility basis, queries and their date/index targets, provider roster, language and document-type allowlists, authorized content classes, caps, and plan creation time. Provider retention is conditional: `known` requires a semantically visible reference and `unknown` requires null. Changing any authorization surface invalidates the old receipt.
 

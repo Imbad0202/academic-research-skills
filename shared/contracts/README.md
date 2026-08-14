@@ -40,7 +40,7 @@ Runtime: `scripts/pdf_read_preflight.py` and
   binds one exact high-impact checkpoint claim, at most three accepted queries,
   at most four discovery-index identities, filters, authorized content class,
   frozen caps, and retrieval-only consent through a closed consentable-plan
-  projection.
+  projection (version 1.1 below adds the stance-authorizable consent).
 - `claim_standing/retrieval_input.schema.json`
   (`claim-standing-retrieval-input/1.0`) carries already-retained,
   adapter-neutral attempts, closed retry-authorization receipts, raw hits,
@@ -49,6 +49,23 @@ Runtime: `scripts/pdf_read_preflight.py` and
 - `claim_standing/candidate_ledger.schema.json`
   (`claim-standing-candidate-ledger/1.0`) preserves every attempt and raw-hit
 terminal state while recording deterministic work-family selection.
+- `claim_standing/query_plan_v1_1.schema.json`
+  (`claim-standing-query-plan/1.1`) is identical to 1.0 except that the consent
+  decision may be `retrieval_plus_stance`, in which case a top-level
+  `stance_plan` names the exact stance provider/model surface, the consent
+  binds its hash, and the authorized content classes extend by exactly
+  `claim_and_selected_evidence_to_stance_provider`. A 1.0 plan stays valid
+  under its own schema; the runtime validator accepts both versions and
+  enforces the stance bindings only on 1.1.
+- `claim_standing/stance_record.schema.json`
+  (`claim-standing-stance-record/1.0`) is the stance-classification output for
+  one probe run: full §7 probe-identity hashes, one row per selected work
+  family under the closed §5.1 vocabulary and cross-field rules (a performed
+  row requires at least one `EVR-CS-` evidence-row reference; metadata-only
+  coverage can never be performed), the all-selected distribution whose seven
+  buckets must sum to `selected_total`, a mandatory
+  `STANCE CLASSIFICATION UNMEASURED` banner, and no scalar
+  credibility/confidence/trust field anywhere (test-pinned).
 
 Provider retention disclosure is also closed: `known` requires a non-empty
 reference and `unknown` requires null.
@@ -304,6 +321,8 @@ ordered bilateral or trilateral advisory observation to the exact accepted
 manuscript and optional completed-preregistration bytes. It is finalized only by
 `scripts/build_cross_document_consistency_advisory.py`; the existing 1.0/1.1
 schemas and `scripts/evidence_rows.py` identities and behavior remain unchanged.
+
+`shared/contracts/evidence/evidence_row_v1_3.schema.json` is the separate closed `evidence-row/1.3` carrier for the `claim_standing_advisory` surface (#655 design §5.2): one row per (probe claim, selected work-family candidate) binding the bounded inspected-evidence excerpt to its exact source hash/span, reusing the family's excerpt/cache/content-handling blocks verbatim (test-pinned). The row is provenance-only — it never carries a stance or verdict, an exact excerpt match never determines stance, and abstract-level coverage is declared as such and never rendered as verified full text.
 
 ## Non-ranking revision authority (#670)
 

@@ -249,6 +249,10 @@ id = "655-claim-standing-discovery-adapters"
 path = "scripts/test_claim_standing_discovery.py"
 
 [[pytest]]
+id = "655-claim-standing-stance-contracts"
+path = "scripts/test_claim_standing_stance_contracts.py"
+
+[[pytest]]
 id = "250-title-fuzzy-false-positive-pin"
 path = "scripts/test_title_fuzzy_false_positive.py"
 

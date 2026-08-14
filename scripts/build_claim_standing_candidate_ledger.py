@@ -29,6 +29,16 @@ from jsonschema.exceptions import SchemaError, ValidationError
 
 
 PLAN_VERSION = "claim-standing-query-plan/1.0"
+PLAN_VERSION_1_1 = "claim-standing-query-plan/1.1"
+PLAN_SCHEMA_FILENAMES = {
+    PLAN_VERSION: "query_plan.schema.json",
+    PLAN_VERSION_1_1: "query_plan_v1_1.schema.json",
+}
+RETRIEVAL_ONLY_CONTENT_CLASSES = ["accepted_search_query"]
+STANCE_CONTENT_CLASSES = [
+    "accepted_search_query",
+    "claim_and_selected_evidence_to_stance_provider",
+]
 INPUT_VERSION = "claim-standing-retrieval-input/1.0"
 LEDGER_VERSION = "claim-standing-candidate-ledger/1.0"
 RELEVANCE_INPUT_VERSION = "claim-standing-relevance-assessment-input/1.0"
@@ -145,9 +155,24 @@ def bound_digest(value: dict[str, Any], field: str) -> str:
     return digest(payload)
 
 
+def plan_schema_filename(plan: dict[str, Any]) -> str:
+    version = plan.get("schema_version")
+    filename = PLAN_SCHEMA_FILENAMES.get(version)
+    if filename is None:
+        raise LedgerError(
+            f"schema_version: unknown query-plan version {version!r}"
+        )
+    return filename
+
+
 def consentable_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
     """Return every plan field whose use requires the named consent receipt."""
 
+    if plan.get("schema_version") == PLAN_VERSION_1_1:
+        base = consentable_plan_projection({**plan, "schema_version": PLAN_VERSION})
+        base["schema_version"] = PLAN_VERSION_1_1
+        base["stance_plan"] = copy.deepcopy(plan["stance_plan"])
+        return base
     return {
         "schema_version": plan["schema_version"],
         "probe_id": plan["probe_id"],
@@ -251,8 +276,76 @@ def _unique(rows: list[dict[str, Any]], field: str, path: str) -> dict[str, dict
     return result
 
 
+def _validate_stance_authorization(
+    plan: dict[str, Any], consent: dict[str, Any]
+) -> None:
+    stance_plan = plan.get("stance_plan")
+    if consent["decision"] == "retrieval_plus_stance":
+        _expect(
+            consent["stance_classification_authorized"] is True,
+            "consent.stance_classification_authorized",
+            "retrieval_plus_stance requires an explicit true",
+        )
+        _expect(
+            isinstance(stance_plan, dict),
+            "stance_plan",
+            "retrieval_plus_stance requires a stance_plan",
+        )
+        _expect(
+            consent.get("stance_plan_sha256") == digest(stance_plan),
+            "consent.stance_plan_sha256",
+            "does not bind the stance_plan",
+        )
+        _expect(
+            plan["authorized_content_classes"] == STANCE_CONTENT_CLASSES,
+            "authorized_content_classes",
+            "retrieval_plus_stance authorizes exactly the stance content classes",
+        )
+        for field in ("provider_identity", "model_identity"):
+            _expect(
+                has_visible_semantic_text(stance_plan[field], allow_symbols=True),
+                f"stance_plan.{field}",
+                "must contain visible semantic text after NFKC normalization",
+            )
+        if stance_plan["retention_state"] == "known":
+            _expect(
+                has_visible_semantic_text(
+                    stance_plan["retention_reference"], allow_symbols=True
+                ),
+                "stance_plan.retention_reference",
+                "known retention requires a semantically visible reference",
+            )
+        else:
+            _expect(
+                stance_plan["retention_reference"] is None,
+                "stance_plan.retention_reference",
+                "unknown retention requires a null reference",
+            )
+    else:
+        _expect(
+            consent["stance_classification_authorized"] is False,
+            "consent.stance_classification_authorized",
+            "retrieval_only must be false",
+        )
+        _expect(stance_plan is None, "stance_plan", "retrieval_only requires null")
+        _expect(
+            consent.get("stance_plan_sha256") is None,
+            "consent.stance_plan_sha256",
+            "retrieval_only requires null",
+        )
+        _expect(
+            plan["authorized_content_classes"] == RETRIEVAL_ONLY_CONTENT_CLASSES,
+            "authorized_content_classes",
+            "retrieval_only authorizes exactly the accepted search queries",
+        )
+
+
 def validate_plan(plan: dict[str, Any]) -> None:
-    _expect(plan.get("schema_version") == PLAN_VERSION, "schema_version", f"must equal {PLAN_VERSION}")
+    _expect(
+        plan.get("schema_version") in PLAN_SCHEMA_FILENAMES,
+        "schema_version",
+        f"must be one of {sorted(PLAN_SCHEMA_FILENAMES)}",
+    )
     _expect(plan.get("caps") == CAPS, "caps", "must equal the frozen v1 ceilings")
     claim = plan["claim"]
     _expect(
@@ -275,7 +368,11 @@ def validate_plan(plan: dict[str, Any]) -> None:
     _expect(1 <= len(queries) <= MAX_QUERIES, "queries", "must contain 1..3 rows")
     _expect(1 <= len(roster) <= MAX_INDEXES, "provider_roster", "must contain 1..4 rows")
     _expect(
-        plan["authorized_content_classes"] == ["accepted_search_query"],
+        plan["authorized_content_classes"] == RETRIEVAL_ONLY_CONTENT_CLASSES
+        or (
+            plan.get("schema_version") == PLAN_VERSION_1_1
+            and plan["authorized_content_classes"] == STANCE_CONTENT_CLASSES
+        ),
         "authorized_content_classes",
         "Track A retrieval authorizes only accepted search-query text",
     )
@@ -325,8 +422,11 @@ def validate_plan(plan: dict[str, Any]) -> None:
         if dates["from_year"] is not None and dates["through_year"] is not None:
             _expect(dates["from_year"] <= dates["through_year"], f"queries.{query_id}.date_filter", "from_year exceeds through_year")
     consent = plan["consent"]
-    _expect(consent["decision"] == "retrieval_only", "consent.decision", "Track A accepts retrieval_only")
-    _expect(consent["stance_classification_authorized"] is False, "consent.stance_classification_authorized", "must be false")
+    if plan.get("schema_version") == PLAN_VERSION_1_1:
+        _validate_stance_authorization(plan, consent)
+    else:
+        _expect(consent["decision"] == "retrieval_only", "consent.decision", "Track A accepts retrieval_only")
+        _expect(consent["stance_classification_authorized"] is False, "consent.stance_classification_authorized", "must be false")
     for disclosure_field in ("deletion_boundary", "export_boundary"):
         _expect(
             has_visible_semantic_text(
@@ -798,7 +898,7 @@ def _union_find(ids: list[str]) -> tuple[dict[str, str], Any]:
 
 
 def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, Any]:
-    validate_schema(plan, "query_plan.schema.json", "query plan")
+    validate_schema(plan, plan_schema_filename(plan), "query plan")
     validate_schema(retained, "retrieval_input.schema.json", "retrieval input")
     validate_plan(plan)
     validate_input(plan, retained)
