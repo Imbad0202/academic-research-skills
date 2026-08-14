@@ -162,9 +162,9 @@ def _parse_judge_output(raw_output: str, evidence_text: str) -> dict[str, Any]:
     """Strict four-line grammar, in order, nothing else; deviations are parse
     errors, and the record schema's own bounds are enforced here so a verbose
     judge degrades one row instead of aborting the run."""
-    lines = [line for line in raw_output.splitlines() if line.strip()]
+    lines = raw_output.strip("\n").splitlines()
     prefixes = ("STANCE: ", "EVIDENCE: ", "CONDITIONS: ", "RATIONALE: ")
-    if len(lines) != len(prefixes):
+    if len(lines) != len(prefixes) or any(not line.strip() for line in lines):
         raise ValueError("expected exactly four labeled lines and nothing else")
     fields: dict[str, str] = {}
     for line, prefix in zip(lines, prefixes):
@@ -542,7 +542,7 @@ def validate_stance_record(
             if evidence["source"]["source_content_sha256"] != family["content_sha256"]:
                 _fail(f"evidence row {ref['row_id']}: source hash disagrees with the ledger")
             excerpt = evidence["excerpt"]
-            if excerpt["state"] == "verified_exact_match":
+            if excerpt["state"] in ("verified_exact_match", "agent_extracted"):
                 evidence_text = hit["abstract_text"]
                 if evidence_text is None:
                     _fail(f"evidence row {ref['row_id']}: no inspected text exists")
@@ -559,6 +559,42 @@ def validate_stance_record(
     orphans = sorted(set(rows_by_id) - referenced)
     if orphans:
         _fail(f"unreferenced evidence rows present: {orphans!r}")
+
+    # Performed rows must replay from their retained raw output: a resealed
+    # stance/rationale/conditions that the judge never produced cannot pass.
+    for row in record["rows"]:
+        if row["check_state"] != "performed":
+            continue
+        family = families_by_id[row["work_family_id"]]
+        hit = hits_by_id[row["canonical_raw_hit_id"]]
+        if row["raw_output_sha256"] != substrate.text_digest(row["raw_output"]):
+            _fail(
+                f"row {row['work_family_id']}: raw_output_sha256 does not "
+                "bind the retained output"
+            )
+        try:
+            parsed = _parse_judge_output(row["raw_output"], hit["abstract_text"])
+        except (ValueError, TypeError) as exc:
+            _fail(
+                f"row {row['work_family_id']}: retained raw output does not "
+                f"parse as a performed row ({exc})"
+            )
+        if (
+            parsed["stance"] != row["stance"]
+            or parsed["conditions"] != row["conditions_noted"]
+            or parsed["rationale"] != row["rationale"]
+        ):
+            _fail(
+                f"row {row['work_family_id']}: stance fields do not replay "
+                "from the retained raw output"
+            )
+        quoted = {ref["row_id"] for ref in row["evidence_row_refs"]}
+        for ref_id in quoted:
+            if rows_by_id[ref_id]["excerpt"]["text"] != parsed["quote"]:
+                _fail(
+                    f"row {row['work_family_id']}: evidence excerpt does not "
+                    "replay from the retained raw output"
+                )
 
 
 def main(argv: list[str] | None = None) -> int:

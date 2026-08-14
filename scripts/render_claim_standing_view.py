@@ -43,7 +43,11 @@ COVERAGE_PROSE = {
     "session_held_full_text": "full text",
     "metadata_only": "metadata only",
 }
-_LINE_BREAKS = re.compile(r"[\r\n  ]+")
+_LINE_BREAKS = re.compile(r"[\r\n\u0085\u2028\u2029]+")
+_CONTROL_OR_FORMAT = re.compile(
+    r"[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f"
+    r"\u200e\u200f\u202a-\u202e\u2066-\u2069]"
+)
 
 
 def _fail(message: str) -> None:
@@ -57,6 +61,9 @@ def _inert(value: Any) -> str:
     if value is None:
         return "(none)"
     text = _LINE_BREAKS.sub(" ", str(value))
+    # Terminal escapes and bidi controls are stripped: a provider title must
+    # not be able to clear a terminal or reorder rendered text.
+    text = _CONTROL_OR_FORMAT.sub("", text)
     return (
         text.replace("&", "&amp;")
         .replace("<", "&lt;")
@@ -266,6 +273,17 @@ def render_view(
                 f"`{_inert(ref['row_id'])}`" for ref in row["evidence_row_refs"]
             )
             line += f" Evidence rows: {refs}."
+        other_versions = [
+            hits_by_id[member]
+            for member in family["member_raw_hit_ids"]
+            if member != family["canonical_raw_hit_id"]
+        ]
+        if other_versions:
+            line += " Other versions: " + "; ".join(
+                f"`{_inert(v['raw_hit_id'])}` ({_inert(v['index_id'])} rank "
+                f"{v['provider_rank']})"
+                for v in other_versions
+            ) + "."
         if hit.get("landing_url"):
             line += f" Source: {_inert(hit['landing_url'])}"
         out.append(line)
@@ -282,6 +300,12 @@ def _write_view_exclusive(path: Path, text: str) -> None:
         handle.write(text)
         handle.flush()
         os.fsync(handle.fileno())
+    if os.name != "nt":
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
 
 
 def main(argv: list[str] | None = None) -> int:

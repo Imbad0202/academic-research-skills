@@ -163,6 +163,26 @@ def test_per_source_rows_carry_the_required_fields():
     assert "provider retention: unknown" in text
 
 
+def test_terminal_control_characters_are_stripped():
+    plan, ledger_value, _, _ = _full_setup()
+    tampered = copy.deepcopy(ledger_value)
+    tampered["raw_hits"][0]["title"] = "Fine \x1b[2J\x07 Title \u202e sneaky"
+    tampered["candidate_ledger_sha256"] = ledger.bound_digest(
+        tampered, "candidate_ledger_sha256"
+    )
+    text = view.render_view(plan, tampered, None, [])
+    assert "\x1b" not in text
+    assert "\x07" not in text
+    assert "\u202e" not in text
+
+
+def test_per_source_rows_list_other_versions_with_ranks():
+    plan, ledger_value, record, evidence_rows = _full_setup()
+    text = view.render_view(plan, ledger_value, record, evidence_rows)
+    assert "Other versions:" in text
+    assert "rank 2" in text
+
+
 def test_retrieval_only_view_renders_without_a_stance_record():
     plan, ledger_value, _, _ = _full_setup()
     text = view.render_view(plan, ledger_value, None, [])

@@ -270,6 +270,33 @@ def test_fabricated_excerpt_fails_span_replay():
         runner.validate_stance_record(plan, ledger_value, resealed, forged)
 
 
+def test_forged_stance_value_fails_raw_output_replay():
+    plan, ledger_value = _stance_setup()
+    record, evidence_rows, _ = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport()
+    )
+    forged = copy.deepcopy(record)
+    forged["rows"][0]["stance"] = "contradict"
+    forged["distribution"].update(support=0, contradict=1)
+    forged["stance_record_sha256"] = ledger.bound_digest(
+        forged, "stance_record_sha256"
+    )
+    with pytest.raises(runner.StanceError, match="replay"):
+        runner.validate_stance_record(plan, ledger_value, forged, evidence_rows)
+
+
+def test_blank_lines_in_judge_output_are_parse_errors():
+    plan, ledger_value = _stance_setup()
+    output = (
+        "STANCE: support\n\nEVIDENCE: A bounded synthetic abstract.\n"
+        "CONDITIONS: none\nRATIONALE: x.\n"
+    )
+    record, _, _ = runner.run_stance(
+        plan, ledger_value, transport=FakeTransport(output)
+    )
+    assert record["rows"][0]["failure_state"] == "parse_error"
+
+
 def test_semantic_validator_fails_closed_on_tampering():
     plan, ledger_value = _stance_setup()
     record, evidence_rows, _ = runner.run_stance(
