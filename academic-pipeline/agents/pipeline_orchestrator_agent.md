@@ -322,7 +322,7 @@ Continue?
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-E6 is checkpoint-closing, not a verdict: build and replay-validate only the named finding/input/event bytes; any changed or absent bytes fail closed and invalidate prior authorization; route by `paused` > `restore_required` > `authorized_to_continue`. The sidecar proves only disposition coverage and byte bindings—semantic/model-mediated detection, including an empty finding set, does not prove absence of drift.
+E6 is checkpoint-closing, not a verdict: open only the named finding-set, author-input, and per-disposition raw event files; run `scripts/claim_strength_drift_disposition.py build`, then replay `validate` with the closed event mapping before retaining the sidecar. Never infer a choice from silence, a generic confirmation, or a prior run. Changed finding-set, final-draft, Revision-Evidence Bundle, or event bytes require rebuilding and fail closed; route by `paused` > `restore_required` > `authorized_to_continue`. The sidecar proves only disposition coverage and byte bindings—semantic/model-mediated detection, including an empty finding set, does not prove absence of drift.
 
 ##### Phase E Evidence-Row Rendering (#656)
 
