@@ -200,14 +200,18 @@ jobs:
             echo "ERROR: could not extract ARS version from CHANGELOG.md (need '## [X.Y.Z]' heading)" >&2
             exit 1
           fi
+          # Contract families may co-locate JSON Schemas; validate only instances.
           for f in shared/contracts/reviewer/*.json; do
+            [[ "$f" == *.schema.json ]] && continue
             python3 scripts/check_sprint_contract.py "$f" --ars-version "v${ARS_VERSION}"
           done
           # v3.6.6: writer + evaluator template validation loops mirror reviewer loop above.
           for f in shared/contracts/writer/*.json; do
+            [[ "$f" == *.schema.json ]] && continue
             python3 scripts/check_sprint_contract.py "$f" --ars-version "v${ARS_VERSION}"
           done
           for f in shared/contracts/evaluator/*.json; do
+            [[ "$f" == *.schema.json ]] && continue
             python3 scripts/check_sprint_contract.py "$f" --ars-version "v${ARS_VERSION}"
           done
 
