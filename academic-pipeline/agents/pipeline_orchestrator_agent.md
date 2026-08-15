@@ -322,21 +322,7 @@ Continue?
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-E6 is non-verdict but checkpoint-closing. The orchestrator MUST open only the
-explicitly named finding-set, author-input, and per-disposition raw event
-artifacts, run `scripts/claim_strength_drift_disposition.py build`, then replay
-`validate` with the closed event-id-to-path mapping before retaining the
-sidecar with the Integrity Report. It must not infer a choice from silence,
-from the wording of a generic checkpoint confirmation, or from a prior run. If
-the finding-set, final-draft, or Revision-Evidence Bundle bytes change, rebuild
-against the new hashes; a prior authorization cannot travel to the changed
-surface. If any transient raw event artifact is absent or changed, validation
-fails closed. The validated builder's `pipeline_action` is authoritative for routing:
-`paused` > `restore_required` > `authorized_to_continue`.
-
-The sidecar closes disposition coverage only. E6 detection itself is semantic
-and may be model-mediated; an empty completed set means no drift was detected
-by the recorded reviewer, not that a deterministic validator proved absence.
+E6 is checkpoint-closing, not a verdict: build and replay-validate only the named finding/input/event bytes; any changed or absent bytes fail closed and invalidate prior authorization; route by `paused` > `restore_required` > `authorized_to_continue`. The sidecar proves only disposition coverage and byte bindings—semantic/model-mediated detection, including an empty finding set, does not prove absence of drift.
 
 ##### Phase E Evidence-Row Rendering (#656)
 
