@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.20.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.0)
+[![Version](https://img.shields.io/badge/version-v3.20.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.1)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -243,19 +243,19 @@ You: "status"
 
 에이전트별 책임과 단계별 산출물은 이제 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)에 있습니다. 릴리스 메타데이터를 한 곳에 유지하기 위해 버전 번호는 여기에 고정합니다.
 
-### Deep Research (v2.12.0)
+### Deep Research (v2.12.1)
 
 13개 에이전트 연구팀. 모드: full, quick, review, lit-review, three-way-scan, fact-check, socratic, systematic-review. 전체 에이전트 명단과 산출물: ARCHITECTURE.md §3 참조.
 
-### Academic Paper (v3.3.0)
+### Academic Paper (v3.3.1)
 
 12개 에이전트 논문 작성 파이프라인. 모드: full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit. 출력: MD + DOCX (가능한 경우 Pandoc 경유) + LaTeX (APA 7.0 `apa7` class / IEEE / Chicago) → tectonic 경유 PDF. 전체 에이전트 명단과 단계별 책임: ARCHITECTURE.md §3 참조.
 
-### Academic Paper Reviewer (v1.11.0)
+### Academic Paper Reviewer (v1.11.1)
 
 기준별 증거에 연결된 **서술형 판단**을 수행하는 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. 현재 live review와 Schema 6 package는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다. 고정 총점을 Accept / Minor Revision / Major Revision / Reject에 매핑하지 않습니다. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.20.0)
+### Academic Pipeline (v3.20.1)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 건너뛸 수 없고, R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -343,6 +343,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 변경 이력
+
+### v3.20.1 (2026-08-15) — 계약 정직성 강화와 범위가 제한된 평가 기반
+
+> **강화 및 범위 명확화:** v3.20.1은 리뷰와 무결성 주장을 실제로 재현 가능한 증거 범위에 맞춥니다. Claim coverage는 등록되었거나 어휘적으로 탐지된 모집단으로 제한되고 의미 추출의 완전성은 여전히 미확인입니다. 개정 과정의 주장 강도 변경에는 항목별 byte-bound 저자 처분이 필요하며, 새 읽기 표시는 범위를 반드시 선언하고 오류를 명시적으로 드러냅니다. Live reviewer package는 `NOT_CALIBRATED`를 유지하고 이분법적 independence 표현을 6축 provenance로 대체합니다. 또한 오프라인·미측정 claim-standing probe 기반, ideation-diversity blind bundle의 폐쇄형 1차 배정 게이트, 향후 inquiry branch／alternative를 opt-in으로 도입하는 roadmap을 포함합니다. 이 계약들은 과학적 성과 개선, 리뷰 정확성, 완전한 의미 탐지, 인증된 인간 신원, 독립 오류 과정 또는 live provider 효과를 입증하지 않습니다. 스위트／pipeline → v3.20.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1.
 
 ### v3.20.0 (2026-08-14) — 증거에 바인딩된 리뷰와 개정, 격리된 전송, 재현 가능한 평가 기반
 

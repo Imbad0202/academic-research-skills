@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.20.1] - 2026-08-15 — Contract-honesty hardening and bounded evaluation substrates
+
 ### Added
 
-- **v3.20 post-release contract-honesty hardening (#734, #735–#740).** Adds a visible, user-requested exit from non-generating Socratic RQ mode without automatic candidate generation; a hash-bound per-finding E6 disposition sidecar with explicit restore / authorize-with-reason / pause routing; exact-span, raw-byte-bound Claim Registry coverage replay with registered-denominator and unknown semantic-completeness disclosure; required read-scope on every new `/ars-mark-read` event with closed fail-visible resolution; criterion-bound categorical reviewer judgements with live packages fixed at `NOT_CALIBRATED`; and replay-valid six-axis review-panel provenance that never reduces personas to a binary independence claim. These changes harden contracts and disclosures; they do not establish improved scientific outcomes, reviewer correctness, complete semantic detection, authenticated human identity, or independent error processes.
+- **v3.20 post-release contract-honesty hardening (#734, #735–#740; PR #747).** Adds a visible, user-requested exit from non-generating Socratic RQ mode without automatic candidate generation; a hash-bound per-finding E6 disposition sidecar with explicit restore / authorize-with-reason / pause routing; exact-span, raw-byte-bound Claim Registry coverage replay with registered-denominator and unknown semantic-completeness disclosure; required read-scope on every new `/ars-mark-read` event with closed fail-visible resolution; criterion-bound categorical reviewer judgements with live packages fixed at `NOT_CALIBRATED`; and replay-valid six-axis review-panel provenance that never reduces personas to a binary independence claim. These changes harden contracts and disclosures; they do not establish improved scientific outcomes, reviewer correctness, complete semantic detection, authenticated human identity, or independent error processes.
 
 - **Adaptive inquiry and evidence roadmap (#741–#746).** Adds the staged post-v3.20 through v3.22 plan for bounded domain profiles, opt-in inquiry branches, cross-stage alternative registers, stage-specific capability evidence, and outcome evaluation. Simple-path defaults, progressive disclosure, domain-stratified usability gates, and a strict repository data boundary precede any default-on structural expansion.
 

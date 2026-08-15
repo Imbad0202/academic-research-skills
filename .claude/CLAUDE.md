@@ -6,10 +6,17 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 
 | Skill | Purpose | Key Modes |
 |-------|---------|-----------|
-| `deep-research` v2.12.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
-| `academic-paper` v3.3.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
-| `academic-paper-reviewer` v1.11.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.20.0 | Full pipeline orchestrator | (coordinates all above) |
+| `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
+| `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
+| `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
+| `academic-pipeline` v3.20.1 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.20.1 Key Additions (contract honesty + bounded evaluation substrates)
+
+- **Integrity and review claims match their evidence.** Claim coverage is explicitly bounded to registered or lexically detected populations; semantic completeness remains unknown. Revision claim-strength changes require a byte-bound, per-finding author disposition. Reviewer outputs use categorical criterion judgements, remain `NOT_CALIBRATED` in live packages, and carry typed panel provenance instead of a binary independence claim.
+- **Read attestations and Socratic exits fail visibly.** New read marks require an explicit scope and are resolved from validated, append-safe ledgers; malformed or absent attestations cannot become positive coverage. A user may visibly exit non-generating Socratic RQ mode without the system silently generating candidates.
+- **Evaluation substrates stay bounded and unmeasured.** The claim-standing probe gains closed contracts, discovery adapters, an offline stance runner/renderer, and synthetic seed assets; the ideation-diversity bundle gains a closed first-round assignment gate. No live stance provider, effectiveness result, semantic-completeness guarantee, independent-error proof, or scientific-outcome claim ships with this patch.
+- **Future structure remains opt-in.** The v3.20→v3.22 roadmap stages domain profiles, inquiry branches, alternative registers, capability evidence, and outcome studies behind progressive disclosure and usability gates; it does not enable those structures by default.
 
 ## v3.20 Key Additions (review evidence + integrity advisories + contained transports)
 
@@ -344,7 +351,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.20.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-08-14
+- **Suite version**: 3.20.1 (per CHANGELOG.md)
+- **Last Updated**: 2026-08-15
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
