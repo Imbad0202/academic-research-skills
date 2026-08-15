@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/claim_strength_drift_disposition.schema.json",
+  "title": "E6 Raw-Event-Bound Disposition Sidecar",
+  "description": "A deterministic audit sidecar recording one disposition and one runtime-recomputed raw session-event byte binding for every reported E6 finding. Build and replay validation must reopen explicitly named local artifacts and recompute their raw SHA-256; an arbitrary digest assertion alone cannot authorize continuation. The durable sidecar omits transient paths and raw message content. Byte binding does not authenticate source, content meaning, or actor identity, and does not prove semantic-detection completeness/correctness or scientific warrant.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "finding_set_sha256",
+    "final_draft_sha256",
+    "revision_evidence_bundle_sha256",
+    "disposition_status",
+    "session_event_bindings",
+    "dispositions",
+    "pipeline_action"
+  ],
+  "properties": {
+    "schema_version": { "const": "claim-strength-drift-disposition/1.0" },
+    "finding_set_sha256": { "$ref": "#/$defs/sha256" },
+    "final_draft_sha256": { "$ref": "#/$defs/sha256" },
+    "revision_evidence_bundle_sha256": { "$ref": "#/$defs/sha256" },
+    "disposition_status": { "const": "complete" },
+    "session_event_bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/session_event_binding" }
+    },
+    "dispositions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/disposition" }
+    },
+    "pipeline_action": {
+      "enum": ["authorized_to_continue", "restore_required", "paused"]
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^ASSERTED-EVENT-[A-Za-z0-9._-]+$"
+    },
+    "finding_id": {
+      "type": "string",
+      "pattern": "^ADV-E6-[1-9][0-9]*$"
+    },
+    "session_event_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "raw_session_event_sha256", "source_assertion", "actor_role_assertion", "byte_binding", "authenticity_status"],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/event_id" },
+        "raw_session_event_sha256": { "$ref": "#/$defs/sha256" },
+        "source_assertion": { "const": "session_user_message" },
+        "actor_role_assertion": { "const": "author" },
+        "byte_binding": { "const": "runtime_recomputed_from_explicit_local_artifact" },
+        "authenticity_status": { "const": "not_authenticated" }
+      }
+    },
+    "disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "finding_sha256",
+        "session_event_id",
+        "action"
+      ],
+      "properties": {
+        "finding_id": { "$ref": "#/$defs/finding_id" },
+        "finding_sha256": { "$ref": "#/$defs/sha256" },
+        "session_event_id": { "$ref": "#/$defs/event_id" },
+        "action": { "enum": ["restore", "authorize_with_reason", "pause"] },
+        "reason": { "$ref": "#/$defs/nonempty_string" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["action"],
+            "properties": { "action": { "const": "authorize_with_reason" } }
+          },
+          "then": { "required": ["reason"] },
+          "else": { "not": { "required": ["reason"] } }
+        }
+      ]
+    }
+  }
+}

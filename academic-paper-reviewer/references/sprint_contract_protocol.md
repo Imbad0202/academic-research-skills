@@ -19,7 +19,7 @@ This protocol exists to destroy the "read the paper, then rationalise the scorin
 
 ## 2. Two-phase reviewer call
 
-For each reviewer in `range(panel_size)`:
+For each role-separated review seat in `range(panel_size)`, using a fresh invocation context and withholding peer outputs until the seat commits. These are execution requirements whose actual status must be recorded in `review-panel-provenance/1.0`; they do not establish independent error processes:
 
 1. **Prepare contract.** Load template from `shared/contracts/<domain>/<mode>.json`. Populate `generated_at` (ISO-8601 UTC). Optionally populate `agent_amendments` (field-specific notes from `field_analyst_agent`). Run `check_sprint_contract.py` on the in-memory object; abort on error.
 2. **Phase 1 call (paper-content-blind).**
@@ -34,6 +34,13 @@ For each reviewer in `range(panel_size)`:
 5. **Phase 2 output lint.** Run `scripts/check_phase_conformance.py --contract <C> --role <dispatch-role> --phase1 <P1> --phase2 <P2> --manuscript <paper> --metadata <metadata.json>` before synthesis. Exit 3 emits `[PROTOCOL-VIOLATION: phase_conformance=<check>]` and makes the seat unusable; exit 2 is an infra abort. See §5.
 6. **Panel cardinality invariant.** After all reviewers complete, verify `len(usable_phase2_outputs) == panel_size`. If any reviewer was dropped, emit `[PANEL-SHRUNK]` and abort the round (see §6).
 7. Feed usable Phase 2 outputs into synthesizer (see §7).
+
+The Schema 6 adapter preserves the sprint vocabulary exactly: each contract
+dimension becomes one `criterion_judgements` row with
+`judgement_scale: sprint_contract` and the unchanged
+`block|warn|pass|not_assessed` value. It never maps sprint labels to the
+narrative rubric. Package calibration remains `NOT_CALIBRATED`; a seat card
+does not need a second calibration field inside the pinned sprint grammar.
 
 ## 3. Contract injection
 

@@ -170,7 +170,10 @@ more efficiently.
 **Trigger Timing**: Phase 6 (peer_reviewer_agent issues Reject)
 
 **Detection Indicators**:
-- Two or more of the five dimensions scored below 60
+- Criterion-bound trigger: at least one named, decision-critical criterion is
+  `DOES_NOT_MEET`, with the manuscript evidence and applicable standard stated
+- A decision-critical criterion is `NOT_ASSESSED` because required evidence is
+  absent, so an acceptance or revision finding is not supportable
 - Fatal flaws exist (logical breakdowns, missing core evidence, serious methodology flaws)
 
 **Handling Process**:

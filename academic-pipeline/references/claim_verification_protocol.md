@@ -1,18 +1,57 @@
 # Claim Verification Protocol (Phase E)
 
 ## Purpose
-Verifies that quantitative and factual claims in the paper are accurately supported by their cited sources. Phase A-D verify that references exist and are original; Phase E verifies that claims derived from those references are truthful.
+Assesses whether registered quantitative and factual claims in the paper are accurately supported by the cited source material available to the run. Phase A-D check bounded reference/source properties; Phase E checks claim-source alignment for the registered population. Neither layer certifies semantic extraction completeness, underlying data truth, or actual research execution.
 
-## Scope
-- All numerical claims (percentages, counts, effect sizes, p-values)
-- All categorical assertions ("X is the largest...", "Y was the first to...")
-- All trend claims ("increasing", "declining", "stable")
-- All causal claims ("X causes Y", "X leads to Y")
+## Target population
+E1 is instructed to register each detected instance in these classes, while its
+semantic extraction completeness remains unknown:
+
+- numerical claims (percentages, counts, effect sizes, p-values)
+- categorical assertions ("X is the largest...", "Y was the first to...")
+- trend claims ("increasing", "declining", "stable")
+- causal claims ("X causes Y", "X leads to Y")
 
 ## E1: Claim Extraction
-- Scan the paper for all quantitative/factual claims
-- For each claim, assign a stable `claim_id` and record: claim text, cited source(s) by `ref_slug`, each source's writer anchor, paper section, page/line, selection tier (#549 — Mode 1: `HIGH-IMPACT` / `RANDOM` / `TOP-UP` / `NOT-SELECTED`; Mode 2: `ALL`)
-- Expected output: Claim Registry table
+- Scan the paper for quantitative/factual claims and build the registered population. This is a semantic, model-mediated extraction step: do not describe the resulting registry as mechanically complete.
+- For each claim, assign a stable `claim_id` and emit the closed `claim-registry/1.0` artifact defined by `shared/contracts/evidence/claim_registry.schema.json`. Every row records exact UTF-8 draft byte span + equal `claim_text`, claim kind(s), cited source(s) by `ref_slug`, writer anchors, paper section, and selection tier (#549 — Mode 1: `HIGH-IMPACT` / `RANDOM` / `TOP-UP` / `NOT-SELECTED`; Mode 2: `ALL`). The registry binds `draft_raw_sha256`; duplicate IDs/spans and stale or unequal spans are invalid.
+- Expected output: a schema-valid Claim Registry artifact. A rendered table is a view, not the machine contract.
+
+### E1.1: Mechanically detectable coverage diff (#737)
+
+After E1, run `scripts/claim_registry_coverage.py` on the exact raw draft bytes
+and exact serialized `claim-registry/1.0` bytes. The deterministic report checks
+only bounded lexical candidates: citation-bearing sentences and quantitative
+sentences. Citation surfaces include Markdown links, numeric brackets,
+parenthetical or narrative author-year forms, Pandoc citation keys, and inline
+reference markers; quantitative surfaces include unit-bearing numbers,
+p-values, `N=...`, and common effect-size/ratio notation. This is a finite
+lexical grammar, not semantic claim detection. For each candidate it also
+records the exact spans of the finite lexical triggers that caused detection.
+It joins only validated UTF-8 byte spans; fuzzy or substring matching is not
+evidence of coverage. A candidate is `registry_span_matched` only when one
+registered span equals the full candidate sentence and every lexical trigger
+is contained in a registered span. A same-sentence mix, an uncovered trigger,
+or a registry span narrower than the candidate is
+`mixed_or_partial_registry_coverage`; a candidate with no matched registry span
+is `candidate_unregistered`. Both non-clean states contribute to
+`candidate_unregistered_count` and return to E1 for inspection. The report also
+records registered claims outside those two candidate classes, while fixing
+`semantic_extraction_coverage: not_machine_detectable`.
+
+Persist the exact report and put its path, raw SHA-256, exact draft/registry raw
+SHA-256 bindings, status, and candidate-gap count in Integrity Report Schema 5.
+Before rendering or routing, replay it with `--validate-report`. `not_run`, a
+missing pointer, a stale binding, or replay failure becomes
+`E1-COVERAGE-UNRESOLVED` and closes the current integrity checkpoint; it can
+never be rendered as zero gaps.
+
+Every non-clean candidate row returns to E1 for human/model inspection; it is
+not automatically a claim. Trigger spans are lexical witnesses, not semantic
+subclaim boundaries. A clean replay-valid report proves only that
+these two mechanically detectable candidate classes have no unregistered exact
+span. Semantic or uncited qualitative claims can remain undetected, so no
+consumer may turn a clean report into “all substantive claims extracted.”
 
 ## E2: Source Tracing
 - For each SELECTED claim (Mode 1: the #549 risk-stratified selection — tiers `HIGH-IMPACT` / `RANDOM` / `TOP-UP`; Mode 2: every claim in the registry), locate the specific passage in the cited source that supports it
@@ -79,7 +118,7 @@ ADVISORY ONLY: `UNRESOLVED` rows never change Phase E verdicts and never gate PA
 
 External motivation: Ren et al. (2026, arXiv:2607.13104 §7.4) — discovery agents cannot easily verify novelty on their own and may exploit weak proxies.
 
-## E6: Claim-Strength Drift (#569 — advisory-only, revision rounds)
+## E6: Claim-Strength Drift (#569 — non-verdict, checkpoint-closing, revision rounds)
 
 **Runs only** at a Stage 4.5 (or Stage 2.5 re-verification) invocation that follows a revision round. This phase is the epistemic complement to the deterministic numeric/citation conservation check (`scripts/check_revision_token_conservation.py`, #570): that script conserves tokens; E6 covers what token-matching cannot see — whether a claim's epistemic strength moved along the ladder.
 
@@ -92,7 +131,74 @@ For each claim-bearing op across the consumed rounds, compare its ladder rung (a
 
 1. If the rung moved (either direction) or a hedge/null/caveat was dropped, check whether a roadmap item authorized *that strength change* (not merely touching the block). An authorized move is recorded and closed.
 2. Flag an unauthorized move as `STRENGTH-DRIFTED`, recording: claim location, prior rung → current rung (or the dropped qualifier), the roadmap items the op claimed, and the direction (up / down).
-3. ADVISORY ONLY: `STRENGTH-DRIFTED` rows never change Phase E verdicts and never gate PASS/FAIL — they are not issues, do not enter the gate's issue count, and may remain open when the gate passes. Each row carries a stable ID `ADV-E6-<n>` and is recorded in the Integrity Report's advisory table. Checkpoint options per row: **proceed open** (default, recorded) or **accept the change** (with a note justifying the strength change; recorded) or the user asks for the rung restored as an ordinary revision instruction. E6 defines no reword route and places no obligation on any downstream agent — the advisory table travels with the Integrity Report, rows citable by their ADV-E6 IDs. No automatic rewriting, no new dispatch path.
+3. `STRENGTH-DRIFTED` rows do not change the Phase E verdict and do not enter its issue count: a report may still say PASS on source/claim verification. They are nevertheless **checkpoint-closing**. A detected row may not remain open, inherit a default, or be cleared by a generic confirmation. Before any next-stage transition, the author must explicitly choose exactly one disposition for every row: **`restore`**, **`authorize_with_reason`**, or **`pause`**. `authorize_with_reason` requires a non-blank reason. There is no `proceed open` choice.
+
+### E6 structured findings and author disposition
+
+The producer persists the complete ordered E6 result as a companion
+`claim-strength-drift-findings/1.0` artifact validated against
+`shared/contracts/revision/claim_strength_drift_findings.schema.json`. The
+Integrity Report carries that artifact's exact SHA-256 pointer and renders its
+rows; it does not maintain a second hand-authored E6 list. On a revision gate,
+`status=completed` binds the exact final-draft and Revision-Evidence Bundle
+SHA-256 values, records detector kind/id plus the protocol hash, and contains
+the exact `ADV-E6-1..N` sequence. With no revision evidence, emit
+`status=skipped_no_revision_evidence`, a null bundle hash, and `findings=[]`.
+
+When one or more findings exist, retain one explicitly named local raw
+session-event artifact and one explicit choice per row in
+`claim-strength-drift-disposition-input/1.0`, then run
+`scripts/claim_strength_drift_disposition.py build`. Each transient input row
+contains an absolute artifact path and its declared raw SHA-256. Keep those raw
+event files in run-local storage outside the repository. The deterministic
+builder safely opens each exact regular non-symlink file, recomputes its digest,
+requires ordered one-to-one event/disposition coverage, and emits the hash-bound
+`claim-strength-drift-disposition/1.0` sidecar. A supplied 64-hex digest without
+matching raw bytes cannot authorize continuation. The sidecar omits the paths
+and raw messages and derives one closed pipeline action:
+
+- any `pause` -> `paused`; save state and do not advance;
+- otherwise any `restore` -> `restore_required`; route the cited row back for
+  restoration, then rerun integrity/E6 on the new exact draft before advancing;
+- only when every row is `authorize_with_reason` ->
+  `authorized_to_continue`; preserve every reason in the sidecar.
+
+```bash
+python scripts/claim_strength_drift_disposition.py build \
+  --finding-set <claim-strength-drift-findings.json> \
+  --author-input <explicit-author-dispositions.json> \
+  --final-draft <exact-revised-draft> \
+  --revision-evidence-bundle <exact-revision-evidence-bundle.json> \
+  --output <claim-strength-drift-disposition.json>
+
+python scripts/claim_strength_drift_disposition.py validate \
+  --finding-set <claim-strength-drift-findings.json> \
+  --sidecar <claim-strength-drift-disposition.json> \
+  --final-draft <exact-revised-draft> \
+  --revision-evidence-bundle <exact-revision-evidence-bundle.json> \
+  --event-artifact 'ASSERTED-EVENT-e6-1=/absolute/run-local/event-1.raw' \
+  [--event-artifact 'ASSERTED-EVENT-e6-N=/absolute/run-local/event-N.raw' ...]
+```
+
+The sidecar travels with the final Integrity Report. A `restore` record is an
+auditable request, not authority for the drifted bytes; a prior sidecar cannot
+be replayed against a changed finding set, draft, or revision bundle. Silence,
+an omitted row, a missing/unknown/duplicate event mapping, a generic `continue`, or a
+free-form acceptance outside the sidecar leaves the checkpoint unresolved.
+
+**Event and detection boundary.** Build and `validate` both receive explicitly
+named raw session-event bytes and recompute their SHA-256; validation requires
+a repeatable exact event-id-to-path mapping, so the durable sidecar's digest
+alone is insufficient for replay. This proves byte identity only. The runtime
+does not authenticate that the bytes came from a session user, interpret their
+meaning, or prove the asserted actor identity. E6 classification remains
+semantic and may be model-mediated. Schema/validator success proves only that
+every *reported* finding is byte-bound and explicitly disposed. It does not
+prove complete recall, semantic correctness, author identity authentication,
+or scientific warrant for an authorized strength move. If the transient raw
+event artifact is unavailable, replay fails closed. An empty finding set is
+therefore “none detected by the recorded review,” never a deterministic
+no-drift certificate.
 
 External motivation: DELEGATE-52 (arXiv:2604.15597) — round-trip editing corrupts content by subtle modification; the #390 patch confines exposure to touched blocks but does not check their epistemic interior. Baseline evidence that the drift is real on the current frontier model: `evals/heldout/revision_claim_drift/` (2026-07-22: 2/8 under hedge-drop / null-reframe pressure). Mechanism shape borrowed from Yila-AI/sci-ssci-skills (@MissOrangePeel).
 
@@ -112,7 +218,7 @@ External motivation: DELEGATE-52 (arXiv:2604.15597) — round-trip editing corru
   - RANDOM sentinel — 10% of the non-high-impact remainder, rounded up (minimum 3, maximum 10; fewer than 3 in the remainder → all of it), preserving unbiased drift detection.
   - Floor: if the two tiers together select fewer than min(10, total claims), top up at random from the remainder; a paper with fewer than 10 claims total is audited in full (preserves the pre-#549 minimum).
   - Record each claim's tier in the Claim Registry (`HIGH-IMPACT` / `RANDOM` / `TOP-UP` for selected claims; `NOT-SELECTED` for the rest) so coverage is inspectable. Cost scales with the count of high-impact claims — a results-dense paper approaches 100% coverage at Stage 2.5, which is the point: consequential distortions surface BEFORE the review stage instead of at the Stage 4.5 backstop.
-- Mode 2 (final-check): 100% of claims (unchanged)
+- Mode 2 (final-check): 100% of **registered claims**. The denominator is the E1 Claim Registry; semantic extraction completeness remains unknown and is reported separately by E1.1.
 
 External motivation: Ren et al. (2026, arXiv:2607.13104): §3.3 frames active data-acquisition as targeting frequent failure modes and verifier disagreement; §9.2 frames improvement as resource optimization (gating expensive evaluations, penalizing waste). The high-impact-first allocation here is ARS's design inference from those principles, mirroring #518's reference-verification shift.
 
@@ -150,7 +256,7 @@ is a contract failure and the compatibility flag is forbidden. For a current rep
 verdict.
 
 ### Summary
-- Total claims checked: [N] of [registry total] — Mode 1: tiers HIGH-IMPACT: [N] (100% of tier), RANDOM: [N], TOP-UP: [N], NOT-SELECTED: [N]. Mode 2: ALL: [N]
+- Total registered claims checked: [N] of [registry total] — Mode 1: tiers HIGH-IMPACT: [N] (100% of tier), RANDOM: [N], TOP-UP: [N], NOT-SELECTED: [N]. Mode 2: ALL REGISTERED: [N]. Semantic extraction coverage: `not_machine_detectable`; mechanically detectable candidate gaps: [N].
 - VERIFIED: [N]
 - MINOR_DISTORTION: [N]
 - MAJOR_DISTORTION: [N] (must be 0 for PASS)

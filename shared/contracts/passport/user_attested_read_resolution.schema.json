@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/user_attested_read_resolution.schema.json",
+  "title": "ARS deterministic transient USER_ATTESTED_READ resolution",
+  "description": "A transient routing decision recomputed from the current ledger and exact current citation anchor on every finalizer pass. It is not a persisted audit receipt and deliberately contains no ledger or anchor digest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_role", "citation_key", "signal_type", "state", "ok_eligible", "finalizer_disposition", "reason"],
+  "properties": {
+    "schema_version": { "const": "user-attested-read-resolution/1.0" },
+    "artifact_role": { "const": "transient_routing_decision" },
+    "citation_key": { "type": "string", "minLength": 1 },
+    "signal_type": { "const": "USER_ATTESTED_READ" },
+    "state": {
+      "enum": [
+        "not_attested",
+        "rescinded",
+        "covered",
+        "partial_coverage",
+        "coverage_unknown",
+        "anchor_unresolved",
+        "ledger_invalid"
+      ]
+    },
+    "ok_eligible": { "type": "boolean" },
+    "finalizer_disposition": {
+      "enum": [
+        "eligible_for_ok",
+        "acknowledged_partial",
+        "unacknowledged_low_warn",
+        "anchor_precedence",
+        "block_invalid_ledger"
+      ]
+    },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "governing_marked_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "state": { "const": "covered" } }, "required": ["state"] },
+      "then": {
+        "properties": {
+          "ok_eligible": { "const": true },
+          "finalizer_disposition": { "const": "eligible_for_ok" }
+        }
+      },
+      "else": { "properties": { "ok_eligible": { "const": false } } }
+    },
+    {
+      "if": {
+        "properties": { "state": { "enum": ["partial_coverage", "coverage_unknown"] } },
+        "required": ["state"]
+      },
+      "then": { "properties": { "finalizer_disposition": { "const": "acknowledged_partial" } } }
+    },
+    {
+      "if": {
+        "properties": { "state": { "enum": ["not_attested", "rescinded"] } },
+        "required": ["state"]
+      },
+      "then": { "properties": { "finalizer_disposition": { "const": "unacknowledged_low_warn" } } }
+    },
+    {
+      "if": { "properties": { "state": { "const": "anchor_unresolved" } }, "required": ["state"] },
+      "then": { "properties": { "finalizer_disposition": { "const": "anchor_precedence" } } }
+    },
+    {
+      "if": { "properties": { "state": { "const": "ledger_invalid" } }, "required": ["state"] },
+      "then": { "properties": { "finalizer_disposition": { "const": "block_invalid_ledger" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": ["rescinded", "covered", "partial_coverage", "coverage_unknown"]
+          }
+        },
+        "required": ["state"]
+      },
+      "then": { "required": ["governing_marked_at"] },
+      "else": { "not": { "required": ["governing_marked_at"] } }
+    }
+  ]
+}

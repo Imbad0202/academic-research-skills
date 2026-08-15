@@ -32,7 +32,7 @@ ARS は **人間の研究者を AI が支援する形式が、どちらか単独
 
 v3.8 は L3 ギャップの後半を閉じます。v3.7.3 は全引用にロケーターアンカーを持たせ、v3.8 はオプトインの監査パス（`ARS_CLAIM_AUDIT=1`）を追加します。これは各アンカーに対して引用元を取得し、主張が実際に裏付けられているかを判断します。5 つの新しい HIGH-WARN クラス（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）は、formatter ターミナルハードゲートを通じて出力を gate-refuse します。キャリブレーションは 20-tuple のゴールドセットと共に FNR<0.15 + FPR<0.10 の受容閾値で出荷されます。ramp-on 計画は v3.8 spec §5 に従いキャリブレーション後の証拠まで保留されます。
 
-v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）に触発されました: Semantic Scholar API 検証、アンチリーケージプロトコル、VLM 図表検証、スコア軌跡追跡。
+v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）に触発されました: Semantic Scholar API 検証、アンチリーケージプロトコル、VLM 図表検証、改訂軌跡追跡。ARS の現行実装は、数値デルタではなく、基準ごとの証拠に基づくナラティブな退行チェックを行います。型付き軌跡キャリアは未実装です。
 
 ---
 
@@ -82,8 +82,8 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 - **Deep Research** — 13 エージェントの研究チーム。ソクラテス式ガイドモード、PRISMA システマティックレビュー、意図検出、対話健全性モニタリング、オプションのクロスモデル DA、Semantic Scholar API 検証付き。
 - **Academic Paper** — 12 エージェントの論文執筆。Style Calibration、Writing Quality Check、LaTeX ハードニング、可視化、改訂コーチング、引用変換、アンチリーケージプロトコル、VLM 図表検証付き。
-- **Academic Paper Reviewer** — 0-100 品質ルーブリックを持つ 7 エージェントの多視点ピアレビュー（Journal-Fit Reviewer + 3 動的レビュアー + Devil's Advocate）、譲歩閾値プロトコル、攻撃強度保持、オプションのクロスモデル DA 批評/キャリブレーション、R&R トレーサビリティマトリクス、read-only 制約。
-- **Academic Pipeline** — 10 ステージのパイプラインオーケストレーター。適応的チェックポイント、主張検証、Material Passport、オプションの `repro_lock`、オプションのクロスモデル整合性検証、会話中強化、スコア軌跡追跡付き。
+- **Academic Paper Reviewer** — 基準ごとの証拠に紐づくナラティブ判断を行う 7 エージェントの多視点ピアレビュー（Journal-Fit Reviewer + 3 動的レビュアー + Devil's Advocate）、譲歩閾値プロトコル、攻撃強度保持、オプションのクロスモデル DA 批評/キャリブレーション、R&R トレーサビリティマトリクス、read-only 制約。現在の live review は常に `NOT_CALIBRATED` で、full calibration は有界な候補 profile のみを生成し、live review への適用は未実装です。
+- **Academic Pipeline** — 10 ステージのパイプラインオーケストレーター。適応的チェックポイント、主張検証、Material Passport、オプションの `repro_lock`、オプションのクロスモデル整合性検証、会話中強化、基準ごとのナラティブな退行チェック付き（型付き軌跡キャリアは未実装）。
 - **Data Access Level Metadata**（v3.3.2+）— 各スキルが `data_access_level`（`raw` / `redacted` / `verified_only`）を宣言。`scripts/check_data_access_level.py` で強制。Anthropic の automated-w2s-researcher（2026）から適応されたパターン。[`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md) を参照。
 - **Task Type Annotation**（v3.3.2+）— 各スキルが `task_type`（`open-ended` または `outcome-gradable`）を宣言。現在の ARS スキルはすべて `open-ended`。
 - **Benchmark Report Schema**（v3.3.5+）— 誠実なベンチマーク比較のための JSON Schema + lint。[`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md) を参照。
@@ -246,7 +246,7 @@ You: "status"
 
 ### Academic Paper Reviewer（v1.11.0）
 
-**0-100 品質ルーブリック** を持つ 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。**決定マッピング:** ≥80 Accept、65-79 Minor Revision、50-64 Major Revision、<50 Reject。初回レビューパネル vs. 契約管理された再レビューディスパッチの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
+基準ごとの証拠に紐づく **ナラティブ判断** を行う 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。現在の live review と Schema 6 package は常に `NOT_CALIBRATED` で、full calibration は有界な候補 profile のみを生成し、live review への適用は未実装です。固定総得点を Accept / Minor Revision / Major Revision / Reject に対応させません。初回レビューパネル vs. 契約管理された再レビューディスパッチの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
 ### Academic Pipeline（v3.20.0）
 
@@ -579,7 +579,7 @@ v3.5.1 は Socratic Mentor にオプトイン honesty probe を追加（`ARS_SOC
 ### v3.3.1 (2026-04-14) — Spec Consistency Patch
 
 - README、`.claude/CLAUDE.md`、`MODE_REGISTRY.md`、`SKILL.md` ファイルを現在のモードカウントと公開されたスキルバージョンに同期。
-- クロスモデルの表現を修正: integrity sample checks と independent DA critique は今日実装済み。sixth-reviewer ピアレビューは計画中のまま。
+- **歴史的注記（v3.16 で置換済み）：**この版では integrity sample checks と、ブラインドで別実行される cross-model DA critique が実装され、第 6 reviewer は計画段階だった。その設計は後に廃止され、現行 full review は固定 5 席である。
 - 適応的チェックポイントセマンティクスを明確化し、SLIM チェックポイントが明示的なユーザー確認を依然として待つように。
 - Stage 2.5 と Stage 4.5 integrity gates がスキップできないことを再確認。
 - 将来のドリフトを捕捉する軽量な spec consistency check と GitHub Actions ワークフローを追加。
@@ -591,7 +591,7 @@ v3.5.1 は Socratic Mentor にオプトイン honesty probe を追加（`ARS_SOC
 - **Semantic Scholar API Verification** — S2 API 経由の Tier 0 programmatic reference existence check。Levenshtein >= 0.70 タイトルマッチング、DOI 不一致検出、S2 IDs 経由の bibliography deduplication。API 利用不可時の graceful degradation。
 - **Anti-Leakage Protocol** — Knowledge Isolation Directive がセッション素材を LLM パラメトリックメモリより優先。コンテンツが欠落している場合、メモリから埋める代わりに `[MATERIAL GAP]` をフラグ。Mode 5/6 失敗リスクを削減。
 - **VLM Figure Verification**（オプション）— ビジョン対応 LLM を使用したレンダリング図表のクローズドループ検証。10 ポイントチェックリスト、最大 2 リファインメント反復。
-- **Score Trajectory Protocol** — 改訂ラウンドにわたる次元ごとのルーブリックスコアデルタ追跡（7 次元）。リグレッション（delta < -3）を検出し、必須チェックポイントをトリガー。
+- **Criterion Trajectory Protocol** — 改訂ラウンド間で 7 次元の証拠に紐づく判断を比較し、決定に影響するリグレッションで必須チェックポイントをトリガー。数値デルタは計算しません。
 - **Stage 2 Parallelization** — 可視化と argument 構築はアウトライン完了後に並列実行可能。
 - 新バージョン: deep-research v2.8、academic-paper v3.0、academic-pipeline v3.2
 
@@ -639,7 +639,7 @@ Lu ら（2026、*Nature* 651:914-919）からの洞察を統合 — ブライン
 - **Attack Intensity Preservation**（academic-paper-reviewer）: DA はプッシュバック下でソフト化しない。明示的な deflection 検出付き Rebuttal assessment プロトコル。アンチシコファンシールールが持続的プッシュバックを有効な証拠として扱われるのを防ぐ。
 - **Intent Detection Layer**（deep-research socratic）: ユーザー意図を探索的 vs. 目標指向に分類。探索モードは自動収束を無効化、最大ラウンドを引き上げ、早期終了を禁止。3 ターンごとに再評価。
 - **Dialogue Health Indicator**（deep-research socratic）: 5 ターンごとに持続的同意、対立回避、早期収束のサイレントセルフチェック。同意パターン検出時に挑戦を自動注入。
-- **Cross-Model Verification Protocol**（shared、オプション）: 整合性検証サンプルクロスチェックと independent DA critique のために GPT-5.4 Pro または Gemini 3.1 Pro を使用。Sixth-reviewer ピアレビューは計画中、まだ実装されていない。`ARS_CROSS_MODEL` env var を設定してアクティベート — それなしですべて以前と同様に動作。完全なセットアップガイド、API パターン、コスト見積りについては `shared/cross_model_verification.md` を参照。
+- **歴史的 Cross-Model Verification 項目（v3.16 で置換済み）：**この版では整合性サンプルのクロスチェックと、ブラインドで別実行される DA critique を導入した。当時計画された第 6 reviewer は後に廃止され、現行クロスモデルレビューは固定 5 席のうち 1 席の基盤を置換する。現行の同意・ルーティング契約は `shared/cross_model_verification.md` を参照。
 - **AI Self-Reflection Report**（academic-pipeline Stage 6）: AI 動作パターンのポストパイプラインセルフアセスメント — DA 譲歩率、チェックポイントスキップ率、健全性アラート、シコファンシーリスク評価（LOW/MEDIUM/HIGH）、フレームロックインシデント、収束パターン分析。皮肉な注意事項を含む: 「このセルフリフレクションはシコファントだった可能性のある同じ AI によって生成されている」。
 - 起源: DA が早すぎる譲歩をし、Socratic Mentor が早期に収束しようとし、ディベート全体が人間が設定したフレーム内にロックされた 4 ラウンド弁証法実験を通じて発見。
 - バージョン: deep-research v2.5、academic-paper-reviewer v1.5、academic-pipeline v2.8
@@ -685,7 +685,7 @@ Lu ら（2026、*Nature* 651:914-919）からの洞察を統合 — ブライン
 ### v2.6 / v2.4 / v1.4 (2026-03-08) — 15+ の改善
 - **deep-research v2.3**: 新しい systematic-review / PRISMA mode（7 番目）。3 つの新エージェント（risk_of_bias、meta_analysis、monitoring）。PRISMA プロトコル/レポートテンプレート。ソクラテス収束基準（4 シグナル + 自動終了）。Quick Mode Selection Guide
 - **academic-paper v2.4**: 2 つの新エージェント（visualization、revision_coach）。4 ステータスタイプ付き改訂追跡テンプレート。引用フォーマット変換（APA↔Chicago↔MLA↔IEEE↔Vancouver）。統計可視化標準。ソクラテス収束基準。改訂回復例。**LaTeX 出力ハードニング** — 必須 `apa7` document クラス、テキスト justification 修正（`ragged2e` + `etoolbox`）、テーブル列幅式、バイリンガル要旨センタリング、標準化フォントスタック（Times New Roman + Source Han Serif TC VF + Courier New）、tectonic のみで PDF
-- **academic-paper-reviewer v1.4**: 行動指標付き 0-100 採点の品質ルーブリック。決定マッピング（≥80 Accept、65-79 Minor、50-64 Major、<50 Reject）。Quick Mode Selection Guide
+- **academic-paper-reviewer v1.4（履歴）**: 当時導入された数値ルーブリックと固定決定マッピングは廃止済みです。現在は基準ごとのナラティブ判断を用い、live review は常に `NOT_CALIBRATED`、measured profile の live 適用は未実装です。Quick Mode Selection Guide は維持。
 - **academic-pipeline v2.6**: 適応的チェックポイントシステム（FULL/SLIM/MANDATORY）。整合性チェックでの Phase E Claim Verification。中間エントリープロブナンス用 Material Passport。クロススキルモードアドバイザー（14 シナリオ）。チームコラボレーションプロトコル。拡張ハンドオフスキーマ（9 スキーマ）。整合性失敗回復例
 
 ### v2.4 / v1.3 (2026-03-08)

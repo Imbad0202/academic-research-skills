@@ -213,22 +213,21 @@ Format audit result: All 4 newly added references comply with APA 7.0 standards.
 | m6 | Policy recommendations too brief | Adequate | Expanded to 400 words with supporting arguments |
 | m7 | Missing ethics statement | Adequate | IRB number and informed consent description added |
 
-### Post-Revision Five-Dimension Scores
+### Post-Revision Criterion Trajectory
 
-| Dimension | Before Revision | After Revision | Change |
-|-----------|----------------|----------------|--------|
-| Originality (20%) | 3.5 | 3.5 | No change |
-| Methodological Rigor (25%) | 2.5 | 3.5 | +1.0 |
-| Evidence Sufficiency (25%) | 3.0 | 3.8 | +0.8 |
-| Argument Coherence (15%) | 3.5 | 4.0 | +0.5 |
-| Writing Quality (15%) | 4.0 | 4.2 | +0.2 |
-| **Weighted Total** | **3.24** | **3.78** | **+0.54** |
+| Dimension | Before Revision | After Revision | Change | Evidence-based rationale |
+|---|---|---|---|---|
+| Originality | MEETS | MEETS | UNCHANGED | Contribution claim remains appropriately bounded. |
+| Methodological Rigor | PARTLY_MEETS | MEETS | IMPROVED | Diagnostics and effect-size reporting were added; one limited psychometric explanation remains. |
+| Evidence Sufficiency | PARTLY_MEETS | MEETS | IMPROVED | Recent relevant literature and supporting analysis were added. |
+| Argument Coherence | PARTLY_MEETS | MEETS | IMPROVED | The research gap and recommendations now connect to the results. |
+| Writing Quality | PARTLY_MEETS | MEETS | IMPROVED | Abstract, citation format, figures, and section clarity were corrected. |
 
 ### Revision Verdict
 
 **Verdict: ACCEPT with Minor Revision**
 
-The paper moved from Major Revision (3.24) before revision to the Minor Revision/Accept boundary (3.78) after revision. The remaining 1 recommendation (psychometric properties explanation for M1) can be addressed during the proofing stage and does not affect the acceptance decision.
+All decision-bearing criteria now meet the target requirements. The remaining psychometric-properties explanation is limited and repairable during proofing, so it does not change the acceptance decision.
 
 ---
 

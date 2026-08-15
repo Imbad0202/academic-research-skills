@@ -108,9 +108,15 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 **Agent**: `peer_reviewer_agent`
 **Output**: Review Report + Revision Instructions
 
-- 5-dimension scoring:
-  Originality (20%) | Methodological Rigor (25%) | Evidence Sufficiency (25%)
-  Argument Coherence (15%) | Writing Quality (15%)
+- 5-dimension criterion-bound judgement:
+  Originality | Methodological Rigor | Evidence Sufficiency |
+  Argument Coherence | Writing Quality
+- Every live Phase 6 report and downstream review package emits
+  `calibration_status: NOT_CALIBRATED` unconditionally in the current release.
+  Candidate empirical target profiles declare
+  `application_status: NOT_WIRED_TO_LIVE_REVIEW`; attaching one or observing an
+  apparent metadata match cannot upgrade the live status. No weighted total or
+  fixed verdict mapping is available.
 - Verdict: Accept / Minor Revision / Major Revision / Reject
 - Line-level feedback with suggested fixes
 - Max 2 revision loops -> back to Phase 4 [draft_writer_agent] (limited to 1 round in academic-pipeline)

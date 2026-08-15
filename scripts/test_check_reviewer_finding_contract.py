@@ -697,9 +697,9 @@ def test_m49_synth_lone_major_escalation_restored(tmp_path):
 def test_m50_rcf_affirm_first_restored(tmp_path):
     root = _mirror(tmp_path)
     _edit(root, RCF_REL,
-          lambda t: t.replace("Affirm genuine strengths first when they exist "
-                              "(never manufactured — #574 A1/B1), then point out issues",
-                              "Affirm strengths first, then point out issues"))
+          lambda t: t.replace("Acknowledge genuine strengths, distinguish decision-bearing "
+                              "findings from copyediting, and avoid finding quotas.",
+                              "List weaknesses only."))
     code, err = _run2(root)
     assert code == 1
     assert "conditional hypercriticism guidance" in err
@@ -1073,12 +1073,13 @@ def test_m78_selection_verb_quota_caught(tmp_path):
 def test_m29_calibration_bridge_removed(tmp_path):
     root = _mirror(tmp_path)
     _edit(root, CALIBRATION_REL,
-          lambda t: t.replace("measurement-reading prior for calibration", "prior")
-                     .replace("no verdict is shaded stricter on this prior's account",
-                              "verdicts may account for it"))
+          lambda t: t.replace("External studies can motivate hypotheses about leniency or harshness",
+                              "External studies set the decision prior")
+                     .replace("must not be imported as correction factors, thresholds, or target-profile measurements",
+                              "may be imported as a threshold"))
     code, err = _run2(root)
     assert code == 1
-    assert "B1 bridge" in err
+    assert "external-evidence scope note" in err
 
 
 # --- P0-3 residue ---------------------------------------------------------------------
@@ -1086,7 +1087,7 @@ def test_m29_calibration_bridge_removed(tmp_path):
 def test_m19_skill_overlap_prohibition_restored(tmp_path):
     root = _mirror(tmp_path)
     _edit(root, SKILL_REL,
-          lambda t: t.replace("independent overlap in findings is legitimate corroboration",
+          lambda t: t.replace("overlapping findings may corroborate one another, but role/persona separation is not evidence of independent errors",
                               "no duplicate criticisms"))
     code, err = _run2(root)
     assert code == 1

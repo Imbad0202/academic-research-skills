@@ -269,6 +269,34 @@ id = "396-rubric-weight-consistency"
 path = "scripts/test_check_rubric_weight_consistency.py"
 
 [[pytest]]
+id = "reviewer-scoring-honesty"
+path = "scripts/test_check_reviewer_scoring_honesty.py"
+
+[[pytest]]
+id = "735-socratic-rq-non-generation"
+path = "scripts/test_socratic_rq_non_generation_contract.py"
+
+[[pytest]]
+id = "736-claim-strength-drift-disposition"
+path = "scripts/test_claim_strength_drift_disposition.py"
+
+[[pytest]]
+id = "737-claim-registry-coverage"
+path = "scripts/test_claim_registry_coverage.py"
+
+[[pytest]]
+id = "737-claim-verification-coverage-contract"
+path = "scripts/test_claim_verification_coverage_contract.py"
+
+[[pytest]]
+id = "738-human-read-attestation-resolver"
+path = "scripts/test_human_read_attestation_resolver.py"
+
+[[pytest]]
+id = "740-review-panel-provenance"
+path = "scripts/test_review_panel_provenance.py"
+
+[[pytest]]
 id = "392-citation-verification-intake"
 path = "scripts/test_check_392_citation_verification_intake.py"
 

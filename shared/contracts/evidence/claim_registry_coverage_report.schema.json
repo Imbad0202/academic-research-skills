@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/evidence/claim_registry_coverage_report.schema.json",
+  "title": "Replay-bound mechanically detectable Claim Registry coverage report",
+  "description": "Conservative exact-span joins for citation-bearing and quantitative sentence candidates and their finite lexical triggers. A candidate is clean only when one registry span equals the full candidate and all triggers are registry-covered. Semantic extraction completeness remains unknown.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "draft_raw_sha256", "registry_raw_sha256", "registry_schema_version", "mechanical_candidate_scope", "semantic_extraction_coverage", "registry_claim_count", "candidate_unregistered_count", "candidates", "registered_claims_outside_candidate_classes"],
+  "properties": {
+    "schema_version": {"const": "claim-registry-coverage/1.0"},
+    "draft_raw_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "registry_raw_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "registry_schema_version": {"const": "claim-registry/1.0"},
+    "mechanical_candidate_scope": {"const": ["citation_bearing_sentence", "quantitative_sentence"]},
+    "semantic_extraction_coverage": {"const": "not_machine_detectable"},
+    "registry_claim_count": {"type": "integer", "minimum": 0},
+    "candidate_unregistered_count": {"type": "integer", "minimum": 0},
+    "candidates": {"type": "array", "items": {"$ref": "#/$defs/candidate"}},
+    "registered_claims_outside_candidate_classes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_id", "line", "sentence_index", "start_byte", "end_byte", "text", "candidate_kinds", "coverage_state", "matched_claim_ids", "uncovered_trigger_count", "triggers"],
+      "properties": {
+        "candidate_id": {"type": "string", "pattern": "^CAND-B[0-9]+-[0-9]+-[0-9a-f]{12}$"},
+        "line": {"type": "integer", "minimum": 1},
+        "sentence_index": {"type": "integer", "minimum": 1},
+        "start_byte": {"type": "integer", "minimum": 0},
+        "end_byte": {"type": "integer", "minimum": 1},
+        "text": {"type": "string", "minLength": 1},
+        "candidate_kinds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["citation_bearing_sentence", "quantitative_sentence"]}},
+        "coverage_state": {"enum": ["registry_span_matched", "mixed_or_partial_registry_coverage", "candidate_unregistered"]},
+        "matched_claim_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "uncovered_trigger_count": {"type": "integer", "minimum": 0},
+        "triggers": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/trigger"}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"coverage_state": {"const": "registry_span_matched"}}, "required": ["coverage_state"]},
+          "then": {"properties": {"matched_claim_ids": {"minItems": 1}, "uncovered_trigger_count": {"const": 0}}}
+        },
+        {
+          "if": {"properties": {"coverage_state": {"const": "candidate_unregistered"}}, "required": ["coverage_state"]},
+          "then": {"properties": {"matched_claim_ids": {"maxItems": 0}}}
+        },
+        {
+          "if": {"properties": {"coverage_state": {"const": "mixed_or_partial_registry_coverage"}}, "required": ["coverage_state"]},
+          "then": {"properties": {"matched_claim_ids": {"minItems": 1}}}
+        }
+      ]
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger_id", "kind", "start_byte", "end_byte", "text", "coverage_state", "matched_claim_ids"],
+      "properties": {
+        "trigger_id": {"type": "string", "pattern": "^TRIG-B[0-9]+-[0-9]+-[0-9a-f]{12}$"},
+        "kind": {"enum": ["citation_bearing_sentence", "quantitative_sentence"]},
+        "start_byte": {"type": "integer", "minimum": 0},
+        "end_byte": {"type": "integer", "minimum": 1},
+        "text": {"type": "string", "minLength": 1},
+        "coverage_state": {"enum": ["registry_span_matched", "trigger_unregistered"]},
+        "matched_claim_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"coverage_state": {"const": "registry_span_matched"}}, "required": ["coverage_state"]},
+          "then": {"properties": {"matched_claim_ids": {"minItems": 1}}}
+        },
+        {
+          "if": {"properties": {"coverage_state": {"const": "trigger_unregistered"}}, "required": ["coverage_state"]},
+          "then": {"properties": {"matched_claim_ids": {"maxItems": 0}}}
+        }
+      ]
+    }
+  }
+}

@@ -25,3 +25,6 @@ htmlcov/
 
 # Knowledge-graph local artifacts (do not commit)
 /graphify-out/
+
+# Maintainer-local working documents (never part of the public project)
+/deliverables/

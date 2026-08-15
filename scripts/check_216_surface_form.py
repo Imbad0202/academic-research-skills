@@ -35,7 +35,8 @@ SYNTH_AGENT = "academic-paper-reviewer/agents/editorial_synthesizer_agent.md"
 BEGIN_MARKER = "SURFACE-FORM-PARITY-BLOCK:BEGIN"
 END_MARKER = "SURFACE-FORM-PARITY-BLOCK:END"
 
-# The two verdict-time surfaces that adjudicate the correctness/weight of a reviewer concern.
+# The two verdict-time surfaces that adjudicate the correctness and decision bearing of a
+# reviewer concern.
 # Both must carry a scoped Surface-Form Parity block (codex P2 round 6: the editorial synthesizer
 # arbitrates sub-claims and explicitly down-ranks "too vague" criticisms — exactly where §F.3.6
 # fires — so DA alone is not the only surface). Each surface declares its own section header and
@@ -66,11 +67,11 @@ SURFACES = {
             "no-down-rate-informal": "Do not down-rate informal or vague wording",
             "unless-unevaluable": "unless* the ambiguity actually makes the sub-claim unevaluable",
             "no-credit-specificity": "Do not credit technical specificity",
-            "needs-paper-evidence": "still needs paper evidence before it gains weight",
+            "needs-paper-evidence": "A precise-sounding sub-claim still needs paper evidence",
             "opposite-style-counterfactual": "Run the opposite-style counterfactual",
-            "would-weight-change": "would this sub-claim's weight change if the same substance were rewritten in the opposite style",
-            "reweight-or-unevaluable": "re-weight on substance, or mark the sub-claim unevaluable",
-            "authorship-not-input": "Authorship (whether a sub-claim originated from a human or an AI reviewer) is **not** a weighting input",
+            "would-assessment-change": "would this sub-claim's evidentiary assessment change if the same substance were rewritten in the opposite style",
+            "reassess-or-unevaluable": "reassess on substance, or mark the sub-claim unevaluable",
+            "authorship-not-input": "Authorship (whether a sub-claim originated from a human or an AI reviewer) is **not** a decision input",
         },
     },
 }

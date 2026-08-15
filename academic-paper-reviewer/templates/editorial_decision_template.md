@@ -16,12 +16,32 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 - **Decision Date**: [Decision date]
 - **Review Round**: [Round N]
 
-## Review Panel Provenance (#540)
+## Review Panel Provenance (#540/#740)
 
-[`reviewer_full` letters only — other modes describe their own panel composition and omit this block. Exactly one of:
-- "Reviewer 2 ran on [cross-model family] via the cross-model reviewer track; the remaining reviewers ran on [primary family]. Cross-family splits are visible in the panel matrix (no aggregate is computed)." /
-- "All five reviewer personas ran on a single model family ([family]). Persona diversity is not model diversity — blind spots may be correlated across reviewers (Ren et al. 2026, arXiv:2607.13104 §5.2)." /
-- "Cross-model dispatch for Reviewer 2 failed ([reason]); the slot fell back to [primary family]. Single-family caveat applies."]
+[`reviewer_full` letters only — other modes describe their own panel composition and omit this block. Build the artifact only from the exact EIC/R1/R2/R3/DA roster bound to the canonical `reviewer_full` contract, then validate the closed Schema 6 carrier against the artifact's exact raw bytes and deterministic replay according to `references/review_panel_provenance_protocol.md`; render its values without inference.]
+
+- **Typed artifact**: [path or passport reference]
+- **Artifact SHA-256**: [raw bytes `artifact_sha256`]
+- **Panel ID**: [artifact `panel_id`]
+- **Normalized manifest SHA-256**: [artifact `normalized_manifest_sha256`]
+- **Execution topology SHA-256**: [artifact `execution_topology_sha256`]
+- **Fresh-context scope**: `within_panel_attempt_only` [does not compare retries or prior rounds]
+
+| Seat | Role ID | Actor type | Context ID | Peer outputs visible | Model family | Provider | Human reviewer ID |
+|---|---|---|---|---|---|---|---|
+| [artifact seat] | [value or `unknown`] | [value] | [value or `unknown`] | [value or `unknown`] | [value or `unknown`] | [value or `unknown`] | [value or `unknown`] |
+
+| Provenance axis | Status (`true` / `false` / `unknown`) |
+|---|---|
+| Role-separated | [artifact `axes.role_separated`] |
+| Within-panel invocation-context separation | [artifact `axes.fresh_context`] |
+| Blind to peer outputs | [artifact `axes.blind_to_peer_outputs`] |
+| Model-family distinct | [artifact `axes.model_family_distinct`] |
+| Provider distinct | [artifact `axes.provider_distinct`] |
+| Human-reviewer distinct | [artifact `axes.human_distinct`] |
+
+- **Binary independence claim**: Not computed. Persona or role diversity proves only `role_separated`; do not relabel the panel as independent.
+- **Correlated-error disclosure**: [Render artifact `correlated_error_disclosure.text` verbatim when `required: true`; otherwise write "Not required by the model-family axis; no conclusion is implied for the other axes."]
 
 ---
 
@@ -56,6 +76,7 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 | Reviewer 1 | [Methodology expert identity] | [Accept/Minor/Major/Reject] | [1-5] |
 | Reviewer 2 | [Domain expert identity] | [Accept/Minor/Major/Reject] | [1-5] |
 | Reviewer 3 | [Cross-disciplinary expert identity] | [Accept/Minor/Major/Reject] | [1-5] |
+| Devil's Advocate | Fixed adversarial seat | N/A — findings only | N/A — per-finding only |
 
 ---
 
@@ -63,11 +84,11 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 
 ### Points of Agreement (Consensus)
 
-**[CONSENSUS-4]** (All reviewers agree):
+**[CONSENSUS-4]** (All 4 non-DA scoring reviewers agree):
 1. [Consensus content — cite relevant passages from each reviewer's report]
 2. [...]
 
-**[CONSENSUS-3]** (3/4 reviewers agree, the 4th **silent**):
+**[CONSENSUS-3]** (3/4 non-DA scoring reviewers agree, the 4th **silent**):
 1. [Consensus content — indicate which 3 agree and name the silent 4th. If the 4th *disputes* the sub-claim rather than being silent, it is a SPLIT (see Points of Disagreement), not a CONSENSUS-3.]
 2. [...]
 
@@ -191,7 +212,7 @@ After careful consideration, we are unable to accept your manuscript for publica
 
 ## Appendix: Full Reviewer Reports
 
-[Attach all 4 complete reviewer reports for the author's reference]
+[Attach all 5 complete reviewer reports — four card-backed scoring reports plus the fixed Devil's Advocate — for the author's reference]
 ```
 
 ---

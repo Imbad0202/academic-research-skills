@@ -1,15 +1,15 @@
-# Reproducibility
+# Auditability and Re-execution Documentation
 
-v2.0 design ensures consistent quality assurance with each execution:
+The pipeline standardizes stage contracts and records artifacts so a run can be inspected. This does not ensure identical model behaviour, judgements, or manuscript quality across executions.
 
 ## Standardized Workflow
 
-| Guarantee Item | Mechanism |
+| Contract surface | Mechanism and boundary |
 |---------------|-----------|
 | Integrity check every time | Stage 2.5 + Stage 4.5 are **mandatory** stages, cannot be skipped |
-| Consistent review angles | Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate — five fixed perspectives |
-| Consistent verification methods | integrity_verification_agent uses standardized search templates |
-| Consistent quality thresholds | Integrity check PASS/FAIL criteria are explicit (zero SERIOUS + zero MEDIUM + zero MAJOR_DISTORTION + zero UNVERIFIABLE) |
+| Declared review angles | Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate — five role-separated perspectives; this is not evidence of independent errors or consistent findings |
+| Declared verification procedure | integrity_verification_agent uses standardized templates and records coverage; semantic decisions and retrieval availability can vary |
+| Explicit gate rules | Integrity PASS/FAIL criteria are inspectable; passing applies only to the registered/checked population and named verdict classes |
 | Traceable workflow | Every stage's deliverables are recorded, enabling retrospective audit |
 
 ## Audit Trail
@@ -41,14 +41,15 @@ Integrity Summary:
   Overall: [CLEAN / ISSUES NOTED]
 ```
 
-## Computational reproducibility (v3.3.5+)
+## Re-execution boundary (v3.3.5+)
 
-This document defines PROCESS reproducibility — consistent stages, fixed reviewer angles,
-explicit pass/fail thresholds. That's one of two meanings of "reproducible."
+This document defines a PROCESS CONTRACT — declared stages, reviewer roles,
+gate rules, and retained artifacts. It does not promise consistent outputs.
 
-The other is COMPUTATIONAL re-run — could a third party re-execute the same pipeline and
-produce the same (or near-same) output? For that, see [`../../shared/artifact_reproducibility_pattern.md`](../../shared/artifact_reproducibility_pattern.md).
+For computational re-execution documentation, see
+[`../../shared/artifact_reproducibility_pattern.md`](../../shared/artifact_reproducibility_pattern.md).
 
-Process reproducibility is enforced at the pipeline level. Computational documentation is
-captured in the Material Passport's optional `repro_lock` sub-block. Both are complementary;
-neither replaces the other.
+The pipeline enforces process routing and deterministic validators where specified.
+The Material Passport's optional `repro_lock` records configuration for inspection;
+it is not a byte-replay guarantee for LLM output. The audit trail supports comparison,
+not proof of equivalent outcomes or quality.

@@ -174,14 +174,66 @@ Schemas for Material Passport input ports.
   `phase2_investigation/version_records.yaml` sidecar for academic citation version
   families (preprint -> proceedings -> journal extension). This is deliberately a
   sidecar: `literature_corpus_entry.schema.json` stays adapter-owned and unmodified.
-- `passport/human_read_log.schema.json` (#513) — the user-owned human-read ledger
+- `passport/human_read_log.schema.json` (#513/#738) — the user-owned
+  `USER_ATTESTED_READ` ledger
   (`<passport-stem>_human_read_log.yaml`, written by `scripts/ars_mark_read.py`),
-  including the optional #513 `read_scope` honest-coverage attestation
-  (`level`/`locators`/`note`, declaration-only). Deliberately a sidecar for the same
-  reason as above: corpus entries MUST NOT carry human-read state (v3.6.8 firm rule 3).
-  Audit/test-time validation only — the CLI stays dependency-light at runtime.
+  including required scope on new marks and legacy-compatible scope absence.
+  Declaration-only: it is not verified reading or comprehension. Missing/unknown
+  scope remains `coverage_unknown` and never promotes to `ok`.
+- `passport/user_attested_read_resolution.schema.json` (#738) — the closed output
+  of `scripts/human_read_attestation_resolver.py`; only `state: covered` is
+  `ok_eligible`, while absence, rescind, partial/unknown coverage, unresolved
+  anchors, and invalid ledgers remain explicitly non-promoting. This output is a
+  `transient_routing_decision`, not a persisted audit receipt: it carries no
+  input digest and must be recomputed from the current ledger and exact anchor
+  on each finalizer pass. Its closed `finalizer_disposition` keeps absent or
+  rescinded marks as unacknowledged LOW-WARN, partial/unknown active marks as
+  acknowledged-partial, anchor failures on the locator-precedence route, and
+  invalid ledgers on a blocking route.
 
 ## Shared evidence rows (#656)
+
+`shared/contracts/evidence/claim_registry.schema.json` (#737) is the closed E1
+population contract: exact raw-draft hash plus exact UTF-8 byte span and equal
+text for every registered claim. `claim_registry_coverage_report.schema.json`
+is the deterministic, replay-bound gap report emitted by
+`scripts/claim_registry_coverage.py`; it binds exact raw draft and serialized
+registry hashes and joins only those exact spans. It covers citation-bearing
+and quantitative candidate sentences only. Its finite grammar includes common
+Markdown/numeric/author-year/Pandoc/inline-reference citations plus
+unit-bearing numbers, p-values, `N=...`, and common effect-size/ratio notation;
+unrecognized scholarly syntax remains possible. The report always records
+`semantic_extraction_coverage: not_machine_detectable`; it cannot certify that
+every substantive claim was extracted into E1. Consumers replay the report
+against both inputs; absence, stale bindings, or validation failure are
+unresolved execution states, never a zero-gap result.
+
+## Review-panel provenance (#740)
+
+`reviewer/review_panel_provenance_input.schema.json` records actual seat-level
+observations; `reviewer/review_panel_provenance.schema.json` is the closed,
+replay-derived artifact built by `scripts/review_panel_provenance.py`. Both are
+closed to `reviewer_full`, bind the exact raw-byte digest of
+`reviewer/full.json`, and require the ordered `EIC`, `R1`, `R2`, `R3`, `DA`
+roster. Actual execution observations remain nullable and are never filled from
+those seat labels. The artifact keeps role separation, within-panel invocation
+context separation, peer-output blinding, model-family diversity, provider
+diversity, and accountable-human diversity as six separate `true` / `false` /
+`unknown` axes. `fresh_context_scope: within_panel_attempt_only` makes explicit
+that no cross-attempt history is checked. Missing facts remain unknown,
+same-family or family-unknown execution carries a fixed correlated-error
+disclosure, and no persona-derived binary independence field is admitted.
+
+`reviewer/review_panel_provenance_carrier.schema.json` is the exact closed
+Schema 6 valid/invalid union. The valid branch is accepted only after the
+runtime hashes the referenced artifact's exact raw bytes, validates and replays
+it, and compares the normalized-manifest digest, execution-topology digest,
+fresh-context scope, and six axes. The invalid branch admits only
+`absent|unreachable|digest_mismatch|schema_invalid|replay_invalid`, forces all
+axes to `unknown`, and carries no path or digest. `reviewer_full` must emit one
+branch; the other closed modes must omit the field. Use
+`scripts/review_panel_provenance.py validate-schema6` for mode-scoped presence
+and replay validation.
 
 `shared/contracts/evidence/evidence_row.schema.json` defines the closed
 `evidence-row/1.0` carrier for evidence shown at human-adjudication checkpoints.
@@ -342,7 +394,16 @@ The current reviewer-to-author revision family lives under `revision/`:
   the complete exact patch SHA-256; and
 - `revision_evidence_bundle.schema.json` plus the integrity receipt schema
   — a continuous local chain from exact integrity PASS through current
-  review-write/no-op/integrity rounds to the final draft.
+  review-write/no-op/integrity rounds to the final draft; and
+- `claim_strength_drift_findings.schema.json`,
+  `claim_strength_drift_disposition_input.schema.json`, and
+  `claim_strength_drift_disposition.schema.json` — the E6 semantic finding set,
+  transient exact raw-event artifact paths plus choices, and deterministic
+  hash-bound disposition sidecar. Build and replay validation safely reopen
+  every explicitly named regular non-symlink event file and recompute its raw
+  SHA-256; a digest assertion alone is insufficient. The sidecar retains no
+  event path or raw message. This byte binding does not authenticate source,
+  content meaning, or actor identity.
 
 `scripts/revision_roadmap.py` builds, validates, renders, and bundle-replays this
 family without a model, network, API, directory scan, or ambient clock. It opens
@@ -357,7 +418,12 @@ replacements and declined-overlap collateral authority are exact and
 single-use. An integrity issue list grants no write by itself: apply requires a
 separate author sidecar whose explicit input already carries the exact proposed
 patch digest. Apply report 1.3 records the replayed witness and explicitly leaves
-unregistered semantic drift to E6 review. Patch 1.0 lives only under
+unregistered semantic drift to E6 review. Once E6 reports a drift row, it has no
+ordinary advisory default: `scripts/claim_strength_drift_disposition.py` requires
+one explicit `restore`, `authorize_with_reason`, or `pause` choice per finding;
+only an all-authorized sidecar derives `authorized_to_continue`. The sidecar
+proves finding coverage and artifact binding, not semantic-detection completeness
+or scientific warrant. Patch 1.0 lives only under
 `patch/legacy/v1_0/` with its archived loader.
 
 The current #576 `re_review/` family is version 1.1, uses

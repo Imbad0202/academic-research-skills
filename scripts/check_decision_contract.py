@@ -117,9 +117,10 @@ EXPECTED_AUTHORITY_ROWS = (
      "—", "—"),
     (
         "`calibration`",
-        "`quality_rubrics.md` 0–100 Decision Mapping, measurement-only",
-        "0–100",
-        "four-value labels against the gold set",
+        "Exact panel verdicts and criterion-bound judgements compared with a "
+        "user-adjudicated target set; measurement-only",
+        "categorical judgements + four-value verdict enum",
+        "bounded error profile or directional readout",
     ),
 )
 LIVE_ROOTS = (
@@ -215,7 +216,7 @@ SCHEMA6_ENUM_ROW = (
     '| `editorial_decision` | enum | `"Accept"` / `"Minor Revision"` / '
     '`"Major Revision"` / `"Reject"` |'
 )
-DECISION_MAPPING_ROWS = (
+LEGACY_DECISION_MAPPING_ROWS = (
     "| >= 80 | Accept |",
     "| 65-79 | Minor Revision |",
     "| 50-64 | Major Revision |",
@@ -401,13 +402,6 @@ def check(root: Path) -> list[str]:
                     )
 
     thresholds = (">= 80", "65-79", "50-64", "< 50")
-    quality = _read(root, QUALITY)
-    for threshold in thresholds:
-        if quality.count(threshold) != 1:
-            errors.append(f"{QUALITY}: threshold residency drift for {threshold}")
-    for row in DECISION_MAPPING_ROWS:
-        if quality.count(row) != 1:
-            errors.append(f"{QUALITY}: decision mapping row drift for {row}")
     live_paths: set[Path] = set()
     for live_root in LIVE_ROOTS:
         base = root / live_root
@@ -417,8 +411,6 @@ def check(root: Path) -> list[str]:
     live_paths.update(root / rel for rel in LIVE_FILES)
     for path in sorted(live_paths):
         rel = str(path.relative_to(root))
-        if rel == QUALITY:
-            continue
         text = path.read_text(encoding="utf-8")
         if rel == RE_REVIEW_PROTOCOL:
             # Mask ONLY the sanctioned #576 §6 item-proportion literals
@@ -430,13 +422,15 @@ def check(root: Path) -> list[str]:
         for threshold in thresholds:
             if threshold in text:
                 errors.append(
-                    f"{rel}: decision threshold {threshold} must reside only "
-                    f"in {QUALITY}"
+                    f"{rel}: retired numerical decision threshold {threshold} is prohibited"
                 )
+        for row in LEGACY_DECISION_MAPPING_ROWS:
+            if row in text:
+                errors.append(f"{rel}: retired score-to-decision row is prohibited: {row}")
         for label, pattern in THRESHOLD_DRIFT_PATTERNS:
             if pattern.search(text):
                 errors.append(
-                    f"{rel}: {label} must reside only in {QUALITY}"
+                    f"{rel}: {label} is prohibited"
                 )
         if (
             _inline_threshold_drift(text)
@@ -444,8 +438,7 @@ def check(root: Path) -> list[str]:
             or _heading_threshold_drift(text)
         ):
             errors.append(
-                f"{rel}: decision-linked threshold variant must reside only "
-                f"in {QUALITY}"
+                f"{rel}: decision-linked numerical threshold variant is prohibited"
             )
     standards = _read(root, STANDARDS)
     for retired in ("4.0", "3.5", "2.5-3.4", "< 2.5", "score = 1", "score = 2"):

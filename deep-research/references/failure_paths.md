@@ -10,7 +10,7 @@ This document lists all failure scenarios that may be encountered across all mod
 
 | # | Failure Scenario | Affected Modes | Severity | Handling Strategy |
 |---|---------|---------|---------|---------|
-| F1 | RQ cannot converge | full, socratic | Medium | Narrow scope / provide candidate RQs |
+| F1 | RQ cannot converge | full, socratic | Medium | Full: candidate workflow; Socratic: summarize user-expressed directions / suggest literature exploration |
 | F2 | Insufficient literature | full, quick, lit-review | High | Expand search strategy |
 | F3 | Methodology mismatch | full | High | Return to Phase 1 |
 | F4 | Devil's Advocate CRITICAL | full | Critical | STOP + correct |
@@ -36,19 +36,43 @@ This document lists all failure scenarios that may be encountered across all mod
 - `full` mode: research_question_agent interaction exceeds 3 rounds, user still cannot determine the RQ
 - `socratic` mode: Layer 1 exceeds 5 rounds, user repeatedly revises without a clear direction
 
-**User Notification Message**:
-> I notice we've been discussing for a while, but the research question hasn't converged to a clear direction yet. This is perfectly normal — sometimes the question itself is the hardest part. Let me offer a few possible directions to see which one is closest to your thinking.
+**User Notification — `full` mode**:
+> I notice we've been working on the research question for several rounds without a stable direction. I can organize the constraints we have identified, compare a small set of candidate questions, or pause for a literature review before we choose.
 
-**Handling Steps**:
-1. Compile key topics discussed and user-expressed preferences
-2. Produce 3 candidate RQs, each with a brief explanation and rough FINER assessment
-3. Ask the user to select the closest one as a starting point
-4. If the user still cannot choose → suggest doing a `lit-review` mode to explore the literature first, then return
+**User Notification — `socratic` mode**:
+> We have not reached one research-question direction yet. I can summarize only the directions and preferences you have already expressed, continue with one focused question, or pause for a literature review before we return to the framing. I will not add candidate questions unless you explicitly ask me to leave non-generation Socratic mode and propose them.
+
+**Handling Steps — `full` mode**:
+1. Compile key topics discussed and user-expressed preferences.
+2. Produce 3 candidate RQs, each with a brief explanation and rough FINER assessment.
+3. Ask the user to select or revise the closest one as a starting point.
+4. If the user still cannot choose, suggest `lit-review` mode before returning.
+
+**Handling Steps — `socratic` mode (default)**:
+1. Compile a clearly labeled summary containing only directions and preferences
+   already expressed by the user; do not fill unresolved slots.
+2. Ask one focused question that helps the user distinguish those directions,
+   or offer to pause.
+3. Offer `lit-review` as an evidence-gathering route before restarting Layer 1.
+4. Do not generate, FINER-score, rank, or present a menu of candidate RQs.
+   Non-convergence alone is never authorization.
+
+**Explicit generation request — visible exit from Socratic mode**:
+- If, and only if, the user explicitly asks the system itself to propose
+  candidates, first state that the response is leaving non-generation Socratic
+  mode and emit this exact marker on a standalone line:
+  `[SOCRATIC-NON-GENERATION-EXIT: explicit_user_request]`.
+- Only after the marker may the full-mode candidate workflow run. Label every
+  candidate as an AI-generated starting point, never as a user-derived insight.
+- Do not silently re-enter Socratic mode; re-entry requires an explicit user
+  request to resume guided questioning.
 
 **Recovery Paths**:
-- Select a candidate RQ → continue the original workflow
-- Do lit-review → restart RQ clarification after the literature review is complete
-- User redescribes on their own → restart Phase 1 / Layer 1
+- Full mode: select or revise a candidate RQ, then continue the workflow.
+- Socratic mode: the user refines one of their own expressed directions, then
+  restart Layer 1 without generating candidates.
+- Do `lit-review`, then restart RQ clarification after the review is complete.
+- Pause with the user-expressed-direction summary preserved.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: academic-paper-reviewer
-description: "Multi-perspective academic paper review with dynamic reviewer personas. Simulates 5 independent reviewers (Journal-Fit Reviewer + 3 peer reviewers + Devil's Advocate) with field-specific expertise. Supports full review, re-review (verification), quick assessment, methodology focus, Socratic guided, and calibration modes. Triggers on: review paper, peer review, manuscript review, referee report, review my paper, critique paper, simulate review, editorial review, calibrate reviewer, reviewer calibration, measure reviewer accuracy, 審查論文, 論文審查, 模擬審查, 同儕審查, 幫我審這篇, 以審查人角度評估, 審查者校準, 논문 심사, 동료 심사, 모의 심사, 심사자 관점에서 평가, 심사자 보정."
+description: "Multi-perspective academic paper review with dynamic reviewer personas. Runs a 5-seat, role-separated review panel (Journal-Fit Reviewer + 3 peer-review roles + Devil's Advocate) with field-specific expertise; role separation is not a claim of independent error processes. Supports full review, re-review (verification), quick assessment, methodology focus, Socratic guided, and calibration modes. Triggers on: review paper, peer review, manuscript review, referee report, review my paper, critique paper, simulate review, editorial review, calibrate reviewer, reviewer calibration, measure reviewer accuracy, 審查論文, 論文審查, 模擬審查, 同儕審查, 幫我審這篇, 以審查人角度評估, 審查者校準, 논문 심사, 동료 심사, 모의 심사, 심사자 관점에서 평가, 심사자 보정."
 metadata:
   version: "1.11.0"
   last_updated: "2026-08-14"
@@ -14,7 +14,7 @@ metadata:
 
 # Academic Paper Reviewer v1.11.0 — Multi-Perspective Academic Paper Review Agent Team
 
-Simulates a complete international journal peer review process: automatically identifies the paper's field, dynamically configures 5 reviewers (Journal-Fit Reviewer + 3 peer reviewers + Devil's Advocate) who review from five non-overlapping perspectives — journal fit, methodology, domain expertise, cross-disciplinary viewpoints, and core argument challenges — then uses a separate editorial synthesizer to produce a structured Editorial Decision and Revision Roadmap.
+Simulates a complete international journal peer review process: automatically identifies the paper's field, dynamically configures 4 card-backed identities (Journal-Fit Reviewer + 3 peer reviewers), and adds the fixed Devil's Advocate as the fifth execution seat. The five role-separated perspectives cover journal fit, methodology, domain expertise, cross-disciplinary viewpoints, and core argument challenges; a separate editorial synthesizer produces the structured Editorial Decision and Revision Roadmap.
 
 **v1.1 Improvements**:
 1. Added Devil's Advocate Reviewer — specifically challenges core arguments, detects logical fallacies, and identifies the strongest counter-arguments
@@ -34,8 +34,8 @@ Review this paper: [paste paper or provide file]
 
 **Output:**
 1. Automatically identifies the paper's field and methodology type
-2. Dynamically configures the specific identities and expertise of 5 reviewers
-3. 5 independent review reports (each from a different perspective)
+2. Dynamically configures four card-backed reviewer identities; the fixed Devil's Advocate is the fifth execution seat
+3. 5 role-separated review reports (4 configuration cards plus the fixed Devil's Advocate, with typed execution provenance)
 4. 1 Editorial Decision Letter + Revision Roadmap
 
 ---
@@ -67,11 +67,11 @@ Review this paper: [paste paper or provide file]
 | Quick quality assessment (15 min) | quick | fidelity |
 | Focus only on methods/statistics | methodology-focus | fidelity |
 | Want to learn by doing (guided review) | guided | originality |
-| Want to know this reviewer's own error profile before trusting its scores | calibration | fidelity |
+| Want to measure this reviewer's bounded decision-error profile on an adjudicated target set | calibration | fidelity |
 
 **Spectrum** (v3.2): *fidelity* = template-heavy, predictable output; *balanced* = default; *originality* = exploratory, template-light. See `shared/mode_spectrum.md` for the full cross-skill spectrum table.
 
-Not sure? Use `full` for pre-submission review, `re-review` for post-revision verification. `calibration` is opt-in: its default full tier measures FNR/FPR, while the explicitly selected 3-paper directional tier gives only a low-cost Minor/Major boundary signal.
+Not sure? Use `full` for pre-submission review, `re-review` for post-revision verification. Current live reviews and Schema 6 packages declare `NOT_CALIBRATED`; a full-tier calibration run may produce a bounded candidate profile, but live-profile application remains unavailable until its closed artifact and replay validator ship. `calibration` is opt-in: its default full tier measures bounded decision-level FNR/FPR, while the explicitly selected 3-paper directional tier gives only a low-cost Minor/Major boundary signal and remains `NOT_CALIBRATED`.
 
 ---
 
@@ -79,7 +79,7 @@ Not sure? Use `full` for pre-submission review, `re-review` for post-revision ve
 
 | # | Agent | Role | Phase |
 |---|-------|------|-------|
-| 1 | `field_analyst_agent` | Analyzes the paper's field, dynamically configures 5 reviewer identities | Phase 0 |
+| 1 | `field_analyst_agent` | Analyzes the paper's field and dynamically configures 4 card-backed identities; the Devil's Advocate remains a fixed fifth seat | Phase 0 |
 | 2 | `eic_agent` | Journal-Fit Reviewer — journal fit, originality, overall quality; one panel card, no final-decision authority | Phase 1 |
 | 3 | `methodology_reviewer_agent` | Peer Reviewer 1 — research design, statistical validity, reproducibility | Phase 1 |
 | 4 | `domain_reviewer_agent` | Peer Reviewer 2 — literature coverage, theoretical framework, domain contribution | Phase 1 |
@@ -98,15 +98,15 @@ User: "Review this paper"
      |
 === Phase 0: FIELD ANALYSIS & PERSONA CONFIGURATION ===
      |
-     +-> [field_analyst_agent] -> Reviewer Configuration Card (x5)
+     +-> [field_analyst_agent] -> Reviewer Configuration Card (x4)
          - Reads the complete paper
          - Identifies: primary discipline, secondary discipline, research paradigm, methodology type, target journal tier, paper maturity
-         - Dynamically generates specific identities for 5 reviewers:
+         - Dynamically generates specific identities for 4 card-backed reviewers:
            * Journal-Fit Reviewer (internal `EIC`): which journal/editor perspective, area of expertise, review preferences
            * Reviewer 1 (Methodology): Methodological expertise, what they particularly focus on
            * Reviewer 2 (Domain): Domain expertise, research interests
            * Reviewer 3 (Perspective): Cross-disciplinary angle, what unique perspective they bring
-           * Devil's Advocate: Specifically challenges core arguments, detects logical gaps
+         - The fifth execution seat is the fixed Devil's Advocate, which receives no dynamic configuration card
      |
      ** Presents Reviewer Configuration to user for confirmation (adjustable) **
      |
@@ -115,7 +115,7 @@ User: "Review this paper"
      |-> [eic_agent] -------> Journal-Fit Review Report
      |   - Journal fit, originality, significance, relevance to readership
      |   - Does not go deep into methodology (that's Reviewer 1's job)
-     |   - One independent card among five — no channel to other reviewers (Iron Rule #2)
+     |   - One role-separated card among five — no peer-output channel before commitment (Iron Rule #2)
      |
      |-> [methodology_reviewer_agent] -> Methodology Review Report
      |   - Research design rigor, sampling strategy, data collection
@@ -179,7 +179,7 @@ User: "Review this paper"
 ### Checkpoint Rules
 
 1. **After Phase 0 completes**: Present Reviewer Configuration Card to user; user can adjust reviewer identities
-2. ⚠️ **IRON RULE**: 5 reviewers review independently, without cross-referencing each other.
+2. ⚠️ **IRON RULE**: The 5 reviewer seats commit their reports without cross-referencing peer outputs. Record actual role separation, invocation-context freshness, peer-output visibility, model family, provider, and accountable human identity in the typed panel-provenance artifact; do not call persona separation "independence."
 3. ⚠️ **IRON RULE**: Synthesizer cannot fabricate review comments; must be based on specific reports from Phase 1.
 4. ⚠️ **IRON RULE**: Every Devil's Advocate CRITICAL issue is adjudicated visibly in the Editorial Decision — a validated or genuinely unresolved one blocks silent Accept finalization; under a sprint contract the mechanical Accept remains unchanged and `[DA-CRITICAL-VS-ACCEPT: <n> validated/unresolved]` escalates to the user. One the Journal-Fit Reviewer adjudicates and rejects is recorded with its rejection rationale and does not veto by itself (#574 B1: an unvalidated negative claim carries the same evidence burden as a positive one). Silently bypassing a DA CRITICAL is never allowed.
 5. **Phase 2.5**: Revision Coaching only triggers when Decision is not Accept; user can choose to skip
@@ -288,7 +288,7 @@ Helps authors understand problems themselves through progressive revelation. The
 
 ## Calibration Mode (v3.2)
 
-Opt-in mode with a 3-paper directional tier or the 5-20-paper full tier. `full` remains the default and runs 5 fresh-context reviews per paper (3-run budget override), producing FNR / FPR / balanced accuracy and a measured error-profile disclosure. `directional` must be selected explicitly; it runs one full panel per paper and reports only exact verdicts, raw lenient/exact/harsh counts, the Minor/Major boundary matrix, and raw severity-risk counts. Cross-model is default-on in both tiers.
+Opt-in mode with a 3-paper directional tier or the 5-20-paper full tier. `full` remains the default and runs 5 panel replicates per paper (3-run budget override), producing bounded decision-level FNR / FPR / balanced accuracy and a target-specific candidate measured profile labelled `application_status: NOT_WIRED_TO_LIVE_REVIEW`. Each provenance artifact establishes context-ID separation only among the five seats in that panel; current tooling does not compare context IDs across replicates, so every output discloses cross-replicate freshness as unverified and never calls the repeats independent. It compares categorical criterion judgements when per-dimension gold annotations exist; it never creates a quality score or upgrades a current Schema 6 package. `directional` must be selected explicitly; it runs one full panel per paper, reports only exact verdicts, per-seat categorical judgements, raw lenient/exact/harsh counts, the Minor/Major boundary matrix, and raw severity-risk counts, and remains `NOT_CALIBRATED`. Cross-model is default-on in both tiers.
 
 > See `references/calibration_mode_protocol.md` for full spec: intake rules, ensembling methodology, output format, and failure cases this mode does not fix.
 
@@ -316,7 +316,9 @@ The canonical per-mode decision authority table is `references/editorial_decisio
 
 ## Cross-Model Reviewer Track (#540)
 
-In ordinary review modes, the track applies to `full` only (the five-seat panel — `methodology-focus` has a two-seat contract, and `re-review`/`quick` have no Reviewer 2 seat, so the track and its provenance mandate do not apply there). Calibration is the explicit exception: it uses the canonical calibration-specific non-sprint, single-call Reviewer 2 transport and attempt-atomic substrate plan in `shared/cross_model_verification.md`; it never borrows the `reviewer_full` two-call sprint payload. In ordinary `full`, when cross-model verification is active for the session — `ARS_CROSS_MODEL` configured AND the user has given the explicit cross-model consent (the env var is configuration, not consent; the manuscript is uploaded to the external provider) — Reviewer 2 runs on the cross-model family (a substrate swap inside the fixed five-seat panel — NOT the retired 6th-reviewer design; authority: `shared/cross_model_verification.md` § Cross-Model Reviewer Track, incl. the #523 dispatching-layer transport and the two-call sprint-contract split). Otherwise all five personas share one model family — on the normal primary-family routing, including any active `ARS_MODEL_TIERING` policy — and the Editorial Decision Letter's Review Panel Provenance block discloses the correlated-error caveat (Ren et al. 2026, arXiv:2607.13104 §5.2). Dispatch failure falls back to that same primary-family routing with the fallback disclosed — never silent; calibration alone applies the attempt-atomic restart rule in its canonical branch.
+In ordinary review modes, the track applies to `full` only (the five-seat panel — `methodology-focus` has a two-seat contract, and `re-review`/`quick` have no Reviewer 2 seat, so the track and its provenance mandate do not apply there). Calibration is the explicit exception: it uses the canonical calibration-specific non-sprint, single-call Reviewer 2 transport and attempt-atomic substrate plan in `shared/cross_model_verification.md`; it never borrows the `reviewer_full` two-call sprint payload. In ordinary `full`, when cross-model verification is active for the session — `ARS_CROSS_MODEL` configured AND the user has given the explicit cross-model consent (the env var is configuration, not consent; the manuscript is uploaded to the external provider) — Reviewer 2 runs on the cross-model family (a substrate swap inside the fixed five-seat panel — NOT the retired 6th-reviewer design; authority: `shared/cross_model_verification.md` § Cross-Model Reviewer Track, incl. the #523 dispatching-layer transport and the two-call sprint-contract split). Otherwise all five personas share one model family on the normal primary-family routing, including any active `ARS_MODEL_TIERING` policy.
+
+For every `reviewer_full` run, the dispatching layer records actual seat-level observations and builds then replay-validates `review-panel-provenance/1.0` using `scripts/review_panel_provenance.py` before synthesis. Missing observations remain `unknown`; an intended route, persona label, or configured provider never fills them. The Editorial Decision Letter renders all six axes separately and includes the derived same-family or family-unknown correlated-error disclosure when required. A dispatch failure records the actual fallback execution, never a silent or inferred swap. The artifact proves only its named provenance dimensions; it never establishes independent error processes.
 
 ---
 
@@ -370,11 +372,12 @@ pointer; a changed target starts a new, explicitly non-comparable review id.
 | `references/top_journals_by_field.md` | Top journal lists for major academic fields (Journal-Fit Reviewer role calibration) | field_analyst, eic |
 | `references/editorial_decision_standards.md` | Accept/Minor/Major/Reject criteria and decision matrix | eic, editorial_synthesizer |
 | `references/statistical_reporting_standards.md` | Statistical reporting standards + APA 7.0 format quick reference + red flag list | methodology_reviewer |
-| `references/quality_rubrics.md` | Calibrated 0-100 scoring rubrics for 7 review dimensions with decision mapping | all reviewers |
+| `references/quality_rubrics.md` | Criterion-bound narrative judgement for 7 review dimensions; every current live seat and Schema 6 package remains `NOT_CALIBRATED` because candidate-profile application is not wired | all reviewers |
 | `references/review_quality_thinking.md` | Cognitive framework for review quality: three lenses (internal validity, external validity, contribution), common reviewer traps, calibration questions | all reviewers |
 | `references/re_review_mode_protocol.md` | Full re-review verification logic (three-gate contract), R&R traceability output format, Socratic guidance after re-review | orchestrating layer; routed-seat Phase 1/2A calls; Phase 2B integration call |
 | `references/guided_mode_protocol.md` | Guided mode dialogue flow, progressive revelation sequence, dialogue rules | all reviewers |
 | `references/calibration_mode_protocol.md` | Calibration mode: explicit 3-paper directional tier plus the default 5-20-paper full measurement tier, Minor/Major boundary matrix, and tier-scoped session disclosure | all reviewers |
+| `references/review_panel_provenance_protocol.md` | Closed six-axis execution-provenance semantics, correlated-error disclosure, and deterministic build/replay rules; no binary independence reduction | dispatcher, editorial_synthesizer, re-review consumer |
 | `references/reviewer_sprint_prompt_source.md` | Canonical marked source for the five inline sprint-reviewer Phase 1/2 prompt fragments and the synthesizer protocol; runtime mirrors stay inline for bare dispatch and are exact-sync linted | five panel reviewers, editorial_synthesizer |
 | `references/integration_guide.md` | Complete 9-step pipeline usage example | — |
 | `references/changelog.md` | Full version history | — |
@@ -410,7 +413,7 @@ Explicit prohibitions to prevent common failure modes, especially during long co
 | 2 | **Overlap suppression** | Reviewer omits or rewords a real finding to avoid duplicating peers — unexecutable under blindness (Iron Rule #2) and destroys the corroboration signal | Report what you find from your assigned angle; the synthesizer deduplicates and counts corroboration (#574 P0-3). Panel angle diversity is field_analyst's config-time job |
 | 3 | **Ignoring Devil's Advocate CRITICAL findings** | Editorial Decision silently bypasses a DA CRITICAL without adjudicating it | Every DA CRITICAL is adjudicated visibly (Checkpoint Rule #4): a validated or genuinely unresolved one blocks Accept; one the Journal-Fit Reviewer adjudicates and rejects is recorded with rationale and does not veto by itself (#574 B1 — an unvalidated negative claim carries no more decision power than an unvalidated positive one) |
 | 4 | **Rubber-stamp re-review** | Re-review says "all addressed" without verification | Each concern must be independently verified against the revised manuscript |
-| 5 | **Sycophantic score inflation** | Giving 8/10 to mediocre work to avoid conflict | Scores must be evidence-based; a paper with methodology gaps cannot score >6 on rigor |
+| 5 | **Sycophantic judgement inflation** | Marking a criterion met to avoid conflict despite contrary manuscript evidence | Apply the named criterion to anchored evidence; report `PARTLY_MEETS`, `DOES_NOT_MEET`, or `NOT_ASSESSED` when that is what the evidence supports |
 | 6 | **Editing the manuscript** | Reviewer "helpfully" fixes the paper directly | READ-ONLY: produce reports, never modify the paper (Checkpoint Rule #6) |
 | 7 | **Generic feedback** | "The methodology could be stronger" without specifics | Every criticism must include: what's wrong, where it is, and a proposed fix |
 
@@ -420,7 +423,7 @@ Explicit prohibitions to prevent common failure modes, especially during long co
 
 | Dimension | Requirement |
 |-----------|-------------|
-| Perspective differentiation | Each reviewer reviews from their assigned angle (config-time assignment diversity); independent overlap in findings is legitimate corroboration — deduplication happens at synthesis, never by reviewers self-censoring (#574 P0-3) |
+| Perspective differentiation | Each reviewer reviews from their assigned angle (config-time assignment diversity); overlapping findings may corroborate one another, but role/persona separation is not evidence of independent errors — deduplication happens at synthesis, never by reviewers self-censoring (#574 P0-3/#740) |
 | Evidence-based | The Journal-Fit Reviewer's recommendation signal and the synthesizer's decision must be based on specific reviewer comments; no fabrication |
 | Specificity | Every finding carries a typed evidence anchor (`templates/peer_review_report_template.md` § Evidence Anchor Types); no vague comments (#574 A2) |
 | Evidence-driven balance | Findings follow the evidence in both directions — genuine merits acknowledged, no manufactured balance and no finding quotas (#574 A1/B1) |

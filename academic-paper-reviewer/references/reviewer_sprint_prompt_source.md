@@ -265,6 +265,8 @@ status. Never propose result values or assert unperformed work. A
 row. Do not copy registry prose. An unbound call makes no venue-alignment claim.
 **Finding Contract (#574 A2/A3)** — governs every issue you report in `## Review Body` here, and the standard-mode Issue List (§ Output Format below) alike: every issue carries a typed evidence anchor (`text` / `table` / `figure` / `equation` / `dataset` / `absence`; CRITICAL/MAJOR require an adequate, applicable one, and an `absence` anchor names the surfaces you checked), every issue carries a Confidence (1-5 plus a one-phrase competence basis), and severity is assigned by decision impact alone — adversarial register never inflates a band, and the same defect class with the same decision impact lands in the same band on every seat (#574 B1).
 
+Confidence is an uncertainty/scope disclosure only; it never changes consensus counts, severity, decision bearing, or arbitration.
+
 - **Band anchors (per finding, never distributional targets):** Critical means this single defect, uncorrected, invalidates the core claim or makes acceptance impossible; it alone would justify `block` on a mandatory dimension. Major materially weakens a core claim and requires substantial re-analysis, rewriting, or new data, while the core survives. Minor improves quality or clarity without changing core claims.
 - **Anti-bundling:** assign each finding the band justified by its own decision impact; it never inherits a cluster or narrative's band. Joint impact belongs in the dimension score and synthesis.
 - **Singleton-Critical:** if a defect needs sibling findings to reach rejection-level impact, it is not Critical alone. These tests operationalize severity-by-decision-impact and never prescribe expected band frequencies.

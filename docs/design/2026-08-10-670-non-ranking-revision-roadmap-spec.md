@@ -307,7 +307,13 @@ digest and authorization-sidecar digest. Both always set
 registered surfaces mechanically, while integrity writes require explicit
 author approval of the entire patch, but neither mechanism claims universal
 semantic classification of unregistered prose. Those changes remain a
-mandatory E6 human/integrity review surface.
+mandatory E6 human/integrity review surface. When E6 reports an unauthorized
+strength move, the finding is not a Phase-E verdict issue but is
+checkpoint-closing: the author must explicitly select `restore`,
+`authorize_with_reason`, or `pause` for every reported row. The separate
+hash-bound disposition sidecar permits continuation only when all rows are
+authorized with non-blank reasons. This closes disposition coverage, not the
+recall or correctness of model-mediated semantic detection.
 
 ## 7. Revision-Evidence Bundle
 

@@ -14,9 +14,9 @@ This document defines the explicit criteria for Accept / Minor Revision / Major 
 | `re-review` | #576 three-gate contract: `re_review_mode_protocol.md` § Decision Derivation, recomputed by `scripts/check_re_review_synthesis.py` | item verdicts (FULLY/PARTIALLY/NOT_ADDRESSED/MADE_WORSE/CANNOT_VERIFY) | Accept / Minor Revision / Major Revision / user_review_required (Reject is not a Stage 3' decision) |
 | `quick` | Journal-Fit Reviewer assessment only; advisory, not an editorial decision | — | signal |
 | `guided` | Issue-list dialogue; no editorial decision letter | — | — |
-| `calibration` | `quality_rubrics.md` 0–100 Decision Mapping, measurement-only | 0–100 | four-value labels against the gold set |
+| `calibration` | Exact panel verdicts and criterion-bound judgements compared with a user-adjudicated target set; measurement-only | categorical judgements + four-value verdict enum | bounded error profile or directional readout |
 
-Under a sprint contract, the mechanical synthesizer governs. This file's recommendation matrix is the no-contract path and cannot soften, harden, or override a fired contract action. Numeric decision thresholds live only in `quality_rubrics.md` § Decision Mapping; this file uses qualitative criteria and reviewer-recommendation counts.
+Under a sprint contract, the mechanical synthesizer governs. This file's recommendation matrix is the no-contract path and cannot soften, harden, or override a fired contract action. There is no numerical total-score threshold for an editorial decision. In the no-contract path, the synthesizer must explain which anchored criteria and unresolved findings justify the recommendation; strengths in one dimension cannot arithmetically cancel a decision-bearing failure in another.
 
 ---
 
@@ -169,21 +169,13 @@ These principles govern every category below:
 
 ---
 
-## 3. Decision Confidence Calibration
+## 3. Reviewer uncertainty and competence scope
 
-### Impact of Reviewer Confidence Score
-
-| Confidence | Impact on Decision |
-|-----------|-------------------|
-| 5 (Very High) | This reviewer's opinion carries the highest weight |
-| 4 (High) | Standard weight |
-| 3 (Medium) | Standard weight, but reduced in case of disagreement |
-| 2 (Low) | For reference only, not used as a decisive opinion |
-| 1 (Very Low) | Ignore this reviewer's recommendation (but retain specific comments) |
+The 1–5 confidence field is retained only as a reviewer's self-reported scope and uncertainty disclosure. It is not a calibrated probability, expertise credential, vote, or mechanical weight. Never ignore, promote, or resolve a recommendation because of this number. Apply the named criterion to anchored manuscript evidence; preserve unresolved conflict and request additional expertise when the evidence or competence boundary requires it.
 
 ### Cross-Dimension Decision Impact
 
-Finding severity is transported from the reviewer cards (the Schema 6 enum, `shared/handoff_schemas.md` § Weakness Object) — this table assigns NO severities (#574 A3); it describes how dimension-score patterns bear on the DECISION only.
+Finding severity is transported from the reviewer cards (the Schema 6 enum, `shared/handoff_schemas.md` § Weakness Object) — this table assigns NO severities (#574 A3); it describes how criterion judgements bear on the DECISION only.
 
 | Situation | Decision impact |
 |-----------|-----------------|

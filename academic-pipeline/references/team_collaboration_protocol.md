@@ -38,7 +38,7 @@ For each stage transition, the following handoff procedure applies:
 | **Who receives** | Lead Author |
 | **Materials** | RQ Brief, Bibliography, Synthesis Report (conforming to Schemas 1-3 in `shared/handoff_schemas.md`) |
 | **Approval needed** | Research Lead confirms synthesis is complete and RQ is finalized |
-| **Handoff checklist** | All Material Passports (Schema 9) attached; Bibliography minimum source count met; Synthesis has 3+ themes |
+| **Handoff checklist** | All Material Passports (Schema 9) attached; bibliography coverage is assessed against the planned claims and field-specific evidence needs; synthesis structure fits the material rather than a fixed theme count |
 
 ### Stage 2 -> Stage 2.5 (Write -> Integrity)
 

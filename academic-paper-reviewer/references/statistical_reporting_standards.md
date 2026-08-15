@@ -354,32 +354,22 @@ Higher education research papers frequently involve the following topics and cor
 
 ---
 
-## 6. Statistical Reporting Completeness Scoring Standards
+## 6. Statistical Reporting Completeness Judgement
 
-`methodology_reviewer_agent` uses the following standards to assess statistical reporting completeness:
+`methodology_reviewer_agent` assesses each applicable item against the study design, analysis, reporting standard, and target venue. There is no weighted completeness score: a missing decision-bearing item cannot be offset by complete presentation items.
 
-### Scoring Dimensions and Weights
+| Item | Criterion-bound judgement |
+|---|---|
+| Descriptive statistics | `COMPLETE` / `PARTLY_COMPLETE` / `MISSING` / `NOT_APPLICABLE`, with the applicable reporting requirement |
+| Effect sizes | same states, with the analyses to which the requirement applies |
+| Confidence intervals or other uncertainty | same states, with the estimates to which the requirement applies |
+| Assumption checks | same states, naming only assumptions required by the methods used |
+| Power or precision justification | same states, when required by design or inference |
+| Missing-data handling | same states, with the observed omission or method anchored |
+| Format and table requirements | same states, separated from substantive statistical validity |
+| Red-flag follow-up | each triggered item investigated and resolved, left unresolved, or marked not applicable |
 
-| Dimension | Weight | Full Score Criteria |
-|-----------|--------|-------------------|
-| A. Descriptive statistics completeness | 15% | M, SD, N, Range all present |
-| B. Effect size reporting | 20% | All tests accompanied by effect sizes |
-| C. Confidence interval reporting | 15% | Key estimates include CI |
-| D. Assumption testing reporting | 15% | All statistical assumptions tested |
-| E. Statistical power | 10% | Complete a priori power analysis |
-| F. Missing data handling | 10% | Missing data amounts + handling method reported |
-| G. APA format correctness | 10% | Symbols, decimals, tables compliant |
-| H. No red flag indicators | 5% | No red flags from Section 4 detected |
-
-### Scoring Levels
-
-| Level | Score | Description |
-|-------|-------|-------------|
-| Exemplary | 90-100 | Statistical reporting is exemplary, all items complete and correctly formatted |
-| Adequate | 70-89 | Major items complete, minor omissions that don't affect conclusion credibility |
-| Needs Improvement | 50-69 | Significant omissions (e.g., missing effect sizes or assumption testing), supplementation needed |
-| Inadequate | 30-49 | Multiple items missing, statistical reporting insufficient to support conclusions |
-| Unacceptable | 0-29 | Severely insufficient statistical reporting, major rewrite needed |
+For every `PARTLY_COMPLETE` or `MISSING` item, identify the manuscript location, the criterion source, why the omission matters, and whether it affects a substantive conclusion or only reporting clarity. Synthesize the result narratively; do not convert item states or counts into points, percentages, or a decision category.
 
 ---
 
@@ -394,7 +384,7 @@ Step 3: Check universal checklist item by item (Sections 1.1-1.6)
 Step 4: Consult method-specific checklist (Section 2)
 Step 5: Scan red flag list (Section 4)
 Step 6: Verify APA formatting (Section 3)
-Step 7: Produce completeness score (Section 6)
+Step 7: Produce the criterion-bound completeness judgement and narrative synthesis (Section 6)
 ```
 
 ---

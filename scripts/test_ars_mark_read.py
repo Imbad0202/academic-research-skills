@@ -14,12 +14,17 @@ from __future__ import annotations
 
 import os
 import stat
+import threading
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import yaml
 
+from scripts import ars_mark_read
 from tests.test_helpers import run_script
 
 
@@ -56,7 +61,10 @@ class TestMarkReadHappyPath(unittest.TestCase):
             passport = root / "passport_abc123.json"
             _write_passport(passport, citation_keys=["smith2024"])
 
-            result = run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            result = run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--scope", "full_text",
+            )
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
             log_data = _read_log(passport)
@@ -65,6 +73,10 @@ class TestMarkReadHappyPath(unittest.TestCase):
             self.assertEqual(len(log_data["human_read"]), 1)
             self.assertEqual(log_data["human_read"][0]["citation_key"], "smith2024")
             self.assertIn("marked_at", log_data["human_read"][0])
+            self.assertEqual(
+                log_data["human_read"][0]["attestation_type"],
+                "USER_ATTESTED_READ",
+            )
 
     def test_batch_form_appends_multiple_entries(self) -> None:
         """Spec §3.6: /ars-mark-read accepts space-separated keys (batch form).
@@ -75,7 +87,8 @@ class TestMarkReadHappyPath(unittest.TestCase):
             _write_passport(passport, citation_keys=["smith2024", "jones2023"])
 
             result = run_script(
-                SCRIPT, "smith2024", "jones2023", "--passport-path", str(passport)
+                SCRIPT, "smith2024", "jones2023", "--passport-path", str(passport),
+                "--scope", "full_text",
             )
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
@@ -92,10 +105,14 @@ class TestMarkReadHappyPath(unittest.TestCase):
             _write_passport(passport, citation_keys=["smith2024", "jones2023"])
 
             # First mark
-            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--scope", "full_text",
+            )
             # Second mark, different key
             result = run_script(
-                SCRIPT, "jones2023", "--passport-path", str(passport)
+                SCRIPT, "jones2023", "--passport-path", str(passport),
+                "--scope", "full_text",
             )
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
@@ -247,7 +264,10 @@ class TestUnmarkRead(unittest.TestCase):
             root = Path(tmp)
             passport = root / "passport.json"
             _write_passport(passport, citation_keys=["smith2024"])
-            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--scope", "full_text",
+            )
 
             result = run_script(
                 SCRIPT, "smith2024", "--passport-path", str(passport), "--unmark"
@@ -269,7 +289,10 @@ class TestUnmarkRead(unittest.TestCase):
             root = Path(tmp)
             passport = root / "passport.json"
             _write_passport(passport, citation_keys=["smith2024", "jones2023"])
-            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--scope", "full_text",
+            )
 
             result = run_script(
                 SCRIPT, "jones2023", "--passport-path", str(passport), "--unmark"
@@ -296,7 +319,8 @@ class TestMarkReadYAMLPassport(unittest.TestCase):
             _write_passport(passport, citation_keys=["smith2024"])
 
             result = run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport)
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--scope", "full_text",
             )
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
@@ -356,8 +380,7 @@ class TestReadLogUnwritableExistingFile(unittest.TestCase):
 
 
 class TestReadScopeAttestation(unittest.TestCase):
-    """#513: optional read_scope attestation on ledger marks — declaration-only,
-    all-or-nothing batch validation, byte-shape backward compat when absent."""
+    """#513/#738: explicit USER_ATTESTED_READ scope on every new mark."""
 
     def _mark(self, tmp, *extra, keys=("smith2024",)):
         root = Path(tmp)
@@ -366,12 +389,13 @@ class TestReadScopeAttestation(unittest.TestCase):
         result = run_script(SCRIPT, *keys, "--passport-path", str(passport), *extra)
         return passport, result
 
-    def test_scope_less_mark_writes_no_read_scope_key(self):
+    def test_scope_less_new_mark_is_rejected(self):
         with TemporaryDirectory() as tmp:
             passport, result = self._mark(tmp)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            (entry,) = _read_log(passport)["human_read"]
-            self.assertNotIn("read_scope", entry)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--scope is required", result.stderr)
+            log_path = passport.parent / f"{passport.stem}_human_read_log.yaml"
+            self.assertFalse(log_path.exists())
 
     def test_each_level_persisted(self):
         for level in ("full_text", "abstract_only", "toc_only", "unknown"):
@@ -436,7 +460,10 @@ class TestReadScopeAttestation(unittest.TestCase):
             root = Path(tmp)
             passport = root / "p.yaml"
             _write_passport(passport, citation_keys=["smith2024"])
-            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--scope", "full_text",
+            )
             result = run_script(
                 SCRIPT, "smith2024", "--passport-path", str(passport),
                 "--unmark", "--scope", "full_text",
@@ -451,7 +478,20 @@ class TestReadScopeAttestation(unittest.TestCase):
             root = Path(tmp)
             passport = root / "p.yaml"
             _write_passport(passport, citation_keys=["smith2024", "lee2023"])
-            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            legacy_log = {
+                "session_id": "legacy",
+                "created_at": "2026-07-20T00:00:00Z",
+                "human_read": [
+                    {
+                        "citation_key": "smith2024",
+                        "marked_at": "2026-07-20T00:00:00Z",
+                    }
+                ],
+            }
+            log_path = passport.parent / f"{passport.stem}_human_read_log.yaml"
+            log_path.write_text(
+                yaml.safe_dump(legacy_log, sort_keys=False), encoding="utf-8"
+            )
             result = run_script(
                 SCRIPT, "lee2023", "--passport-path", str(passport),
                 "--scope", "abstract_only",
@@ -474,7 +514,10 @@ class TestReadScopeAttestation(unittest.TestCase):
             root = Path(tmp)
             passport = root / "p.yaml"
             _write_passport(passport, citation_keys=["smith2024"])
-            run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+            run_script(
+                SCRIPT, "smith2024", "--passport-path", str(passport),
+                "--scope", "full_text",
+            )
             result = run_script(
                 SCRIPT, "smith2024", "--passport-path", str(passport),
                 "--unmark", "--note", "",
@@ -528,6 +571,7 @@ class TestReadScopeAttestation(unittest.TestCase):
             "session_id": "s", "created_at": "2026-07-20T00:00:00Z",
             "human_read": [{
                 "citation_key": "smith2024", "marked_at": "2026-07-20T00:00:00Z",
+                "attestation_type": "USER_ATTESTED_READ",
                 "read_scope": {"level": "full_text", "locators": ["pp. 1-2"]},
             }],
         }
@@ -535,6 +579,47 @@ class TestReadScopeAttestation(unittest.TestCase):
             jsonschema.validate(bad, schema)
         bad["human_read"][0]["read_scope"] = {"level": "sections", "locators": ["pp. 1-2"]}
         jsonschema.validate(bad, schema)  # sections+locators stays valid
+
+    def test_schema_requires_current_type_scope_pair_and_utc_z(self):
+        import copy
+        import json
+
+        try:
+            import jsonschema
+        except ImportError:
+            self.skipTest("jsonschema not installed")
+        schema_path = (
+            Path(SCRIPT).resolve().parent.parent
+            / "shared" / "contracts" / "passport" / "human_read_log.schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        valid = {
+            "session_id": "s",
+            "created_at": "2026-07-20T00:00:00Z",
+            "human_read": [
+                {
+                    "citation_key": "smith2024",
+                    "marked_at": "2026-07-20T00:00:00Z",
+                    "attestation_type": "USER_ATTESTED_READ",
+                    "read_scope": {"level": "full_text"},
+                }
+            ],
+        }
+        jsonschema.validate(valid, schema)
+        for mutate in ("missing_type", "missing_scope", "naive_mark", "offset_mark"):
+            with self.subTest(mutate=mutate):
+                bad = copy.deepcopy(valid)
+                row = bad["human_read"][0]
+                if mutate == "missing_type":
+                    row.pop("attestation_type")
+                elif mutate == "missing_scope":
+                    row.pop("read_scope")
+                elif mutate == "naive_mark":
+                    row["marked_at"] = "2026-07-20T00:00:00"
+                else:
+                    row["marked_at"] = "2026-07-20T00:00:00+00:00"
+                with self.assertRaises(jsonschema.ValidationError):
+                    jsonschema.validate(bad, schema)
 
     def test_ledger_validates_against_sidecar_schema(self):
         import json
@@ -556,6 +641,270 @@ class TestReadScopeAttestation(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             run_script(SCRIPT, "smith2024", "--passport-path", str(passport), "--unmark")
             jsonschema.validate(_read_log(passport), schema)
+
+
+class TestExistingLedgerFailClosed(unittest.TestCase):
+    """#738: an invalid existing ledger is immutable evidence, not input to repair."""
+
+    def _assert_rejected_unchanged(
+        self, raw: bytes, *, unmark: bool = False
+    ) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            passport = root / "passport.yaml"
+            _write_passport(passport, citation_keys=["smith2024"])
+            log_path = root / "passport_human_read_log.yaml"
+            log_path.write_bytes(raw)
+            before = log_path.read_bytes()
+            args = [
+                "smith2024",
+                "--passport-path",
+                str(passport),
+            ]
+            if unmark:
+                args.append("--unmark")
+            else:
+                args.extend(("--scope", "full_text"))
+
+            result = run_script(SCRIPT, *args)
+
+            self.assertNotEqual(result.returncode, 0)
+            combined = result.stderr + result.stdout
+            self.assertIn("[ARS-MARK-READ ERROR:", combined)
+            self.assertIn("existing read ledger is invalid", combined)
+            self.assertNotIn("Traceback (most recent call last)", combined)
+            self.assertEqual(
+                log_path.read_bytes(),
+                before,
+                "an invalid ledger must remain byte-for-byte unchanged",
+            )
+            self.assertEqual(
+                list(root.glob(f".{log_path.name}.*.tmp")),
+                [],
+                "validation failure must happen before a temp write",
+            )
+
+    def test_duplicate_keys_at_each_mapping_depth_are_rejected(self) -> None:
+        cases = {
+            "root": b"""session_id: first\nsession_id: second\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read: []\n""",
+            "row": b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read:\n  - citation_key: smith2024\n    citation_key: other2024\n    marked_at: '2026-08-15T00:00:01Z'\n""",
+            "scope": b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read:\n  - citation_key: smith2024\n    marked_at: '2026-08-15T00:00:01Z'\n    attestation_type: USER_ATTESTED_READ\n    read_scope:\n      level: full_text\n      level: unknown\n""",
+        }
+        for label, raw in cases.items():
+            with self.subTest(label=label):
+                self._assert_rejected_unchanged(raw)
+
+    def test_malformed_or_non_utf8_yaml_is_rejected(self) -> None:
+        for label, raw in {
+            "malformed_yaml": b"session_id: [unterminated\n",
+            "non_utf8": b"session_id: \xff\n",
+        }.items():
+            with self.subTest(label=label):
+                self._assert_rejected_unchanged(raw)
+
+    def test_closed_root_and_row_contract_is_enforced(self) -> None:
+        cases = {
+            "missing_root_field": b"""created_at: '2026-08-15T00:00:00Z'\nhuman_read: []\n""",
+            "extra_root_field": b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read: []\nagent_guess: true\n""",
+            "wrong_rows_type": b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read: {}\n""",
+            "extra_row_field": b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read:\n  - citation_key: smith2024\n    marked_at: '2026-08-15T00:00:01Z'\n    verified_read: true\n""",
+        }
+        for label, raw in cases.items():
+            with self.subTest(label=label):
+                self._assert_rejected_unchanged(raw)
+
+    def test_timestamp_scope_and_rescind_invariants_are_enforced(self) -> None:
+        cases = {
+            "invalid_calendar_time": b"""session_id: s\ncreated_at: '2026-02-30T00:00:00Z'\nhuman_read: []\n""",
+            "type_without_scope": b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read:\n  - citation_key: smith2024\n    marked_at: '2026-08-15T00:00:01Z'\n    attestation_type: USER_ATTESTED_READ\n""",
+            "locators_outside_sections": b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read:\n  - citation_key: smith2024\n    marked_at: '2026-08-15T00:00:01Z'\n    attestation_type: USER_ATTESTED_READ\n    read_scope: {level: full_text, locators: ['p. 1']}\n""",
+            "rescind_before_mark": b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read:\n  - citation_key: smith2024\n    marked_at: '2026-08-15T00:00:02Z'\n    rescinded_at: '2026-08-15T00:00:01Z'\n""",
+        }
+        for label, raw in cases.items():
+            with self.subTest(label=label):
+                self._assert_rejected_unchanged(raw)
+
+    def test_invalid_ledger_also_blocks_unmark_without_byte_change(self) -> None:
+        self._assert_rejected_unchanged(
+            b"""session_id: s\ncreated_at: '2026-08-15T00:00:00Z'\nhuman_read:\n  - citation_key: smith2024\n    marked_at: '2026-08-15T00:00:01Z'\n    unexpected: blocked\n""",
+            unmark=True,
+        )
+
+
+class TestLockedLedgerTransaction(unittest.TestCase):
+    """Concurrent valid writers serialize the complete ledger transaction."""
+
+    def test_concurrent_writers_reload_under_lock_without_lost_update(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            log_path = root / "passport_human_read_log.yaml"
+            ars_mark_read._save_log(
+                log_path,
+                {
+                    "session_id": "s",
+                    "created_at": "2026-08-15T00:00:00Z",
+                    "human_read": [],
+                },
+            )
+
+            real_load = ars_mark_read._load_log
+            first_loaded = threading.Event()
+            release_first = threading.Event()
+            second_loaded = threading.Event()
+            call_guard = threading.Lock()
+            load_count = 0
+            errors: list[Exception] = []
+
+            def controlled_load(path: Path) -> dict:
+                nonlocal load_count
+                data = real_load(path)
+                with call_guard:
+                    index = load_count
+                    load_count += 1
+                if index == 0:
+                    first_loaded.set()
+                    if not release_first.wait(3):
+                        raise RuntimeError("test did not release first writer")
+                else:
+                    second_loaded.set()
+                return data
+
+            def write_one(citation_key: str) -> None:
+                try:
+                    ars_mark_read._update_log_locked(
+                        log_path,
+                        [citation_key],
+                        read_scope={"level": "full_text"},
+                        unmark=False,
+                    )
+                except Exception as exc:  # surfaced in the test thread
+                    errors.append(exc)
+
+            with patch.object(
+                ars_mark_read, "_load_log", side_effect=controlled_load
+            ):
+                first = threading.Thread(target=write_one, args=("first2026",))
+                second = threading.Thread(target=write_one, args=("second2026",))
+                first.start()
+                self.assertTrue(first_loaded.wait(3))
+                second.start()
+                second_was_blocked = not second_loaded.wait(0.2)
+                release_first.set()
+                first.join(3)
+                second.join(3)
+
+            self.assertTrue(second_was_blocked, "second writer bypassed ledger lock")
+            self.assertFalse(first.is_alive())
+            self.assertFalse(second.is_alive())
+            self.assertEqual(errors, [])
+            self.assertEqual(
+                [row["citation_key"] for row in real_load(log_path)["human_read"]],
+                ["first2026", "second2026"],
+            )
+
+    def test_contended_lock_times_out_without_opening_ledger(self) -> None:
+        with TemporaryDirectory() as tmp:
+            log_path = Path(tmp) / "passport_human_read_log.yaml"
+            lock_path = ars_mark_read._ledger_lock_path(log_path)
+            lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+            ars_mark_read.fcntl.flock(lock_fd, ars_mark_read.fcntl.LOCK_EX)
+            try:
+                with self.assertRaisesRegex(
+                    ars_mark_read.LedgerLockError, "timed out"
+                ):
+                    with ars_mark_read._ledger_lock(
+                        log_path, timeout_seconds=0.01
+                    ):
+                        self.fail("contended lock must not be acquired")
+            finally:
+                ars_mark_read.fcntl.flock(lock_fd, ars_mark_read.fcntl.LOCK_UN)
+                os.close(lock_fd)
+
+    def test_cli_lock_failure_is_visible_without_traceback(self) -> None:
+        with TemporaryDirectory() as tmp:
+            passport = Path(tmp) / "passport.yaml"
+            _write_passport(passport, citation_keys=["smith2024"])
+            stderr = StringIO()
+            with patch.object(
+                ars_mark_read,
+                "_update_log_locked",
+                side_effect=ars_mark_read.LedgerLockError(
+                    "simulated acquisition failure"
+                ),
+            ), redirect_stderr(stderr):
+                result = ars_mark_read.main(
+                    [
+                        "smith2024",
+                        "--passport-path",
+                        str(passport),
+                        "--scope",
+                        "full_text",
+                    ]
+                )
+
+            self.assertEqual(result, 2)
+            self.assertIn("[ARS-MARK-READ ERROR:", stderr.getvalue())
+            self.assertIn("ledger lock lifecycle failed", stderr.getvalue())
+            self.assertNotIn("Traceback", stderr.getvalue())
+            self.assertFalse(ars_mark_read._read_log_path(passport).exists())
+
+
+class TestAtomicLedgerReplace(unittest.TestCase):
+    """The destination remains intact until a same-directory replace succeeds."""
+
+    @staticmethod
+    def _valid_payload() -> dict:
+        return {
+            "session_id": "s",
+            "created_at": "2026-08-15T00:00:00Z",
+            "human_read": [],
+        }
+
+    def test_replace_failure_preserves_original_bytes_and_cleans_temp(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            log_path = root / "passport_human_read_log.yaml"
+            original = b"original ledger bytes\n"
+            log_path.write_bytes(original)
+
+            with patch.object(
+                ars_mark_read.os,
+                "replace",
+                side_effect=OSError("simulated replace failure"),
+            ):
+                with self.assertRaises(OSError):
+                    ars_mark_read._save_log(log_path, self._valid_payload())
+
+            self.assertEqual(log_path.read_bytes(), original)
+            self.assertEqual(list(root.glob(f".{log_path.name}.*.tmp")), [])
+
+    def test_same_directory_temp_replaces_only_after_full_write(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            log_path = root / "passport_human_read_log.yaml"
+            original = b"original ledger bytes\n"
+            log_path.write_bytes(original)
+            real_replace = os.replace
+            observed: list[tuple[Path, Path]] = []
+
+            def observe_replace(source, destination) -> None:
+                source_path = Path(source)
+                destination_path = Path(destination)
+                self.assertEqual(source_path.parent, log_path.parent)
+                self.assertEqual(destination_path, log_path)
+                self.assertEqual(log_path.read_bytes(), original)
+                self.assertTrue(source_path.read_bytes())
+                observed.append((source_path, destination_path))
+                real_replace(source_path, destination_path)
+
+            with patch.object(
+                ars_mark_read.os, "replace", side_effect=observe_replace
+            ):
+                ars_mark_read._save_log(log_path, self._valid_payload())
+
+            self.assertEqual(len(observed), 1)
+            self.assertEqual(yaml.safe_load(log_path.read_text()), self._valid_payload())
+            self.assertEqual(list(root.glob(f".{log_path.name}.*.tmp")), [])
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,7 +47,7 @@ def test_ars_mark_read_writes_read_log(passport_with_corpus: Path) -> None:
     test_keys = ["smith2024-data", "wang2023"]
 
     result = subprocess.run(
-        ["python3", str(script_path), *test_keys, "--passport-path", str(passport_with_corpus)],
+        ["python3", str(script_path), *test_keys, "--passport-path", str(passport_with_corpus), "--scope", "full_text"],
         capture_output=True,
         text=True,
         check=False,
@@ -104,7 +104,7 @@ def test_ars_mark_read_argument_parsing(passport_with_corpus: Path) -> None:
     test_keys = ["smith2024-data", "wang:2023"]
 
     result = subprocess.run(
-        ["python3", str(script_path), *test_keys, "--passport-path", str(passport_with_corpus)],
+        ["python3", str(script_path), *test_keys, "--passport-path", str(passport_with_corpus), "--scope", "full_text"],
         capture_output=True,
         text=True,
         check=False,

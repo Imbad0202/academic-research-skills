@@ -140,7 +140,7 @@ Consuming agents should validate input and request re-generation if schema viola
 
 **Coverage Assessment**: Strong coverage of English-language literature. Moderate coverage of Chinese-language sources (Airiti). Gap: limited grey literature from Taiwan MOE reports.
 
-**Minimum Sources**: 15
+**Coverage requirement**: Each material claim and planned conceptual/methodological role has fit-for-purpose support, or the bounded gap is disclosed. No universal source-count or peer-reviewed-ratio threshold applies.
 
 ### Sources
 
@@ -277,7 +277,6 @@ AI-assisted assessment's primary advantage lies in the immediacy of feedback, re
 | `overall_issues` | object | `{SERIOUS: integer, MEDIUM: integer, MINOR: integer}` |
 | `citation_integrity_score` | float | 0.0-1.0 score for citation accuracy |
 | `fabrication_risk_score` | float | 0.0-1.0 score (0 = no risk detected) |
-| `score_trajectory` | object / null | Review score delta tracking (v3.3, optional). Present only during re-review. See Score Trajectory Structure below. |
 | `timestamp` | string | ISO 8601 timestamp of verification |
 
 ### Phase Structure
@@ -308,10 +307,38 @@ phases: {
     checked: integer,
     verified: integer,
     distortions: [{claim: string, source: string, verdict: string, detail: string}],
-    evidence_rows: [EvidenceRow]
+    claim_registry_coverage: {
+      status: "completed" | "not_run" | "invalid",
+      registry_schema_version: "claim-registry/1.0" | null,
+      report_path: string | null,
+      report_sha256: sha256 | null,
+      draft_raw_sha256: sha256 | null,
+      registry_raw_sha256: sha256 | null,
+      candidate_unregistered_count: integer | null, // all non-clean candidates, including mixed/partial
+      semantic_extraction_coverage: "not_machine_detectable"
+    },
+    evidence_rows: [EvidenceRow],
+    claim_strength_drift_findings: {
+      schema_version: "claim-strength-drift-findings/1.0",
+      artifact_path: string,
+      artifact_sha256: sha256
+    }
   }
 }
 ```
+
+#### Phase E Claim Registry coverage (#737)
+
+Current producers MUST populate `phases.E_claims.claim_registry_coverage`.
+`status: completed` is lawful only when the pointed
+`claim-registry-coverage/1.0` bytes have been replay-validated against the exact
+raw draft and exact serialized `claim-registry/1.0` named by its two hashes;
+the summary count must equal the replayed report. `not_run`, `invalid`, missing
+pointer/hash, stale binding, or replay failure emits
+`E1-COVERAGE-UNRESOLVED` and closes the integrity checkpoint. These states do
+not mean zero candidates. Historical reports may lack the field, but absence is
+legacy/unknown rather than current conformance. Even a completed zero-gap row
+retains `semantic_extraction_coverage: not_machine_detectable`.
 
 #### Phase E Evidence Rows (#656)
 
@@ -358,52 +385,79 @@ distinct claims with verdict `VERIFIED` equal `E_claims.verified`, and every row
 for one claim repeats the same claim object and verdict. The E1 Claim Registry
 remains authoritative for exact selected-tuple completeness.
 
-### Score Trajectory Structure (v3.3, optional)
+#### Phase E6 Claim-Strength Drift Findings and Disposition
 
-Present only when the integrity report is for a re-review (Stage 3' or 4'). Tracks rubric score changes across revision rounds.
+`phases.E_claims.claim_strength_drift_findings` is a pointer, not a second copy
+of E6 rows. Its exact local artifact validates against
+`shared/contracts/revision/claim_strength_drift_findings.schema.json`; the
+consumer reopens only the named file, verifies `artifact_sha256`, and then
+validates its exact final-draft and Revision-Evidence Bundle bindings. A current
+producer emits the companion even when E6 is legitimately skipped for lack of
+revision evidence (`status=skipped_no_revision_evidence`, null bundle hash,
+empty findings). Pre-contract reports may lack the pointer only as explicit
+legacy history; absence must not be interpreted as a completed no-drift check.
 
-Dimension names match the 7 universal review dimensions from `academic-paper-reviewer/references/review_criteria_framework.md` plus an overall score. The scoring scale is **0-100**, per `academic-paper-reviewer/references/quality_rubrics.md` — the scale the report template instructs reviewers to score on, and the scale the SKILL.md Early-Stopping Criterion ("delta < 3 points on the 0-100 rubric") and the delta thresholds below assume (#399 reconciliation; an earlier comment here said 1-5, which never matched either producer or consumer):
+When the finding set contains one or more `ADV-E6-*` rows, the Stage 2.5/4.5
+checkpoint also produces a separate
+`claim-strength-drift-disposition/1.0` sidecar using
+`scripts/claim_strength_drift_disposition.py`. The sidecar binds the exact
+finding-set bytes, draft, and revision bundle and records one action plus
+one runtime-recomputed raw session-event digest per row. The transient input
+names one absolute run-local event-artifact path per disposition; those files
+stay outside the repository. Build and replay validation safely reopen the
+exact regular non-symlink files. The sidecar carries event ids, digests, and
+honest unauthenticated provenance, but no path or raw message. It travels with
+the Integrity Report but does not mutate the report or producer-owned finding set.
+`pipeline_action=authorized_to_continue` is legal only when every row is
+`authorize_with_reason`; `restore_required` and `paused` do not authorize the
+current draft to advance. No generic checkpoint confirmation or ordinary
+advisory default substitutes for this sidecar.
+
+The contracts make reported E6 rows, artifact bindings, one-to-one event
+references, and disposition routing replayable. A 64-hex assertion alone is
+insufficient: build and `validate` both recompute SHA-256 from explicitly named
+raw event bytes, and missing, changed, symlinked, duplicate, or extra mappings
+fail closed. This is byte identity, not event authenticity. The runtime cannot
+authenticate the source, interpret what the bytes mean, or prove who produced
+them. E6 detection remains semantic and may be model-mediated; neither schema
+nor validator proves complete detection, semantic correctness, author identity,
+or scientific warrant.
+
+### Deferred Criterion Trajectory Structure (not a current Schema 5 field)
+
+The integrity agent does not judge manuscript quality and MUST NOT mint a
+criterion trajectory. The shape below is retained as a design target for a
+future Stage 3' Schema 6 field or separately validated re-review sidecar. No
+current producer emits it, and current consumers must not treat its absence as
+an empty or successful comparison. Stage 3' continues to use its existing
+item-level traceability contract and the orchestrator's explicit narrative
+regression check.
 
 ```
-score_trajectory: {
+criterion_trajectory: {
   round: integer,          // revision round number (1 or 2)
-  previous_scores: {       // rubric scores from prior review (0-100 scale per quality_rubrics.md)
-    originality: float,
-    methodological_rigor: float,
-    evidence_sufficiency: float,
-    argument_coherence: float,
-    writing_quality: float,
-    literature_integration: float,
-    significance_impact: float,
-    overall: float
+  dimensions: {
+    <dimension>: {
+      previous_judgement: enum,  // EXCEEDS/MEETS/PARTLY_MEETS/DOES_NOT_MEET/NOT_ASSESSED
+      current_judgement: enum,
+      change: enum,              // IMPROVED/UNCHANGED/REGRESSED/NOT_COMPARABLE
+      previous_evidence: list[evidence_anchor],
+      current_evidence: list[evidence_anchor],
+      rationale: string,
+      decision_bearing: boolean
+    }
   },
-  current_scores: {        // rubric scores from this review (0-100 scale per quality_rubrics.md)
-    originality: float,
-    methodological_rigor: float,
-    evidence_sufficiency: float,
-    argument_coherence: float,
-    writing_quality: float,
-    literature_integration: float,
-    significance_impact: float,
-    overall: float
-  },
-  deltas: {                // current - previous for each dimension
-    originality: float,
-    methodological_rigor: float,
-    evidence_sufficiency: float,
-    argument_coherence: float,
-    writing_quality: float,
-    literature_integration: float,
-    significance_impact: float,
-    overall: float
-  },
-  regression_detected: boolean,  // true if any delta < -3
-  regressed_dimensions: list[string],  // names of dimensions where delta < -3
-  early_stop_eligible: boolean   // true if overall delta < 3 AND no P0 issues (existing criterion)
+  unresolved_decision_bearing_regressions: list[string],
+  early_stop_eligible: boolean,
+  early_stop_rationale: string
 }
 ```
 
-**Consumer**: `pipeline_orchestrator_agent` uses `regression_detected` to trigger a warning checkpoint. `editorial_synthesizer_agent` includes trajectory in re-review reports.
+**Compatibility**: readers may preserve an older `score_trajectory` or
+experimental `criterion_trajectory` object as opaque historical metadata, but
+current producers must not emit or interpret it. The orchestrator performs a
+criterion-local narrative regression check and uses `NOT_COMPARABLE` when the
+criteria or evidence base changed; it does not fabricate this machine object.
 
 ### Issue Severity Levels
 
@@ -428,13 +482,15 @@ score_trajectory: {
 | `reviewer_reports` | list[ReviewerReport] | Individual review reports |
 | `consensus` | enum | `"CONSENSUS-4"` / `"CONSENSUS-3"` / `"SPLIT"` / `"DA-CRITICAL"` |
 | `revision_roadmap` | object | Non-ranking immutable roadmap core; current machine form is `revision-roadmap/1.0` |
-| `confidence_score` | integer | 0-100 editorial confidence |
+| `calibration_status` | const | Current Schema 6 producer emits `NOT_CALIBRATED`. `PROFILE_MEASURED` is reserved until a closed, hash-bound empirical-profile contract and replay validator can prove an exact target/topology match; a profile name or prose claim cannot upgrade this field. |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `judge_record` | object | #539 judge transparency: `{verification_judge, round1_panel_provenance, cross_model_pass: "ran"|"partial"|"not_configured"|"failed", cross_model_items_judged?: int, cross_model_items_total?: int (required when partial), cross_model_id?, failure_reason?, prompt_rubric_surfaces, reviewer_configuration?, evidence_seen, judging_budget_note, precommitment_hash?, routing_status?, apply_chain_witness?}`. `round1_panel_provenance` is copied seat-level from the #540 Review Panel Provenance block ("unknown (provenance block absent)" when absent — a singular revision-driving judge is not well-defined for a mixed-family panel). `reviewer_configuration` (optional, #574/#576 pre-work) records yardstick continuity: `"round1_cards_reused"` or the verbatim `[YARDSTICK-REGENERATED: <original|revised> manuscript — <reason>]` marker per `re_review_mode_protocol.md` § Yardstick Continuity; absent = pre-yardstick-continuity report. Three #576 optional fields (absent = pre-#576 report): `precommitment_hash` (sha256 of the Phase-1 pre-commitment artifact the verdicts were committed against — the judge's fixed reference); `routing_status` (`oneOf`: the three CONSTANTS `"card_mapped"` / `"[ROUTING-DEGRADED: cards unparsable]"` / `"[ROUTING-DEGRADED: no round-1 cards]"` + one PATTERN for the parameterized unmapped-labels form `[ROUTING-DEGRADED: unmapped labels — <payload>]` per the §10 payload grammar — the payload is accountability content, never collapsed to a bare enum; `reviewer_configuration` is untouched and keeps its own two values); `apply_chain_witness` (current #576 1.1: `"pass"` / `"fail"` / `"not_run_no_reports"`; archived 1.0 alone retains `"first_link_not_run"`). Emitted by re-review (Stage 3'); absent = pre-#539 report. External motivation: Ren et al. arXiv:2607.13104 §8.1.2. |
+| `confidence_score` | integer | *(legacy/read-only)* Historical 0-100 editorial-confidence field. Current producers do not emit it; consumers cannot use it for ranking, weighting, calibration, or decision derivation. |
+| `review_panel_provenance` | closed union | REQUIRED for current `reviewer_full` output; every other closed mode omits it. The exact machine contract is [`contracts/reviewer/review_panel_provenance_carrier.schema.json`](contracts/reviewer/review_panel_provenance_carrier.schema.json). Valid form: `{schema_version: "review-panel-provenance-carrier/1.0", status: "valid", review_mode: "reviewer_full", artifact_path, artifact_sha256, normalized_manifest_sha256, execution_topology_sha256, fresh_context_scope: "within_panel_attempt_only", axes}` only after exact raw-byte digest verification and deterministic replay. Invalid form: `{schema_version: "review-panel-provenance-carrier/1.0", status: "invalid", review_mode: "reviewer_full", reason: "absent"|"unreachable"|"digest_mismatch"|"schema_invalid"|"replay_invalid", fresh_context_scope: "within_panel_attempt_only", axes: {all six fields: "unknown"}}`; it carries no path or digest that could look verified. `scripts/review_panel_provenance.py validate-schema6` enforces required presence for `reviewer_full`, omission for the other closed modes, raw artifact digest, artifact replay, and both embedded digests. No other members are admitted. `fresh_context` never claims freshness across attempts. Never reconstruct either form from letter prose, persona labels, or intended routing. |
+| `judge_record` | object | #539/#740 judge transparency: `{verification_judge, round1_panel_provenance, cross_model_pass: "ran"|"partial"|"not_configured"|"failed", cross_model_items_judged?: int, cross_model_items_total?: int (required when partial), cross_model_id?, failure_reason?, prompt_rubric_surfaces, reviewer_configuration?, evidence_seen, judging_budget_note, precommitment_hash?, routing_status?, apply_chain_witness?}`. Current `round1_panel_provenance` copies the closed Schema 6 carrier including its schema/mode/scope fields: a replay-valid reference plus raw `artifact_sha256`, `normalized_manifest_sha256`, `execution_topology_sha256`, and six axes, or an invalid state with reason `absent|unreachable|digest_mismatch|schema_invalid|replay_invalid` and six unknown axes. It never reconstructs seat identity from letter prose. Legacy strings remain read-only input. `cross_model_pass` is one typed execution fact, not a binary independence claim. `reviewer_configuration` (optional, #574/#576 pre-work) records yardstick continuity: `"round1_cards_reused"` or the verbatim `[YARDSTICK-REGENERATED: <original|revised> manuscript — <reason>]` marker per `re_review_mode_protocol.md` § Yardstick Continuity; absent = pre-yardstick-continuity report. Three #576 optional fields (absent = pre-#576 report): `precommitment_hash` (sha256 of the Phase-1 pre-commitment artifact the verdicts were committed against — the judge's fixed reference); `routing_status` (`oneOf`: the three CONSTANTS `"card_mapped"` / `"[ROUTING-DEGRADED: cards unparsable]"` / `"[ROUTING-DEGRADED: no round-1 cards]"` + one PATTERN for the parameterized unmapped-labels form `[ROUTING-DEGRADED: unmapped labels — <payload>]` per the §10 payload grammar — the payload is accountability content, never collapsed to a bare enum; `reviewer_configuration` is untouched and keeps its own two values); `apply_chain_witness` (current #576 1.1: `"pass"` / `"fail"` / `"not_run_no_reports"`; archived 1.0 alone retains `"first_link_not_run"`). Emitted by re-review (Stage 3'); absent = pre-#539 report. External motivation: Ren et al. arXiv:2607.13104 §8.1.2. |
 
 ### ReviewerReport Object
 
@@ -442,12 +498,13 @@ score_trajectory: {
 |-------|------|-------------|
 | `reviewer_id` | string | Reviewer identifier (e.g., `EIC`, `R1`, `R2`, `R3`, `DA`) |
 | `role` | string | Reviewer role description |
-| `dimension_scores` | object | Per-dimension scores (skill-specific) |
+| `criterion_judgements` | list[CriterionJudgement] | Current evidence-anchored judgements. Each applicable criterion appears once with `{criterion_id, criterion_source, judgement_scale, judgement, evidence_anchors, rationale, uncertainty_or_scope_limit, decision_bearing, decision_bearing_reason}`. Narrative reports use `judgement_scale: narrative` with `EXCEEDS` / `MEETS` / `PARTLY_MEETS` / `DOES_NOT_MEET` / `NOT_ASSESSED`. Sprint-contract reports use `judgement_scale: sprint_contract` and copy the contract's `block` / `warn` / `pass` / `not_assessed` value and criterion source exactly. Producers never translate between the two scales. The list is never totaled, weighted, averaged, or mechanically mapped to a decision. |
 | `strengths` | list[string \| Strength] | Paper strengths identified. Current-format cards emit Strength objects `{description: string, evidence_anchor: object}` — the same typed-anchor shape as Weakness, since A2's every-finding rule covers both polarities (#574 A2; a section-level locator suffices for a strength). A bare string = legacy card (consumers treat it as description-only). |
 | `weaknesses` | list[Weakness] | Paper weaknesses identified |
 | `questions` | list[string] | Questions for the authors |
 | `coverage_receipt` | object | *(conditional, #574 A1)* REQUIRED when `strengths` or `weaknesses` is EMPTY: `{covers: "strengths" \| "weaknesses" \| "both", rows: [{dimension: string, checked: string, basis: string}]}` — preserves the reviewer's Coverage Receipt so consumers can distinguish a reviewed-empty list from a thin or truncated review. Absent with empty lists = legacy/invalid current-format card |
-| `reviewer_confidence` | integer | *(optional, #574 A3)* The reviewer's report-level Confidence Score, 1-5 (template § Confidence Score) — the legacy-card fallback target when a weakness lacks per-finding `confidence` (`[CONFIDENCE-SOURCE: report-level]`). Deliberately distinct from the TOP-LEVEL `confidence_score`, which is 0-100 EDITORIAL confidence — the two scales never interchange. |
+| `reviewer_confidence` | integer | *(optional, #574 A3)* The reviewer's report-level Confidence Score, 1-5 (template § Confidence Score) — self-reported uncertainty/scope metadata and the legacy-card fallback source when a weakness lacks per-finding `confidence` (`[CONFIDENCE-SOURCE: report-level]`). It never weights, excludes, or resolves a finding. |
+| `dimension_scores` | object | *(legacy/read-only)* Historical field name and sprint-contract compatibility input. Current narrative-review producers do not emit it. If a current sprint-contract adapter carries categorical `block` / `warn` / `pass` / `not_assessed` values under this legacy name, consumers may transport them but never interpret them as numbers. Historical numeric values cannot feed current synthesis, trajectory, or calibration. |
 
 ### Weakness Object
 
@@ -457,7 +514,7 @@ score_trajectory: {
 | `severity` | enum | `critical` / `major` / `minor` — the CANONICAL single source for finding severity across the reviewer stack (#574 A3). Reviewer cards and templates carry it explicitly per finding (title-case `Critical`/`Major`/`Minor` on prose surfaces maps to this enum; the DA's `OBSERVATION` category is a non-defect channel that never enters `weaknesses[]`). Consumers transport it, never re-derive it; a legacy card without per-finding tags is marked `[SEVERITY-SOURCE: letter-fallback]` by the synthesizer. |
 | `type` | enum | `methodology` / `theory` / `evidence` / `writing` / `structure` / `ethics` |
 | `evidence_anchor` | object | *(optional, #574 A2)* Typed anchor: `{anchor_type: "text" \| "table" \| "figure" \| "equation" \| "dataset" \| "absence", locator: string, quote: string, absence_scope: string, check_performed: string}`. Conditional members: `quote` (≤ 25 words) is REQUIRED when `anchor_type = "text"`; `absence_scope` and `check_performed` are REQUIRED when `anchor_type = "absence"`; all three are omitted for other types. Critical/major weaknesses are expected to carry an adequate, applicable anchor; absent field = legacy card. |
-| `confidence` | integer | *(optional, #574 A3)* Per-finding confidence 1-5 from the reporting reviewer. Absent = legacy card; consumers fall back to the report-level Confidence Score and mark `[CONFIDENCE-SOURCE: report-level]`. |
+| `confidence` | integer | *(optional, #574 A3)* Per-finding self-reported uncertainty/scope confidence 1-5 from the reporting reviewer. Absent = legacy card; consumers may display the report-level fallback with `[CONFIDENCE-SOURCE: report-level]`, but neither value may change consensus counts, severity, decision bearing, or arbitration. |
 | `competence_basis` | string | *(optional, #574 A3)* One-phrase basis for `confidence` (e.g. `"core expertise: psychometrics"`, `"adjacent field: applying general standards"`). |
 
 ---
@@ -1002,7 +1059,7 @@ See `shared/style_calibration_protocol.md` for full consumption rules and confli
 
 ### Schema 11: R&R Traceability Matrix
 
-> #539 optional per-row fields: `cross_model_verdict` (FULLY_ADDRESSED / PARTIALLY_ADDRESSED / NOT_ADDRESSED / MADE_WORSE; present only on `diverges`/`agree` rows) + `cross_model_status` (`agree` / `diverges` / `unavailable` / `not_configured`). Scope: the independent pass evaluates `must_fix` rows only — current `must_fix` rows ALWAYS carry `cross_model_status` (`not_configured` when cross-model is not active); `should_fix`/`consider` rows omit both fields. A `must_fix` row with neither field is a legacy pre-#539 record.
+> #539 optional per-row fields: `cross_model_verdict` (FULLY_ADDRESSED / PARTIALLY_ADDRESSED / NOT_ADDRESSED / MADE_WORSE; present only on `diverges`/`agree` rows) + `cross_model_status` (`agree` / `diverges` / `unavailable` / `not_configured`). Scope: the blind, separately executed pass evaluates `must_fix` rows only — current `must_fix` rows ALWAYS carry `cross_model_status` (`not_configured` when cross-model is not active); `should_fix`/`consider` rows omit both fields. A `must_fix` row with neither field is a legacy pre-#539 record. This describes execution and blinding, not binary independence.
 
 > **Machine-readable sidecar (#576/#670):** current contract version 1.1 emits the machine-readable traceability sidecar defined by [`shared/contracts/re_review/traceability.schema.json`](contracts/re_review/traceability.schema.json). Each row carries `obligation_class`, per-item verdicts, and exact copies of the hash-bound author sidecar's `author_triage`, conditional `author_reason`, `authorized_targets`, and `claim_strength_authorizations`. The current input manifest hard-requires original and revised manuscripts, roadmap, author adjudication, and Revision-Evidence Bundle. `scripts/check_re_review_synthesis.py` fully replays the bundle, binds the matched pre draft to the original manuscript, and requires the ordered manifest patch/report arrays to equal the bundle write projection exactly; a mixed 1.0/1.1 chain fails. Under the contract, `verified` and `status` derive mechanically from `final_verdict` (`FULLY_ADDRESSED → YES`, `PARTIALLY_ADDRESSED → PARTIAL`, `NOT_ADDRESSED → NO`, `MADE_WORSE → NO`, `CANNOT_VERIFY → CANNOT_VERIFY`). Archived 1.0 replay lives under `shared/contracts/re_review/legacy/v1_0/` and `scripts/legacy/`.
 

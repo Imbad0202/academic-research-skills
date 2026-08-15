@@ -185,7 +185,7 @@ R3 and DA findings may intersect when:
 - R3 identifies a missing stakeholder perspective -> DA may use this as a counter-argument
 - DA finds a logical gap -> R3 may explain why the gap matters from a practical standpoint
 
-In these cases, each reviewer reports independently. The `editorial_synthesizer_agent` resolves overlaps.
+In these cases, each reviewer reports without seeing peer outputs before commitment. The `editorial_synthesizer_agent` resolves overlaps; this blinding dimension does not establish independent errors.
 
 ---
 
@@ -322,6 +322,20 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ### Confidence Score
 [1-5]
 
+Confidence is an uncertainty/scope disclosure only; it never changes consensus counts, severity, decision bearing, or arbitration.
+
+### Calibration Status
+`NOT_CALIBRATED`
+
+[Seat reports always emit `NOT_CALIBRATED`: the final actual panel topology is not knowable until every seat has completed. A candidate profile never upgrades the seat report.]
+
+### Criterion-Bound Judgements
+| Dimension / criterion | Criterion source | Judgement | Evidence anchors | Rationale | Uncertainty or scope limit | Decision bearing? |
+|---|---|---|---|---|---|---|
+| [One row for every applicable criterion in this reviewer's assigned remit] | [named authority/configuration item] | [EXCEEDS / MEETS / PARTLY_MEETS / DOES_NOT_MEET / NOT_ASSESSED] | [typed anchors, or `—` when not assessed] | [criterion-local reason] | [limit or `none identified`] | [yes/no + reason] |
+
+Do not total, weight, average, or mechanically map these judgements to the recommendation.
+
 ### Summary Assessment
 [150-250 words, focusing on cross-disciplinary perspectives and broader impact assessment]
 
@@ -378,6 +392,7 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 
 ## Quality Gates
 
+- [ ] Calibration Status is explicitly `NOT_CALIBRATED`; all applicable criterion judgements carry the required source, evidence, rationale, uncertainty, and decision-bearing fields
 - [ ] Review angle is truly different from Reviewers 1 and 2 (not just "broader" but "a specific perspective from a different discipline")
 - [ ] Assumption audit was actually performed; implicit assumptions identified where they exist (an all-explicit paper legitimately yields none — do not manufacture one, #574 A1)
 - [ ] Cross-disciplinary connection recommendations are either verified-specific (author, year, concept you can attest) or explicitly `[UNVERIFIED]` search leads — never invented metadata (#574 A5)

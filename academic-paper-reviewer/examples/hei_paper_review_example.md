@@ -312,6 +312,19 @@ The author uses Porter's competitive strategy and RBV to analyze university stra
 
 ---
 
+### Devil's Advocate Review Report (Fixed Fifth Seat)
+
+**Editorial Recommendation**: N/A — findings only
+
+**Core Challenge**: The six-case design may support a useful provisional typology, but it cannot establish that the three observed strategy types exhaust the relevant response space. The manuscript does not test negative cases or explain what evidence would falsify the proposed classification.
+
+- **Severity**: Major
+- **Evidence Anchor**: `absence: §3 Methodology/§5 Findings — expected negative-case analysis or an explicit boundary on typology exhaustiveness; checked case-selection rationale, cross-case analysis, and Discussion limitations`
+- **Confidence**: 4 — uncertainty/scope metadata only; qualitative typology stress test
+- **Bounded remedy**: State the typology's provisional boundary and add a negative-case check; do not claim exhaustive coverage from six cases.
+
+---
+
 ## Phase 2: Editorial Synthesis & Decision
 
 ### Editorial Decision Package
@@ -326,22 +339,23 @@ The author uses Porter's competitive strategy and RBV to analyze university stra
 | Reviewer 1 | Qualitative methodology expert | Minor Revision | 5/5 |
 | Reviewer 2 | Taiwan higher education policy researcher | Major Revision | 5/5 |
 | Reviewer 3 | Strategic management scholar | Major Revision | 4/5 |
+| Devil's Advocate | Fixed adversarial seat | N/A — findings only | N/A — per-finding only |
 
 #### Consensus Analysis
 
-**[CONSENSUS-4]** (All reviewers agree):
+**[CONSENSUS-4]** (All 4 non-DA scoring reviewers agree):
 1. The research topic is timely and significant
 2. The breadth and depth of data collection are commendable
 3. Theoretical contribution needs to be more clearly articulated
 
-**[CONSENSUS-3]** (3/4 reviewers agree):
+**[CONSENSUS-3]** (3/4 non-DA scoring reviewers agree):
 1. The paper needs better international/cross-disciplinary positioning (EIC + R2 + R3)
 2. Strategy classification needs comparison with existing classifications (EIC + R2 + R3)
 
 **Disagreement 1: Severity of methodology issues**
 - **R1 view**: Methodology is basically acceptable, only needs Minor Revision (supplement within-case analysis and codebook)
 - **R2/R3 view**: No major methodology issues (their Major comes from other aspects)
-- **Editor's Resolution**: Adopt R1's suggestions as methodology supplements, listed as P1 revision items, but this alone does not escalate the overall severity. R1's confidence is 5/5, and their methodology opinion is within their area of expertise and should be respected.
+- **Editor's Resolution**: Adopt the methodology supplements because the missing within-case analysis and codebook are anchored to the Methods/Findings and directly bear on the applicable transparency criterion; this alone does not escalate the overall severity. R1's confidence remains uncertainty/scope metadata and does not determine the resolution.
 
 **Disagreement 2: Handling of theoretical framework**
 - **R3 view**: Porter's framework is not suitable for the higher education context; organizational decline theory should be added
@@ -349,7 +363,7 @@ The author uses Porter's competitive strategy and RBV to analyze university stra
 - **Editor's Resolution**: R3's viewpoint has theoretical basis and is specific. Do not require complete framework replacement, but require the author to (1) justify Porter's applicability boundaries in higher education, (2) add organizational decline theory as a supplementary perspective.
 
 #### Decision Rationale
-This paper investigates an important and timely topic with solid data collection. However, all four reviewers agree that the paper's theoretical contribution needs to be significantly strengthened. There are three core issues: (1) the policy context needs to be updated to the 2022 Exit Act; (2) the theoretical framework's applicability requires more thorough justification, and organizational decline theory should be added; (3) the cross-case analysis methodology presentation needs to be more systematic. These revisions require substantial rewriting of the literature review and discussion chapters, hence the recommendation of Major Revision.
+This paper investigates an important and timely topic with solid data collection. However, all four non-DA scoring reviewers agree that the paper's theoretical contribution needs to be significantly strengthened, and the fixed Devil's Advocate adds a bounded typology-exhaustiveness challenge. There are four core issues: (1) the policy context needs to be updated to the 2022 Exit Act; (2) the theoretical framework's applicability requires more thorough justification, and organizational decline theory should be added; (3) the cross-case analysis methodology presentation needs to be more systematic; and (4) the typology must be presented as provisional unless negative-case analysis supports a stronger claim. These revisions require substantial rewriting of the literature review and discussion chapters, hence the recommendation of Major Revision.
 
 #### Revision Roadmap
 
@@ -366,6 +380,7 @@ This paper investigates an important and timely topic with solid data collection
 - [ ] S3: Add international comparison discussion section (Source: EIC-W2) — Severity: Major | Anchor: `absence: §6 Discussion — expected cross-national implications discussion; checked §6 Discussion, §7 Conclusion` | Confidence: 4
 - [ ] S4: Supplement coding process and codebook (Source: R1-W2) — Severity: Major | Anchor: `absence: §3.3 Data Analysis — expected coding-stage description and a codebook; checked §3.3 Data Analysis, appendix` | Confidence: 5
 - [ ] S5: Reflect on the "university as rational strategic actor" assumption (Source: R3-W3) — Severity: Major | Anchor: `absence: §5 Analysis — expected reflection on the rational-actor assumption; checked §5 Analysis, §6 Discussion` | Confidence: 4
+- [ ] S6: Bound the three-strategy typology and add a negative-case check (Source: DA-W1) — Severity: Major | Anchor: `absence: §3 Methodology/§5 Findings — expected negative-case analysis or an explicit boundary on typology exhaustiveness; checked case-selection rationale, cross-case analysis, and Discussion limitations` | Confidence: 4
 
 **Priority 3 — Text and Formatting (Estimated effort: 2-3 days)**
 - [ ] Improve title to highlight theoretical angle (Source: EIC-W3) — Severity: Minor | Anchor: `text: title — "Impact of Declining Birth Rates on Management Strategies of Taiwan's Private Universities: A Multiple Case Study"` | Confidence: 3

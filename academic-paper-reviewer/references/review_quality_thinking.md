@@ -1,6 +1,6 @@
 # Review Quality Thinking Framework
 
-A cognitive framework for producing high-quality reviews. Teaches **how to think** about paper quality, not just what to score.
+A cognitive framework for producing high-quality reviews. Teaches **how to think** about paper quality, not just which judgement label to emit.
 
 ## The Three Lenses
 
@@ -46,7 +46,7 @@ Ask in order:
 | **Methodological tunnel vision** | Only critiquing methods, ignoring whether the question matters | Start with Lens 3 (contribution) before Lens 1 |
 | **Novelty bias** | Penalizing replication or incremental work | Replication IS valuable; evaluate on execution quality |
 | **Expertise projection** | Expecting the paper to use your preferred method | Evaluate the chosen method on its own terms |
-| **Positivity-severity oscillation** | Being too nice in comments, too harsh in scores | Write the score first, then justify with comments |
+| **Positivity-severity oscillation** | Being too nice in comments, too harsh in the final judgement | Commit the criterion, evidence, and categorical judgement before polishing the comments |
 | **Missing forest for trees** | Listing 20 minor issues, missing the one fatal flaw | Always state the single most important issue first |
 
 ## Calibration Questions (ask after drafting your review)

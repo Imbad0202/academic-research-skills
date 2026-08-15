@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/claim_strength_drift_findings.schema.json",
+  "title": "E6 Claim-Strength Drift Finding Set",
+  "description": "The model/human semantic-review output for one revision-round integrity gate. It binds the exact final draft and Revision-Evidence Bundle and records only detected unauthorized claim-strength moves. The Integrity Report points to the exact finding-set hash, avoiding a self-referential report hash. Validation proves artifact shape and binding, not detection completeness or semantic correctness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "final_draft_sha256",
+    "revision_evidence_bundle_sha256",
+    "detection_provenance",
+    "findings"
+  ],
+  "properties": {
+    "schema_version": { "const": "claim-strength-drift-findings/1.0" },
+    "status": { "enum": ["completed", "skipped_no_revision_evidence"] },
+    "final_draft_sha256": { "$ref": "#/$defs/sha256" },
+    "revision_evidence_bundle_sha256": {
+      "oneOf": [
+        { "$ref": "#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "detection_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "detector_id", "protocol_sha256"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "model_mediated_semantic_review",
+            "human_semantic_review",
+            "model_assisted_human_review"
+          ]
+        },
+        "detector_id": { "$ref": "#/$defs/nonempty_string" },
+        "protocol_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["status"],
+        "properties": { "status": { "const": "completed" } }
+      },
+      "then": {
+        "properties": {
+          "revision_evidence_bundle_sha256": { "$ref": "#/$defs/sha256" }
+        }
+      },
+      "else": {
+        "properties": {
+          "revision_evidence_bundle_sha256": { "type": "null" },
+          "findings": { "maxItems": 0 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "finding_id": {
+      "type": "string",
+      "pattern": "^ADV-E6-[1-9][0-9]*$"
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "finding_type",
+        "revision_round",
+        "block_id",
+        "claim_location",
+        "prior_rung",
+        "current_rung",
+        "dropped_qualifier",
+        "roadmap_item_ids",
+        "direction"
+      ],
+      "properties": {
+        "finding_id": { "$ref": "#/$defs/finding_id" },
+        "finding_type": { "const": "STRENGTH-DRIFTED" },
+        "revision_round": { "type": "integer", "minimum": 1 },
+        "block_id": {
+          "type": "string",
+          "pattern": "^B[0-9]{4,}$"
+        },
+        "claim_location": { "$ref": "#/$defs/nonempty_string" },
+        "prior_rung": { "$ref": "#/$defs/nonempty_string" },
+        "current_rung": {
+          "oneOf": [
+            { "$ref": "#/$defs/nonempty_string" },
+            { "type": "null" }
+          ]
+        },
+        "dropped_qualifier": {
+          "oneOf": [
+            { "$ref": "#/$defs/nonempty_string" },
+            { "type": "null" }
+          ]
+        },
+        "roadmap_item_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?:REV-[A-Za-z0-9-]+|IL-(?:SERIOUS|MEDIUM|MINOR)-[1-9][0-9]*|EA-[0-9]{3,})$"
+          }
+        },
+        "direction": { "enum": ["up", "down"] }
+      },
+      "anyOf": [
+        {
+          "required": ["current_rung"],
+          "properties": { "current_rung": { "$ref": "#/$defs/nonempty_string" } }
+        },
+        {
+          "required": ["dropped_qualifier"],
+          "properties": { "dropped_qualifier": { "$ref": "#/$defs/nonempty_string" } }
+        }
+      ]
+    }
+  }
+}

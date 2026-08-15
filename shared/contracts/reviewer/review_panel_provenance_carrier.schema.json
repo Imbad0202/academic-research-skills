@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/reviewer/review_panel_provenance_carrier.schema.json",
+  "title": "Schema 6 Review Panel Provenance Carrier",
+  "description": "Closed valid/invalid union for Schema 6 reviewer_full provenance. A valid carrier is only a reference: runtime verification must hash the exact artifact bytes, validate and replay the artifact, and compare both embedded provenance digests and all six axes. An invalid carrier is fail-visible and cannot retain path or digest fields that could look verified.",
+  "oneOf": [
+    {"$ref": "#/$defs/valid_carrier"},
+    {"$ref": "#/$defs/invalid_carrier"}
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "tri_state": {
+      "enum": [true, false, "unknown"]
+    },
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role_separated",
+        "fresh_context",
+        "blind_to_peer_outputs",
+        "model_family_distinct",
+        "provider_distinct",
+        "human_distinct"
+      ],
+      "properties": {
+        "role_separated": {"$ref": "#/$defs/tri_state"},
+        "fresh_context": {"$ref": "#/$defs/tri_state"},
+        "blind_to_peer_outputs": {"$ref": "#/$defs/tri_state"},
+        "model_family_distinct": {"$ref": "#/$defs/tri_state"},
+        "provider_distinct": {"$ref": "#/$defs/tri_state"},
+        "human_distinct": {"$ref": "#/$defs/tri_state"}
+      }
+    },
+    "unknown_axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role_separated",
+        "fresh_context",
+        "blind_to_peer_outputs",
+        "model_family_distinct",
+        "provider_distinct",
+        "human_distinct"
+      ],
+      "properties": {
+        "role_separated": {"const": "unknown"},
+        "fresh_context": {"const": "unknown"},
+        "blind_to_peer_outputs": {"const": "unknown"},
+        "model_family_distinct": {"const": "unknown"},
+        "provider_distinct": {"const": "unknown"},
+        "human_distinct": {"const": "unknown"}
+      }
+    },
+    "valid_carrier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "review_mode",
+        "artifact_path",
+        "artifact_sha256",
+        "normalized_manifest_sha256",
+        "execution_topology_sha256",
+        "fresh_context_scope",
+        "axes"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "review-panel-provenance-carrier/1.0"
+        },
+        "status": {"const": "valid"},
+        "review_mode": {"const": "reviewer_full"},
+        "artifact_path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._/-]+$",
+          "description": "Repository- or package-relative artifact reference. Runtime validation rejects absolute paths, parent traversal, backslashes, duplicate separators, and resolution outside the supplied artifact root."
+        },
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "normalized_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "execution_topology_sha256": {"$ref": "#/$defs/sha256"},
+        "fresh_context_scope": {"const": "within_panel_attempt_only"},
+        "axes": {"$ref": "#/$defs/axes"}
+      }
+    },
+    "invalid_carrier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "review_mode",
+        "reason",
+        "fresh_context_scope",
+        "axes"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "review-panel-provenance-carrier/1.0"
+        },
+        "status": {"const": "invalid"},
+        "review_mode": {"const": "reviewer_full"},
+        "reason": {
+          "enum": [
+            "absent",
+            "unreachable",
+            "digest_mismatch",
+            "schema_invalid",
+            "replay_invalid"
+          ]
+        },
+        "fresh_context_scope": {"const": "within_panel_attempt_only"},
+        "axes": {"$ref": "#/$defs/unknown_axes"}
+      }
+    }
+  }
+}

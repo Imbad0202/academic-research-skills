@@ -3,15 +3,15 @@
 ## Stage 2.5: First Integrity Check (Pre-Review Integrity)
 
 **Trigger**: After Stage 2 (WRITE) completion, before Stage 3 (REVIEW)
-**Purpose**: Ensure all references and data are not fabricated or erroneous before submission for review
+**Purpose**: Check the named registered/sample populations for fabricated or erroneous reporting before review; this does not establish global correctness, raw-data truth, or actual execution
 
 ```
 Execution steps:
 1. integrity_verification_agent executes Mode 1 (initial verification) on the paper
 2. Verification scope:
-   - Phase A: 100% reference existence + bibliographic accuracy + ghost citations
+   - Phase A: 100% of registered references for existence + bibliographic accuracy + ghost citations
    - Phase B: >= 30% citation context spot-check
-   - Phase C: 100% statistical data verification
+   - Phase C: 100% of registered statistical/data surfaces
    - Phase D: >= 30% originality spot-check + self-plagiarism check
    - Phase E: risk-stratified claim verification (#549): 100% of HIGH-IMPACT claims (headline / numerical / causal / methods-critical / disputed) + 10% random sentinel of the remainder (rounded up, min 3 / max 10; remainder <3 → all of it), topped up to min(10, total claims) — bounds per `claim_verification_protocol.md` § Sampling Strategy
    - Phase E additionally emits the scope-conformance advisory (#547) and the novelty-claim classification (#548) — both advisory-only, never gate; advisory rows are not issues and may remain open on PASS — see `claim_verification_protocol.md` § E4-E5
@@ -25,17 +25,17 @@ Execution steps:
 ## Stage 4.5: Final Integrity Check (Post-Revision Final Check)
 
 **Trigger**: After Stage 4' (RE-REVISE) or Stage 3' (RE-REVIEW, Accept) completion, before Stage 5 (FINALIZE)
-**Purpose**: Confirm the revised paper is 100% correct and ready for publication
+**Purpose**: Recheck all registered references/claims and the named Phase B-D surfaces before finalization; PASS is not a certificate that the paper or underlying research is 100% correct or publication-ready
 
 ```
 Execution steps:
 1. integrity_verification_agent executes Mode 2 (final verification) on the revised draft
 2. Verification scope:
-   - Phase A: 100% reference verification (including those added during revision)
-   - Phase B: 100% citation context verification (not spot-check, full check)
-   - Phase C: 100% statistical data verification
+   - Phase A: 100% of registered references (including registered additions during revision)
+   - Phase B: 100% of registered citation contexts (not a sample within that population)
+   - Phase C: 100% of registered statistical/data surfaces
    - Phase D: >= 50% originality spot-check (100% for newly added/modified paragraphs)
-   - Phase E: 100% claim verification (zero MAJOR_DISTORTION + zero UNVERIFIABLE required)
+   - Phase E: 100% of E1 registered claims (zero MAJOR_DISTORTION + zero UNVERIFIABLE required within that population; semantic extraction completeness remains unknown)
    - Phase E additionally emits the scope-conformance advisory (#547) and the novelty-claim classification (#548) — both advisory-only, never gate; advisory rows are not issues, stay outside the zero-issues PASS count, and may remain open — see `claim_verification_protocol.md` § E4-E5
 3. Special check: Compare with Stage 2.5 results to confirm all previous issues are resolved
 4. Result handling:
@@ -96,8 +96,14 @@ Stage 4.5 verdict, block or delay the checkpoint, enter Phase E, or change
 formatter/Stage-5 routing. A later manuscript revision stales both #660 and #672
 and must re-enter integrity before both rerun in fixed order.
 
-## Score Trajectory Tracking (v3.3)
+## Criterion Trajectory Tracking
 
 Reference: `academic-pipeline/references/score_trajectory_protocol.md`
 
-At Stage 3' (RE-REVIEW), the `pipeline_orchestrator_agent` tracks per-dimension score deltas and triggers a MANDATORY checkpoint on regressions. Results stored in Integrity Report `score_trajectory` field (Schema 5).
+At Stage 3' (RE-REVIEW), the `pipeline_orchestrator_agent` performs a
+criterion-local narrative comparison and triggers a MANDATORY checkpoint on
+decision-bearing regressions. It uses `NOT_COMPARABLE` when the criterion or
+evidence base changed and produces no numerical score or hidden delta. A typed
+`criterion_trajectory` carrier is not wired in the current release and the
+Integrity Report must not pretend to supply one; see the explicit design-only
+status in `score_trajectory_protocol.md`.

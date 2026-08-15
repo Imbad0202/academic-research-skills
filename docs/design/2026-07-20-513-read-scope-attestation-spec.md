@@ -2,6 +2,29 @@
 
 **Date:** 2026-07-20 · **Issue:** #513 · **Status:** implemented in the same PR
 
+## #738 supersession amendment (2026-08-15)
+
+This amendment is the current authority wherever it conflicts with the original
+#513 compatibility behavior below. New marks now require both
+`attestation_type: USER_ATTESTED_READ` and an explicit `read_scope`; use
+`level: unknown` when coverage cannot be stated. Legacy rows that omit both
+fields remain parseable, but legacy absence and explicit `unknown` resolve to
+`coverage_unknown` and can never promote an anchored citation to `ok`.
+
+The current resolver strictly validates the closed ledger, paired attestation
+type/scope, RFC3339 UTC event timestamps and ordering, and the closed anchor
+enum. Page coverage requires an explicit `page`, `p.`, or `pp.` locator; a bare
+number or `section <n>` cannot cover a page anchor. Its output is a transient
+routing decision, not a persisted audit receipt, and must be recomputed from the
+current ledger and exact anchor on each finalizer pass.
+
+Finalizer routing is closed: `covered` is eligible for `ok` only after the
+source matrix also permits it; active `partial_coverage`/`coverage_unknown`
+becomes `LOW-WARN-PARTIAL-COVERAGE`; `not_attested`/`rescinded` remains plain
+unacknowledged `LOW-WARN`; `ledger_invalid` blocks visibly; unresolved anchors
+take the existing precedence-zero NO-LOCATOR route. All non-conflicting #513
+placement, declaration-only, and corpus-ownership decisions remain in force.
+
 ## Problem
 
 ARS records source possession, AI verification-against-original, and a binary human-read
@@ -23,13 +46,15 @@ reading coverage); ranked P2 of three in the 2026-07-11 adoption review.
 
 ### Layer 1 — ledger field + CLI (`scripts/ars_mark_read.py`)
 
-Ledger entries gain an optional `read_scope` object:
+Current ledger entries carry a required `read_scope` object; omission remains
+legal only on positively identified legacy rows:
 
 ```yaml
 human_read:
   - citation_key: smith2024
+    attestation_type: USER_ATTESTED_READ
     marked_at: "2026-07-20T04:00:00Z"
-    read_scope:            # optional — absent on legacy and scope-less marks
+    read_scope:            # required now; absent only on legacy rows
       level: sections      # full_text | sections | abstract_only | toc_only | unknown
       locators:            # only meaningful (and only accepted) with level: sections
         - "pp. 10-24"
@@ -37,11 +62,11 @@ human_read:
       note: "methods + results read closely; discussion skimmed"
 ```
 
-`/ars-mark-read` gains optional arguments, all attestation-only (declaration, never
-inference):
+`/ars-mark-read` uses attestation-only arguments (declaration, never inference):
 
-- `--scope <level>` — closed enum above. Absent ⇒ no `read_scope` written; consumers
-  treat absence as `unknown`. Nothing is fabricated or backfilled.
+- `--scope <level>` — closed enum above and required on every new mark. Use
+  `unknown` when the user cannot specify coverage. Legacy absence is never
+  fabricated or backfilled and remains non-promoting.
 - `--locator <text>` — repeatable; **requires `--scope sections`** (locators name which
   sections/pages were read; with `full_text` they are redundant and with
   `abstract_only`/`toc_only` they contradict the level — a contradictory attestation is
@@ -58,10 +83,11 @@ Errors use the existing canonical `[ARS-MARK-READ ERROR: ...]` surface.
 
 New `shared/contracts/passport/human_read_log.schema.json`, following the
 `rejection_log.schema.json` / `version_records.schema.json` sidecar precedent
-(`additionalProperties: false` throughout, closed `level` enum, registered in
-`shared/contracts/README.md`). The ledger stays adapter-free and user-owned; the schema
-exists for audit/debugging and test-time validation — `ars_mark_read.py` itself stays
-dependency-light (no jsonschema import at runtime).
+(`additionalProperties: false` throughout, closed `level` enum, paired current
+attestation type/scope, RFC3339 UTC timestamp grammar, registered in
+`shared/contracts/README.md`). The ledger stays adapter-free and user-owned;
+`ars_mark_read.py` remains dependency-light, while the deterministic resolver
+enforces the same closed shape and event-order invariants before routing.
 
 ### Layer 3 — anchor-aware finalizer promotion (prose, `pipeline_orchestrator_agent.md`)
 
@@ -78,10 +104,10 @@ have contradicted the settled precedence and resurrected rescinded promotions).
 
 | `read_scope.level` | Promotion of the citation's anchor |
 |---|---|
-| absent / `unknown` | promotes (legacy marks keep their pre-#513 behavior — the optional field must not impose a de-facto migration) |
+| absent on a legacy mark / explicit `unknown` | does NOT promote — resolves to `coverage_unknown` and the active declaration remains visibly acknowledged-partial |
 | `full_text` | promotes |
 | `abstract_only` / `toc_only` | does NOT promote — the marker resolves to `LOW-WARN-PARTIAL-COVERAGE` and the per-section checklist entry carries an explicit coverage note (e.g. `read_scope abstract_only does not cover anchor page:12`) |
-| `sections` | promotes ONLY when the anchor (`page` / `section` / `paragraph`) falls unambiguously within a declared locator; ambiguity or no match ⇒ `LOW-WARN-PARTIAL-COVERAGE` + coverage note. `quote` anchors promote only under `full_text` / `unknown` — with partial coverage the finalizer cannot vouch that the quoted passage lies in a read section |
+| `sections` | promotes ONLY when the anchor (`page` / `section` / `paragraph`) falls unambiguously within a declared locator; ambiguity or no match ⇒ `LOW-WARN-PARTIAL-COVERAGE` + coverage note. Page anchors require an explicit page-prefixed locator. `quote` anchors promote only under `full_text` |
 
 `LOW-WARN-PARTIAL-COVERAGE` (codex r1: a partial acknowledgment that left the plain
 `LOW-WARN` marker was indistinguishable from an unacknowledged citation at the terminal
@@ -94,7 +120,9 @@ lint changes. The idempotency rule's evidence enumeration now names the governin
 mark's attestation explicitly — a `read_scope` change between passes is an evidence
 change and re-resolves the marker. The judgment "falls unambiguously within" is
 conservative by instruction: locators are free text; the finalizer promotes only on a
-clear containment match.
+clear containment match. #738 narrows this marker to an active mark whose state
+is `partial_coverage` or `coverage_unknown`; no mark, a latest rescind, or an
+invalid ledger can never borrow the acknowledged-partial marker.
 
 CLI bounds (codex r1): `--locator` values 1-200 chars and `--note` 1-1000 chars are
 enforced at write time — in lockstep with the sidecar schema — so the CLI can never
@@ -113,7 +141,9 @@ the same commit.
 - Any new field on `literature_corpus[]` entries (adapter-owned; v3.6.5 consumer
   protocol).
 - Adapter inference of reading depth — declaration-only.
-- Mandatory migration — legacy marks mean `unknown` and keep their behavior.
+- Mandatory migration — legacy rows remain readable, but their missing scope is
+  explicitly `coverage_unknown` and no longer preserves the historical `ok`
+  promotion.
 - A `source_sha256` join field toward the #512 preflight sidecar. The #512 spec names
   the sidecar `sha256` as the natural future join key, but #513's scope is the
   human-attestation channel; adding a hash field with no wired consumer would be the
@@ -125,8 +155,11 @@ the same commit.
 - `scripts/test_ars_mark_read.py`: scope happy path per level; locators/note persisted;
   invalid level / `--locator` without `sections` / `--note` without `--scope` /
   attestation args with `--unmark` all rejected batch-wide with canonical errors;
-  scope-less marks write no `read_scope` key (byte-shape backward compat); produced
-  ledgers validate against the new schema; legacy ledger entries untouched by new marks.
+  scope-less new marks rejected; produced ledgers validate against the schema;
+  legacy ledger entries remain unchanged when a new scoped mark is appended.
+- `scripts/test_human_read_attestation_resolver.py`: strict current-ledger and
+  RFC3339 ordering mutations, duplicate keys, closed anchors, cross-kind/bare
+  locator rejection, and end-to-end state-to-finalizer disposition mapping.
 - `tests/test_mark_read_args.py`: dispatch-level pass-through of the new flags.
 - Lints: `check_v3_6_8_*` all stay green; `check_pipeline_boundary_semantics.py` hash
   re-pinned.

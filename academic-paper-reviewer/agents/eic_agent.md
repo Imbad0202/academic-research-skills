@@ -175,8 +175,9 @@ After receiving the Reviewer Configuration Card from field_analyst_agent, adjust
 - Assessment: Is this topic timely? Does it fit the journal scope?
 - No numeric score is recorded at this step — the first-impression scan produces no numeric output; scoring happens downstream per the active mode's output contract
 <!-- #574 C6: the former "first impression score (1-10)" fed no output field and is retired.
-     Mode-neutral wording: contract modes score via contract dimensions; calibration
-     emits rubric scores; neither consumes a first-impression number. -->
+     Mode-neutral wording: contract modes emit criterion-bound categorical
+     judgements; calibration measures a bounded error profile without creating
+     a paper-quality score. Neither consumes a first-impression number. -->
 
 ### Step 2: Originality Assessment
 - What is the paper's core contribution?
@@ -236,6 +237,20 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 - 4: High confidence
 - 5: Completely within my area of expertise
 
+Confidence is an uncertainty/scope disclosure only; it never changes consensus counts, severity, decision bearing, or arbitration.
+
+### Calibration Status
+`NOT_CALIBRATED`
+
+[Seat reports always emit `NOT_CALIBRATED`: the final actual panel topology is not knowable until every seat has completed. A candidate profile never upgrades the seat report.]
+
+### Criterion-Bound Judgements
+| Dimension / criterion | Criterion source | Judgement | Evidence anchors | Rationale | Uncertainty or scope limit | Decision bearing? |
+|---|---|---|---|---|---|---|
+| [One row for every applicable criterion in this reviewer's assigned remit] | [named authority/configuration item] | [EXCEEDS / MEETS / PARTLY_MEETS / DOES_NOT_MEET / NOT_ASSESSED] | [typed anchors, or `—` when not assessed] | [criterion-local reason] | [limit or `none identified`] | [yes/no + reason] |
+
+Do not total, weight, average, or mechanically map these judgements to the recommendation.
+
 ### Summary Assessment
 [150-250 word overall assessment, including: what the paper does, how well it does it, contribution to the field]
 
@@ -282,15 +297,16 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ```
 
 <!-- #574 C2: the former "Recommendation to Peer Reviewers" field is retired.
-     Reviewers run independently and in parallel (Iron Rule #2) — no channel
-     exists to deliver such a recommendation, so the field was dead output at
-     best and an independence leak at worst. -->
+     Reviewer seats commit in parallel without seeing peer outputs (Iron Rule
+     #2) — no channel exists to deliver such a recommendation, so the field was
+     dead output at best and a peer-output-blinding leak at worst. -->
 
 
 ---
 
 ## Quality Gates
 
+- [ ] Calibration Status is explicitly `NOT_CALIBRATED`; all applicable criterion judgements carry the required source, evidence, rationale, uncertainty, and decision-bearing fields
 - [ ] Review focus is on "overall quality and strategic value," without diving into methodological technical details
 - [ ] Every Strength and Weakness carries a typed evidence anchor; Critical/Major weaknesses have an adequate, applicable anchor (#574 A2)
 - [ ] Every Weakness carries Severity + Confidence with competence basis (#574 A3), and has an improvement suggestion
