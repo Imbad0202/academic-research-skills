@@ -39,6 +39,14 @@ STANCE_CONTENT_CLASSES = [
     "accepted_search_query",
     "claim_and_selected_evidence_to_stance_provider",
 ]
+CHECKPOINT_REQUIRED_TIER = {"stage_2_5": "HIGH-IMPACT", "stage_4_5": "ALL"}
+HIGH_IMPACT_BASIS_VALUES = (
+    "headline_conclusion",
+    "numerical",
+    "causal",
+    "methods_critical",
+    "disputed",
+)
 INPUT_VERSION = "claim-standing-retrieval-input/1.0"
 LEDGER_VERSION = "claim-standing-candidate-ledger/1.0"
 RELEVANCE_INPUT_VERSION = "claim-standing-relevance-assessment-input/1.0"
@@ -50,6 +58,19 @@ MAX_SELECTED = 40
 EXPLICIT_LOCAL_EXPORT_BOUNDARY = (
     "One local candidate-ledger export to the operator-named output path is authorized."
 )
+# Complete family of artifacts derivable from one consented
+# authorized_output_path ("" = the candidate ledger at the path itself).
+# Consumed by the consent surface disclosure and pinned to each owning
+# module's suffix constant by test.
+ARTIFACT_SUFFIXES = {
+    "candidate_ledger": "",
+    "query_plan": ".query-plan.json",
+    "retrieval_input": ".retrieval-input.json",
+    "transmission_ledger": ".transmission-ledger.json",
+    "stance_record": ".stance-record.json",
+    "evidence_rows": ".evidence-rows.json",
+    "rendered_view": ".view.md",
+}
 CAPS = {
     "max_queries": MAX_QUERIES,
     "max_indexes": MAX_INDEXES,
@@ -114,11 +135,19 @@ def load_json(path: Path) -> Any:
         raise LedgerError(f"{path}: cannot read strict UTF-8 JSON: {exc}") from exc
 
 
+_VALIDATOR_CACHE: dict[str, Draft202012Validator] = {}
+
+
 def validate_schema(value: Any, filename: str, label: str) -> None:
-    schema = load_json(SCHEMA_DIR / filename)
     try:
-        Draft202012Validator.check_schema(schema)
-        Draft202012Validator(schema).validate(value)
+        validator = _VALIDATOR_CACHE.get(filename)
+        if validator is None:
+            # Schema files are read-only within a process; meta-validate once.
+            schema = load_json(SCHEMA_DIR / filename)
+            Draft202012Validator.check_schema(schema)
+            validator = Draft202012Validator(schema)
+            _VALIDATOR_CACHE[filename] = validator
+        validator.validate(value)
     except (SchemaError, ValidationError) as exc:
         location = ".".join(str(part) for part in exc.absolute_path) or "<root>"
         raise LedgerError(f"{label} schema violation at {location}: {exc.message}") from exc
@@ -355,8 +384,7 @@ def validate_plan(plan: dict[str, Any]) -> None:
     checkpoint = claim["checkpoint"]
     tier = claim["registry_selection_tier"]
     _expect(
-        (checkpoint == "stage_2_5" and tier == "HIGH-IMPACT")
-        or (checkpoint == "stage_4_5" and tier == "ALL"),
+        CHECKPOINT_REQUIRED_TIER.get(checkpoint) == tier,
         "claim.registry_selection_tier",
         "must be HIGH-IMPACT at Stage 2.5 or ALL with explicit high-impact basis at Stage 4.5",
     )
@@ -447,6 +475,11 @@ def validate_plan(plan: dict[str, Any]) -> None:
             Path(consent["authorized_output_path"]).is_absolute(),
             "consent.authorized_output_path",
             "must be an absolute path so its target cannot vary by working directory",
+        )
+        _expect(
+            not consent["authorized_output_path"].endswith(("/", "\\")),
+            "consent.authorized_output_path",
+            "must not end with a path separator: derived artifact names would become hidden dotfiles",
         )
     else:
         _expect(
@@ -1120,6 +1153,40 @@ def write_new_ledger(path: Path, value: dict[str, Any]) -> None:
     finally:
         if descriptor is not None:
             os.close(descriptor)
+
+
+def authorized_export_path(plan: dict[str, Any], suffix: str) -> Path:
+    """The only writable path for a consent-derived artifact of this probe."""
+    authorized = plan["consent"]["authorized_output_path"]
+    if not isinstance(authorized, str) or not authorized:
+        raise LedgerError(
+            "consent.authorized_output_path: no operator-named output path is "
+            "bound by this receipt"
+        )
+    if authorized.endswith(("/", "\\")):
+        raise LedgerError(
+            "consent.authorized_output_path: a trailing path separator would "
+            "derive a hidden artifact name; name a file base, not a directory"
+        )
+    return Path(authorized + suffix)
+
+
+def require_export_consent(
+    plan: dict[str, Any], output: Path, suffix: str
+) -> Path:
+    """Fail closed unless the hash-bound consent authorizes exactly `output`."""
+    if plan["consent"]["local_persistence"] != "explicit_local_export":
+        raise LedgerError(
+            "consent does not say explicit_local_export: refusing to create "
+            "any output path"
+        )
+    authorized = authorized_export_path(plan, suffix)
+    if str(output) != str(authorized):
+        raise LedgerError(
+            "output path must exactly match the consent-derived path "
+            f"{str(authorized)!r}"
+        )
+    return authorized
 
 
 def _parser() -> Any:

@@ -347,7 +347,7 @@ def main(argv: list[str] | None = None) -> int:
                     "the hash-bound consent says session_only: this CLI "
                     "refuses to persist a rendered view"
                 )
-            expected = Path(consent["authorized_output_path"] + VIEW_SUFFIX)
+            expected = substrate.authorized_export_path(plan, VIEW_SUFFIX)
             if str(args.output) != str(expected):
                 _fail(
                     "output does not match the hash-bound consent: the view "

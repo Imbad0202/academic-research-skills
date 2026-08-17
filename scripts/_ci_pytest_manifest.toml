@@ -257,6 +257,22 @@ id = "655-claim-standing-stance-runner"
 path = "scripts/test_claim_standing_stance_runner.py"
 
 [[pytest]]
+id = "655-claim-standing-query-plan-builder"
+path = "scripts/test_build_claim_standing_query_plan.py"
+
+[[pytest]]
+id = "655-claim-standing-freshness"
+path = "scripts/test_check_claim_standing_freshness.py"
+
+[[pytest]]
+id = "655-claim-standing-transmissions"
+path = "scripts/test_claim_standing_transmissions.py"
+
+[[pytest]]
+id = "655-claim-standing-pipeline-wiring"
+path = "scripts/test_claim_standing_pipeline_wiring.py"
+
+[[pytest]]
 id = "655-claim-standing-view-renderer"
 path = "scripts/test_render_claim_standing_view.py"
 

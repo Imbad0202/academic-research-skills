@@ -15,6 +15,7 @@ semantic extraction completeness remains unknown:
 ## E1: Claim Extraction
 - Scan the paper for quantitative/factual claims and build the registered population. This is a semantic, model-mediated extraction step: do not describe the resulting registry as mechanically complete.
 - For each claim, assign a stable `claim_id` and emit the closed `claim-registry/1.0` artifact defined by `shared/contracts/evidence/claim_registry.schema.json`. Every row records exact UTF-8 draft byte span + equal `claim_text`, claim kind(s), cited source(s) by `ref_slug`, writer anchors, paper section, and selection tier (#549 — Mode 1: `HIGH-IMPACT` / `RANDOM` / `TOP-UP` / `NOT-SELECTED`; Mode 2: `ALL`). The registry binds `draft_raw_sha256`; duplicate IDs/spans and stale or unequal spans are invalid.
+- For a claim that satisfies the high-impact definition, the registry row also records WHICH of the five criteria fired (`high_impact_basis` ⊆ {headline_conclusion, numerical, causal, methods_critical, disputed}) — an optional `claim-registry/1.0` row field: the tier says that it is high-impact, the basis says why; the #655 claim-standing probe offer below consumes the recorded basis
 - Expected output: a schema-valid Claim Registry artifact. A rendered table is a view, not the machine contract.
 
 ### E1.1: Mechanically detectable coverage diff (#737)
@@ -201,6 +202,18 @@ therefore “none detected by the recorded review,” never a deterministic
 no-drift certificate.
 
 External motivation: DELEGATE-52 (arXiv:2604.15597) — round-trip editing corrupts content by subtle modification; the #390 patch confines exposure to touched blocks but does not check their epistemic interior. Baseline evidence that the drift is real on the current frontier model: `evals/heldout/revision_claim_drift/` (2026-07-22: 2/8 under hedge-drop / null-reframe pressure). Mechanism shape borrowed from Yila-AI/sci-ssci-skills (@MissOrangePeel).
+
+## Claim-Standing Probe Offer (#655 — opt-in, advisory-only)
+
+After E1 has emitted the Claim Registry at a Stage 2.5 or Stage 4.5 integrity checkpoint, the user MAY request the search-bounded claim-standing probe on individual registry rows. The probe is an additional user-requested view. It is NOT part of Phase E verification and NOT part of the integrity result: it never changes a Phase E verdict, severity, issue count, checkpoint result, correction route, formatter refusal, or Stage transition, and it never writes read-ledger or manuscript state (`layer = LLM-ADVISORY`, `gate_effect = none`, `read_ledger_effect = none`, `manuscript_mutation = none`).
+
+**Trigger (design §3.1, gate 1 — enforced by `scripts/build_claim_standing_query_plan.py`):**
+
+- Stage 2.5: only registry rows recorded `HIGH-IMPACT` are eligible — the recorded tier is the registry witness. `RANDOM`, `TOP-UP`, and `NOT-SELECTED` rows are never eligible — the random sentinel and top-up floor are Phase E quality controls, not consent to expand the probe. When the registry recorded the tier but not the five-part basis, the row stays eligible by tier; the basis the probe's plan requires then comes from a recorded researcher confirmation.
+- Stage 4.5: `ALL` is not permission to probe every claim. A row is eligible only when the registry records the same five-part high-impact classification (headline conclusion / numerical / causal / methods-critical / disputed) for it; a basis-less row is ambiguous and stays ineligible until the researcher confirms the classification.
+- Researcher confirmations (and the basis provenance — registry vs researcher confirmation) are recorded in the probe's own artifacts and never written back to the registry.
+
+**Consent (design §3.2, gate 2):** Eligibility never dispatches anything. Before any query planner, index, or model receives claim text, the researcher sees and affirmatively accepts a closed consent surface (`propose` → `bind` in `scripts/build_claim_standing_query_plan.py`) whose hash binds the complete consentable-plan projection; absence of that acceptance, any post-proposal change (claim, query, provider, filter, cap, stance plan, persistence), or an explicit cancel produces an explicit local `not_checked` declination record (`consent_absent` / `consent_invalidated` / `consent_cancelled`) and no network or model call. Retrieval, stance classification, freshness (`scripts/check_claim_standing_freshness.py`), and per-event transmission accounting (`scripts/check_claim_standing_transmissions.py`) are specified in `shared/references/claim_standing_candidate_ledger_protocol.md`. Every probe surface carries `STANCE CLASSIFICATION UNMEASURED` until the #655 baseline measurement row exists.
 
 ## Verdict Taxonomy
 

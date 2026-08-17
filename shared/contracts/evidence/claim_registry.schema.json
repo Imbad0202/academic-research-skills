@@ -37,7 +37,13 @@
         "ref_slugs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "writer_anchors": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "paper_section": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
-        "selection_tier": {"enum": ["HIGH-IMPACT", "RANDOM", "TOP-UP", "NOT-SELECTED", "ALL"]}
+        "selection_tier": {"enum": ["HIGH-IMPACT", "RANDOM", "TOP-UP", "NOT-SELECTED", "ALL"]},
+        "high_impact_basis": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["headline_conclusion", "numerical", "causal", "methods_critical", "disputed"]}
+        }
       }
     }
   }

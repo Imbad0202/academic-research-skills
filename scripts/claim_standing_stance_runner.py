@@ -334,6 +334,14 @@ def run_stance(
             "result_state": None,
         }
         transmissions.append(transmission)
+        # The prompt hashes bind BEFORE the transport call: a failed call
+        # (timeout, judge error, oversized output) still retains exactly
+        # what was sent, so the transmission ledger's cross-check can hold
+        # every transport-reaching row to its recorded prompt hash.
+        base_row.update(
+            prompt_sha256=prompt_sha,
+            assessment_input_sha256=assessment_input_sha,
+        )
         try:
             raw_output = transport(prompt)
         except TimeoutError:
@@ -360,8 +368,6 @@ def run_stance(
             continue
         assessed_at = _now()
         base_row.update(
-            prompt_sha256=prompt_sha,
-            assessment_input_sha256=assessment_input_sha,
             raw_output=raw_output,
             raw_output_sha256=substrate.text_digest(raw_output),
             assessed_at=assessed_at,
@@ -431,6 +437,26 @@ def run_stance(
     return record, evidence_rows, transmissions
 
 
+def expected_identity(
+    plan: dict[str, Any], ledger_value: dict[str, Any]
+) -> dict[str, str]:
+    """The §7 probe-identity hash set one (plan, ledger) pair binds.
+
+    Single authority for the identity comparison used by the semantic
+    validator and the freshness checker; adding a binding here extends both.
+    """
+    return {
+        "claim_sha256": plan["claim"]["claim_sha256"],
+        "consent_receipt_sha256": plan["consent"]["receipt_sha256"],
+        "query_plan_sha256": plan["plan_sha256"],
+        "adapter_registry_sha256": substrate.digest(plan["provider_roster"]),
+        "candidate_ledger_sha256": substrate.bound_digest(
+            ledger_value, "candidate_ledger_sha256"
+        ),
+        "stance_plan_sha256": substrate.digest(plan.get("stance_plan")),
+    }
+
+
 def validate_stance_record(
     plan: dict[str, Any],
     ledger_value: dict[str, Any],
@@ -447,16 +473,7 @@ def validate_stance_record(
         _fail("stance_record_sha256 does not bind the record")
 
     identity = record["identity"]
-    expected = {
-        "claim_sha256": plan["claim"]["claim_sha256"],
-        "consent_receipt_sha256": plan["consent"]["receipt_sha256"],
-        "query_plan_sha256": plan["plan_sha256"],
-        "adapter_registry_sha256": substrate.digest(plan["provider_roster"]),
-        "candidate_ledger_sha256": substrate.bound_digest(
-            ledger_value, "candidate_ledger_sha256"
-        ),
-        "stance_plan_sha256": substrate.digest(plan.get("stance_plan")),
-    }
+    expected = expected_identity(plan, ledger_value)
     for field, value in expected.items():
         if identity[field] != value:
             _fail(f"identity.{field} drifted: the record is stale (candidate_ledger, plan, or consent changed)")
@@ -622,12 +639,45 @@ def validate_stance_record(
                         f"row {row['work_family_id']}: abstract_missing "
                         "contradicts the ledger's available content state"
                     )
-            elif row["failure_state"] != "abstract_missing":
-                _fail(
-                    f"row {row['work_family_id']}: content-unavailable "
-                    "candidates are never dispatched, so only "
-                    "abstract_missing can stand"
+                # A transport-reaching failure row still binds exactly what
+                # was sent: its prompt hashes must replay from the frozen
+                # template (the transmission cross-check depends on this).
+                expected_prompt_sha = substrate.text_digest(
+                    _stance_prompt(plan, family, hit)
                 )
+                if row["prompt_sha256"] != expected_prompt_sha:
+                    _fail(
+                        f"row {row['work_family_id']}: prompt_sha256 does "
+                        "not replay from the frozen prompt template"
+                    )
+                if row["assessment_input_sha256"] != substrate.digest(
+                    {
+                        "claim_sha256": plan["claim"]["claim_sha256"],
+                        "candidate_content_sha256": substrate.text_digest(
+                            hit["abstract_text"]
+                        ),
+                        "prompt_contract_version": PROMPT_CONTRACT_VERSION,
+                        "prompt_sha256": expected_prompt_sha,
+                    }
+                ):
+                    _fail(
+                        f"row {row['work_family_id']}: "
+                        "assessment_input_sha256 does not replay"
+                    )
+            else:
+                if row["failure_state"] != "abstract_missing":
+                    _fail(
+                        f"row {row['work_family_id']}: content-unavailable "
+                        "candidates are never dispatched, so only "
+                        "abstract_missing can stand"
+                    )
+                if row["prompt_sha256"] is not None or (
+                    row["assessment_input_sha256"] is not None
+                ):
+                    _fail(
+                        f"row {row['work_family_id']}: an undispatched row "
+                        "cannot carry prompt hashes"
+                    )
             continue
         family = families_by_id[row["work_family_id"]]
         hit = hits_by_id[row["canonical_raw_hit_id"]]

@@ -713,7 +713,7 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
 
 def authorized_retrieval_input_path(plan: dict[str, Any]) -> Path:
     """The only writable output path: derived from the hash-bound consent."""
-    return Path(plan["consent"]["authorized_output_path"] + RETRIEVAL_INPUT_SUFFIX)
+    return substrate.authorized_export_path(plan, RETRIEVAL_INPUT_SUFFIX)
 
 
 def main(argv: list[str] | None = None) -> int:

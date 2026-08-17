@@ -18,6 +18,9 @@ SCHEMAS = {
 }
 RUNTIME = Path("scripts/build_claim_standing_candidate_ledger.py")
 PROTOCOL = Path("shared/references/claim_standing_candidate_ledger_protocol.md")
+PHASE_E_PROTOCOL = Path(
+    "academic-pipeline/references/claim_verification_protocol.md"
+)
 DESIGN = Path("docs/design/2026-08-13-655-search-bounded-claim-standing-probe-design.md")
 CONTRACT_README = Path("shared/contracts/README.md")
 MANIFEST = Path("scripts/_ci_pytest_manifest.toml")
@@ -401,6 +404,10 @@ def run_checks(root: Path) -> list[str]:
             "STANCE CLASSIFICATION UNMEASURED",
             "does not retrieve records",
             "candidate_cap_exceeded",
+            "claim-standing-transmission-ledger/1.0",
+            "build_claim_standing_query_plan.py",
+            "check_claim_standing_freshness.py",
+            "check_claim_standing_transmissions.py",
         ),
         DESIGN: (
             "TRACK A SUBSTRATE IMPLEMENTED",
@@ -411,11 +418,35 @@ def run_checks(root: Path) -> list[str]:
             "Claim-standing candidate ledger (#655 Track A)",
             "claim-standing-query-plan/1.0",
             "claim-standing-candidate-ledger/1.0",
+            "claim-standing-transmission-ledger/1.0",
+            "transmission_ledger.schema.json",
         ),
-        CHANGELOG: ("candidate-ledger substrate (#655 Track A)",),
+        PHASE_E_PROTOCOL: (
+            "## Claim-Standing Probe Offer (#655",
+            "opt-in, advisory-only",
+            "`HIGH-IMPACT`",
+            "`RANDOM`, `TOP-UP`, and `NOT-SELECTED` rows are never eligible",
+            "`ALL` is not permission to probe every claim",
+            "ineligible until the researcher confirms",
+            "never written back to the registry",
+            "Eligibility never dispatches anything",
+            "`not_checked` declination record",
+            "scripts/build_claim_standing_query_plan.py",
+            "shared/references/claim_standing_candidate_ledger_protocol.md",
+            "STANCE CLASSIFICATION UNMEASURED",
+            "gate_effect = none",
+        ),
+        CHANGELOG: (
+            "candidate-ledger substrate (#655 Track A)",
+            "Pipeline wiring for the #655 claim-standing probe",
+        ),
         MANIFEST: (
             'id = "655-claim-standing-candidate-ledger"',
             'id = "655-claim-standing-candidate-ledger-integration"',
+            'id = "655-claim-standing-query-plan-builder"',
+            'id = "655-claim-standing-freshness"',
+            'id = "655-claim-standing-transmissions"',
+            'id = "655-claim-standing-pipeline-wiring"',
         ),
         WORKFLOW: (
             "Check claim-standing candidate-ledger integration (#655)",
@@ -429,6 +460,18 @@ def run_checks(root: Path) -> list[str]:
         for marker in markers:
             if marker not in text:
                 errors.append(f"{relative}: required #655 marker missing: {marker}")
+    forbidden_text = {
+        PROTOCOL: ("deferred to the pipeline-wiring slice",),
+    }
+    for relative, markers in forbidden_text.items():
+        text = _read(root, relative, errors)
+        if text is None:
+            continue
+        for marker in markers:
+            if marker in text:
+                errors.append(
+                    f"{relative}: stale #655 marker must not appear: {marker}"
+                )
     return errors
 
 
