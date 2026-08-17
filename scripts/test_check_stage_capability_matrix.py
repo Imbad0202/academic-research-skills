@@ -517,6 +517,26 @@ def test_render_includes_anchors():
     assert "Academic Research Skills" in render(data)
 
 
+# ---------- co-consumer vocabulary pin (#742 §2) ----------
+
+
+def test_task_families_match_the_742_design_doc_table():
+    """The frozen vocabulary and the #742 §2 table ids stay in lockstep."""
+    doc = (
+        REPO_ROOT
+        / "docs/design/2026-08-17-742-research-family-profile-contract-design.md"
+    ).read_text(encoding="utf-8")
+    section = doc.split("## 2. Shared stage and task-family vocabulary", 1)[1]
+    section = section.split("## 3.", 1)[0]
+    import re
+
+    doc_ids = [
+        m.group(1)
+        for m in re.finditer(r"^\| `([a-z_]+)` \|", section, re.M)
+    ]
+    assert doc_ids == list(TASK_FAMILIES)
+
+
 # ---------- shipped-inventory locks (D5 analog) ----------
 
 
