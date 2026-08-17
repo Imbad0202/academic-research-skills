@@ -306,6 +306,21 @@ def test_ca2_method_heading_inside_fence_not_counted(repo: Path) -> None:
     assert run_all_checks(repo) == []
 
 
+def test_ca3_link_inside_four_backtick_fence_fires(repo: Path) -> None:
+    # A four-backtick fence demonstrating a triple-backtick block is closed
+    # only by a run of >= 4 backticks; the inner triple backticks must not
+    # end it, so a link inside stays literal and CA-3 fires (codex R8
+    # finding).
+    readme = repo / "README.md"
+    link = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
+    lines = readme.read_text(encoding="utf-8").split("\n")
+    idx = next(i for i, line in enumerate(lines) if link in line)
+    lines[idx] = f"````markdown\n```\n{link}\n```\n````"
+    readme.write_text("\n".join(lines), encoding="utf-8")
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)
+
+
 def test_slug_matches_github_for_punctuated_heading() -> None:
     heading = (
         "Method 0: Claude Code Plugin (v3.7.0+, recommended for "

@@ -52,15 +52,25 @@ def _strip_fenced_code(md_text: str) -> str:
     block."""
     kept: list[str] = []
     in_fence = False
-    fence_marker = ""
+    fence_char = ""
+    fence_len = 0
     for line in md_text.split("\n"):
         content = _QUOTE_PREFIX_RE.sub("", line).lstrip(" ")
-        if not in_fence and content[:3] in ("```", "~~~"):
-            in_fence = True
-            fence_marker = content[:3]
-            continue
-        if in_fence:
-            if content.startswith(fence_marker):
+        if not in_fence:
+            opener = re.match(r"(`{3,}|~{3,})", content)
+            if opener:
+                in_fence = True
+                fence_char = opener.group(1)[0]
+                fence_len = len(opener.group(1))
+                continue
+        else:
+            # CommonMark: the closer is a run of the SAME character at least
+            # as long as the opener, with nothing but whitespace after it —
+            # so a ```` fence is not closed by a literal ``` example line.
+            closer = re.match(
+                rf"({re.escape(fence_char)}{{{fence_len},}})\s*$", content
+            )
+            if closer:
                 in_fence = False
             continue
         kept.append(line)
