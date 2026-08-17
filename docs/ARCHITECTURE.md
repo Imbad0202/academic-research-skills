@@ -118,22 +118,22 @@ flowchart LR
     Raw[deep-research<br/>data_access_level: raw]
     Red[academic-paper<br/>data_access_level: redacted]
     Ver1[academic-paper-reviewer<br/>data_access_level: verified_only]
-    Ver2[academic-pipeline<br/>data_access_level: verified_only]
+    Orch[academic-pipeline<br/>data_access_level: raw]
 
     User --> Raw
+    User -- Stage 1 request / mid-entry paper --> Orch
     Raw -- source_verification elevates --> Red
     Red -- Gate 2.5: 7-mode integrity --> Ver1
-    Red -- Gate 2.5 --> Ver2
-    Ver2 -. orchestrates .-> Raw
-    Ver2 -. orchestrates .-> Red
-    Ver2 -. orchestrates .-> Ver1
+    Orch -. orchestrates .-> Raw
+    Orch -. orchestrates .-> Red
+    Orch -. orchestrates .-> Ver1
 
     classDef raw fill:#fff1f0,stroke:#cf1322
     classDef red fill:#fffbe6,stroke:#d48806
     classDef ver fill:#f6ffed,stroke:#389e0d
-    class Raw raw
+    class Raw,Orch raw
     class Red red
-    class Ver1,Ver2 ver
+    class Ver1 ver
 ```
 
 Rules (per `shared/ground_truth_isolation_pattern.md`):
@@ -142,6 +142,13 @@ Rules (per `shared/ground_truth_isolation_pattern.md`):
 - `raw` skills consume layer-1 data (arbitrary, possibly adversarial).
 - `redacted` skills operate on sanitized material, no new raw ingestion.
 - `verified_only` skills run only after upstream integrity gates.
+- The annotation reflects the **dirtiest input the skill may legitimately consume
+  across all its modes** (the pattern doc's declaration rule). That is why
+  `academic-pipeline` is `raw` (#756): the orchestrator's Stage 1 accepts raw user
+  requests and mid-entry accepts raw existing papers — the integrity gates run
+  *inside* the pipeline, downstream of its intake, so nothing has verified its input
+  before it runs. The per-skill values are pinned in
+  `scripts/check_data_access_level.py`.
 - The reviewer side **may hold a rubric privately** — the key guarantee is that rubric / gold-label content must not be present in the candidate-generating agent's context. Calibration gold sets are runtime-supplied by the human researcher, not bundled into the repository.
 - Stage 2.5 and Stage 4.5 (plus the user's review at each gate) are the actual enforcement points. This pattern document explains the data-flow structure that makes those gates meaningful; it is not itself a runtime lock.
 
