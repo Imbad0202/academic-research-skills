@@ -1,0 +1,147 @@
+"""Mutation tests for check_control_availability.py (#757).
+
+Strategy: copy the real surfaces into a tmp repo root, verify the baseline
+passes, then apply one mutation per test and assert the intended invariant
+(and only that invariant class) fires.
+"""
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+import pytest
+
+from check_control_availability import (
+    DOC_RELPATH,
+    SETUP_RELPATH,
+    github_slug,
+    run_all_checks,
+)
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Every file the doc's relative links may touch, plus the inbound-link
+# surfaces. Kept explicit so a test-fixture gap fails loudly here rather
+# than passing vacuously.
+_MIRRORED_FILES = (
+    "docs/CONTROL_AVAILABILITY.md",
+    "docs/SETUP.md",
+    "README.md",
+    "audits/iso42001-spirit-gap-assessment-2026-08-17.md",
+    "pi/README.md",
+    "shared/cross_model_verification.md",
+    "shared/contracts/degradation_registry.json",
+)
+
+
+@pytest.fixture()
+def repo(tmp_path: Path) -> Path:
+    for rel in _MIRRORED_FILES:
+        src = REPO_ROOT / rel
+        dst = tmp_path / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dst)
+    return tmp_path
+
+
+def _mutate(root: Path, rel: str, old: str, new: str) -> None:
+    path = root / rel
+    text = path.read_text(encoding="utf-8")
+    assert old in text, f"mutation anchor not found in {rel}: {old!r}"
+    path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def test_baseline_passes(repo: Path) -> None:
+    assert run_all_checks(repo) == []
+
+
+def test_missing_doc_is_single_fatal_error(repo: Path) -> None:
+    (repo / DOC_RELPATH).unlink()
+    errors = run_all_checks(repo)
+    assert len(errors) == 1
+    assert "missing" in errors[0]
+
+
+def test_ca1_dead_file_link_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        "docs/CONTROL_AVAILABILITY.md",
+        "../pi/README.md",
+        "../pi/NO_SUCH_FILE.md",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-1" in e and "does not exist" in e for e in errors)
+
+
+def test_ca1_renamed_setup_heading_fires(repo: Path) -> None:
+    # Retitling a SETUP method heading breaks the doc's deep anchor (CA-1)
+    # and removes the slug the doc links (CA-2) — the exact silent-404 drift
+    # class the lint exists for. Both invariants must fire.
+    _mutate(
+        repo,
+        str(SETUP_RELPATH),
+        "### Method 5: Claude Science import (v3.14.0+)",
+        "### Method 5: Claude Science import (v9.99.0+)",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-1" in e and "anchor" in e for e in errors)
+    assert any("CA-2" in e for e in errors)
+
+
+def test_ca1_broken_intra_doc_anchor_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        "docs/CONTROL_AVAILABILITY.md",
+        "(#environment-degradations-within-a-channel)",
+        "(#environment-degradations-nope)",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-1" in e and "intra-doc" in e for e in errors)
+
+
+def test_ca2_new_setup_method_fires(repo: Path) -> None:
+    setup = repo / SETUP_RELPATH
+    setup.write_text(
+        setup.read_text(encoding="utf-8")
+        + "\n### Method 6: Hypothetical Future Channel\n\nBody.\n",
+        encoding="utf-8",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-2" in e and "Method 6" in e for e in errors)
+    assert not any("CA-1" in e for e in errors)
+
+
+def test_ca3_readme_link_removed_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        "README.md",
+        "CONTROL_AVAILABILITY.md",
+        "CONTROL_AVAILABILITY_GONE.md",
+    )
+    # Replace ALL occurrences so no link survives.
+    readme = repo / "README.md"
+    assert "CONTROL_AVAILABILITY.md" not in readme.read_text(encoding="utf-8")
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)
+
+
+def test_ca3_setup_link_removed_fires(repo: Path) -> None:
+    setup = repo / SETUP_RELPATH
+    text = setup.read_text(encoding="utf-8")
+    setup.write_text(
+        text.replace("CONTROL_AVAILABILITY.md", "CONTROL_AVAILABILITY_X.md"),
+        encoding="utf-8",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "SETUP.md" in e for e in errors)
+
+
+def test_slug_matches_github_for_punctuated_heading() -> None:
+    heading = (
+        "Method 0: Claude Code Plugin (v3.7.0+, recommended for "
+        "Claude Code CLI / IDE users)"
+    )
+    assert github_slug(heading) == (
+        "method-0-claude-code-plugin-v370-recommended-for-"
+        "claude-code-cli--ide-users"
+    )

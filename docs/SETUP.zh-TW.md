@@ -247,6 +247,10 @@ Claude 會在 `<install-root>/<skill-name>/SKILL.md` 尋找 skills。這個 repo
 
 不要把整個 repository 當成單一巢狀 skill 資料夾安裝到 `.claude/skills/academic-research-skills/`。那會讓四個 `SKILL.md` 比 Claude 可發現的位置多埋一層。請參考 Anthropic 的 [Claude Code Skills documentation](https://code.claude.com/docs/en/skills)。
 
+以下各安裝方式的差異不只是方便程度：hooks、slash commands、tools allowlist、subagent
+編排、以及需要 Python 的檢查功能，在某些管道可用、在其他管道會降級或不存在。倚賴任何
+一項機制之前，請先查對照表：[CONTROL_AVAILABILITY.md](CONTROL_AVAILABILITY.md)（英文）。
+
 ### 方法零：Claude Code Plugin（v3.7.0+，Claude Code CLI / IDE 用戶推薦）
 
 如果你用的是 Claude Code CLI、VS Code extension 或 JetBrains extension，可以一行指令安裝 ARS：

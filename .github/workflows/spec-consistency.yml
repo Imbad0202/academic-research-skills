@@ -242,6 +242,13 @@ jobs:
         # the generated docs/STAGE_CAPABILITY_MATRIX.md view.
         run: python3 scripts/check_stage_capability_matrix.py
 
+      - name: Validate control-availability map links (#757)
+        # Pins docs/CONTROL_AVAILABILITY.md's pointer integrity: relative
+        # links + anchors resolve (CA-1), every SETUP `### Method` heading is
+        # reachable from the channel table (CA-2), README + SETUP keep an
+        # inbound link (CA-3). Cell semantics stay owned by code review.
+        run: python3 scripts/check_control_availability.py
+
       - name: Validate corpus consumer protocol (v3.6.5+)
         run: python3 scripts/check_corpus_consumer_protocol.py
 

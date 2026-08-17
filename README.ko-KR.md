@@ -62,6 +62,8 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 **👉 [docs/SETUP.md](docs/SETUP.md)** — 전체 가이드: Claude Code 설치, API 키 설정, DOCX/PDF용 선택적 Pandoc/tectonic, 교차 모델 검증(`ARS_CROSS_MODEL`), 여섯 가지 설치 방법(Plugin, project skills, global skills, claude.ai Project, repo-cloned, Claude Science 가져오기).
 
+> **사용 중인 설치 채널에서 어떤 enforcement 메커니즘이 실제로 작동하나요?** 가용성은 설치 채널에 따라 다릅니다. 채널별 대조표를 참조하세요: [docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)(영어).
+
 **Claude Science를 사용하시나요?** 네 개의 스킬을 바로 가져올 수 있습니다: **Skills → Import from GitHub**에서 `https://github.com/Imbad0202/academic-research-skills`를 붙여넣고 **Preview** → **Import 4 skills**(이 저장소 v3.14.0+ 필요 — 가져오기 도구는 marketplace manifest에 명시된 스킬 경로를 읽습니다). 가져오기는 특정 시점의 스냅샷입니다: ARS 업데이트 후에는 다시 가져오세요. 가져온 스킬은 ARS 방법론(연구/작성/리뷰 프로토콜)을 담습니다. Claude Code 전용 메커니즘 — slash commands, hooks, 서브에이전트 오케스트레이션 — 은 이전되지 않습니다. 자세한 내용은 [docs/SETUP.md](docs/SETUP.md) Method 5를 참조하세요.
 
 **Pi를 사용하시나요?** `pi install git:github.com/Imbad0202/academic-research-skills`로 저장소 내 커뮤니티 유지보수 wrapper를 설치할 수 있습니다. 원본 ARS 콘텐츠를 기준으로 유지하며 Pi 전용 오케스트레이션 및 hook 제한을 문서화합니다. 자세한 내용은 [`pi/README.md`](pi/README.md)를 참조하세요.
