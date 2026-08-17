@@ -91,7 +91,7 @@ flowchart TD
 - **Solid orange (✓)** = integrity gate — machine verification runs first, user then acknowledges the report. Not skipped.
 - **Green** = Socratic coaching sub-stage. User may engage or say "just fix it" to skip the dialogue.
 - **👁 observer** (v3.5.0) = `collaboration_depth_agent` dispatches at every FULL/SLIM checkpoint + pipeline completion. **Never blocks.** Advisory only. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted.
-- **Data level** (§3 column) = the data layer that *stage* operates on, not the owning skill's declared `data_access_level` (see §4 — e.g. `academic-pipeline` declares `raw` while its gate stages operate on verified material).
+- **Data level** (§3 column) = the data layer of that *stage's* output artifacts (a postcondition), not the owning skill's declared `data_access_level` (see §4 — e.g. `academic-pipeline` declares `raw`, while its gate stages consume unverified drafts and *produce* the verified artifacts their rows are labeled by).
 
 ## 3. Stage × Dimension Matrix
 
