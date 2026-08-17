@@ -251,6 +251,20 @@ def test_ca1_unclosed_comment_swallows_rest_of_document(repo: Path) -> None:
     assert run_all_checks(repo) == []
 
 
+def test_ca3_blockquoted_html_block_line_fires(repo: Path) -> None:
+    # `> <!-- note --> [link]` — the type-2 HTML-block rule applies to
+    # block-quote content too, so the link does not render (codex R5
+    # finding). The stripper must look through leading `>` markers.
+    readme = repo / "README.md"
+    link = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
+    lines = readme.read_text(encoding="utf-8").split("\n")
+    idx = next(i for i, line in enumerate(lines) if link in line)
+    lines[idx] = f"> <!-- note --> {link}"
+    readme.write_text("\n".join(lines), encoding="utf-8")
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)
+
+
 def test_slug_matches_github_for_punctuated_heading() -> None:
     heading = (
         "Method 0: Claude Code Plugin (v3.7.0+, recommended for "

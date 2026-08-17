@@ -55,14 +55,22 @@ def _strip_html_comments(md_text: str) -> str:
       text after the terminator on the closing line.
     - Elsewhere, an inline `<!-- ... -->` span is raw HTML; the surrounding
       text still renders.
+
+    The line-start test looks through leading block-quote markers (`> `),
+    since the same type-2 rule applies to block-quote content. Deeper
+    CommonMark laminations (blocks terminated by the enclosing quote or
+    list, comments opened inside list items, …) are deliberately not
+    modeled — the surfaces this lint reads do not use them, and a full
+    markdown parser is out of proportion for a maintainer-slip guard.
     """
     kept: list[str] = []
     lines = md_text.split("\n")
     i = 0
     while i < len(lines):
         line = lines[i]
-        stripped = line.lstrip(" ")
-        indent = len(line) - len(stripped)
+        content = re.sub(r"^(\s{0,3}>\s?)+", "", line)
+        stripped = content.lstrip(" ")
+        indent = len(content) - len(stripped)
         if indent <= 3 and stripped.startswith("<!--"):
             while i < len(lines) and "-->" not in lines[i]:
                 i += 1
