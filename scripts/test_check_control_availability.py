@@ -26,6 +26,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _MIRRORED_FILES = (
     "docs/CONTROL_AVAILABILITY.md",
     "docs/SETUP.md",
+    "docs/ARCHITECTURE.md",
     "README.md",
     "audits/iso42001-spirit-gap-assessment-2026-08-17.md",
     "pi/README.md",
