@@ -53,7 +53,7 @@ import json
 import re
 import sys
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import yaml
@@ -704,7 +704,10 @@ def _check_citation_surfaces(
     else:
         try:
             data = yaml.safe_load(cff.read_text(encoding="utf-8"))
-        except yaml.YAMLError:
+        except (yaml.YAMLError, ValueError):
+            # ValueError: PyYAML's timestamp constructor raises it (not
+            # YAMLError) on impossible dates like 2026-02-30 (codex P2) —
+            # a lint reports drift, never crashes.
             data = None
         if not isinstance(data, dict):
             errors.append(f"{cff}: not parseable as a YAML mapping")
@@ -727,11 +730,16 @@ def _check_citation_surfaces(
             released = data.get("date-released")
             if released is not None and latest_date is not None:
                 base = _parse_iso_date(latest_date)
-                rel = (
-                    released
-                    if isinstance(released, date)
-                    else _parse_iso_date(str(released))
-                )
+                if isinstance(released, datetime):
+                    # CFF requires a bare YYYY-MM-DD. An unquoted timestamp
+                    # parses as datetime — a date SUBCLASS that would
+                    # TypeError against the date baseline below (codex P2) —
+                    # so it routes to the not-strict error, never a crash.
+                    rel = None
+                elif isinstance(released, date):
+                    rel = released
+                else:
+                    rel = _parse_iso_date(str(released))
                 if rel is None:
                     errors.append(
                         f"{cff}: date-released {str(released)!r} is not a "

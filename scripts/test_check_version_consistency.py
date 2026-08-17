@@ -1292,6 +1292,38 @@ class TestCitationSurfaces(unittest.TestCase):
             self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
             self.assertIn("date-released", result.stdout)
 
+    def test_cff_impossible_date_fails_cleanly(self) -> None:
+        """`date-released: 2026-02-30` — PyYAML's timestamp constructor raises
+        ValueError, not YAMLError; the lint must emit an error, never crash
+        with a traceback (codex review P2)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_cff(root, "3.5.0", date_released="2026-02-30")
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 1,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertIn("CITATION.cff", result.stdout)
+
+    def test_cff_timestamp_date_fails_as_nonstrict(self) -> None:
+        """An unquoted `2026-04-22T00:00:00Z` parses as datetime — a date
+        SUBCLASS that would TypeError against the date baseline. It must be
+        rejected as not a strict YYYY-MM-DD, never crash (codex review P2)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_cff(root, "3.5.0", date_released="2026-04-22T00:00:00Z")
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 1,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertIn("strict YYYY-MM-DD", result.stdout)
+
     def test_cff_date_within_window_passes(self) -> None:
         """A date-released within the ±7-day window of the CHANGELOG date
         (fixture CHANGELOG: 2026-04-22) passes."""
