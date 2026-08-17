@@ -610,6 +610,9 @@ def check_setup_docs() -> None:
     )
     check_relative_markdown_links("docs/SETUP.md")
     check_relative_markdown_links("docs/SETUP.zh-TW.md")
+    # #758 data-flow map: its outbound relative links (audit doc, SECURITY,
+    # THIRD_PARTY, cross_model_verification) must keep resolving.
+    check_relative_markdown_links("docs/DATA_FLOWS.md")
 
 
 def check_docx_contract() -> None:

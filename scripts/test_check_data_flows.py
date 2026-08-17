@@ -68,6 +68,11 @@ def fixture_repo(tmp_path: Path) -> Path:
     _write(tmp_path, "README.md", f"# Fixture\n\nSee {link}.\n")
     _write(tmp_path, "SECURITY.md", f"# Security\n\nMap: {link}.\n")
     _write(tmp_path, "THIRD_PARTY.md", f"# Third party\n\nMap: {link}.\n")
+    _write(
+        tmp_path,
+        "docs/SETUP.md",
+        "# Setup\n\nSee [DATA_FLOWS.md](DATA_FLOWS.md).\n",
+    )
     return tmp_path
 
 
@@ -110,10 +115,49 @@ def test_df1_string_mention_without_import_not_flagged(
     assert run_all_checks(fixture_repo) == []
 
 
-def test_df1_test_files_exempt(fixture_repo: Path) -> None:
-    # test_net_helper.py in the fixture already imports urllib.request and
-    # is not named in the doc; the baseline passing proves the exemption.
+def test_df1_exemption_is_name_based(fixture_repo: Path) -> None:
+    # The same network-importing body fires under a non-test_ name and stays
+    # quiet under the test_ name — proving the exemption is name-based, not
+    # content-based.
+    body = (fixture_repo / "scripts/test_net_helper.py").read_text(
+        encoding="utf-8"
+    )
+    assert run_all_checks(fixture_repo) == []  # test_ name: exempt
+    _write(fixture_repo, "scripts/net_helper.py", body)
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-1" in e and "net_helper.py" in e for e in errors)
+
+
+def test_df1_recursive_scan_reaches_subdirectories(fixture_repo: Path) -> None:
+    _write(
+        fixture_repo,
+        "scripts/verification_gate/sub_resolver.py",
+        "import urllib.request\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-1" in e and "sub_resolver.py" in e for e in errors)
+
+
+def test_df1_from_urllib_parse_only_not_flagged(fixture_repo: Path) -> None:
+    # pure_local.py imports urllib.parse only; adding the same idiom via
+    # `from urllib import parse` must also stay quiet.
+    _write(
+        fixture_repo,
+        "scripts/parse_only.py",
+        "from urllib import parse\nVALUE = parse.quote('x')\n",
+    )
     assert run_all_checks(fixture_repo) == []
+
+
+def test_df1_from_urllib_import_request_fires(fixture_repo: Path) -> None:
+    _write(
+        fixture_repo,
+        "scripts/idiom_resolver.py",
+        "from urllib import request\n\n\ndef go(url):\n"
+        "    return request.urlopen(url)\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-1" in e and "idiom_resolver.py" in e for e in errors)
 
 
 def test_df2_unnamed_curl_script_fires(fixture_repo: Path) -> None:
@@ -126,10 +170,19 @@ def test_df2_unnamed_curl_script_fires(fixture_repo: Path) -> None:
     assert any("DF-2" in e and "new_fetch.sh" in e for e in errors)
 
 
-def test_df2_commented_curl_not_flagged(fixture_repo: Path) -> None:
-    # no_net.sh in the fixture mentions curl only in a comment; baseline
-    # passing proves comments don't count.
+def test_df2_commented_curl_not_flagged_until_uncommented(
+    fixture_repo: Path,
+) -> None:
+    # no_net.sh mentions curl only in a comment (quiet); uncommenting the
+    # same invocation fires — proving the comment-stripping is load-bearing.
     assert run_all_checks(fixture_repo) == []
+    _write(
+        fixture_repo,
+        "scripts/no_net.sh",
+        "#!/bin/sh\ncurl -s https://example.invalid/z\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-2" in e and "no_net.sh" in e for e in errors)
 
 
 def test_df3_removed_readme_link_fires(fixture_repo: Path) -> None:
@@ -148,6 +201,12 @@ def test_df3_label_keeps_name_but_target_moves_fires(
     )
     errors = run_all_checks(fixture_repo)
     assert any("DF-3" in e and "SECURITY.md" in e for e in errors)
+
+
+def test_df3_setup_link_removed_fires(fixture_repo: Path) -> None:
+    _write(fixture_repo, "docs/SETUP.md", "# Setup\n\nNo link.\n")
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-3" in e and "SETUP.md" in e for e in errors)
 
 
 def test_df3_link_inside_fence_fires(fixture_repo: Path) -> None:

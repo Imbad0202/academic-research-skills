@@ -39,20 +39,38 @@ INBOUND_LINK_SURFACES = (
     Path("README.md"),
     Path("SECURITY.md"),
     Path("THIRD_PARTY.md"),
+    Path("docs/SETUP.md"),
 )
 
-# Direct network capability at the Python level. urllib.parse is NOT here on
-# purpose: URL string manipulation is not a network call.
-NETWORK_MODULES = {
+# Direct network capability at the Python level. The vocabulary is the
+# network subset of check_indirect_prompt_injection_no_call.py's
+# FORBIDDEN_IMPORTS (that lint's full set also bans process/loader modules
+# like subprocess/asyncio/importlib, which many scripts here use
+# legitimately — importing it wholesale would false-fire). Deliberate
+# deviations from the sibling set: bare `urllib` / `http` are replaced by
+# the dotted forms below (urllib.parse and http.HTTPStatus are not network
+# calls), and `ssl` is excluded (building a TLS context is not a data
+# flow).
+NETWORK_TOP_LEVEL = {
+    "aiohttp",
+    "anthropic",
+    "boto3",
+    "ftplib",
+    "grpc",
+    "httpx",
+    "openai",
+    "paramiko",
+    "requests",
+    "smtplib",
+    "socket",
+    "telnetlib",
+    "urllib3",
+    "websocket",
+    "websockets",
+}
+NETWORK_DOTTED = {
     "urllib.request",
     "http.client",
-    "socket",
-    "ssl",
-    "ftplib",
-    "smtplib",
-    "requests",
-    "httpx",
-    "aiohttp",
 }
 
 _LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
@@ -137,17 +155,25 @@ def _imported_modules(py_source: str) -> set[str]:
     return modules
 
 
+def _is_network_module(module: str) -> bool:
+    if module.split(".", 1)[0] in NETWORK_TOP_LEVEL:
+        return True
+    return any(
+        module == net or module.startswith(net + ".")
+        for net in NETWORK_DOTTED
+    )
+
+
 def _python_network_scripts(root: Path) -> list[Path]:
     hits: list[Path] = []
-    for py in sorted((root / "scripts").glob("*.py")):
-        if py.name.startswith("test_"):
+    # Recursive on purpose: scripts/verification_gate/,
+    # scripts/cross_model_verification/, scripts/adapters/ are exactly where
+    # a future resolver call would plausibly land.
+    for py in sorted((root / "scripts").rglob("*.py")):
+        if py.name.startswith("test_") or "tests" in py.parts:
             continue
         modules = _imported_modules(py.read_text(encoding="utf-8"))
-        if any(
-            m == net or m.startswith(net + ".")
-            for m in modules
-            for net in NETWORK_MODULES
-        ):
+        if any(_is_network_module(m) for m in modules):
             hits.append(py)
     return hits
 

@@ -61,6 +61,8 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 **👉 [docs/SETUP.md](docs/SETUP.md)** — 完全ガイド: Claude Code インストール、API キー設定、DOCX/PDF 用のオプション Pandoc/tectonic、クロスモデル検証（`ARS_CROSS_MODEL`）、6 つのインストール方法（Plugin、プロジェクトスキル、グローバルスキル、claude.ai Project、リポジトリクローン、Claude Science インポート）。
 
+**👉 [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)** — どのデータがマシンの外に出るか（書誌 resolver、明示的な同意を要するオプションのクロスモデル呼び出し、更新チェック）、ローカルキャッシュの内容と保持期間、各経路の無効化方法。（英語）
+
 **Claude Science をお使いですか？** 4 つのスキルは直接インポートできます: **Skills → Import from GitHub** で `https://github.com/Imbad0202/academic-research-skills` を貼り付け、**Preview** → **Import 4 skills**（本リポジトリ v3.14.0+ が必要 — インポーターは marketplace manifest に明示されたスキルパスを読み取ります）。インポートはその時点のスナップショットです: ARS の更新後は再インポートしてください。インポートされたスキルは ARS の方法論（研究・執筆・査読プロトコル）を伝えます。Claude Code 固有の仕組み — slash commands、hooks、サブエージェントオーケストレーション — は移行されません。詳細は [docs/SETUP.md](docs/SETUP.md) の Method 5 を参照。
 
 **Pi を使用していますか？** `pi install git:github.com/Imbad0202/academic-research-skills` で、リポジトリ内のコミュニティ管理 wrapper をインストールできます。元の ARS コンテンツを正本として維持し、Pi 固有のオーケストレーションと hook の制限を明記しています。詳細は [`pi/README.md`](pi/README.md) を参照してください。

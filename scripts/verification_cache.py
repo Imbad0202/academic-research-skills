@@ -30,6 +30,8 @@ from pathlib import Path
 from typing import Any
 
 # Spec OQ-1: 90-day window is a guess, deferred for empirical tuning.
+# Also documented user-facing in docs/DATA_FLOWS.md and docs/SETUP.md —
+# update both when tuning.
 _TTL_DAYS = 90
 
 # #541 staleness advisory (Ren et al. arXiv:2607.13104 §6.2.3 "scheduled review
@@ -38,6 +40,7 @@ _TTL_DAYS = 90
 # is visible exactly where it is used. 0 disables the advisory. Advisory-only —
 # never a gate input.
 _STALE_ADVISORY_ENV = "ARS_CACHE_STALE_ADVISORY_DAYS"
+# Default also documented in docs/DATA_FLOWS.md — update both when tuning.
 _STALE_ADVISORY_DEFAULT_DAYS = 30
 
 
