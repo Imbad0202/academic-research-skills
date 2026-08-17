@@ -80,7 +80,12 @@ def _write(tmp_path: Path, data) -> Path:
 
 
 def _errors_for(tmp_path: Path, data, today: datetime.date = TODAY) -> list[str]:
-    return run(_write(tmp_path, data), check_view=False, today=today)
+    return run(
+        _write(tmp_path, data),
+        check_view=False,
+        today=today,
+        inventory_lock=False,
+    )
 
 
 def _assert_fires(errors: list[str], fragment: str) -> None:
@@ -381,6 +386,107 @@ def test_report_binding_outside_eval_ref_fires(tmp_path):
     _assert_fires(_errors_for(tmp_path, data), "M11")
 
 
+# ---------- round-2 hardening witnesses ----------
+
+
+def test_eval_ref_must_be_repo_directory(tmp_path):
+    """A file (or anything but a contained suite directory) is refused."""
+    data = _valid_matrix()
+    _measured_without_reports(data)
+    data["rows"][0]["behavioral_evidence"]["eval_ref"] = "README.md"
+    _assert_fires(_errors_for(tmp_path, data), "M4")
+
+
+def test_eval_ref_escape_fires(tmp_path):
+    data = _valid_matrix()
+    _measured_without_reports(data)
+    data["rows"][0]["behavioral_evidence"]["eval_ref"] = "../"
+    _assert_fires(_errors_for(tmp_path, data), "M4")
+
+
+def test_report_binding_must_match_report_pattern(tmp_path):
+    """Arbitrary same-directory JSON cannot stand in for a measurement report."""
+    data = _valid_matrix()
+    data["rows"][0]["behavioral_evidence"]["measurement_report"] = (
+        "evals/heldout/revision_claim_drift/heldout_set.json"
+    )
+    _assert_fires(_errors_for(tmp_path, data), "M11")
+
+
+def test_future_measured_at_fires(tmp_path):
+    data = _valid_matrix()
+    _measured_without_reports(data)
+    data["rows"][0]["behavioral_evidence"]["measured_at"] = "2099-01-01"
+    _assert_fires(_errors_for(tmp_path, data), "M4")
+
+
+def test_bool_stale_after_days_fires(tmp_path):
+    data = _valid_matrix()
+    data["stale_after_days"] = True
+    _assert_fires(_errors_for(tmp_path, data), "M1")
+
+
+def test_non_object_behavioral_evidence_reports_not_crashes(tmp_path):
+    data = _valid_matrix()
+    data["rows"][1]["behavioral_evidence"] = "measured, trust me"
+    _assert_fires(_errors_for(tmp_path, data), "M4")
+
+
+def test_never_licensed_stem_fires_even_on_measured_row(tmp_path):
+    data = _valid_matrix()
+    data["rows"][0]["max_licensed_claim"] = (
+        "Guaranteed state-of-the-art performance across every model."
+    )
+    _assert_fires(_errors_for(tmp_path, data), "M6")
+
+
+def test_percentage_claim_on_unmeasured_row_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][1]["max_licensed_claim"] = "Reduces errors by 99 percent."
+    _assert_fires(_errors_for(tmp_path, data), "M6")
+
+
+def test_percentage_claim_on_measured_row_passes(tmp_path):
+    data = _valid_matrix()
+    data["rows"][0]["max_licensed_claim"] = (
+        "On the recorded set only, the miss rate was 9.4%."
+    )
+    assert _errors_for(tmp_path, data) == []
+
+
+def test_render_includes_anchors():
+    data = _valid_matrix()
+    data["rows"][0]["claim_anchors"] = [
+        {"file": "README.md", "anchor": "Academic Research Skills"}
+    ]
+    assert "Academic Research Skills" in render(data)
+
+
+# ---------- shipped-inventory locks (D5 analog) ----------
+
+
+def test_shipped_row_inventory_is_locked(tmp_path):
+    """Silently deleting a shipped row fails even if its family stays covered."""
+    shipped = json.loads(DEFAULT_MATRIX.read_text(encoding="utf-8"))
+    victim = next(
+        r["row_id"]
+        for r in shipped["rows"]
+        if sum(x["task_family"] == r["task_family"] for x in shipped["rows"]) > 1
+    )
+    shipped["rows"] = [r for r in shipped["rows"] if r["row_id"] != victim]
+    errors = run(_write(tmp_path, shipped), check_view=False, today=TODAY)
+    assert any("row inventory" in e for e in errors)
+
+
+def test_shipped_anchor_minimums_are_locked(tmp_path):
+    """Deleting a shipped row's claim anchors fails until the lock is edited."""
+    shipped = json.loads(DEFAULT_MATRIX.read_text(encoding="utf-8"))
+    anchored = next(r for r in shipped["rows"] if r.get("claim_anchors"))
+    del anchored["claim_anchors"]
+    errors = run(_write(tmp_path, shipped), check_view=False, today=TODAY)
+    assert any("anchor" in e and anchored["row_id"] in e for e in errors)
+
+
 # ---------- M12: falsifiable conformance pins ----------
 
 
@@ -465,7 +571,11 @@ def test_view_drift_fires(tmp_path):
     view_path = tmp_path / "view.md"
     view_path.write_text(render(data) + "tampered\n", encoding="utf-8")
     errors = run(
-        matrix_path, check_view=True, view_path=view_path, today=TODAY
+        matrix_path,
+        check_view=True,
+        view_path=view_path,
+        today=TODAY,
+        inventory_lock=False,
     )
     _assert_fires(errors, "M10")
 
@@ -475,7 +585,16 @@ def test_view_in_sync_passes(tmp_path):
     matrix_path = _write(tmp_path, data)
     view_path = tmp_path / "view.md"
     view_path.write_text(render(data), encoding="utf-8")
-    assert run(matrix_path, check_view=True, view_path=view_path, today=TODAY) == []
+    assert (
+        run(
+            matrix_path,
+            check_view=True,
+            view_path=view_path,
+            today=TODAY,
+            inventory_lock=False,
+        )
+        == []
+    )
 
 
 def test_render_is_deterministic():

@@ -301,16 +301,16 @@
     {
       "row_id": "revision.claim_drift_guard",
       "task_family": "revision",
-      "mechanism": "Revision claim-drift guards (#569/#570): claim-strength ladder advisory (Phase E6) + deterministic token conservation, re-measured post-guard (#652)",
+      "mechanism": "Revision claim-drift guard text (#569/#570 line): a guard block condensed from the shipped draft_writer_agent revision-mode ladder rules plus a token-conservation line, measured in-window (#652); the shipped pipeline wiring and the deterministic check_revision_token_conservation.py checker are the production carriers",
       "mechanism_status": "IMPLEMENTED",
       "deterministic_conformance": "CI_GATED",
       "behavioral_evidence": {
         "status": "MEASURED",
         "eval_ref": "evals/heldout/revision_claim_drift",
         "model": "claude-fable-5 subject; codex gpt-5.6-sol judge",
-        "population": "8-item revision-pressure set + 2 clean controls, en",
+        "population": "8-item revision set (6 pressure items + 2 clean controls), en",
         "measured_at": "2026-08-07",
-        "result_summary": "guarded arm claim-strength/hedge drift 1/16 item-replicates vs 7/16 unguarded in-window; unauthorized numeric/citation drift 0/16 guarded; drift not eliminated, and baseline-vs-post comparison is descriptive only (no causal claim)",
+        "result_summary": "guarded arm claim-strength/hedge drift 1/16 item-replicates vs 7/16 unguarded in-window; unauthorized numeric/citation drift 0/16 guarded; drift not eliminated; the row measures the condensed guard-block prompt, not the shipped pipeline path, and baseline-vs-post comparison is descriptive only (no causal claim)",
         "measurement_report": "evals/heldout/revision_claim_drift/measurement-2026-08-07.json"
       },
       "external_outcome_evidence": "none",
@@ -321,7 +321,7 @@
       "transport_limits": [
         "one subject model, one judge model, en-only pressure set"
       ],
-      "max_licensed_claim": "In the recorded window, the guarded arm showed 1/16 drift against 7/16 unguarded; the guard does not eliminate drift and no causal or cross-model claim is made.",
+      "max_licensed_claim": "In the recorded window, the condensed guard-block prompt showed 1/16 drift against 7/16 unguarded; no claim transfers to the shipped pipeline wiring as-wired, and no causal or cross-model claim is made.",
       "next_required_evaluation": "#679 subject-context-isolation re-run producing a causally interpretable comparison row",
       "conformance_pinned_by": [
         "scripts/test_check_revision_token_conservation.py"

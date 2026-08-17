@@ -128,15 +128,46 @@ _EVIDENCE_FIELDS = frozenset(
 )
 # Conservative effectiveness stems: forbidden in claim-bearing prose unless the
 # row's behavioral evidence is MEASURED/MIXED (which records what was measured).
-_OVERCLAIM_STEMS = (
-    "improv",
-    "outperform",
+# Never licensed by any recorded evaluation, on any row.
+_NEVER_LICENSED_STEMS = (
     "guarantee",
     "proven",
     "state-of-the-art",
     "state of the art",
 )
+# Licensed only when the row's behavioral evidence is MEASURED/MIXED.
+_MEASURED_LICENSED_STEMS = (
+    "improv",
+    "outperform",
+)
+_PERCENT_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:%|percent)")
+_CLAIM_FIELDS = ("max_licensed_claim", "mechanism", "external_outcome_evidence")
 _MIN_ANCHOR_LEN = 16
+_REPORT_NAME_RE = re.compile(r"^measurement-.+\.json$")
+
+# Shipped-inventory locks (degradation-registry D5 convention): silently
+# deleting a shipped row or a shipped row's claim anchors cannot pass —
+# adding/removing requires touching this lint in the same commit.
+_EXPECTED_ROW_IDS = frozenset({
+    "rq_formation.wording_advisory",
+    "rq_formation.ideation_diversity",
+    "retrieval.citation_existence_gate",
+    "retrieval.claim_standing_probe",
+    "methodology.blueprint",
+    "synthesis.cross_source",
+    "drafting.citation_emission",
+    "integrity_check.claim_verification",
+    "integrity_check.tortured_phrase_screen",
+    "review.seeded_defect_panel",
+    "review.calibration",
+    "revision.claim_drift_guard",
+    "finalization.format_and_disclosure",
+})
+_EXPECTED_ANCHOR_MINIMUMS = {
+    "rq_formation.wording_advisory": 1,
+    "retrieval.citation_existence_gate": 1,
+    "revision.claim_drift_guard": 1,
+}
 _PIN_RE = re.compile(r"^(?P<path>[^:]+)(::(?P<func>[A-Za-z_][A-Za-z0-9_]*))?$")
 
 
@@ -159,9 +190,10 @@ def _load(path: Path) -> dict:
     return data
 
 
-@lru_cache(maxsize=None)
-def _read_repo_file(relative: str) -> str | None:
-    """Containment-checked, memoized repo-relative read (None = unreadable)."""
+def _contained(relative) -> Path | None:
+    """Resolve a repo-relative path, refusing absolute paths and escapes."""
+    if not isinstance(relative, str) or not relative.strip():
+        return None
     if relative.startswith(("/", "\\")) or ":" in relative.split("/")[0]:
         return None
     target = (REPO_ROOT / relative).resolve()
@@ -169,7 +201,14 @@ def _read_repo_file(relative: str) -> str | None:
         target.relative_to(REPO_ROOT)
     except ValueError:
         return None
-    if not target.is_file():
+    return target
+
+
+@lru_cache(maxsize=None)
+def _read_repo_file(relative: str) -> str | None:
+    """Containment-checked, memoized repo-relative read (None = unreadable)."""
+    target = _contained(relative)
+    if target is None or not target.is_file():
         return None
     return target.read_text(encoding="utf-8")
 
@@ -203,9 +242,11 @@ def _check_behavioral(row_id: str, ev, today: datetime.date,
         return
     eval_ref = ev.get("eval_ref")
     if eval_ref is not None:
-        if not _nonempty_str(eval_ref) or not (REPO_ROOT / eval_ref).exists():
+        resolved = _contained(eval_ref)
+        if resolved is None or not resolved.is_dir():
             errors.append(
-                f"{prefix} eval_ref {eval_ref!r} does not exist in the repo"
+                f"{prefix} eval_ref {eval_ref!r} must be an existing "
+                "repo-contained suite directory"
             )
             eval_ref = None
     measured = status in ("MEASURED", "MIXED")
@@ -226,6 +267,12 @@ def _check_behavioral(row_id: str, ev, today: datetime.date,
                 errors.append(
                     f"{prefix} measured_at {measured_at!r} is not an ISO date"
                 )
+        if measured_date is not None and measured_date > today:
+            errors.append(
+                f"{prefix} measured_at {measured_date.isoformat()} is in the "
+                "future"
+            )
+            measured_date = None
         if measured_date is not None and stale_after_days is not None:
             age = (today - measured_date).days
             if age > stale_after_days and not _nonempty_str(ev.get("staleness_note")):
@@ -273,6 +320,12 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
         errors.append(f"{prefix} measurement_report must be a non-empty path")
         return
     report_path = REPO_ROOT / binding
+    if not _REPORT_NAME_RE.match(report_path.name):
+        errors.append(
+            f"{prefix} measurement_report {binding!r} must be a "
+            "measurement-*.json report file"
+        )
+        return
     if suite_dir is None or report_path.parent != suite_dir:
         errors.append(
             f"{prefix} measurement_report {binding!r} must live directly inside "
@@ -296,7 +349,11 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
     for sibling in published:
         try:
             sibling_report = json.loads(sibling.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
+            errors.append(
+                f"{prefix} sibling report {sibling.name!r} is unreadable "
+                f"({exc}) — supersession cannot be assessed"
+            )
             continue
         sibling_date = sibling_report.get("measurement_date") or sibling_report.get(
             "measured_at"
@@ -315,27 +372,42 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
         )
 
 
+def _status(row) -> str | None:
+    ev = row.get("behavioral_evidence")
+    return ev.get("status") if isinstance(ev, dict) else None
+
+
 def _check_claim_language(row, errors: list[str]) -> None:
     row_id = row.get("row_id", "?")
-    claim = row.get("max_licensed_claim")
-    if not _nonempty_str(claim):
+    if not _nonempty_str(row.get("max_licensed_claim")):
         errors.append(f"M6 row {row_id}: max_licensed_claim must be non-empty")
-        claim = ""
-    status = (row.get("behavioral_evidence") or {}).get("status")
-    if status in ("MEASURED", "MIXED"):
-        return
-    for field in ("max_licensed_claim", "mechanism", "external_outcome_evidence"):
+    status = _status(row)
+    measured = status in ("MEASURED", "MIXED")
+    for field in _CLAIM_FIELDS:
         value = row.get(field)
         if not isinstance(value, str):
             continue
         lowered = value.lower()
-        for stem in _OVERCLAIM_STEMS:
+        for stem in _NEVER_LICENSED_STEMS:
+            if stem in lowered:
+                errors.append(
+                    f"M6 row {row_id}: {field} contains stem {stem!r}, which "
+                    "no recorded evaluation licenses on any row"
+                )
+        if measured:
+            continue
+        for stem in _MEASURED_LICENSED_STEMS:
             if stem in lowered:
                 errors.append(
                     f"M6 row {row_id}: {field} contains effectiveness stem "
                     f"{stem!r} but behavioral evidence is {status}, not "
                     "MEASURED/MIXED"
                 )
+        if field != "mechanism" and _PERCENT_RE.search(lowered):
+            errors.append(
+                f"M6 row {row_id}: {field} states a percentage but behavioral "
+                f"evidence is {status}, not MEASURED/MIXED"
+            )
 
 
 def _check_anchors(row, errors: list[str]) -> None:
@@ -427,6 +499,7 @@ def run(
     check_view: bool = True,
     view_path: Path | None = None,
     today: datetime.date | None = None,
+    inventory_lock: bool = True,
 ) -> list[str]:
     errors: list[str] = []
     today = today or datetime.date.today()
@@ -447,7 +520,7 @@ def run(
             f"got {data.get('schema_version')!r}"
         )
     stale_after_days = data.get("stale_after_days")
-    if not isinstance(stale_after_days, int) or stale_after_days <= 0:
+    if type(stale_after_days) is not int or stale_after_days <= 0:
         errors.append("M1: stale_after_days must be a positive integer")
         stale_after_days = None  # skip M8 rather than invent a policy
     if not shape_ok:
@@ -519,7 +592,7 @@ def run(
         _check_anchors(row, errors)
         _check_conformance_pins(row, errors)
 
-        status = (row.get("behavioral_evidence") or {}).get("status")
+        status = _status(row)
         if status != "OUT_OF_SCOPE" and not _nonempty_str(
             row.get("next_required_evaluation")
         ):
@@ -533,6 +606,27 @@ def run(
         errors.append(
             f"M5: task families with no row: {sorted(uncovered)}"
         )
+
+    if inventory_lock:
+        missing_rows = _EXPECTED_ROW_IDS - seen_ids
+        if missing_rows:
+            errors.append(
+                "M13: shipped row inventory drift — rows missing: "
+                f"{sorted(missing_rows)} (removing a row requires editing "
+                "_EXPECTED_ROW_IDS in the same commit)"
+            )
+        anchors_by_id = {
+            r.get("row_id"): len(r.get("claim_anchors") or [])
+            for r in rows
+            if isinstance(r, dict)
+        }
+        for row_id, minimum in _EXPECTED_ANCHOR_MINIMUMS.items():
+            if anchors_by_id.get(row_id, 0) < minimum:
+                errors.append(
+                    f"M13 row {row_id}: shipped claim-anchor minimum is "
+                    f"{minimum}; removing an anchor requires editing "
+                    "_EXPECTED_ANCHOR_MINIMUMS in the same commit"
+                )
 
     if check_view:
         target = view_path or DEFAULT_VIEW
@@ -617,6 +711,15 @@ def render(data: dict) -> str:
                 lines.append(
                     "- **Transport limits**: "
                     + "; ".join(_flat(x) for x in row["transport_limits"])
+                )
+            if row.get("claim_anchors"):
+                lines.append(
+                    "- **Claim anchors**: "
+                    + "; ".join(
+                        f"{a.get('file')} — \"{_flat(a.get('anchor', ''))}\""
+                        for a in row["claim_anchors"]
+                        if isinstance(a, dict)
+                    )
                 )
             lines.append(
                 "- **Maximum licensed claim**: "
