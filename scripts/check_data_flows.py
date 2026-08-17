@@ -112,6 +112,8 @@ def _invokes_curl(code: str) -> bool:
                 continue  # VAR=value prefix before the command word
             if token in _SHELL_CONTROL_TOKENS:
                 continue  # control word — the command follows
+            if token.startswith("-"):
+                continue  # an option to a control word (`time -p curl …`)
             head = token
             break
         if head is not None and head.rsplit("/", 1)[-1] == "curl":

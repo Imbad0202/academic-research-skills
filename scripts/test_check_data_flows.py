@@ -309,6 +309,18 @@ def test_df2_curl_behind_control_keywords_fires(fixture_repo: Path) -> None:
     assert any("DF-2" in e and "cond_fetch.sh" in e for e in errors)
 
 
+def test_df2_option_bearing_control_word_fires(fixture_repo: Path) -> None:
+    # `time -p curl …` — the option token must not shadow the command head
+    # (codex R5 finding).
+    _write(
+        fixture_repo,
+        "scripts/timed_fetch.sh",
+        "#!/bin/sh\ntime -p curl -s https://example.invalid/t\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-2" in e and "timed_fetch.sh" in e for e in errors)
+
+
 def test_df2_control_keywords_alone_not_flagged(fixture_repo: Path) -> None:
     _write(
         fixture_repo,
