@@ -4,7 +4,7 @@
     "name": "Cheng-I Wu",
     "url": "https://github.com/Imbad0202"
   },
-  "description": "Academic Research Skills — production-grade research, writing, peer review, and pipeline orchestration for Claude Code.",
+  "description": "Academic Research Skills — contract-audited research, writing, peer review, and pipeline orchestration for Claude Code.",
   "plugins": [
     {
       "name": "academic-research-skills",

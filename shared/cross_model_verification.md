@@ -33,7 +33,7 @@ reviewer/DA handoff and must not call this citation adapter with reviewer data.
 
 A stress test of 68 AI-generated citations found 31% had problems — and all passed three rounds of same-model integrity checks. The root cause: the verifying AI and the generating AI share the same training data distribution, so they share the same blind spots. A different model (trained on overlapping but not identical data, with different RLHF tuning) can catch errors that the primary model systematically misses.
 
-**What it improves:** Error rate reduction (estimated 31% → ~5-10%). Different models catch different types of hallucination patterns.
+**What it improves:** Different models catch different types of hallucination patterns. The post-verification error rate has never been measured — the residual-rate hypothesis (that cross-model checks cut the 31% above to single digits) is unvalidated.
 
 **What it doesn't solve:** Frame-lock (all LLMs share most training data), sycophancy (all RLHF models have this tendency). These are degree improvements, not kind improvements.
 

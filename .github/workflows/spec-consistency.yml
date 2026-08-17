@@ -166,6 +166,11 @@ jobs:
           PYTHONPATH: scripts
         run: python3 scripts/check_version_consistency.py
 
+      - name: Check distribution-surface claim discipline (#753)
+        # The pytest companion `test_check_distribution_surface_claims.py`
+        # runs via the unified manifest.
+        run: python3 scripts/check_distribution_surface_claims.py
+
       - name: Check SETUP cross-model example parity (#491)
         # The pytest companion `test_check_setup_cross_model_parity.py`
         # runs via the unified manifest (and also under pytest.yml's

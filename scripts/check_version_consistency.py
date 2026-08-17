@@ -20,7 +20,8 @@ Invariants enforced:
   7. Every version-bearing H2 heading in docs/<name>.md has a matching
      version-bearing H2 (same version) in docs/<name>.zh-TW.md and vice versa.
      Plain headings may differ — only version TAGS must stay in lockstep.
-  8. The plugin.json description's "N-agent" claim (when present) equals the
+  8. The plugin.json description's agent-count claim (when present; both the
+     legacy "N-agent" and the #753 "N prompt roles" spellings) equals the
      number of unique *_agent.md files in the tree (#414: the advertised
      number had silently drifted from the tree). The plugin-root agents/
      mirror dir is excluded from the count — real byte-identical copies of
@@ -99,8 +100,11 @@ H2_VERSION_RE = re.compile(r"(?<![\w.])v" + _VSEG + r"(?![\d.\-A-Za-z])")
 
 NON_VERSION_CHANGELOG_TOKENS = frozenset({"Unreleased"})
 
-# Invariant 8: the outward-facing agent-count claim, e.g. "38-agent ensemble".
-AGENT_CLAIM_RE = re.compile(r"(\d+)-agent")
+# Invariant 8: the outward-facing agent-count claim. Two licensed spellings:
+# the legacy "38-agent" form and the #753 evidence-aligned "39 prompt roles"
+# form. Both bind the stated number to the tree's *_agent.md count, so a
+# reworded claim surface cannot detach the number from the inventory.
+AGENT_CLAIM_RE = re.compile(r"(\d+)(?:-agent|\s+prompt\s+roles?)")
 
 # Invariant 9: minimum body length (chars, after strip) for the latest entry.
 CHANGELOG_BODY_MIN_CHARS = 100
@@ -642,15 +646,17 @@ def _check_key_additions(
 
 def _check_agent_count_claim(root: Path) -> list[str]:
     """Invariant 8 (#414): when plugin.json's description advertises an
-    "N-agent" count, N must equal the number of unique *_agent.md files in
-    the tree. The plugin-root agents/ mirror dir is excluded — its files are
+    agent count ("N-agent" or, since #753, "N prompt roles"), every such N
+    must equal the number of unique *_agent.md files in the tree. The
+    plugin-root agents/ mirror dir is excluded — its files are
     byte-identical aliases of deep-research agents (real copies since #413,
     symlinks before; check_agents_mirror_sync.py pins the byte-equality), so
     counting them would double-count. resolve() additionally dedups any
     remaining symlink alias. Missing/malformed manifest or a description
-    without a count claim is NOT an invariant-8 error — the manifest problems
-    are invariant 4's to report, and the claim is optional (only a stated
-    number must be true)."""
+    without a count claim is NOT an invariant-8 error — the manifest
+    problems are invariant 4's to report, and here the claim is optional
+    (only a stated number must be true; check_distribution_surface_claims
+    D4 is where the presence of a bindable count fails closed)."""
     plugin_json = root / ".claude-plugin" / "plugin.json"
     if not plugin_json.is_file():
         return []
@@ -661,23 +667,22 @@ def _check_agent_count_claim(root: Path) -> list[str]:
     description = data.get("description")
     if not isinstance(description, str):
         return []
-    m = AGENT_CLAIM_RE.search(description)
-    if m is None:
+    claims = [int(m.group(1)) for m in AGENT_CLAIM_RE.finditer(description)]
+    if not claims:
         return []
-    claimed = int(m.group(1))
     actual = len({
         p.resolve()
         for p in root.rglob("*_agent.md")
         if ".git" not in p.parts
         and p.relative_to(root).parts[0] != "agents"  # plugin-root mirror = aliases (#413)
     })
-    if claimed != actual:
-        return [
-            f"{plugin_json}: description claims {claimed}-agent but the tree "
-            f"has {actual} unique *_agent.md files (agents/ mirror aliases "
-            f"excluded, symlinks deduplicated)"
-        ]
-    return []
+    return [
+        f"{plugin_json}: description claims an agent count of {claimed} "
+        f"but the tree has {actual} unique *_agent.md files (agents/ "
+        f"mirror aliases excluded, symlinks deduplicated)"
+        for claimed in claims
+        if claimed != actual
+    ]
 
 
 def _check_citation_surfaces(

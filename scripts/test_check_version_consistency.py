@@ -833,32 +833,49 @@ class TestAgentCountClaim(unittest.TestCase):
                 f"# {name}\n", encoding="utf-8"
             )
 
-    def test_agent_claim_drift_fails(self) -> None:
+    def _claim_case(self, description: str) -> "subprocess.CompletedProcess":
+        """Run the lint against a two-agent fixture tree whose plugin.json
+        carries the given description."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_aligned_fixture(root)
-            _write_plugin_manifests(
-                root, "3.5.0", description="fixture, 3-agent ensemble, more"
-            )
+            _write_plugin_manifests(root, "3.5.0", description=description)
             self._write_agents(root, ["alpha", "beta"])
-            result = _run(root)
-            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
-            self.assertIn("3-agent", result.stdout)
-            self.assertIn("2", result.stdout)
+            return _run(root)
+
+    def test_agent_claim_drift_fails(self) -> None:
+        result = self._claim_case("fixture, 3-agent ensemble, more")
+        self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+        self.assertIn("agent count of 3", result.stdout)
+        self.assertIn("2", result.stdout)
+
+    def test_prompt_roles_claim_drift_fails(self) -> None:
+        """#753: the "N prompt roles" spelling binds to the same tree count
+        as the legacy "N-agent" spelling."""
+        result = self._claim_case("fixture, 3 prompt roles, more")
+        self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+        self.assertIn("agent count of 3", result.stdout)
+
+    def test_prompt_roles_claim_matching_passes(self) -> None:
+        result = self._claim_case("fixture, 2 prompt roles, more")
+        self.assertEqual(
+            result.returncode, 0,
+            msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+        )
 
     def test_agent_claim_matching_passes(self) -> None:
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            _write_aligned_fixture(root)
-            _write_plugin_manifests(
-                root, "3.5.0", description="fixture, 2-agent ensemble, more"
-            )
-            self._write_agents(root, ["alpha", "beta"])
-            result = _run(root)
-            self.assertEqual(
-                result.returncode, 0,
-                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
-            )
+        result = self._claim_case("fixture, 2-agent ensemble, more")
+        self.assertEqual(
+            result.returncode, 0,
+            msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+        )
+
+    def test_every_count_token_checked_not_just_first(self) -> None:
+        """#753: finditer semantics — a correct first token cannot shadow a
+        drifted second one."""
+        result = self._claim_case("fixture, 2-agent core, 5 prompt roles")
+        self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+        self.assertIn("agent count of 5", result.stdout)
 
     def test_agent_claim_symlink_alias_not_double_counted(self) -> None:
         """Legacy/transition pin: a symlink alias in the plugin-root agents/

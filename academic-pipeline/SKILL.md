@@ -339,9 +339,9 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 
 Stage 2.5 (pre-review) and Stage 4.5 (post-revision) verification. 5-phase protocol: references → citation context → statistical data → originality → claims.
 
-⚠️ **IRON RULE**: Stage 4.5 must PASS with zero issues to proceed to Stage 5. Stage 4.5 performs a fresh from-scratch pass without relying on Stage 2.5 conclusions; this is not a claim of independent error processes.
+⚠️ **IRON RULE**: Stage 4.5 must reach a recorded terminal resolution before Stage 5: PASS, or — after the integrity FAIL loop is exhausted — an explicit user decision on every unresolved item, recorded with reasoning (see `shared/compliance_checkpoint_protocol.md`). Unresolved items are never silently dropped. Stage 4.5 performs a fresh from-scratch pass without relying on Stage 2.5 conclusions; this is not a claim of independent error processes.
 
-⚠️ **IRON RULE (v3.2)**: Both Stage 2.5 and Stage 4.5 must also run the **AI Research Failure Mode Checklist** — a 7-mode taxonomy extending the citation hallucination checks into implementation bugs, hallucinated results, shortcut reliance, bug-as-insight, methodology fabrication, and pipeline-level frame-lock. If any of the 7 modes is `SUSPECTED`, or if Modes 1/3/5/6 are `INSUFFICIENT EVIDENCE`, the pipeline **blocks** and the user must acknowledge (confirm / override with reasoning / revise) before the pipeline proceeds. There is no `--no-block` escape hatch. Stage 6 PROCESS SUMMARY then reports the full failure-mode audit log as part of the AI Self-Reflection Report.
+⚠️ **IRON RULE (v3.2)**: Both Stage 2.5 and Stage 4.5 must also run the **AI Research Failure Mode Checklist** — a 7-mode taxonomy extending the citation hallucination checks into implementation bugs, hallucinated results, shortcut reliance, bug-as-insight, methodology fabrication, and pipeline-level frame-lock. If any of the 7 modes is `SUSPECTED`, or if Modes 1/3/5/6 are `INSUFFICIENT EVIDENCE`, the pipeline **blocks** and the user must acknowledge (confirm / override with reasoning / revise) before the pipeline proceeds. No configuration flag silences this block; the only path past it is the recorded user acknowledgment above — a trust-based control with an audit trail. Stage 6 PROCESS SUMMARY then reports the full failure-mode audit log as part of the AI Self-Reflection Report.
 
 > See `references/integrity_review_protocol.md` for the 5-phase citation/claim verification procedures.
 > See `references/ai_research_failure_modes.md` for the 7-mode AI research failure checklist and block/override logic.
@@ -535,7 +535,7 @@ Explicit prohibitions to prevent common failure modes:
 | 5 | **Silently dropping reviewer concerns** | Revision addresses 8 of 10 concerns and hopes nobody notices | The R&R tracking table must account for every concern with explicit status |
 | 6 | **Re-verifying only known issues at Stage 4.5** | Final integrity check only re-checks Stage 2.5 findings | Stage 4.5 must run a fresh from-scratch pass; revision may introduce new issues |
 | 7 | **Inflating Collaboration Quality scores** | Giving 90/100 to avoid awkward self-criticism | Honesty first: no inflation, no pleasantries; cite specific evidence for every score |
-| 8 | **Bypassing the Failure Mode Checklist block** (v3.2) | "The 7-mode checklist is new, let's skip it this run" | Stage 2.5/4.5 Failure Mode Checklist is MANDATORY and BLOCKING; no `--no-block` flag exists; overrides require user reasoning recorded for Stage 6 |
+| 8 | **Bypassing the Failure Mode Checklist block** (v3.2) | "The 7-mode checklist is new, let's skip it this run" | Stage 2.5/4.5 Failure Mode Checklist is MANDATORY and BLOCKING; there is no unrecorded bypass — every override requires user reasoning recorded for Stage 6 |
 
 ---
 
@@ -548,7 +548,7 @@ Explicit prohibitions to prevent common failure modes:
 | Material handoff | Stage-to-stage handoff materials are complete and correctly formatted |
 | State tracking | Pipeline state updated in real time; Progress Dashboard accurate |
 | **Mandatory checkpoint** | **User confirmation required after each stage completion** |
-| **Mandatory integrity check** | **Stage 2.5 and 4.5 cannot be skipped, must PASS** |
+| **Mandatory integrity check** | **Stage 2.5 and 4.5 always run; continuation past a non-PASS result requires an explicit user decision with recorded reasoning** |
 | **Mandatory failure mode checklist** (v3.2) | **Stage 2.5 and 4.5 must run the 7-mode AI research failure checklist; suspected failures block; overrides require user reasoning** |
 | No overstepping | ⚠️ IRON RULE: Orchestrator does not perform substantive research/writing/reviewing, only dispatching |
 | No forcing | ⚠️ IRON RULE: User can pause or exit pipeline at any time (but cannot skip integrity checks) |
