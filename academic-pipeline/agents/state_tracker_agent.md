@@ -485,12 +485,12 @@ Check whether prerequisite materials for entering the specified stage are availa
 | Stage 1 | None (can start from scratch) | User-provided topic/direction |
 | Stage 2 | None (but Stage 1 output recommended) | RQ Brief, Methodology Blueprint, Bibliography, Synthesis |
 | Stage 2.5 | Paper Draft | -- |
-| Stage 3 | **Verified Paper Draft + Integrity Report (Pre)** | -- |
+| Stage 3 | **Verified Paper Draft + Integrity Report (Pre)** — or, on a recorded Integrity Check FAIL Loop continuation, the Stage 2.5 draft + Integrity Report (Pre) carrying the partially-unverified warning | -- |
 | Stage 4 | Review Reports + Revision Roadmap | Paper Draft |
 | Stage 3' | Revised Draft + hard-required Original pre-revision Draft + Round-1 Revision Roadmap + exact author-adjudication sidecar + fully replayed Revision-Evidence Bundle (current contract re-review; not required for an explicitly requested fresh full review) | Response to Reviewers; Editorial Decision Letter; Round-1 findings; exact ordered apply report/patch pairs matching the bundle projection; Round-1 Reviewer Configuration Cards. Missing any current hard-required artifact or a mismatched pair is `manifest_incomplete`, not a warning-only degradation. |
 | Stage 4' | Re-Review Report (Decision: Major) | Revised Draft |
 | Stage 4.5 | Revised Draft or Re-Revised Draft | -- |
-| Stage 5 | **Integrity Report (Final) — verdict: PASS** | -- |
+| Stage 5 | **Integrity Report (Final) — verdict: PASS, or FAIL with a recorded Integrity Check FAIL Loop resolution** | -- |
 | Stage 6 | None (Final Paper already delivered at Stage 5) | Pipeline state history + dialogue_log_ref ranges |
 
 **Return format:**
