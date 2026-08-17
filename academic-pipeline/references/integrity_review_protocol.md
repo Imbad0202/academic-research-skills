@@ -41,7 +41,8 @@ Execution steps:
 4. Result handling:
    - PASS (zero issues) -> checkpoint -> Stage 5
    - FAIL -> fix -> re-verify -> PASS -> Stage 5
-5. ⚠️ **IRON RULE**: Must PASS with zero issues to proceed to Stage 5
+   - FAIL after 3 correction rounds -> Integrity Check FAIL Loop (`pipeline_state_machine.md`): unresolved items listed, user decision recorded
+5. ⚠️ **IRON RULE**: Stage 5 entry requires PASS with zero issues, or — only after the 3-round FAIL loop is exhausted — an explicit, recorded user decision on the listed unresolved items; unresolved items are never silently dropped
 ```
 
 ## Tortured-Phrase Advisory Boundary (#660)

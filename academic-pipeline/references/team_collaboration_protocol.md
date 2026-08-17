@@ -87,7 +87,7 @@ For each stage transition, the following handoff procedure applies:
 | **Who hands off** | Integration Lead |
 | **Who receives** | Lead Author |
 | **Materials** | Final Verified Draft + Final Integrity Report |
-| **Approval needed** | Integrity verdict PASS with zero issues |
+| **Approval needed** | Integrity verdict PASS with zero issues (or the recorded Integrity Check FAIL Loop user decision) |
 | **Handoff checklist** | All previous integrity issues confirmed resolved; Material Passport updated to VERIFIED |
 
 ---

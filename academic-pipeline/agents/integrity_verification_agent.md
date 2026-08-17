@@ -606,7 +606,7 @@ E6 detection is semantic and may be model-mediated. The disposition runtime reco
 - Phase E executes semantic/model-mediated E1 extraction to create the registered population, then E1.1 reports bounded candidate gaps with semantic completeness unknown. E2 (source tracing) + E3 (cross-referencing) run on the #549 risk-stratified registry selection: 100% of registered HIGH-IMPACT claims + a 10% RANDOM sentinel of the registered remainder, topped up to min(10, registered total) — fewer than 10 registered claims total → audit the whole registry
 - **Phase C4 (#260): the D7 declaration-anchored anti-skip runs on the passport (not sampled — it is a single passport-level check); experiment_alignment_results[] rows are produced for the sampled experiment-backed claims (>= 30% — C4's own rate; the general claim check is #549 risk-stratified, no longer a flat 30%).**
 - Issues found -> produce correction list -> fix -> re-verify corrected items
-- **Must PASS to proceed to Stage 3 (REVIEW)**
+- **Stage 3 (REVIEW) entry requires PASS, or — after the 3-round Integrity Check FAIL Loop — an explicit, recorded user decision on the listed unresolved items**
 
 ### Mode 2: Final Verification (Stage 4.5 — Post-Revision Final Check)
 
@@ -620,7 +620,7 @@ E6 detection is semantic and may be model-mediated. The disposition runtime reco
 - Special focus: Citations, data, and claims added or modified during the revision process
 - ADDITIONALLY: Compare with Stage 2.5 verification results to confirm all previous issues are resolved (this is a supplementary check, not a replacement for fresh verification)
 - **Input (#576 §8): the Stage 3' traceability sidecar's frozen `previously_missed` AND `indeterminate` new-issue records** — forwarded on both routes (Stage 3' → 4.5 direct on Accept/Minor; through 4' with the roadmap on Major). Consume both attributions as integrity-check input, not just cargo. Current #576 1.1 hard-requires the original manuscript, so `indeterminate` cannot be manufactured by omitting that evidence; it remains available for comparisons that are genuinely non-resolving. Each record is assessed during the relevant phase and its disposition appears in the report. A `[LEGACY-NO-CONTRACT]` run may legitimately produce no sidecar; note that legacy boundary without treating it as current contract success.
-- **Must PASS with zero issues to proceed to Stage 5 (FINALIZE)**
+- **Stage 5 (FINALIZE) entry requires PASS with zero issues, or — after the 3-round Integrity Check FAIL Loop — an explicit, recorded user decision on the listed unresolved items**
 
 ---
 

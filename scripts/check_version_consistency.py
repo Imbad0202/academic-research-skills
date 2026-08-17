@@ -102,9 +102,12 @@ NON_VERSION_CHANGELOG_TOKENS = frozenset({"Unreleased"})
 
 # Invariant 8: the outward-facing agent-count claim. Two licensed spellings:
 # the legacy "38-agent" form and the #753 evidence-aligned "39 prompt roles"
-# form. Both bind the stated number to the tree's *_agent.md count, so a
-# reworded claim surface cannot detach the number from the inventory.
-AGENT_CLAIM_RE = re.compile(r"(\d+)(?:-agent|\s+prompt\s+roles?)")
+# form (exact plural). Both bind the stated number to the tree's *_agent.md
+# count, so a reworded claim surface cannot detach the number from the
+# inventory. Trailing \b keeps near-miss spellings ("39-agentic",
+# "39 prompt role") from counting as bound — check_distribution_surface_claims
+# D4 then flags them as unbindable.
+AGENT_CLAIM_RE = re.compile(r"(\d+)(?:-agent\b|\s+prompt\s+roles\b)")
 
 # Invariant 9: minimum body length (chars, after strip) for the latest entry.
 CHANGELOG_BODY_MIN_CHARS = 100

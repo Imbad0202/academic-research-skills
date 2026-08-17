@@ -177,3 +177,36 @@ def test_plugin_exposed_count_matching_passes(tmp_path):
         "name": "f",
         "description": "39 prompt roles (3 plugin-exposed agents).",
     })) == []
+
+
+def test_percentage_case_variant_fires_d3(tmp_path):
+    # "_PERCENT_RE" is lowercase-only; the caller must lowercase first
+    _write(tmp_path, plugin={
+        "name": "f",
+        "description": "A 31 Percent reduction — 39 prompt roles.",
+    })
+    _fires(run(tmp_path), "percentage")
+
+
+def test_plugin_exposed_case_variant_fires_d5(tmp_path):
+    _write(tmp_path, plugin={
+        "name": "f",
+        "description": "39 prompt roles (4 Plugin-Exposed agents).",
+    })
+    _fires(run(tmp_path), "D5")
+
+
+def test_near_miss_spelling_agentic_fires_d4(tmp_path):
+    # "39-agentic" must not count as a bound "N-agent" token
+    _write(tmp_path, plugin={
+        "name": "f", "description": "A 39-agentic workflow suite."
+    })
+    _fires(run(tmp_path), "D4")
+
+
+def test_near_miss_spelling_singular_role_fires_d4(tmp_path):
+    # "39 prompt role" (singular) is not the licensed plural spelling
+    _write(tmp_path, plugin={
+        "name": "f", "description": "A suite with 39 prompt role."
+    })
+    _fires(run(tmp_path), "D4")

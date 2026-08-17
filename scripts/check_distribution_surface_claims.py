@@ -107,7 +107,7 @@ FORBIDDEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
     for label, pattern in _SURFACE_ONLY_PHRASES
 )
 
-_PLUGIN_EXPOSED_RE = re.compile(r"(\d+)\s+plugin-exposed")
+_PLUGIN_EXPOSED_RE = re.compile(r"(\d+)\s+plugin-exposed", re.IGNORECASE)
 
 
 def _load_manifest(path: Path, errors: list[str]) -> dict | None:
@@ -142,7 +142,9 @@ def _check_description(surface: str, value, errors: list[str]) -> None:
                 f"within the evidence record "
                 f"(docs/STAGE_CAPABILITY_MATRIX.md); see #753"
             )
-    if _PERCENT_RE.search(value):
+    # _PERCENT_RE spells "percent" lowercase and its matrix caller lowercases
+    # its input first — mirror that here so "31 Percent" cannot slip through.
+    if _PERCENT_RE.search(value.lower()):
         errors.append(
             f"D3: {surface} description carries a percentage figure — "
             f"descriptions can never carry the measurement provenance the "
