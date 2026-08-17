@@ -185,6 +185,16 @@ def test_malformed_token_spelling_fires(repo: Path) -> None:
     )
 
 
+def test_whitespace_token_spelling_fires(repo: Path) -> None:
+    # `[skip cooldown]` (space typo) must also fail loudly (codex R5).
+    _mutate_doc(repo, "[skip-cooldown]", "[skip cooldown]")
+    errors = run_all_checks(repo)
+    assert any(
+        "WC-4" in e and "skip cooldown" in e and "not a well-formed" in e
+        for e in errors
+    )
+
+
 def test_malformed_row_arity_fires(repo: Path) -> None:
     _mutate_doc(
         repo,

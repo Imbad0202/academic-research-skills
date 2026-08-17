@@ -57,7 +57,7 @@ _BYPASS_TOKEN_RE = re.compile(r"\[[a-z][a-z-]*\]")
 # Any bracketed span in a Bypass cell must BE a well-formed token — a typo
 # spelling like `[skip_cooldown]` fails loudly instead of silently skipping
 # WC-4.
-_ANY_BRACKET_RE = re.compile(r"\[[^\]\s]+\]")
+_ANY_BRACKET_RE = re.compile(r"\[[^\]]+\]")
 # Markdown cell split on unescaped pipes only (`\|` stays inside a cell).
 _CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
 
