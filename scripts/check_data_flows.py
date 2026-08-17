@@ -187,8 +187,15 @@ def _curl_shell_scripts(root: Path) -> list[Path]:
     for base in ("scripts", "hooks"):
         for sh in sorted((root / base).rglob("*.sh")):
             for line in sh.read_text(encoding="utf-8").split("\n"):
-                # Mask quoted spans first so `echo "run curl ..."` (quoted
-                # instructional text, no curl process) cannot fire, THEN drop
+                # Command substitutions execute even inside double quotes:
+                # `resp="$(curl ...)"` is a real network call, so scan their
+                # bodies FIRST, before quote masking can hide them.
+                subs = re.findall(r"\$\(([^)]*)\)", line)
+                if any(_CURL_RE.search(" " + sub) for sub in subs):
+                    hits.append(sh)
+                    break
+                # Then mask quoted spans so `echo "run curl ..."` (quoted
+                # instructional text, no curl process) cannot fire, and drop
                 # the comment tail.
                 code = _SHELL_QUOTED_RE.sub("", line).split("#", 1)[0]
                 if _CURL_RE.search(code):

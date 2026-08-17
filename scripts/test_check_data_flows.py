@@ -245,6 +245,21 @@ def test_df2_quoted_instructional_curl_not_flagged(fixture_repo: Path) -> None:
     assert run_all_checks(fixture_repo) == []
 
 
+def test_df2_curl_inside_command_substitution_fires(
+    fixture_repo: Path,
+) -> None:
+    # `resp="$(curl ...)"` executes curl even though the whole expression
+    # sits inside double quotes — quote masking must not hide it (codex R2
+    # finding).
+    _write(
+        fixture_repo,
+        "scripts/subst_fetch.sh",
+        '#!/bin/sh\nresp="$(curl -fsSL https://example.invalid/s)"\n',
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-2" in e and "subst_fetch.sh" in e for e in errors)
+
+
 def test_df3_link_inside_code_span_fires(fixture_repo: Path) -> None:
     # A link inside inline backticks renders literally, not as a link
     # (codex R1 finding).
