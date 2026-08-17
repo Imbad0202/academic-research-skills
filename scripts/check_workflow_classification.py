@@ -2,20 +2,27 @@
 """Defrift lint for the CI workflow classification table (#755).
 
 docs/ARCHITECTURE.md §7.1 claims to classify EVERY workflow's enforcement
-strength — a completeness claim that silently rots when a workflow is added,
-renamed, or removed. This lint pins the two mechanical halves and
+strength — a completeness claim that silently rots when a workflow is
+added, renamed, or removed. This lint pins the mechanical halves and
 deliberately nothing else — whether a row's class honestly describes its
 workflow's behavior stays owned by code review (degradation-registry
 posture):
 
-  WC-1  Inventory sync, both directions: every *.yml under
-        .github/workflows/ has exactly one table row, and every row names
-        an existing workflow file.
+  WC-1  Inventory sync, both directions: every *.yml / *.yaml under
+        .github/workflows/ has exactly one well-formed 5-cell table row,
+        and every row names an existing workflow file.
   WC-2  Every row's Class cell begins with one of the closed four-term
-        vocabulary: Blocking / Advisory / Administrative / Post-push
-        detection (qualifiers may follow).
+        vocabulary — Blocking / Advisory / Administrative / Post-push
+        detection — as a whole term (qualifiers may follow after a
+        boundary; `Blockingg` does not count).
+  WC-3  The bolded count line recomputes from the Class column: total,
+        blocking, advisory, administrative, and post-push numbers must
+        all match the table.
+  WC-4  Every `[bypass-token]` named in a row's Bypass cell appears
+        verbatim in that row's workflow file (a renamed token cannot
+        leave the table stale while CI stays green).
 
-Exit 0 when both hold; exit 1 with one line per violation.
+Exit 0 when all hold; exit 1 with one line per violation.
 """
 from __future__ import annotations
 
@@ -23,8 +30,10 @@ import re
 import sys
 from pathlib import Path
 
+from _skill_lint import heading_section
+
 DOC_RELPATH = Path("docs/ARCHITECTURE.md")
-SECTION_HEADING = "### 7.1 CI workflow enforcement classes"
+SECTION_HEADING = "### 7.1 CI workflow enforcement classes (#755)"
 WORKFLOWS_DIR = Path(".github/workflows")
 
 CLASS_VOCABULARY = (
@@ -33,45 +42,55 @@ CLASS_VOCABULARY = (
     "Administrative",
     "Post-push detection",
 )
-
-# A table row whose first cell is a backticked workflow filename.
-_ROW_RE = re.compile(r"^\|\s*`([^`]+\.yml)`\s*\|")
-
-
-def _section_body(md_text: str) -> str | None:
-    """Body of the §7.1 section, up to the next heading of any level."""
-    lines = md_text.split("\n")
-    body: list[str] = []
-    in_section = False
-    for line in lines:
-        if line.startswith(SECTION_HEADING):
-            in_section = True
-            continue
-        if in_section and re.match(r"#{2,3} ", line):
-            break
-        if in_section:
-            body.append(line)
-    return "\n".join(body) if in_section else None
+# The count line tallies by leading class term (order: total, then one count
+# per vocabulary term as worded in the sentence).
+_COUNT_LINE_RE = re.compile(
+    r"\*\*(\d+) workflows — (\d+) blocking[^,]*,\s+(\d+)\s+advisory,"
+    r"\s+(\d+) administrative,\s+(\d+) post-push detection\.\*\*",
+    re.DOTALL,
+)
+_FILENAME_CELL_RE = re.compile(r"`([^`]+\.ya?ml)`")
+_BYPASS_TOKEN_RE = re.compile(r"\[[a-z][a-z-]*\]")
+# Markdown cell split on unescaped pipes only (`\|` stays inside a cell).
+_CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
 
 
-def _table_rows(section: str) -> list[tuple[str, list[str]]]:
-    """(workflow filename, all cells) per data row of the classification
-    table."""
-    rows: list[tuple[str, list[str]]] = []
+def _table_rows(section: str) -> list[list[str]]:
+    """Cell lists for data rows whose first cell is a backticked workflow
+    filename."""
+    rows: list[list[str]] = []
     for line in section.split("\n"):
-        match = _ROW_RE.match(line)
-        if not match:
+        stripped = line.strip()
+        if not stripped.startswith("|"):
             continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        rows.append((match.group(1), cells))
+        cells = [c.strip() for c in _CELL_SPLIT_RE.split(stripped)]
+        # Leading/trailing empties from the outer pipes.
+        if cells and cells[0] == "":
+            cells = cells[1:]
+        if cells and cells[-1] == "":
+            cells = cells[:-1]
+        if cells and _FILENAME_CELL_RE.fullmatch(cells[0]):
+            rows.append(cells)
     return rows
+
+
+def _class_term(class_cell: str) -> str | None:
+    """The vocabulary term the cell begins with — as a whole term, followed
+    by end-of-cell, whitespace, or an opening parenthesis."""
+    for term in sorted(CLASS_VOCABULARY, key=len, reverse=True):
+        if class_cell == term or class_cell.startswith(term + " ") or (
+            class_cell.startswith(term + "(")
+        ):
+            return term
+    return None
 
 
 def run_all_checks(root: Path) -> list[str]:
     doc_path = root / DOC_RELPATH
     if not doc_path.exists():
         return [f"WC-1: {DOC_RELPATH} is missing"]
-    section = _section_body(doc_path.read_text(encoding="utf-8"))
+    doc_text = doc_path.read_text(encoding="utf-8")
+    section = heading_section(doc_text, SECTION_HEADING)
     if section is None:
         return [
             f"WC-1: section '{SECTION_HEADING}' not found in {DOC_RELPATH}"
@@ -80,9 +99,13 @@ def run_all_checks(root: Path) -> list[str]:
     errors: list[str] = []
 
     on_disk = {
-        p.name for p in sorted((root / WORKFLOWS_DIR).glob("*.yml"))
+        p.name
+        for pattern in ("*.yml", "*.yaml")
+        for p in (root / WORKFLOWS_DIR).glob(pattern)
     }
-    in_table = [name for name, _ in rows]
+    in_table = [
+        _FILENAME_CELL_RE.fullmatch(cells[0]).group(1) for cells in rows
+    ]
     for name in sorted(on_disk - set(in_table)):
         errors.append(
             f"WC-1: workflow '{name}' exists on disk but has no row in the "
@@ -94,22 +117,57 @@ def run_all_checks(root: Path) -> list[str]:
             f"WC-1: table row '{name}' names no file under {WORKFLOWS_DIR} "
             f"(removed or renamed workflow)"
         )
-    duplicates = {n for n in in_table if in_table.count(n) > 1}
-    for name in sorted(duplicates):
+    for name in sorted({n for n in in_table if in_table.count(n) > 1}):
         errors.append(f"WC-1: workflow '{name}' has more than one table row")
 
-    for name, cells in rows:
+    tally: dict[str, int] = {term: 0 for term in CLASS_VOCABULARY}
+    for name, cells in zip(in_table, rows):
         # Cells: workflow | trigger | what it checks | class | bypass.
-        if len(cells) < 5:
+        if len(cells) != 5:
             errors.append(
-                f"WC-2: row '{name}' has {len(cells)} cells, expected 5"
+                f"WC-1: row '{name}' has {len(cells)} cells, expected 5"
             )
             continue
-        class_cell = cells[3]
-        if not class_cell.startswith(CLASS_VOCABULARY):
+        term = _class_term(cells[3])
+        if term is None:
             errors.append(
-                f"WC-2: row '{name}' class cell {class_cell!r} does not "
-                f"begin with one of {list(CLASS_VOCABULARY)}"
+                f"WC-2: row '{name}' class cell {cells[3]!r} does not begin "
+                f"with a whole term from {list(CLASS_VOCABULARY)}"
+            )
+        else:
+            tally[term] += 1
+        if name in on_disk:
+            workflow_text = (root / WORKFLOWS_DIR / name).read_text(
+                encoding="utf-8"
+            )
+            for token in _BYPASS_TOKEN_RE.findall(cells[4]):
+                if token not in workflow_text:
+                    errors.append(
+                        f"WC-4: bypass token '{token}' in the '{name}' row "
+                        f"does not appear in {WORKFLOWS_DIR / name} — "
+                        f"renamed or removed token"
+                    )
+
+    count_match = _COUNT_LINE_RE.search(section)
+    if not count_match:
+        errors.append(
+            "WC-3: the bolded count line is missing or no longer matches "
+            "the expected sentence shape"
+        )
+    else:
+        stated = [int(g) for g in count_match.groups()]
+        actual = [
+            len(rows),
+            tally["Blocking"],
+            tally["Advisory"],
+            tally["Administrative"],
+            tally["Post-push detection"],
+        ]
+        if stated != actual:
+            errors.append(
+                f"WC-3: count line states "
+                f"total/blocking/advisory/administrative/post-push = "
+                f"{stated}, table has {actual}"
             )
     return errors
 
@@ -125,7 +183,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    print("check_workflow_classification: OK (WC-1..WC-2)")
+    print("check_workflow_classification: OK (WC-1..WC-4)")
     return 0
 
 

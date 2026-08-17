@@ -8,7 +8,7 @@ Full pipeline view across stages × skills × artifacts × gates. Every complete
 - **Matrix** (§3): the only place where (stage × skill × mode × data_level × artifacts × agents × gate) all co-exist. Use this when asking "what happens at Stage X?" The Gate column lists both machine checks and the user-confirmation checkpoint that closes the stage.
 - **Data access flow** (§4) and **skill graph** (§6): orthogonal views answering "who sees what" and "who depends on what" respectively.
 - **Literature corpus flow** (§5): producer/consumer view of the optional Material Passport `literature_corpus[]` input port (v3.6.4) and Phase 1 consumer integration (v3.6.5).
-- **Quality gates** (§7): zoom on the blocking checks — both machine-enforced and human-enforced.
+- **Quality gates** (§7): zoom on the blocking checks — both machine-enforced and human-enforced. §7.1 classifies the repo's CI workflows by enforcement strength (blocking / advisory / administrative / post-push detection).
 - **Timeline** (§8): why the architecture looks the way it does — each release added one honesty primitive or a new contract.
 - **Modes** (§9): reference when composing a pipeline invocation.
 
@@ -267,43 +267,41 @@ Two classes of gate: **🧑 decision-heavy** (user chooses a branch or approves 
 ### 7.1 CI workflow enforcement classes (#755)
 
 The files under `.github/workflows/` are often described collectively as CI gates, but
-they enforce at four different strengths. A reader assessing the control environment
-needs the difference in one place; this table is that place (origin: ISO/IEC
-42001-spirit gap assessment, finding T-5).
+they enforce at four different strengths (origin: ISO/IEC 42001-spirit gap assessment,
+finding T-5).
 
 Classes: **Blocking** — a failure on the guarded event must be fixed (or explicitly
-bypassed) before proceeding · **Advisory** — warns, never fails · **Administrative** —
-produces work items, audits nothing · **Post-push detection** — triggered by a tag
-push that has already happened; nothing in GitHub Actions can reject a push after the
-fact, so a failure is a remediation signal, not prevention.
+bypassed) before proceeding · **Advisory** — the audited condition warns, never fails ·
+**Administrative** — produces work items, audits nothing · **Post-push detection** —
+triggered by a tag push that has already happened; nothing in GitHub Actions can
+reject a push after the fact, so a failure is a remediation signal, not prevention
+(the three tag workflows are conventionally *called* release gates; their stop-power
+is the maintainer acting on the failure).
 
 | Workflow | Trigger | What it checks | Class | Bypass |
 |---|---|---|---|---|
-| `spec-consistency.yml` | push + PR | the full lint/pytest battery: spec surfaces, contracts, content locks, the pytest manifest | Blocking | none |
-| `pytest.yml` | PR + push to main, path-filtered (scripts/tests/contracts/config) | adapter + script test suite | Blocking when triggered | none |
-| `command-invariants.yml` | push + PR | SessionStart announce list matches the actual command inventory | Blocking | none |
-| `repository-hygiene.yml` | push + PR | gitleaks secret scan | Blocking | none |
-| `eval-harness.yml` | PR + push, path-filtered (scoring/generation logic + gold sets) | eval gold-set thresholds (aggregate + per-class) | Blocking on `pull_request` events only; report-only on push | `[eval-regression-acknowledged]` in the PR body + ≥1 open tracking-issue URL in this repo (passes as noted, by design) |
-| `test-count-monotonic.yml` | PR | collected test count must not drop | Blocking | `[skip-test-count]` in the PR body + justification |
-| `pr-closes-issue.yml` | PR | PR body references an issue via an auto-close keyword | Blocking | `[skip-closes-check]` in the PR body + justification |
-| `changelog-covers-merges.yml` | PR (job runs only when head is `release/**`) | every release-worthy merge since the last tag is documented in CHANGELOG | Blocking for release-prep PRs only; ordinary merges rely on the manual CONTRIBUTING fallback | n/a outside release PRs |
-| `platform-port-reminder.yml` | PR | new top-level directory → platform-ports policy reminder | Advisory (one `::warning::`, always exits 0; the merge decision stays with the maintainer) | n/a |
-| `freshness-check.yml` | schedule + push + dispatch | PRISMA-trAIce snapshot staleness | Advisory (warns on stderr, exits 0) | n/a |
-| `harness-retirement-monthly.yml` | schedule + dispatch | opens the monthly prompt-debt audit issue | Administrative | n/a |
+| `spec-consistency.yml` | push (all branches) + PR | the full lint/pytest battery: spec surfaces, contracts, content locks, the pytest manifest | Blocking | none |
+| `pytest.yml` | PR + push to main, both path-filtered (scripts/tests/contracts/config, adapter references, `bibliography_agent`) | adapter + script test suite | Blocking | none |
+| `command-invariants.yml` | push (path-filtered: commands, announce script, frontmatter lint, plugin manifest, CHANGELOG, toolkit) + PR (all) | SessionStart announce list matches the command inventory; plugin-version ↔ CHANGELOG lockstep; command frontmatter `name` validation | Blocking | none |
+| `repository-hygiene.yml` | PR targeting main + push to main | gitleaks secret scan | Blocking | none |
+| `eval-harness.yml` | PR + push to main, both path-filtered (scoring/generation surfaces + gold sets) | eval gold-set thresholds (aggregate + per-class) | Blocking on `pull_request` events only; report-only on push | `[eval-regression-acknowledged]` in the PR body + ≥1 open tracking-issue URL in this repo |
+| `test-count-monotonic.yml` | PR targeting main | collected test count must not drop | Blocking | `[skip-test-count]` in the PR body (justification requested, not machine-validated) |
+| `pr-closes-issue.yml` | PR targeting main | PR body references an issue via an auto-close keyword | Blocking | `[skip-closes-check]` in the PR body (justification requested, not machine-validated) |
+| `changelog-covers-merges.yml` | PR targeting main; the job runs only when the head branch is `release/**` | every release-worthy merge since the last tag is documented in CHANGELOG | Blocking (ordinary merges rely on the manual CONTRIBUTING fallback) | none |
+| `platform-port-reminder.yml` | PR targeting main | new top-level directory → platform-ports policy reminder | Advisory (one `::warning::`, always exits 0; the merge decision stays with the maintainer) | none |
+| `freshness-check.yml` | weekly schedule + push (two-file path filter) + manual dispatch | PRISMA-trAIce snapshot staleness | Advisory for staleness (warns on stderr, exits 0); malformed protocol metadata is a hard failure | none |
+| `harness-retirement-monthly.yml` | monthly schedule + manual dispatch | opens the monthly prompt-debt audit issue | Administrative | none |
 | `defer-label-gate.yml` | tag push `v*` | open `defer:<tag>` issues must be closed or relabelled | Post-push detection | `[skip-defer-check]` in the tagged commit message |
 | `release-cooldown.yml` | tag push `v*` | paces consecutive release tags | Post-push detection | `[skip-cooldown]` in the commit/tag message |
 | `tag-version-match.yml` | tag push `v*` | re-runs the full version-consistency lint at the tag | Post-push detection | none |
 
 Count, honestly stated: **14 workflows — 8 blocking on at least one event class, 2
-advisory, 1 administrative, 3 post-push detection.** The three tag workflows are
-conventionally called release gates; mechanically they detect after the push, and
-their stop-power is the maintainer acting on the failure.
+advisory, 1 administrative, 3 post-push detection.**
 
-Inventory sync is pinned by `scripts/check_workflow_classification.py` (every file
-under `.github/workflows/` has exactly one row here and every row names an existing
-file; class values come from the closed four-term vocabulary). The class *semantics*
-— whether a row honestly describes its workflow's behavior — stay owned by code
-review, mirroring the degradation-registry posture.
+Inventory sync, the count line, and the bypass tokens are pinned by
+`scripts/check_workflow_classification.py`; the class *semantics* — whether a row
+honestly describes its workflow's behavior — stay owned by code review, mirroring the
+degradation-registry posture.
 
 ## 8. ARS Evolution Timeline
 

@@ -46,9 +46,12 @@ applying your channel's channel-wide limitation above.
 | Prompt-level checkpoints and integrity gates | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Conditional | Absent | Conditional | Conditional |
 
 CI-side checks (mutation-tested lints, content locks, changelog gates) are deliberately
-not a matrix row: they run in this repository's GitHub Actions on every change,
-protecting the published artifact all channels ship from, and never run on a user
-machine — identical for every channel. The machine-readable index of the suite's
+not a matrix row: they run in this repository's GitHub Actions, protecting the
+published artifact all channels ship from, and never run on a user machine —
+identical for every channel. They do not all enforce at the same strength or fire on
+every change: the per-workflow classification (blocking / advisory / administrative /
+post-push detection, with triggers and bypass tokens) is
+[ARCHITECTURE.md §7.1](ARCHITECTURE.md#71-ci-workflow-enforcement-classes-755). The machine-readable index of the suite's
 runtime graceful-degradation mechanisms is
 [`shared/contracts/degradation_registry.json`](../shared/contracts/degradation_registry.json).
 

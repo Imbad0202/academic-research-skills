@@ -99,14 +99,72 @@ def test_off_vocabulary_class_fires(repo: Path) -> None:
     assert any(
         "WC-2" in e and "Mandatory" in e for e in errors
     )
+    # The count line still says 1 administrative; the reclassified table
+    # has 0 — WC-3 must fire alongside.
+    assert any("WC-3" in e for e in errors)
+
+
+def test_typo_suffix_class_fires(repo: Path) -> None:
+    # `Blockingg` must not pass on a prefix match — the vocabulary term is
+    # matched as a whole word (codex R1 finding).
+    _mutate_doc(repo, "| Administrative |", "| Administrativee |")
+    errors = run_all_checks(repo)
+    assert any("WC-2" in e and "Administrativee" in e for e in errors)
 
 
 def test_class_with_qualifier_still_passes(repo: Path) -> None:
-    # Qualified cells like "Blocking when triggered" are in-vocabulary by
-    # prefix; the baseline table already contains them — pin that explicitly.
+    # Qualifiers after a boundary are in-vocabulary; the count is unchanged,
+    # so WC-3 stays quiet too.
     _mutate_doc(
         repo,
         "| Administrative |",
         "| Administrative (opens an issue) |",
     )
     assert run_all_checks(repo) == []
+
+
+def test_yaml_extension_workflow_fires(repo: Path) -> None:
+    # GitHub Actions also reads *.yaml — a completeness lint bypassable by a
+    # file extension fails open in the exact direction it exists to prevent.
+    (repo / WORKFLOWS_DIR / "alt-ext.yaml").write_text(
+        "name: Alt\non:\n  push:\n", encoding="utf-8"
+    )
+    errors = run_all_checks(repo)
+    assert any(
+        "WC-1" in e and "alt-ext.yaml" in e and "no row" in e for e in errors
+    )
+
+
+def test_count_line_drift_fires(repo: Path) -> None:
+    _mutate_doc(repo, "8 blocking", "9 blocking")
+    errors = run_all_checks(repo)
+    assert any("WC-3" in e and "count line" in e for e in errors)
+
+
+def test_renamed_bypass_token_fires(repo: Path) -> None:
+    # The table's `[skip-cooldown]` must exist verbatim in the workflow —
+    # renaming it there cannot leave the table stale with CI green.
+    wf = repo / WORKFLOWS_DIR / "release-cooldown.yml"
+    wf.write_text(
+        wf.read_text(encoding="utf-8").replace(
+            "[skip-cooldown]", "[cooldown-override]"
+        ),
+        encoding="utf-8",
+    )
+    errors = run_all_checks(repo)
+    assert any(
+        "WC-4" in e and "[skip-cooldown]" in e for e in errors
+    )
+
+
+def test_malformed_row_arity_fires(repo: Path) -> None:
+    _mutate_doc(
+        repo,
+        "| `tag-version-match.yml` | tag push `v*` | re-runs the full version-consistency lint at the tag | Post-push detection | none |",
+        "| `tag-version-match.yml` | tag push `v*` | Post-push detection | none |",
+    )
+    errors = run_all_checks(repo)
+    assert any(
+        "WC-1" in e and "tag-version-match.yml" in e and "expected 5" in e
+        for e in errors
+    )
