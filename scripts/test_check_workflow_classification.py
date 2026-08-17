@@ -195,6 +195,23 @@ def test_whitespace_token_spelling_fires(repo: Path) -> None:
     )
 
 
+def test_bogus_unbackticked_row_fires(repo: Path) -> None:
+    # A data row whose first cell is not a backticked workflow filename
+    # must fail WC-1, not silently drop out of the inventory and count
+    # (codex R6 finding).
+    _mutate_doc(
+        repo,
+        "| `tag-version-match.yml` |",
+        "| not-a-workflow | bogus | bogus | Advisory | none |\n"
+        "| `tag-version-match.yml` |",
+    )
+    errors = run_all_checks(repo)
+    assert any(
+        "WC-1" in e and "not-a-workflow" in e and "malformed" in e
+        for e in errors
+    )
+
+
 def test_malformed_row_arity_fires(repo: Path) -> None:
     _mutate_doc(
         repo,

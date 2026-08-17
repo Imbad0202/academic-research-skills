@@ -62,10 +62,12 @@ _ANY_BRACKET_RE = re.compile(r"\[[^\]]+\]")
 _CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
 
 
-def _table_rows(section: str) -> list[list[str]]:
-    """Cell lists for data rows whose first cell is a backticked workflow
-    filename."""
+def _table_rows(section: str) -> tuple[list[list[str]], list[str]]:
+    """(data rows, malformed-first-cell errors). Every pipe row that is not
+    the header or the separator must open with a backticked workflow
+    filename — a bogus row cannot silently drop out of WC-1/WC-3."""
     rows: list[list[str]] = []
+    errors: list[str] = []
     for line in section.split("\n"):
         stripped = line.strip()
         if not stripped.startswith("|"):
@@ -76,9 +78,20 @@ def _table_rows(section: str) -> list[list[str]]:
             cells = cells[1:]
         if cells and cells[-1] == "":
             cells = cells[:-1]
-        if cells and _FILENAME_CELL_RE.fullmatch(cells[0]):
+        if not cells:
+            continue
+        if cells[0] == "Workflow":
+            continue  # header row
+        if all(re.fullmatch(r":?-{3,}:?", c) for c in cells):
+            continue  # separator row
+        if _FILENAME_CELL_RE.fullmatch(cells[0]):
             rows.append(cells)
-    return rows
+        else:
+            errors.append(
+                f"WC-1: table row opening with {cells[0]!r} does not name a "
+                f"backticked workflow file — malformed or misplaced row"
+            )
+    return rows, errors
 
 
 def _class_term(class_cell: str) -> str | None:
@@ -102,8 +115,7 @@ def run_all_checks(root: Path) -> list[str]:
         return [
             f"WC-1: section '{SECTION_HEADING}' not found in {DOC_RELPATH}"
         ]
-    rows = _table_rows(section)
-    errors: list[str] = []
+    rows, errors = _table_rows(section)
 
     on_disk = {
         p.name
