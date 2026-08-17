@@ -1,8 +1,8 @@
 # Control Availability by Install Channel
 
-**Purpose.** ARS documentation names several enforcement mechanisms — the write-scope
-guard, the citation-verification gate, mandatory checkpoints, the tools allowlist. Which
-of those actually operate depends on *how you installed ARS*. This page maps mechanism ×
+**Purpose.** ARS documentation names several controls — the write-scope guard, the
+citation-verification gate, mandatory checkpoints, the tools allowlist. Which of those
+actually operate depends on *how you installed ARS*. This page maps mechanism ×
 channel in one place, so a user evaluating an integrity claim can see whether it holds
 in their channel. The linked source documents remain authoritative for each fact.
 
@@ -22,7 +22,7 @@ anchors to ISO/IEC 42001) — not an ISO-mandated artifact.
 | **Cowork** — skills uploaded to Claude Cowork (desktop) | [SETUP Method 3](SETUP.md#method-3-claude-cowork-desktop) | Each skill runs standalone: no Task-tool subagent dispatch, so the coordinated pipeline — and its staged checkpoints — does not run as designed. |
 | **claude.ai Project** — repo attached to a claude.ai Project as retrievable knowledge | [SETUP Method 4](SETUP.md#method-4-use-with-claudeai-web) | Read-only knowledge: Claude can read and cite the skill bodies, but nothing executes — no activation, routing, hooks, scripts, or orchestration. (The Method 4a upload path is documented but not recommended; see SETUP § Method 4a.) |
 | **Claude Science** — skills imported via "Import from GitHub" | [SETUP Method 5](SETUP.md#method-5-claude-science-import-v3140) | Methodology layer only; Claude Code-specific machinery does not transfer, and Claude Science substitutes its own agent system (details: SETUP Method 5). Imports are point-in-time snapshots. |
-| **Pi port** — community-maintained wrapper for the Pi coding agent | [`pi/README.md`](../pi/README.md) | Two documented boundaries: no agent isolation/orchestration (roles may run sequentially — degraded execution, disclosed, not independent multi-agent review) and no Claude hooks (write-scope enforcement stays prompt-level). `/ars-pi-doctor` reports what the local environment supplies. |
+| **Pi port** — community-maintained wrapper for the Pi coding agent | [`pi/README.md`](../pi/README.md) | Two documented boundaries: the wrapper itself supplies no agent isolation or orchestration — an installed Pi orchestration capability is used when available, otherwise roles run sequentially (degraded execution, disclosed, not independent multi-agent review) — and no Claude hooks (write-scope enforcement stays prompt-level). `/ars-pi-doctor` reports what the local environment supplies. |
 
 ## Availability matrix
 
@@ -37,7 +37,7 @@ applying your channel's channel-wide limitation above.
 | Methodology layer (the four skills' `SKILL.md` protocols) | Active | Active | Active | Active | Conditional | Active | Active |
 | Skill auto-routing (trigger keywords → skill activation) | Active | Active | Active | Active | Absent | Conditional | Conditional |
 | `/ars-*` slash commands | Active ⁽¹⁾ | Absent | Absent | Absent | Absent | Absent | Conditional |
-| SessionStart announce + update reminder | Active | Absent ⁽³⁾ | Absent ⁽³⁾ | Absent | Absent | Absent | Absent |
+| SessionStart announce + update reminder | Conditional ⁽⁸⁾ | Absent ⁽³⁾ | Absent ⁽³⁾ | Absent | Absent | Absent | Absent |
 | Write-scope guard (`PreToolUse` hook) | Conditional ⁽²⁾ | Absent ⁽³⁾ | Absent ⁽³⁾ | Absent | Absent | Absent | Absent |
 | Plugin agents with tools allowlist (#514) ⁽⁴⁾ | Active | Absent ⁽³⁾ | Absent ⁽³⁾ | Absent | Absent | Absent | Absent |
 | Subagent orchestration (Task-tool multi-agent dispatch) | Active | Active | Active | Absent | Absent | Absent | Conditional |
@@ -79,9 +79,12 @@ runtime graceful-degradation mechanisms is
    the plugin channel (the plugin root is the repo snapshot) and repo clones; for a
    skills-copy install, keep the original clone — the copied skill folders alone cannot
    run them. On Pi, they work if Python and the repo are present (`pi/README.md`).
-6. Note-5 conditions, plus provider credentials, `curl`, and — per
-   [`shared/cross_model_verification.md`](../shared/cross_model_verification.md) — the
-   user's **explicit consent per session**: the `ARS_CROSS_MODEL` environment variable
+6. Note-5 conditions, plus a transport: provider API credentials and `curl` for the
+   general transports, or — for the citation-only calls — a Codex CLI
+   ChatGPT-subscription login (`ARS_CROSS_MODEL_TRANSPORT=codex`). All transports sit
+   behind the same boundary defined in
+   [`shared/cross_model_verification.md`](../shared/cross_model_verification.md): the
+   user's **explicit consent per session** — the `ARS_CROSS_MODEL` environment variable
    is configuration, not consent. Unset, the feature is invisible and makes zero
    network calls.
 7. The MANDATORY checkpoints, integrity gates, and IRON RULE constraints are
@@ -92,6 +95,10 @@ runtime graceful-degradation mechanisms is
    [gap assessment §3](../audits/iso42001-spirit-gap-assessment-2026-08-17.md)).
    This row says the *instructions* are present and active in the channel, nothing
    stronger.
+8. Both SessionStart hooks are launched through `bash`, so on Windows they need Git
+   Bash (the same PowerShell limitation as the guard launcher); the update reminder
+   additionally needs `curl`, stays silent on any failure, and is disabled entirely by
+   `ARS_UPDATE_CHECK=0` (SETUP Method 0).
 
 ## Environment degradations within a channel
 
