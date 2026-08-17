@@ -690,9 +690,11 @@ def _check_citation_surfaces(
     the invariant (the invariant-4 marketplace-manifest lesson). It is YAML
     and is parsed as YAML: a regex scrape would misread legitimate spellings
     (`version: "3.20.1"`, trailing comments) as drift. `date-released` is
-    checked only when present, against the latest CHANGELOG entry's date
-    with the invariant-10 ±LAST_UPDATED_MAX_DAYS window (skipped when the
-    CHANGELOG date is unavailable — that already errored upstream).
+    required — an absent/null field errors rather than silently disabling
+    the freshness half — and is compared against the latest CHANGELOG
+    entry's date with the invariant-10 ±LAST_UPDATED_MAX_DAYS window
+    (window skipped only when the CHANGELOG date is unavailable — that
+    already errored upstream).
 
     POSITIONING.md is repo-specific prose: absence or a token-free file is a
     skip (the token is the claim; no claim, no drift), but a present token
@@ -728,7 +730,12 @@ def _check_citation_surfaces(
                         f"version {suite_version!r}"
                     )
             released = data.get("date-released")
-            if released is not None and latest_date is not None:
+            if released is None:
+                # Absent or null must error, not skip — deleting the field
+                # would otherwise disable the freshness half of the invariant
+                # (codex round-2 P2; same posture as file absence).
+                errors.append(f"{cff}: no 'date-released' key found")
+            elif latest_date is not None:
                 base = _parse_iso_date(latest_date)
                 if isinstance(released, datetime):
                     # CFF requires a bare YYYY-MM-DD. An unquoted timestamp

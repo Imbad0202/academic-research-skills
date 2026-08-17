@@ -1292,6 +1292,22 @@ class TestCitationSurfaces(unittest.TestCase):
             self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
             self.assertIn("date-released", result.stdout)
 
+    def test_cff_missing_date_released_fails(self) -> None:
+        """Omitting (or nulling) date-released must error, not silently skip
+        the freshness check — deleting the field must not disable the
+        invariant (codex review round-2 P2; same posture as file absence)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "CITATION.cff").write_text(
+                "cff-version: 1.2.0\ntitle: fixture\ntype: software\n"
+                "version: 3.5.0\n",
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("date-released", result.stdout)
+
     def test_cff_impossible_date_fails_cleanly(self) -> None:
         """`date-released: 2026-02-30` — PyYAML's timestamp constructor raises
         ValueError, not YAMLError; the lint must emit an error, never crash
