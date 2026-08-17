@@ -275,21 +275,27 @@ bypassed) before proceeding · **Advisory** — the audited condition warns, nev
 **Administrative** — produces work items, audits nothing · **Post-push detection** —
 triggered by a tag push that has already happened; nothing in GitHub Actions can
 reject a push after the fact, so a failure is a remediation signal, not prevention
-(the three tag workflows are conventionally *called* release gates; their stop-power
-is the maintainer acting on the failure).
+(the three tag-only workflows are conventionally *called* release gates; their
+stop-power is the maintainer acting on the failure).
+
+One GitHub Actions subtlety the Trigger column accounts for: an unfiltered or
+paths-only `push:` trigger ALSO matches tag pushes — GitHub does not evaluate `paths`
+filters for tags — so `spec-consistency`, `command-invariants`, and `freshness-check`
+additionally run on every `v*` tag push, where their failures are post-push detection
+exactly like the three tag-only workflows.
 
 | Workflow | Trigger | What it checks | Class | Bypass |
 |---|---|---|---|---|
-| `spec-consistency.yml` | push (all branches) + PR | the full lint/pytest battery: spec surfaces, contracts, content locks, the pytest manifest | Blocking | none |
+| `spec-consistency.yml` | push (all branches **and tags**) + PR | the full lint/pytest battery: spec surfaces, contracts, content locks, the pytest manifest | Blocking | none |
 | `pytest.yml` | PR + push to main, both path-filtered (scripts/tests/contracts/config, adapter references, `bibliography_agent`) | adapter + script test suite | Blocking | none |
-| `command-invariants.yml` | push (path-filtered: commands, announce script, frontmatter lint, plugin manifest, CHANGELOG, toolkit) + PR (all) | SessionStart announce list matches the command inventory; plugin-version ↔ CHANGELOG lockstep; command frontmatter `name` validation | Blocking | none |
+| `command-invariants.yml` | push (path-filtered for branch pushes; **also every tag push**) + PR (all) | SessionStart announce list matches the command inventory; plugin-version ↔ CHANGELOG lockstep; command frontmatter `name` validation | Blocking | none |
 | `repository-hygiene.yml` | PR targeting main + push to main | gitleaks secret scan | Blocking | none |
 | `eval-harness.yml` | PR + push to main, both path-filtered (scoring/generation surfaces + gold sets) | eval gold-set thresholds (aggregate + per-class) | Blocking on `pull_request` events only; report-only on push | `[eval-regression-acknowledged]` in the PR body + ≥1 open tracking-issue URL in this repo |
 | `test-count-monotonic.yml` | PR targeting main | collected test count must not drop | Blocking | `[skip-test-count]` in the PR body (justification requested, not machine-validated) |
 | `pr-closes-issue.yml` | PR targeting main | PR body references an issue via an auto-close keyword | Blocking | `[skip-closes-check]` in the PR body (justification requested, not machine-validated) |
 | `changelog-covers-merges.yml` | PR targeting main; the job runs only when the head branch is `release/**` | every release-worthy merge since the last tag is documented in CHANGELOG | Blocking (ordinary merges rely on the manual CONTRIBUTING fallback) | none |
 | `platform-port-reminder.yml` | PR targeting main | new top-level directory → platform-ports policy reminder | Advisory (one `::warning::`, always exits 0; the merge decision stays with the maintainer) | none |
-| `freshness-check.yml` | weekly schedule + push (two-file path filter) + manual dispatch | PRISMA-trAIce snapshot staleness | Advisory for staleness (warns on stderr, exits 0); malformed protocol metadata is a hard failure | none |
+| `freshness-check.yml` | weekly schedule + push (two-file path filter for branch pushes; **also every tag push**) + manual dispatch | PRISMA-trAIce snapshot staleness | Advisory for staleness (warns on stderr, exits 0); malformed protocol metadata is a hard failure | none |
 | `harness-retirement-monthly.yml` | monthly schedule + manual dispatch | opens the monthly prompt-debt audit issue | Administrative | none |
 | `defer-label-gate.yml` | tag push `v*` | open `defer:<tag>` issues must be closed or relabelled | Post-push detection | `[skip-defer-check]` in the tagged commit message |
 | `release-cooldown.yml` | tag push `v*` | paces consecutive release tags | Post-push detection | `[skip-cooldown]` in the commit/tag message |
