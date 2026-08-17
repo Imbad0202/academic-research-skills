@@ -1171,5 +1171,106 @@ class TestTagMatch(unittest.TestCase):
             self.assertIn("v9.9.9", result.stdout)
 
 
+def _write_citation_surfaces(
+    root: Path,
+    cff_version: str | None = "3.5.0",
+    positioning_version: str | None = "3.5.0",
+) -> None:
+    """Write CITATION.cff / POSITIONING.md citation surfaces (invariant 12).
+
+    Pass None to omit a file entirely (absence is a documented skip, matching
+    the invariant-8 optional-claim convention)."""
+    if cff_version is not None:
+        (root / "CITATION.cff").write_text(
+            textwrap.dedent(
+                f"""\
+                cff-version: 1.2.0
+                title: fixture
+                type: software
+                version: {cff_version}
+                date-released: 2026-04-22
+                """
+            ),
+            encoding="utf-8",
+        )
+    if positioning_version is not None:
+        (root / "POSITIONING.md").write_text(
+            "# Positioning\n\n"
+            "Wu, C.-I. (2026). Fixture Suite "
+            f"(Version {positioning_version}) [Computer software]. Zenodo.\n",
+            encoding="utf-8",
+        )
+
+
+class CitationSurfacesInvariant12Test(unittest.TestCase):
+    """Invariant 12: CITATION.cff `version:` and every `(Version X.Y.Z)`
+    token in POSITIONING.md must equal the suite version when present."""
+
+    def test_citation_surfaces_aligned_pass(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_citation_surfaces(root, "3.5.0", "3.5.0")
+            result = _run(root)
+            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
+
+    def test_citation_surfaces_absent_pass(self) -> None:
+        """Absence is a skip, not an error (optional-surface convention)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_citation_surfaces(root, None, None)
+            result = _run(root)
+            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
+
+    def test_citation_cff_drift_fails(self) -> None:
+        """CITATION.cff stuck below the suite version — the #754 drift class."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_citation_surfaces(root, "3.4.0", "3.5.0")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("CITATION.cff", result.stdout)
+            self.assertIn("3.4.0", result.stdout)
+
+    def test_citation_cff_missing_version_line_fails(self) -> None:
+        """A present CITATION.cff with no version: line is malformed — error,
+        never a silent skip (skip is only for the file being absent)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "CITATION.cff").write_text(
+                "cff-version: 1.2.0\ntitle: fixture\ntype: software\n",
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("CITATION.cff", result.stdout)
+
+    def test_positioning_citation_drift_fails(self) -> None:
+        """POSITIONING.md citation prose stuck below the suite version."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_citation_surfaces(root, "3.5.0", "3.4.0")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("POSITIONING.md", result.stdout)
+            self.assertIn("3.4.0", result.stdout)
+
+    def test_positioning_without_version_token_passes(self) -> None:
+        """A POSITIONING.md with no `(Version X.Y.Z)` token has nothing to
+        check — pass (the token is the claim; no claim, no drift)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "POSITIONING.md").write_text(
+                "# Positioning\n\nNo citation prose here.\n", encoding="utf-8"
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
+
+
 if __name__ == "__main__":
     unittest.main()

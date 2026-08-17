@@ -35,6 +35,12 @@ Invariants enforced:
  11. The newest "## vX.Y… Key Additions" heading in .claude/CLAUDE.md matches
      the suite version (#487), compared at the heading's own precision —
      `## v3.14 Key Additions` matches suite 3.14.0.
+ 12. The citation surfaces track the suite version (#754: both had silently
+     drifted six minor releases behind): CITATION.cff `version:` equals the
+     suite version (a present file with no version: line is malformed — error),
+     and every `(Version X.Y.Z)` token in POSITIONING.md equals the suite
+     version. Either file being ABSENT is a skip, not an error (optional-
+     surface convention, matching invariant 8's stated-claim-only posture).
 
 Tag gate (#487): `--tag <ref>` additionally requires the given git tag
 (leading `v` optional) to equal the suite version — the one comparison
@@ -365,6 +371,9 @@ def check(root: Path, tag: str | None = None) -> list[str]:
         errors.extend(_check_docs_versions(root, suite_version))
         # Invariant 11: newest Key Additions heading matches the suite version.
         errors.extend(_check_key_additions(claude_md, claude_text, suite_version))
+        # Invariant 12: citation surfaces (CITATION.cff / POSITIONING.md)
+        # track the suite version.
+        errors.extend(_check_citation_surfaces(root, suite_version))
 
     # Tag gate: the pushed tag (when given) must equal the suite version. This
     # runs OUTSIDE the `suite_version is not None` block on purpose: `--tag`
@@ -661,6 +670,43 @@ def _check_agent_count_claim(root: Path) -> list[str]:
             f"excluded, symlinks deduplicated)"
         ]
     return []
+
+
+_CFF_VERSION_RE = re.compile(r"^version:\s*(\S+)\s*$", re.MULTILINE)
+_POSITIONING_VERSION_RE = re.compile(r"\(Version\s+(\d+(?:\.\d+){2,3})\)")
+
+
+def _check_citation_surfaces(root: Path, suite_version: str) -> list[str]:
+    """Invariant 12: citation surfaces track the suite version (#754).
+
+    CITATION.cff `version:` and every `(Version X.Y.Z)` token in
+    POSITIONING.md must equal the suite version. An ABSENT file is a skip
+    (optional-surface convention, invariant 8's posture); a PRESENT
+    CITATION.cff with no version: line is malformed and errors — skip is
+    only for absence, never for malformation."""
+    errors: list[str] = []
+    cff = root / "CITATION.cff"
+    if cff.is_file():
+        match = _CFF_VERSION_RE.search(cff.read_text(encoding="utf-8"))
+        if match is None:
+            errors.append(
+                f"{cff}: no 'version:' line found (malformed citation metadata)"
+            )
+        elif match.group(1) != suite_version:
+            errors.append(
+                f"{cff}: version {match.group(1)!r} does not match suite "
+                f"version {suite_version!r}"
+            )
+    positioning = root / "POSITIONING.md"
+    if positioning.is_file():
+        text = positioning.read_text(encoding="utf-8")
+        for token in _POSITIONING_VERSION_RE.findall(text):
+            if token != suite_version:
+                errors.append(
+                    f"{positioning}: citation prose cites Version {token} but "
+                    f"suite version is {suite_version!r}"
+                )
+    return errors
 
 
 def main() -> int:
