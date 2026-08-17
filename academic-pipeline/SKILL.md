@@ -126,7 +126,7 @@ This mirrors PaperOrchestra's parallel execution of Plot Generation (Step 2) and
 
 1. **Stage 1 RESEARCH** -> user confirmation -> Stage 2
 2. **Stage 2 WRITE** -> user confirmation -> Stage 2.5
-3. **Stage 2.5 INTEGRITY** -> PASS -> Stage 3 (FAIL -> fix and re-verify, max 3 rounds)
+3. **Stage 2.5 INTEGRITY** -> PASS -> Stage 3 (FAIL -> fix and re-verify, max 3 rounds; then Integrity Check FAIL Loop -> recorded user decision)
 4. **Stage 3 REVIEW** -> Accept -> Stage 4.5 / Minor|Major -> Stage 4 / Reject -> Stage 2 or end
 5. **Stage 4 REVISE** -> user confirmation -> Stage 3'
 6. **Stage 3' RE-REVIEW** -> Accept|Minor -> Stage 4.5 / Major -> Stage 4'

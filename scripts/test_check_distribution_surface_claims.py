@@ -75,6 +75,19 @@ def test_non_object_top_level_fails_closed(tmp_path):
     _fires(run(tmp_path), "D1")
 
 
+def test_nonstandard_json_nan_fails_closed(tmp_path):
+    # json.loads accepts NaN by default; strict consumers reject it
+    _write(tmp_path, plugin=None,
+           plugin_raw='{"description": "39 prompt roles", "score": NaN}')
+    _fires(run(tmp_path), "D1")
+
+
+def test_nonstandard_json_infinity_fails_closed(tmp_path):
+    _write(tmp_path, plugin=None,
+           plugin_raw='{"description": "39 prompt roles", "x": Infinity}')
+    _fires(run(tmp_path), "D1")
+
+
 def test_missing_description_fires_d2(tmp_path):
     _write(tmp_path, plugin={"name": "fixture"})
     _fires(run(tmp_path), "D2")

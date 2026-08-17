@@ -167,8 +167,11 @@ requirements — not answer keys, not expected content. For calibration gold
 sets, require the human researcher to supply a session file at runtime. Never
 wire gold labels into operational agent context: no reference from `SKILL.md`
 or any always-loaded file may load them unconditionally. Repo-tracked gold
-sets under `evals/` are consistent with this boundary — evaluation harnesses
-(`scripts/run_evals.py`) read them on explicit invocation only.
+sets under `evals/` are consistent with this boundary only when their content
+is synthetic or public-safe — evaluation harnesses (`scripts/run_evals.py`)
+read them on explicit invocation only. Calibration gold sets for live
+reviewer scoring remain runtime-supplied and are never committed (they may
+contain human or private data).
 
 **DO: Pass scores back through a reviewer agent that holds the rubric
 privately.** The review workflow is: reviewer reads paper + rubric → reviewer

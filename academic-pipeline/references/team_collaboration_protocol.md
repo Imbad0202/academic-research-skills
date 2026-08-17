@@ -88,7 +88,7 @@ For each stage transition, the following handoff procedure applies:
 | **Who receives** | Lead Author |
 | **Materials** | Final Verified Draft + Final Integrity Report |
 | **Approval needed** | Integrity verdict PASS with zero issues (or the recorded Integrity Check FAIL Loop user decision) |
-| **Handoff checklist** | All previous integrity issues confirmed resolved; Material Passport updated to VERIFIED |
+| **Handoff checklist** | All previous integrity issues resolved, or covered by the recorded FAIL-loop decision with the partially-unverified warning carried forward; Material Passport `verification_status` set to `VERIFIED` only on a zero-issue PASS (a FAIL-loop continuation keeps `UNVERIFIED`) |
 
 ---
 

@@ -110,6 +110,12 @@ FORBIDDEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
 _PLUGIN_EXPOSED_RE = re.compile(r"(\d+)\s+plugin-exposed", re.IGNORECASE)
 
 
+def _reject_json_constant(value: str) -> None:
+    """`json.loads` accepts non-standard NaN/Infinity by default; strict
+    distribution consumers reject them, so D1 must too (fail-closed)."""
+    raise ValueError(f"non-standard JSON constant {value!r}")
+
+
 def _load_manifest(path: Path, errors: list[str]) -> dict | None:
     """D1: fail-closed manifest load."""
     if not path.is_file():
@@ -117,7 +123,8 @@ def _load_manifest(path: Path, errors: list[str]) -> dict | None:
                       f"silently leave this lint's coverage")
         return None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"),
+                          parse_constant=_reject_json_constant)
     except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
         errors.append(f"D1: {path} failed to parse as JSON ({exc})")
         return None

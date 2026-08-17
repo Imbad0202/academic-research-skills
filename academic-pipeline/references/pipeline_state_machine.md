@@ -159,7 +159,7 @@ This document defines all legal states, transition conditions, transition action
 | checkpoint | Stage 2 | User confirms | handoff RQ Brief + Methodology Blueprint + Bibliography + Synthesis |
 | Stage 2 | **checkpoint** | Stage 2 completed, Paper Draft produced | Wait for user confirmation |
 | checkpoint | Stage 2.5 | User confirms | Pass Paper Draft to integrity agent |
-| Stage 2.5 | **checkpoint** | PASS | Wait for user confirmation |
+| Stage 2.5 | **checkpoint** | PASS, or recorded Integrity Check FAIL Loop resolution (§ below) | Wait for user confirmation |
 | Stage 2.5 | Stage 2.5 (retry) | FAIL | Fix issues, re-verify (max 3 rounds) |
 | checkpoint | Stage 3 | User confirms | Pass verified paper to reviewer |
 | Stage 3 | **checkpoint** | Decision produced | Wait for user confirmation |
@@ -172,7 +172,7 @@ This document defines all legal states, transition conditions, transition action
 | checkpoint | Stage 4' | Decision = Major, user confirms | Pass new Revision Roadmap |
 | Stage 4' | **checkpoint** | Stage 4' completed | Wait for user confirmation |
 | checkpoint | Stage 4.5 | User confirms | Pass revised draft to final verification |
-| Stage 4.5 | **checkpoint** | PASS (zero issues) | Wait for user confirmation |
+| Stage 4.5 | **checkpoint** | PASS (zero issues), or recorded Integrity Check FAIL Loop resolution (§ below) | Wait for user confirmation |
 | Stage 4.5 | Stage 4.5 (retry) | FAIL | Fix issues, re-verify (max 3 rounds) |
 | checkpoint | Stage 5 | User confirms (MANDATORY — the Stage 5 entry gate; see § Stage 5 boundary semantics) | Pass final accepted draft; record the finalization-format decision (citation style) |
 | Stage 5 | **checkpoint** | Stage 5 completed, Final Paper delivered | Wait for user confirmation (FULL — never SLIM; see § Stage 5 boundary semantics) |
