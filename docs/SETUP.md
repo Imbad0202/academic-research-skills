@@ -248,6 +248,11 @@ Claude discovers skills at `<install-root>/<skill-name>/SKILL.md`. This repo con
 
 Do not install the whole repository as one nested skill folder under `.claude/skills/academic-research-skills/`; that buries the four `SKILL.md` files one level too deep for discovery. See Anthropic's [Claude Code Skills documentation](https://code.claude.com/docs/en/skills).
 
+The methods below differ in more than convenience: hooks, slash commands, the tools
+allowlist, subagent orchestration, and script-backed checks are each available in some
+channels and degraded or absent in others. Before relying on any of those mechanisms,
+check the per-channel map: [CONTROL_AVAILABILITY.md](CONTROL_AVAILABILITY.md).
+
 ### Method 0: Claude Code Plugin (v3.7.0+, recommended for Claude Code CLI / IDE users)
 
 If you use Claude Code CLI, VS Code extension, or JetBrains extension, install ARS as a plugin:
