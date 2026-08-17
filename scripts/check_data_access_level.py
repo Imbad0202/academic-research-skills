@@ -16,6 +16,7 @@ skill must be registered here before it passes.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -80,8 +81,14 @@ def run_all_checks(root: Path) -> list[str]:
 
 
 def main() -> int:
-    root = Path(__file__).resolve().parent.parent
-    violations = run_all_checks(root)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--path",
+        type=Path,
+        default=Path(__file__).resolve().parent.parent,
+    )
+    args = parser.parse_args()
+    violations = run_all_checks(args.path)
     if violations:
         for v in violations:
             print(f"ERROR: {v}")
