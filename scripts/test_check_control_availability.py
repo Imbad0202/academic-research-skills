@@ -209,6 +209,34 @@ def test_ca1_commented_out_dead_link_does_not_fire(repo: Path) -> None:
     assert run_all_checks(repo) == []
 
 
+def test_ca3_html_block_line_does_not_render_link(repo: Path) -> None:
+    # GFM type-2 HTML block: a line beginning with `<!--` stays raw HTML
+    # through the `-->` line INCLUDING trailing text after the terminator,
+    # so a link there does not render and must not satisfy CA-3 (codex R4
+    # finding).
+    readme = repo / "README.md"
+    text = readme.read_text(encoding="utf-8")
+    old = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
+    assert old in text
+    readme.write_text(
+        text.replace(old, f"<!-- note --> {old}"), encoding="utf-8"
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)
+
+
+def test_ca1_unclosed_comment_swallows_rest_of_document(repo: Path) -> None:
+    # An unclosed `<!--` extends the HTML block to EOF: a dead link after it
+    # never renders, so CA-1 must stay quiet.
+    doc = repo / DOC_RELPATH
+    doc.write_text(
+        doc.read_text(encoding="utf-8")
+        + "\n<!--\n[dead](NO_SUCH_FILE.md)\n",
+        encoding="utf-8",
+    )
+    assert run_all_checks(repo) == []
+
+
 def test_slug_matches_github_for_punctuated_heading() -> None:
     heading = (
         "Method 0: Claude Code Plugin (v3.7.0+, recommended for "

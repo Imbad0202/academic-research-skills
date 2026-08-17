@@ -45,10 +45,32 @@ _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 def _strip_html_comments(md_text: str) -> str:
-    """Commented-out markdown does not render: a link or heading inside
-    `<!-- -->` must count for nothing (neither satisfying CA-2/CA-3 nor
-    firing CA-1)."""
-    return _HTML_COMMENT_RE.sub("", md_text)
+    """Non-rendering markdown counts for nothing (neither satisfying
+    CA-2/CA-3 nor firing CA-1).
+
+    Two GFM behaviors matter here:
+    - A line beginning with `<!--` (up to 3 leading spaces) opens a type-2
+      HTML block that runs through the line containing `-->` — or to EOF if
+      unclosed — and NOTHING on those lines renders as markdown, including
+      text after the terminator on the closing line.
+    - Elsewhere, an inline `<!-- ... -->` span is raw HTML; the surrounding
+      text still renders.
+    """
+    kept: list[str] = []
+    lines = md_text.split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.lstrip(" ")
+        indent = len(line) - len(stripped)
+        if indent <= 3 and stripped.startswith("<!--"):
+            while i < len(lines) and "-->" not in lines[i]:
+                i += 1
+            i += 1  # skip the closing line entirely (or run off EOF)
+            continue
+        kept.append(line)
+        i += 1
+    return _HTML_COMMENT_RE.sub("", "\n".join(kept))
 
 
 def github_slug(heading: str) -> str:
