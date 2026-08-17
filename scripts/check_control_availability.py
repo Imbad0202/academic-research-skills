@@ -35,9 +35,10 @@ DOC_RELPATH = Path("docs/CONTROL_AVAILABILITY.md")
 SETUP_RELPATH = Path("docs/SETUP.md")
 INBOUND_LINK_SURFACES = (Path("README.md"), SETUP_RELPATH)
 
-# [text](target) — good enough for this doc's plain links; code fences in the
-# doc carry no links, so no fence-stripping pass is needed.
-_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+# [text](target) and [text](target "title") — code fences in the doc carry no
+# links, so no fence-stripping pass is needed. The target is captured before
+# an optional quoted title; a titled link must not silently fall out of CA-1.
+_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$", re.MULTILINE)
 _METHOD_HEADING_RE = re.compile(r"^###\s+Method\b.*$", re.MULTILINE)
 
@@ -107,13 +108,21 @@ def check_links_resolve(root: Path) -> list[str]:
 def check_method_coverage(root: Path) -> list[str]:
     """CA-2: every SETUP `### Method` heading is linked from the doc."""
     errors: list[str] = []
-    setup_text = (root / SETUP_RELPATH).read_text(encoding="utf-8")
-    doc_text = (root / DOC_RELPATH).read_text(encoding="utf-8")
-    linked_fragments = {
-        target.partition("#")[2]
-        for target in _doc_links(doc_text)
-        if "#" in target and not target.startswith(("http://", "https://"))
-    }
+    setup_path = (root / SETUP_RELPATH).resolve()
+    setup_text = setup_path.read_text(encoding="utf-8")
+    doc_path = root / DOC_RELPATH
+    doc_text = doc_path.read_text(encoding="utf-8")
+    # Only fragments on links whose destination file IS docs/SETUP.md count:
+    # a same-slug anchor into a copied/renamed file must not satisfy coverage.
+    linked_fragments = set()
+    for target in _doc_links(doc_text):
+        if target.startswith(("http://", "https://", "mailto:", "#")):
+            continue
+        path_part, _, fragment = target.partition("#")
+        if not fragment:
+            continue
+        if (doc_path.parent / path_part).resolve() == setup_path:
+            linked_fragments.add(fragment)
     for match in _METHOD_HEADING_RE.finditer(setup_text):
         heading = match.group(0).lstrip("#").strip()
         slug = github_slug(heading)
@@ -127,11 +136,25 @@ def check_method_coverage(root: Path) -> list[str]:
 
 
 def check_inbound_links(root: Path) -> list[str]:
-    """CA-3: README.md and docs/SETUP.md link to the doc."""
+    """CA-3: README.md and docs/SETUP.md link to the doc.
+
+    The check is on the link DESTINATION, resolved relative to the surface —
+    a link whose visible label keeps the filename but whose target points
+    elsewhere must not pass.
+    """
     errors: list[str] = []
+    doc_abs = (root / DOC_RELPATH).resolve()
     for rel in INBOUND_LINK_SURFACES:
         surface = root / rel
-        if DOC_RELPATH.name not in surface.read_text(encoding="utf-8"):
+        found = False
+        for target in _doc_links(surface.read_text(encoding="utf-8")):
+            if target.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            path_part = target.partition("#")[0]
+            if path_part and (surface.parent / path_part).resolve() == doc_abs:
+                found = True
+                break
+        if not found:
             errors.append(
                 f"CA-3: {rel} no longer links to {DOC_RELPATH.name} "
                 f"(#757 acceptance criterion)"

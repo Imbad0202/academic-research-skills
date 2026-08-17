@@ -136,6 +136,53 @@ def test_ca3_setup_link_removed_fires(repo: Path) -> None:
     assert any("CA-3" in e and "SETUP.md" in e for e in errors)
 
 
+def test_ca1_titled_dead_link_fires(repo: Path) -> None:
+    # A link with an optional quoted title must not fall out of the link
+    # grammar and silently skip CA-1 (codex R2 finding).
+    doc = repo / DOC_RELPATH
+    doc.write_text(
+        doc.read_text(encoding="utf-8")
+        + '\nSee [dead](NO_SUCH_FILE.md "optional title").\n',
+        encoding="utf-8",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-1" in e and "NO_SUCH_FILE.md" in e for e in errors)
+
+
+def test_ca2_same_slug_in_copied_file_does_not_satisfy(repo: Path) -> None:
+    # Retargeting a method link at a copy of SETUP that carries the same
+    # heading must fail CA-2: coverage counts only links whose destination
+    # IS docs/SETUP.md (codex R2 finding).
+    shutil.copyfile(repo / SETUP_RELPATH, repo / "docs/SETUP_COPY.md")
+    _mutate(
+        repo,
+        "docs/CONTROL_AVAILABILITY.md",
+        "SETUP.md#method-5-claude-science-import-v3140",
+        "SETUP_COPY.md#method-5-claude-science-import-v3140",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-2" in e and "Method 5" in e for e in errors)
+    assert not any("CA-1" in e for e in errors)
+
+
+def test_ca3_label_keeps_filename_but_target_moves_fires(repo: Path) -> None:
+    # The visible label retaining the filename must not satisfy CA-3; only
+    # the resolved link DESTINATION counts (codex R2 finding).
+    readme = repo / "README.md"
+    text = readme.read_text(encoding="utf-8")
+    old = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
+    assert old in text
+    readme.write_text(
+        text.replace(
+            old,
+            "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY_GONE.md)",
+        ),
+        encoding="utf-8",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)
+
+
 def test_slug_matches_github_for_punctuated_heading() -> None:
     heading = (
         "Method 0: Claude Code Plugin (v3.7.0+, recommended for "

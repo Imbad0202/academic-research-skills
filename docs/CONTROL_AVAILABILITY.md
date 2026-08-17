@@ -95,8 +95,8 @@ runtime graceful-degradation mechanisms is
    [gap assessment §3](../audits/iso42001-spirit-gap-assessment-2026-08-17.md)).
    This row says the *instructions* are present and active in the channel, nothing
    stronger.
-8. Both SessionStart hooks are launched through `bash`, so on Windows they need Git
-   Bash (the same PowerShell limitation as the guard launcher); the update reminder
+8. The SessionStart hook is launched through `bash`, so on Windows it needs Git Bash
+   (the same PowerShell limitation as the guard launcher); its update-reminder path
    additionally needs `curl`, stays silent on any failure, and is disabled entirely by
    `ARS_UPDATE_CHECK=0` (SETUP Method 0).
 
