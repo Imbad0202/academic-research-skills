@@ -1,11 +1,13 @@
 """Unit + mutation tests for check_data_access_level.py.
 
-Two layers, matching the lint's two layers:
-- the original CLI-level vocabulary/frontmatter tests (subprocess via
-  `--path`, preserving the stdout-not-stderr reporting contract), updated
-  where the #756 EXPECTED_LEVELS pin layer changed what a passing synthetic
-  root must look like (it now needs the four registered skill names);
-- in-process mutation tests for the #756 per-skill pin layer itself.
+Two layers, matching the lint's shape after the #756 single-pass rewrite:
+- CLI-level tests (subprocess via `--path`, preserving the stdout-not-stderr
+  reporting contract for frontmatter failures);
+- in-process mutation tests for the EXPECTED_LEVELS pin layer.
+
+Since #756 the pin layer runs on every skill, so scenarios that probe field
+handling use REGISTERED skill names (an arbitrary synthetic skill correctly
+fails as unregistered before its field is examined).
 """
 import shutil
 import subprocess
@@ -16,7 +18,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from tests.test_helpers import run_skill_linter
+from tests.test_helpers import run_skill_linter, write_skill as _write_skill
 
 from check_data_access_level import EXPECTED_LEVELS, run_all_checks
 
@@ -26,15 +28,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 def _run(root: Path) -> subprocess.CompletedProcess:
     return run_skill_linter(SCRIPT, root)
-
-
-def _write_skill(root: Path, name: str, frontmatter_body: str) -> None:
-    skill_dir = root / name
-    skill_dir.mkdir(parents=True, exist_ok=True)
-    (skill_dir / "SKILL.md").write_text(
-        f"---\n{frontmatter_body}---\n\n# {name}\n",
-        encoding="utf-8",
-    )
 
 
 def _write_registered_fleet(root: Path) -> None:
@@ -60,12 +53,13 @@ class TestLintScript(unittest.TestCase):
     def test_missing_field_fails(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
+            _write_registered_fleet(root)
             _write_skill(
                 root,
-                "example-skill",
+                "deep-research",
                 textwrap.dedent(
                     """\
-                    name: example-skill
+                    name: deep-research
                     description: "test"
                     metadata:
                       version: "1.0"
@@ -80,12 +74,13 @@ class TestLintScript(unittest.TestCase):
     def test_invalid_value_fails(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
+            _write_registered_fleet(root)
             _write_skill(
                 root,
-                "example-skill",
+                "deep-research",
                 textwrap.dedent(
                     """\
-                    name: example-skill
+                    name: deep-research
                     description: "test"
                     metadata:
                       version: "1.0"
@@ -99,14 +94,26 @@ class TestLintScript(unittest.TestCase):
             self.assertIn("public", result.stdout + result.stderr)
 
     def test_valid_value_passes(self) -> None:
-        # Since #756 the pin layer also runs, so a passing root carries the
-        # four registered skills at their pinned levels (an arbitrary
-        # synthetic skill would correctly fail as unregistered).
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_registered_fleet(root)
             result = _run(root)
             self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+    def test_non_mapping_metadata_reports_violation(self) -> None:
+        # codex R1: `metadata: active` is valid YAML but not a mapping — the
+        # pin layer must report it as a violation, not crash.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_registered_fleet(root)
+            _write_skill(
+                root,
+                "deep-research",
+                "name: deep-research\nmetadata: active\n",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("metadata must be a mapping/object", result.stdout)
 
     def test_malformed_yaml_reports_on_stdout(self) -> None:
         """FrontmatterError detail must appear on stdout, not only stderr."""
@@ -169,10 +176,6 @@ def test_real_tree_passes() -> None:
     assert run_all_checks(REPO_ROOT) == []
 
 
-def test_fixture_baseline_passes(fixture_repo: Path) -> None:
-    assert run_all_checks(fixture_repo) == []
-
-
 def test_pipeline_reverting_to_verified_only_fires(fixture_repo: Path) -> None:
     # The #756 regression itself: silently flipping the pipeline back to
     # verified_only must fail against the pin.
@@ -208,3 +211,17 @@ def test_pin_without_skill_dir_fires(fixture_repo: Path) -> None:
     assert any(
         "deep-research" in e and "no top-level" in e for e in errors
     )
+
+
+def test_one_violation_per_problem(fixture_repo: Path) -> None:
+    # The single-pass rewrite exists so one broken skill yields ONE row, not
+    # a vocabulary row plus a pin row.
+    _write_skill(
+        fixture_repo,
+        "academic-pipeline",
+        "name: academic-pipeline\nmetadata:\n"
+        "  data_access_level: public\n  status: active\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert len(errors) == 1
+    assert "public" in errors[0]

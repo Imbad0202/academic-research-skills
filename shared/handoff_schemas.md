@@ -1169,7 +1169,7 @@ Every top-level `SKILL.md` declares `metadata.data_access_level` with one of thr
 - `redacted` — operates on sanitized material; no new raw ingestion
 - `verified_only` — runs only after upstream integrity gates
 
-This is a declarative signal (not a runtime permission system). Enforced by `scripts/check_data_access_level.py` in CI. When adding a new skill, pick the value matching the *dirtiest* input the skill may legitimately consume.
+This is a declarative signal (not a runtime permission system). Enforced by `scripts/check_data_access_level.py` in CI, which since #756 also pins each skill's declared value — a new skill must be registered there with the value matching the *dirtiest* input it may legitimately consume.
 
 ## `task_type` (v3.3.2+)
 

@@ -91,6 +91,7 @@ flowchart TD
 - **Solid orange (✓)** = integrity gate — machine verification runs first, user then acknowledges the report. Not skipped.
 - **Green** = Socratic coaching sub-stage. User may engage or say "just fix it" to skip the dialogue.
 - **👁 observer** (v3.5.0) = `collaboration_depth_agent` dispatches at every FULL/SLIM checkpoint + pipeline completion. **Never blocks.** Advisory only. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted.
+- **Data level** (§3 column) = the data layer that *stage* operates on, not the owning skill's declared `data_access_level` (see §4 — e.g. `academic-pipeline` declares `raw` while its gate stages operate on verified material).
 
 ## 3. Stage × Dimension Matrix
 
@@ -138,17 +139,13 @@ flowchart LR
 
 Rules (per `shared/ground_truth_isolation_pattern.md`):
 
-- `data_access_level` is a **declarative** annotation, not a runtime-enforced permission system. The CI lint `scripts/check_data_access_level.py` confirms every `SKILL.md` carries a valid value; it does not inspect context windows at runtime.
+- `data_access_level` is a **declarative** annotation, not a runtime-enforced permission system. The CI lint `scripts/check_data_access_level.py` pins each skill's value and confirms the vocabulary; it does not inspect context windows at runtime.
 - `raw` skills consume layer-1 data (arbitrary, possibly adversarial).
 - `redacted` skills operate on sanitized material, no new raw ingestion.
 - `verified_only` skills run only after upstream integrity gates.
-- The annotation reflects the **dirtiest input the skill may legitimately consume
-  across all its modes** (the pattern doc's declaration rule). That is why
-  `academic-pipeline` is `raw` (#756): the orchestrator's Stage 1 accepts raw user
-  requests and mid-entry accepts raw existing papers — the integrity gates run
-  *inside* the pipeline, downstream of its intake, so nothing has verified its input
-  before it runs. The per-skill values are pinned in
-  `scripts/check_data_access_level.py`.
+- `academic-pipeline` is `raw` (#756) because Stage 1 accepts raw user requests and
+  mid-entry accepts raw existing papers — the integrity gates run *inside* the
+  pipeline, downstream of its intake.
 - The reviewer side **may hold a rubric privately** — the key guarantee is that rubric / gold-label content must not be present in the candidate-generating agent's context. Calibration gold sets are runtime-supplied by the human researcher, not bundled into the repository.
 - Stage 2.5 and Stage 4.5 (plus the user's review at each gate) are the actual enforcement points. This pattern document explains the data-flow structure that makes those gates meaningful; it is not itself a runtime lock.
 

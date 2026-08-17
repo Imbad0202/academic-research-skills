@@ -62,6 +62,20 @@ def run_skill_linter(script_path: Path, root: Path) -> subprocess.CompletedProce
     )
 
 
+def write_skill(root: Path, name: str, frontmatter_body: str) -> None:
+    """Write a synthetic <root>/<name>/SKILL.md with the given frontmatter.
+
+    Single-sourced here (previously copied verbatim in
+    test_check_task_type.py and test_check_data_access_level.py, per this
+    module's migrate-at-next-edit convention)."""
+    skill_dir = root / name
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text(
+        f"---\n{frontmatter_body}---\n\n# {name}\n",
+        encoding="utf-8",
+    )
+
+
 def load_json_schema(path: Path) -> dict[str, Any]:
     """Load a JSON Schema file and verify it parses as Draft 2020-12.
 

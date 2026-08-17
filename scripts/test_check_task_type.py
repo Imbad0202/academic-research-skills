@@ -6,22 +6,13 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from tests.test_helpers import run_skill_linter
+from tests.test_helpers import run_skill_linter, write_skill as _write_skill
 
 SCRIPT = Path(__file__).resolve().parent / "check_task_type.py"
 
 
 def _run(root: Path) -> subprocess.CompletedProcess:
     return run_skill_linter(SCRIPT, root)
-
-
-def _write_skill(root: Path, name: str, frontmatter_body: str) -> None:
-    skill_dir = root / name
-    skill_dir.mkdir(parents=True, exist_ok=True)
-    (skill_dir / "SKILL.md").write_text(
-        f"---\n{frontmatter_body}---\n\n# {name}\n",
-        encoding="utf-8",
-    )
 
 
 class TestTaskTypeLint(unittest.TestCase):

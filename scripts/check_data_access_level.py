@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Lint: every top-level SKILL.md must declare metadata.data_access_level.
+"""Lint: every top-level SKILL.md declares the PINNED data_access_level.
 
-Legal values: raw | redacted | verified_only.
+Single pass per skill, one violation per problem: frontmatter must parse,
+the skill must be registered in EXPECTED_LEVELS, and the declared value
+must equal its pin. The governing rule (`ground_truth_isolation_pattern.md`
+§ "Declare `data_access_level` truthfully") requires the annotation to
+reflect the DIRTIEST input the skill may legitimately consume across all
+its modes.
 
-Beyond vocabulary, the per-skill VALUES are pinned (#756): the governing
-rule (`shared/ground_truth_isolation_pattern.md` § DO: Declare
-`data_access_level` truthfully) requires the annotation to reflect the
-DIRTIEST input the skill may legitimately consume across all its modes.
-`academic-pipeline` is `raw` — the orchestrator's Stage 1 accepts raw user
-requests and mid-entry accepts raw existing papers; the upstream integrity
-gates run INSIDE the pipeline, so nothing has verified its input before it
-runs. Changing a pin here must be a deliberate, reviewed decision that
-re-applies the dirtiest-input rule — not a drive-by edit. A new top-level
-skill must be registered here before it passes.
+Pin provenance is not uniform (honest-claim discipline): the
+`academic-pipeline: raw` pin is #756-derived (Stage 1 accepts raw user
+requests, mid-entry accepts raw papers; the gates run inside the pipeline).
+The other three pins freeze the pre-existing declarations against silent
+drift — they have not been re-derived under the dirtiest-input rule.
+Changing any pin must be a deliberate, reviewed re-application of the rule,
+and a new top-level skill must be registered here before it passes.
 """
 from __future__ import annotations
 
@@ -22,7 +24,6 @@ from pathlib import Path
 
 from _skill_lint import (
     FrontmatterError,
-    check_metadata_field,
     iter_skill_files,
     parse_frontmatter,
 )
@@ -37,20 +38,24 @@ EXPECTED_LEVELS = {
     "deep-research": "raw",
 }
 
+# The pins themselves must stay inside the closed vocabulary.
+assert set(EXPECTED_LEVELS.values()) <= LEGAL_VALUES
 
-def check_expected_levels(root: Path) -> list[str]:
-    """Every skill's declared level equals its pin; every pin has a skill."""
+
+def run_all_checks(root: Path) -> list[str]:
     violations: list[str] = []
     seen: set[str] = set()
     for skill_md in iter_skill_files(root):
         name = skill_md.parent.name
         seen.add(name)
         try:
-            meta = (parse_frontmatter(skill_md) or {}).get("metadata") or {}
+            fm = parse_frontmatter(skill_md)
         except FrontmatterError as exc:
-            violations.append(f"{skill_md}: frontmatter parse error: {exc}")
+            violations.append(str(exc))  # message already carries the path
             continue
-        declared = meta.get("data_access_level")
+        if fm is None:
+            violations.append(f"{skill_md}: missing YAML frontmatter")
+            continue
         if name not in EXPECTED_LEVELS:
             violations.append(
                 f"{skill_md}: skill '{name}' is not registered in "
@@ -58,6 +63,14 @@ def check_expected_levels(root: Path) -> list[str]:
                 f"its level here"
             )
             continue
+        metadata = fm.get("metadata")
+        if not isinstance(metadata, dict):
+            violations.append(
+                f"{skill_md}: metadata must be a mapping/object, got "
+                f"{type(metadata).__name__}"
+            )
+            continue
+        declared = metadata.get("data_access_level")
         if declared != EXPECTED_LEVELS[name]:
             violations.append(
                 f"{skill_md}: data_access_level is {declared!r}, pinned "
@@ -69,14 +82,6 @@ def check_expected_levels(root: Path) -> list[str]:
             f"EXPECTED_LEVELS pins '{name}' but no top-level "
             f"{name}/SKILL.md exists"
         )
-    return violations
-
-
-def run_all_checks(root: Path) -> list[str]:
-    violations = list(
-        check_metadata_field(root, "data_access_level", LEGAL_VALUES)
-    )
-    violations.extend(check_expected_levels(root))
     return violations
 
 

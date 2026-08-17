@@ -233,7 +233,9 @@ def read_or_exit2(root: Path, rel: str) -> str:
 
 
 def run_lint(field: str, legal_values: set[str] | frozenset[str], ok_message: str) -> int:
-    """argparse + check + print + exit-code wrapper used by both check scripts."""
+    """argparse + check + print + exit-code wrapper (check_task_type.py;
+    check_data_access_level.py grew its own #756 pin-layer main and no
+    longer uses this)."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path",
