@@ -20,6 +20,13 @@ boundaries around that scope:
   research skills travels over your Claude platform connection under your Anthropic
   account settings. That path exists with or without ARS and is governed by the
   platform, not by this repo.
+- **Maintainer/evaluation harnesses are not user paths.** A few repo scripts exist
+  only for maintainers running measurements (e.g. `scripts/dispatch_e4_panel.py`
+  through `claude -p`, `scripts/run_review_criteria_constructive_value.py` through
+  the Codex CLI, `scripts/check_ranking_lift.py` through `gh api`). They send
+  content through locally authenticated CLIs when a maintainer invokes them, are
+  never triggered by any user-facing feature, and are deliberately excluded from
+  the touchpoint tables below.
 - **Nothing here publishes.** No ARS component is designed to submit, post, or upload
   your work anywhere autonomously — every network row below is a *lookup* (sending
   queries or citation metadata to read public indexes), an *update check*, or an
