@@ -130,11 +130,13 @@ NEXT_ENTRY_RE = re.compile(r"##\s+\[")
 # ISO week dates, so a shape check gates before parsing (codex P2-2).
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # Invariant 12: the POSITIONING.md citation-prose token, e.g. `(Version 3.20.1)`.
-# Broad capture + strict validator (the post-#169 idiom above): a non-canonical
-# spelling inside the parens (`v3.20.1`, `3.20.1-rc1`, bare `3.20`) surfaces as
-# an error instead of being filtered out and silently passing. CITATION.cff has
-# no regex — it is YAML and is parsed as YAML (see _check_citation_surfaces).
-POSITIONING_VERSION_RE = re.compile(r"\(Version\s+([A-Za-z0-9.\-_+]+)\)")
+# Captures the WHOLE parenthesized payload, then strip + strict-validate (the
+# post-#169 idiom above): a non-canonical spelling (`v3.20.1`, `3.20.1-rc1`,
+# bare `3.20`) or a malformed clause (`3.14.0 ` with a stray space, `3.14.0
+# draft`) surfaces as an error instead of the clause dropping out of a
+# narrower character class and silently passing (codex round-3 P2).
+# CITATION.cff has no regex — it is YAML and is parsed as YAML.
+POSITIONING_VERSION_RE = re.compile(r"\(Version\s+([^)]+)\)")
 
 PIPELINE_SKILL_NAME = "academic-pipeline"
 
@@ -698,7 +700,14 @@ def _check_citation_surfaces(
 
     POSITIONING.md is repo-specific prose: absence or a token-free file is a
     skip (the token is the claim; no claim, no drift), but a present token
-    must be canonical and equal to the suite version."""
+    must be canonical and equal to the suite version.
+
+    Known limitation (accepted, 2026-08-17 threat-model adjudication):
+    duplicate YAML keys resolve last-wins, the same semantics every CFF
+    consumer applies (GitHub's cite widget, Zenodo, cffconvert), so a
+    duplicate-key file renders the identical citation everywhere —
+    untidiness, not drift. Guarding it would require a custom
+    duplicate-rejecting loader whose complexity the harm does not pay for."""
     errors: list[str] = []
     cff = root / "CITATION.cff"
     if not cff.is_file():
@@ -764,9 +773,10 @@ def _check_citation_surfaces(
                     )
     positioning = root / "POSITIONING.md"
     if positioning.is_file():
-        for token in POSITIONING_VERSION_RE.findall(
+        for raw_token in POSITIONING_VERSION_RE.findall(
             positioning.read_text(encoding="utf-8")
         ):
+            token = raw_token.strip()
             if not _is_strict_semver(token):
                 errors.append(
                     f"{positioning}: citation prose token {token!r} is not a "

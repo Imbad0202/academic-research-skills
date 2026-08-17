@@ -1257,17 +1257,21 @@ class TestCitationSurfaces(unittest.TestCase):
 
     def test_cff_missing_version_key_fails(self) -> None:
         """A present CITATION.cff with no version key is malformed — error,
-        never a silent skip."""
+        never a silent skip. date-released stays valid so this test fails
+        for the missing-version diagnostic specifically, not the
+        missing-date one (codex round-3 P2: conflated fixtures let a
+        missing-version regression hide behind the date error)."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_aligned_fixture(root)
             (root / "CITATION.cff").write_text(
-                "cff-version: 1.2.0\ntitle: fixture\ntype: software\n",
+                "cff-version: 1.2.0\ntitle: fixture\ntype: software\n"
+                "date-released: 2026-04-22\n",
                 encoding="utf-8",
             )
             result = _run(root)
             self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
-            self.assertIn("CITATION.cff", result.stdout)
+            self.assertIn("no 'version' key found", result.stdout)
 
     def test_cff_absent_fails(self) -> None:
         """CITATION.cff is outward-facing release metadata like README.md —
@@ -1378,6 +1382,21 @@ class TestCitationSurfaces(unittest.TestCase):
             result = _run(root)
             self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
             self.assertIn("canonical", result.stdout)
+
+    def test_positioning_malformed_clause_still_validated(self) -> None:
+        """`(Version 3.4.0 )` — a stray space must not drop the clause out of
+        the capture and silently pass a stale citation (codex round-3 P2):
+        the payload is captured whole, stripped, then validated."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "POSITIONING.md").write_text(
+                "# Positioning\n\nCite: Fixture Suite (Version 3.4.0 ).\n",
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("3.4.0", result.stdout)
 
     def test_positioning_absent_passes(self) -> None:
         """POSITIONING.md is repo-specific prose — absence is a skip."""
