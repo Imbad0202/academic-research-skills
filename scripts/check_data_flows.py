@@ -73,14 +73,33 @@ NETWORK_DOTTED = {
     "http.client",
 }
 
-_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
+# (?<!\!) — an image `![alt](target)` renders no anchor and must not
+# satisfy DF-3.
+_LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _QUOTE_PREFIX_RE = re.compile(r"^(\s{0,3}>\s?)+")
 _CODE_SPAN_RE = re.compile(r"`[^`\n]+`")
-# `curl`, `/usr/bin/curl`, `./vendor/curl` — a command token whose basename
-# is curl, in command position after start-of-line or a shell separator.
-_CURL_RE = re.compile(r"(?:^|[|&;(\s])(?:[\w./-]*/)?curl(?:\s|$)")
 _SHELL_QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+_ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z_0-9]*=")
+
+
+def _invokes_curl(code: str) -> bool:
+    """True when curl appears in COMMAND POSITION: the first non-assignment
+    token of a segment (split on pipes/separators/substitution openers),
+    with any path prefix allowed (`/usr/bin/curl`). `command -v curl`,
+    `echo curl`, and other argument-position mentions do not count.
+    Accepted edges: wrapper-prefixed invocations (`sudo curl`,
+    `timeout 3 curl`) are missed — the surfaces don't write them."""
+    for segment in re.split(r"[|;&(`]|\$\(", code):
+        head = None
+        for token in segment.split():
+            if _ENV_ASSIGN_RE.match(token):
+                continue  # VAR=value prefix before the command word
+            head = token
+            break
+        if head is not None and head.rsplit("/", 1)[-1] == "curl":
+            return True
+    return False
 
 
 def _strip_fenced_code(md_text: str) -> str:
@@ -195,14 +214,14 @@ def _curl_shell_scripts(root: Path) -> list[Path]:
                 # accepted edge: a $(curl) inside a trailing inline comment
                 # would false-fire; the surfaces don't write that.)
                 subs = re.findall(r"\$\(([^)]*)\)", line)
-                if any(_CURL_RE.search(" " + sub) for sub in subs):
+                if any(_invokes_curl(sub) for sub in subs):
                     hits.append(sh)
                     break
                 # Then mask quoted spans so `echo "run curl ..."` (quoted
                 # instructional text, no curl process) cannot fire, and drop
                 # the comment tail.
                 code = _SHELL_QUOTED_RE.sub("", line).split("#", 1)[0]
-                if _CURL_RE.search(code):
+                if _invokes_curl(code):
                     hits.append(sh)
                     break
     return hits

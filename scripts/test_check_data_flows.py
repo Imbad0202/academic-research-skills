@@ -273,6 +273,41 @@ def test_df2_commented_command_substitution_not_flagged(
     assert run_all_checks(fixture_repo) == []
 
 
+def test_df2_argument_position_curl_not_flagged(fixture_repo: Path) -> None:
+    # `command -v curl` (a preflight) and `echo curl` mention curl only in
+    # argument position — no curl process runs (codex R3 finding).
+    _write(
+        fixture_repo,
+        "scripts/preflight.sh",
+        "#!/bin/sh\nif ! command -v curl >/dev/null; then\n"
+        "  echo curl missing\nfi\n",
+    )
+    assert run_all_checks(fixture_repo) == []
+
+
+def test_df2_env_prefixed_curl_fires(fixture_repo: Path) -> None:
+    # `VAR=x curl ...` is still a curl invocation in command position.
+    _write(
+        fixture_repo,
+        "scripts/env_fetch.sh",
+        "#!/bin/sh\nLC_ALL=C curl -s https://example.invalid/e\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-2" in e and "env_fetch.sh" in e for e in errors)
+
+
+def test_df3_image_syntax_does_not_satisfy(fixture_repo: Path) -> None:
+    # `![map](docs/DATA_FLOWS.md)` renders an image, not an anchor — a
+    # one-character typo must not keep DF-3 green (codex R3 finding).
+    _write(
+        fixture_repo,
+        "THIRD_PARTY.md",
+        "# Third party\n\n![map](docs/DATA_FLOWS.md)\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-3" in e and "THIRD_PARTY.md" in e for e in errors)
+
+
 def test_df3_link_inside_code_span_fires(fixture_repo: Path) -> None:
     # A link inside inline backticks renders literally, not as a link
     # (codex R1 finding).
