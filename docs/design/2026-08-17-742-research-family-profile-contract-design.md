@@ -50,9 +50,11 @@ contract version bump in both consumers in the same commit.
 | `finalization` | `stage_5_final`, `stage_6_record` | format-convert / Process Record |
 
 `integrity_check` spans both gates and `finalization` spans Stages 5-6 by
-design: profile-level applicability does not vary between those checkpoints,
-and a #745 row that needs checkpoint grain records the `pipeline_stage_id`
-beside the task family. Theory choice, measurement, analysis, and
+design: profile-level applicability does not vary between those checkpoints.
+The shipped `stage-capability-matrix/1.0` row shape carries only the task
+family; a #745 row that needs checkpoint grain names the `pipeline_stage_id`
+in its row text today, and a dedicated field is a coordinated matrix version
+bump when checkpoint grain becomes load-bearing. Theory choice, measurement, analysis, and
 interpretation are NOT stages in this vocabulary — they are alternative
 *categories* carried by #744 within the stages above; adding them here as
 stages would smuggle in the universal research ontology the epic rejects.
@@ -81,11 +83,11 @@ version is a contract violation. Frozen field set, with deterministic shapes:
 | `branch_budget` | ✓ | integer ≥ 1; counting semantics in §7 |
 | `overflow_behavior` | ✓ | const `ask_merge_park_archive` — the only lawful response to a budget overflow is asking the user; auto-pruning is forbidden, and the overflowing candidate is retained pending the user's disposition, never dropped |
 | `evidence_overlays` | — | list of `{name: string, pointer: string}` (e.g. PRISMA for evidence synthesis); pointers only, never a hierarchy ranking claim |
-| `authority_points` | ✓ | list of `{task_family: §2 id, authority: string, requirement: string}` (IRB/ethics determination, consent, co-author sign-off); may be empty only for `field_general` |
+| `authority_points` | ✓ | list of `{task_family: §2 id, authority: string, requirement: string}` (IRB/ethics determination, consent, co-author sign-off); may be empty only when `research_family` is `field_general`, and for EVERY such profile — shipped or `user_authored` — empty deterministically means "unknown; ask the user" (§4), never "not required" |
 | `known_exclusions` | ✓ | list of non-empty strings: work this profile is known NOT to fit |
 | `unresolved_fit_note` | ✓ | non-empty string naming what remains unvalidated about the profile itself |
 | `provenance` | ✓ | `{source: "shipped_default" \| "user_authored" \| "user_modified", source_pointer: string, last_reviewed_at: ISO date, freshness_state: "current" \| "stale" \| "unverified"}` — `source_pointer` names where the profile content came from (a shipped file path, or the user's own declaration); shipped defaults are `current` at release and become `stale` by release policy, never silently |
-| `content_sha256` | ✓ | SHA-256 over the profile document in JSON Canonical Form with this field set to the 64-zero placeholder (the Schema 9 `reset_boundary` hashing convention); consumers verify before use |
+| `content_sha256` | ✓ | SHA-256 over the profile document in JSON Canonical Form with this field set to the 64-zero placeholder (the Schema 9 `reset_boundary` hashing convention); published profile files are STORED in canonical form, so the canonical digest and the raw-byte digest coincide and a receipt binding the digest binds the exact stored bytes; consumers verify before use |
 
 Closed shape: unknown fields are refused (`additionalProperties: false` when
 the schema ships). A profile document carries **no** per-project state — no
@@ -219,7 +221,19 @@ under test.
   arm.
 - *Wrong-profile recovery*: given a seeded wrong profile, whether the
   participant detects it and reaches the correct profile via §6 correction,
-  without restarting.
+  without restarting. This outcome exists only in arm B (arm A has no
+  profile to recover from), so it is gated against an absolute criterion
+  frozen at the §8-A amendment, not against arm A.
+- *Consequential decision*: a decision recorded at a MANDATORY or FULL
+  pipeline checkpoint or at the Stage 1 design freeze — the same boundary
+  the #743 ledger uses for its summary moments.
+- *Simple-path task card*: a task card authored to be completable without
+  any profile or branch interaction, labeled `simple_path` at task-authoring
+  time; the labeled set is frozen at the §8-A amendment.
+- *Safety/authority regression*: any stratum in which arm B reaches a task
+  end state with an authority-point requirement unmet that arm A surfaced
+  (or that the task card's ground truth requires), plus any additional
+  rubric the §8-A amendment freezes.
 
 Outcomes, reported separately and never collapsed into one score:
 task completion, unnecessary-prompt count, time on task, abandonment,
@@ -241,9 +255,13 @@ and independently judged decision usefulness.
 
 **Pre-recruitment amendment gate (§8-A, frozen).** Analysis unit, summary
 statistics and confidence procedure, sample size and allocation /
-counterbalancing plan, missing-data rule, the perceived-control instrument
-and its margin, and rater training for the "unnecessary prompt" and
-"decision usefulness" judgments are NOT yet specified. Freezing invented
+counterbalancing plan, missing-data rule and session-timeout value, the
+perceived-control instrument and its margin, the decision-usefulness
+instrument/rubric and its margin, the absolute wrong-profile-recovery
+criterion, the frozen `simple_path` task-card set, any additional
+safety/authority-regression rubric, and rater training for the
+"unnecessary prompt" and "decision usefulness" judgments are NOT yet
+specified. Freezing invented
 values now would be fake precision; instead this gate is itself frozen: **no
 participant session may begin until a recorded amendment to this document
 supplies every item in this paragraph.** The amendment must precede
@@ -251,12 +269,12 @@ recruitment, not follow it.
 
 **Default-on decision rule (complete).** A default-on proposal for one exact
 family × release requires ALL of: every guardrail row above passes in that
-stratum; wrong-profile recovery and decision usefulness in arm B are each at
-least as good as arm A in that stratum (same instrument-relative margin
-discipline as perceived control); no safety or authority regression in any
-stratum (a single stratum regression vetoes, even if pooled results improve);
-and ≥ 3 materially different families with usability evidence, at least one
-non-empirical. Mixed evidence on any outcome, or a materially risen burden
+stratum; wrong-profile recovery in arm B meets the §8-A-frozen absolute
+criterion in that stratum; decision usefulness in arm B is not worse than
+arm A in that stratum on the §8-A-frozen instrument and margin; no safety or
+authority regression in any stratum (a single stratum regression vetoes,
+even if pooled results improve); and ≥ 3 materially different families with
+usability evidence, at least one non-empirical. Mixed evidence on any outcome, or a materially risen burden
 on any outcome, keeps the default unchanged. Evidence in one family or
 version never authorizes another.
 
@@ -270,6 +288,9 @@ per the roadmap's repository data boundary.
 
 On the day a #745 matrix scaffold exists, this mechanism registers as:
 mechanism `research_workflow_profile` @ contract `research-workflow-profile/1.0`,
+one row under `rq_formation` (the task family where selection/confirmation
+occurs, with a known-exclusion noting the profile governs every downstream
+stage — the shipped matrix row shape requires exactly one task family),
 status `DESIGNED`, behavioral evidence `NOT_RUN`, claim ceiling: "a design
 freeze for a versioned profile declaration exists; no schema, profile
 instance, or runtime consumer ships yet, and no usability or outcome claim is
