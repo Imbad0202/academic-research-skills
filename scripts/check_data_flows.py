@@ -81,20 +81,37 @@ _QUOTE_PREFIX_RE = re.compile(r"^(\s{0,3}>\s?)+")
 _CODE_SPAN_RE = re.compile(r"`[^`\n]+`")
 _SHELL_QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
 _ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z_0-9]*=")
+# Shell control words that precede a command without consuming its command
+# position: `if curl …; then`, `while ! curl …; do`, `exec curl …`.
+_SHELL_CONTROL_TOKENS = {
+    "if",
+    "elif",
+    "while",
+    "until",
+    "then",
+    "else",
+    "do",
+    "!",
+    "time",
+    "exec",
+}
 
 
 def _invokes_curl(code: str) -> bool:
-    """True when curl appears in COMMAND POSITION: the first non-assignment
-    token of a segment (split on pipes/separators/substitution openers),
-    with any path prefix allowed (`/usr/bin/curl`). `command -v curl`,
-    `echo curl`, and other argument-position mentions do not count.
-    Accepted edges: wrapper-prefixed invocations (`sudo curl`,
-    `timeout 3 curl`) are missed — the surfaces don't write them."""
+    """True when curl appears in COMMAND POSITION: the first token of a
+    segment (split on pipes/separators/substitution openers) after skipping
+    VAR=value assignment prefixes and shell control words, with any path
+    prefix allowed (`/usr/bin/curl`). `command -v curl`, `echo curl`, and
+    other argument-position mentions do not count. Accepted edges:
+    wrapper-prefixed invocations (`sudo curl`, `timeout 3 curl`,
+    `xargs curl`) are missed — the surfaces don't write them."""
     for segment in re.split(r"[|;&(`]|\$\(", code):
         head = None
         for token in segment.split():
             if _ENV_ASSIGN_RE.match(token):
                 continue  # VAR=value prefix before the command word
+            if token in _SHELL_CONTROL_TOKENS:
+                continue  # control word — the command follows
             head = token
             break
         if head is not None and head.rsplit("/", 1)[-1] == "curl":

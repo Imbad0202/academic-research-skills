@@ -296,6 +296,28 @@ def test_df2_env_prefixed_curl_fires(fixture_repo: Path) -> None:
     assert any("DF-2" in e and "env_fetch.sh" in e for e in errors)
 
 
+def test_df2_curl_behind_control_keywords_fires(fixture_repo: Path) -> None:
+    # `if curl …; then` / `while ! curl …; do` keep curl in command
+    # position behind shell control words (codex R4 finding).
+    _write(
+        fixture_repo,
+        "scripts/cond_fetch.sh",
+        "#!/bin/sh\nif curl -s https://example.invalid/c; then\n"
+        "  echo ok\nfi\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-2" in e and "cond_fetch.sh" in e for e in errors)
+
+
+def test_df2_control_keywords_alone_not_flagged(fixture_repo: Path) -> None:
+    _write(
+        fixture_repo,
+        "scripts/plain_cond.sh",
+        "#!/bin/sh\nif true; then\n  echo ok\nfi\n",
+    )
+    assert run_all_checks(fixture_repo) == []
+
+
 def test_df3_image_syntax_does_not_satisfy(fixture_repo: Path) -> None:
     # `![map](docs/DATA_FLOWS.md)` renders an image, not an anchor — a
     # one-character typo must not keep DF-3 green (codex R3 finding).
