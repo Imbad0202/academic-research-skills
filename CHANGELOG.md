@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Stage capability/evidence matrix with enforceable claim ceilings (#745).** New `shared/contracts/capability/stage_capability_matrix.json` (`stage-capability-matrix/1.0`) records, per pipeline task family, the mechanism/contract status, deterministic-conformance status, behavioral-evidence provenance (eval, model, population, date, result), external/human outcome evidence, known exclusions, transport limits, the maximum currently licensed claim, and the next required evaluation. `scripts/check_stage_capability_matrix.py` (38 mutation tests, CI-wired) enforces the frozen task-family vocabulary shared with the #742 profile contract, non-collapsible evidence statuses (`DESIGNED` / `NOT_RUN` / `MEASURED` / `MIXED` / `OUT_OF_SCOPE`; an unrun eval can never carry numbers), in-repo eval references, verbatim claim anchors, stale-evidence notes, conservative effectiveness-language discipline on unmeasured rows, and byte-identity of the generated `docs/STAGE_CAPABILITY_MATRIX.md` view. Seeded with 13 rows covering all nine task families from the current evaluation record: 4 measured/mixed rows (RQ wording advisory, tortured-phrase mechanical conformance, seeded-defect reviewer panel including its currently-failing severity-agreement gate, revision claim-drift guard) and 9 designed/not-run rows whose ceilings state exactly that. The matrix makes evidence gaps inspectable; it does not itself improve stage performance, and registering a row licenses at most that row's recorded claim ceiling.
+
 ## [3.20.1] - 2026-08-15 — Contract-honesty hardening and bounded evaluation substrates
 
 ### Added

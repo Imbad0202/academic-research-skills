@@ -3,6 +3,22 @@
 Schema files for cross-skill contracts: reviewer sprint contracts, Material Passport
 ports, and (v3.6.7+) cross-model audit artifact pipelines.
 
+## Stage capability / evidence matrix (#745)
+
+- `capability/stage_capability_matrix.json` (`stage-capability-matrix/1.0`) is the
+  single machine-readable source for per-stage mechanism status, deterministic
+  conformance, behavioral-evidence provenance, transport limits, and the maximum
+  claim that evidence licenses. Behavioral statuses (`DESIGNED` / `NOT_RUN` /
+  `MEASURED` / `MIXED` / `OUT_OF_SCOPE`) cannot collapse: an unrun eval can never
+  carry a result, a measured row must carry full provenance (in-repo `eval_ref`,
+  model, population, ISO date, result summary), and stale measurements require a
+  visible staleness note. Optional `claim_anchors` bind top-level capability
+  sentences verbatim so rewording a claim without touching the matrix fails CI.
+- `docs/STAGE_CAPABILITY_MATRIX.md` is GENERATED from the matrix
+  (`scripts/check_stage_capability_matrix.py --render`) and byte-pinned by the
+  same lint. The matrix indexes evidence, it does not create it: a row licenses
+  at most its recorded `max_licensed_claim`, never more.
+
 ## PDF read-integrity and optional content advisory (#512 follow-up)
 
 - `pdf/pdf_read_preflight.schema.json` accepts the unchanged legacy structural sidecar

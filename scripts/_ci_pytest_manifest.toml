@@ -599,3 +599,7 @@ path = "scripts/test_check_claim_standing_candidate_ledger_integration.py"
 [[pytest]]
 id = "512-pdf-read-preflight-and-content-sandbox"
 path = "scripts/test_pdf_read_preflight.py"
+
+[[pytest]]
+id = "745-stage-capability-matrix"
+path = "scripts/test_check_stage_capability_matrix.py"
