@@ -234,6 +234,14 @@ jobs:
         # semantics stay in each row's authority file.
         run: python3 scripts/check_degradation_registry.py
 
+      - name: Validate data-flow map coverage (#758)
+        # Pins docs/DATA_FLOWS.md's exhaustiveness claim: every non-test
+        # scripts/*.py with a network-module import (AST scan) and every
+        # curl-invoking shell script must be named on the map (DF-1/DF-2),
+        # and README + SECURITY + THIRD_PARTY keep a rendered inbound link
+        # (DF-3). Row semantics stay owned by code review.
+        run: python3 scripts/check_data_flows.py
+
       - name: Validate stage capability matrix (#745)
         # Pins shared/contracts/capability/stage_capability_matrix.json:
         # frozen task-family vocabulary, non-collapsible evidence statuses

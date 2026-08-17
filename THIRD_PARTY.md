@@ -17,6 +17,11 @@ operated by independent third parties, not affiliated with this project.
 - **Use at your own risk.** Do not paste unpublished research, personal data, or any
   confidential material into a third-party service without checking its policies first.
 
+For contrast, the **core suite's own** network touchpoints and local stores are mapped
+in [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md) — what leaves the machine, to which
+services, and how to turn each path off. That map covers this repository only, never
+the third-party projects below.
+
 If you want a project *reviewed and officially recognized* by ARS (rather than merely
 listed), that is a separate track — see **Getting officially recognized** below.
 

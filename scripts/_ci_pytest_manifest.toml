@@ -189,6 +189,10 @@ id = "511-degradation-registry"
 path = "scripts/test_check_degradation_registry.py"
 
 [[pytest]]
+id = "758-data-flows-map"
+path = "scripts/test_check_data_flows.py"
+
+[[pytest]]
 id = "v3.10-182-verification-cache"
 path = "scripts/test_verification_cache.py"
 

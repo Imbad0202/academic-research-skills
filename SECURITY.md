@@ -27,7 +27,7 @@ The following are in scope for security reports:
 
 - **Prompt injection** — inputs that cause agents to bypass IRON RULE constraints, integrity gates, or ethics protocols
 - **Credential leakage** — configurations or agent behaviors that expose API keys (`ARS_CROSS_MODEL`, Semantic Scholar API key, etc.)
-- **Data exfiltration** — agent behaviors that send user research data to unintended external services
+- **Data exfiltration** — agent behaviors that send user research data to unintended external services. The *intended* network touchpoints and local stores are mapped in [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md); anything beyond that map is report-worthy.
 - **Integrity gate bypass** — inputs that skip Stage 2.5 or Stage 4.5 blocking checks
 
 The following are **out of scope**:
