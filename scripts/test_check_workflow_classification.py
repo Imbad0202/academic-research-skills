@@ -174,6 +174,17 @@ def test_token_surviving_only_in_comment_fires(repo: Path) -> None:
     )
 
 
+def test_malformed_token_spelling_fires(repo: Path) -> None:
+    # `[skip_cooldown]` (underscore typo) must fail loudly, not silently
+    # fall out of the token grammar (codex R4 finding).
+    _mutate_doc(repo, "[skip-cooldown]", "[skip_cooldown]")
+    errors = run_all_checks(repo)
+    assert any(
+        "WC-4" in e and "skip_cooldown" in e and "not a well-formed" in e
+        for e in errors
+    )
+
+
 def test_malformed_row_arity_fires(repo: Path) -> None:
     _mutate_doc(
         repo,

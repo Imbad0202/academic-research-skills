@@ -54,6 +54,10 @@ _COUNT_LINE_RE = re.compile(
 )
 _FILENAME_CELL_RE = re.compile(r"`([^`]+\.ya?ml)`")
 _BYPASS_TOKEN_RE = re.compile(r"\[[a-z][a-z-]*\]")
+# Any bracketed span in a Bypass cell must BE a well-formed token — a typo
+# spelling like `[skip_cooldown]` fails loudly instead of silently skipping
+# WC-4.
+_ANY_BRACKET_RE = re.compile(r"\[[^\]\s]+\]")
 # Markdown cell split on unescaped pipes only (`\|` stays inside a cell).
 _CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
 
@@ -149,6 +153,13 @@ def run_all_checks(root: Path) -> list[str]:
                 .split("\n")
                 if not line.lstrip().startswith("#")
             )
+            for span in _ANY_BRACKET_RE.findall(cells[4]):
+                if not _BYPASS_TOKEN_RE.fullmatch(span):
+                    errors.append(
+                        f"WC-4: bypass cell of '{name}' carries {span!r}, "
+                        f"which is not a well-formed [lowercase-hyphen] "
+                        f"token — typo or unsupported spelling"
+                    )
             for token in _BYPASS_TOKEN_RE.findall(cells[4]):
                 if token not in workflow_text:
                     errors.append(
