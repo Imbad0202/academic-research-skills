@@ -42,6 +42,29 @@ _LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$", re.MULTILINE)
 _METHOD_HEADING_RE = re.compile(r"^###\s+Method\b.*$", re.MULTILINE)
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_QUOTE_PREFIX_RE = re.compile(r"^(\s{0,3}>\s?)+")
+
+
+def _strip_fenced_code(md_text: str) -> str:
+    """Fenced code blocks render literally: a link or heading inside a
+    ``` / ~~~ fence counts for nothing. Runs BEFORE the comment pass, so a
+    `<!--` inside a fence stays literal text and cannot open a comment
+    block."""
+    kept: list[str] = []
+    in_fence = False
+    fence_marker = ""
+    for line in md_text.split("\n"):
+        content = _QUOTE_PREFIX_RE.sub("", line).lstrip(" ")
+        if not in_fence and content[:3] in ("```", "~~~"):
+            in_fence = True
+            fence_marker = content[:3]
+            continue
+        if in_fence:
+            if content.startswith(fence_marker):
+                in_fence = False
+            continue
+        kept.append(line)
+    return "\n".join(kept)
 
 
 def _strip_html_comments(md_text: str) -> str:
@@ -68,7 +91,7 @@ def _strip_html_comments(md_text: str) -> str:
     i = 0
     while i < len(lines):
         line = lines[i]
-        content = re.sub(r"^(\s{0,3}>\s?)+", "", line)
+        content = _QUOTE_PREFIX_RE.sub("", line)
         stripped = content.lstrip(" ")
         indent = len(content) - len(stripped)
         if indent <= 3 and stripped.startswith("<!--"):
@@ -93,9 +116,14 @@ def github_slug(heading: str) -> str:
     return text.replace(" ", "-")
 
 
+def _strip_non_rendering(md_text: str) -> str:
+    """Fenced code first (its contents are literal), then HTML comments."""
+    return _strip_html_comments(_strip_fenced_code(md_text))
+
+
 def _heading_slugs(md_text: str) -> set[str]:
     slugs: set[str] = set()
-    for match in _HEADING_RE.finditer(_strip_html_comments(md_text)):
+    for match in _HEADING_RE.finditer(_strip_non_rendering(md_text)):
         slugs.add(github_slug(match.group(2)))
     return slugs
 
@@ -103,7 +131,7 @@ def _heading_slugs(md_text: str) -> set[str]:
 def _doc_links(md_text: str) -> list[str]:
     return [
         m.group(1)
-        for m in _LINK_RE.finditer(_strip_html_comments(md_text))
+        for m in _LINK_RE.finditer(_strip_non_rendering(md_text))
     ]
 
 
@@ -172,7 +200,7 @@ def check_method_coverage(root: Path) -> list[str]:
             continue
         if (doc_path.parent / path_part).resolve() == setup_path:
             linked_fragments.add(fragment)
-    for match in _METHOD_HEADING_RE.finditer(_strip_html_comments(setup_text)):
+    for match in _METHOD_HEADING_RE.finditer(_strip_non_rendering(setup_text)):
         heading = match.group(0).lstrip("#").strip()
         slug = github_slug(heading)
         if slug not in linked_fragments:

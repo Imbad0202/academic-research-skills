@@ -281,6 +281,31 @@ def test_ca1_link_escaping_repo_fires_even_if_target_exists(repo: Path) -> None:
     assert any("CA-1" in e and "escapes the repository" in e for e in errors)
 
 
+def test_ca3_link_inside_code_fence_fires(repo: Path) -> None:
+    # A link surviving only inside a ``` fence renders literally, not as a
+    # link, so CA-3 must fire (codex R7 finding).
+    readme = repo / "README.md"
+    link = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
+    lines = readme.read_text(encoding="utf-8").split("\n")
+    idx = next(i for i, line in enumerate(lines) if link in line)
+    lines[idx] = f"```text\n{link}\n```"
+    readme.write_text("\n".join(lines), encoding="utf-8")
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)
+
+
+def test_ca2_method_heading_inside_fence_not_counted(repo: Path) -> None:
+    # A sample `### Method` heading inside a SETUP code fence does not
+    # render as a heading and must not demand CA-2 coverage.
+    setup = repo / SETUP_RELPATH
+    setup.write_text(
+        setup.read_text(encoding="utf-8")
+        + "\n```markdown\n### Method 9: Sample In A Fence\n```\n",
+        encoding="utf-8",
+    )
+    assert run_all_checks(repo) == []
+
+
 def test_slug_matches_github_for_punctuated_heading() -> None:
     heading = (
         "Method 0: Claude Code Plugin (v3.7.0+, recommended for "
