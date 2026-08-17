@@ -183,6 +183,32 @@ def test_ca3_label_keeps_filename_but_target_moves_fires(repo: Path) -> None:
     assert any("CA-3" in e and "README.md" in e for e in errors)
 
 
+def test_ca3_commented_out_inbound_link_fires(repo: Path) -> None:
+    # A link surviving only inside an HTML comment does not render and must
+    # not satisfy CA-3 (codex R3 finding).
+    readme = repo / "README.md"
+    text = readme.read_text(encoding="utf-8")
+    old = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
+    assert old in text
+    readme.write_text(
+        text.replace(old, f"<!-- {old} -->"), encoding="utf-8"
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)
+
+
+def test_ca1_commented_out_dead_link_does_not_fire(repo: Path) -> None:
+    # Symmetry: commented-out markdown counts for nothing, so a dead link
+    # inside a comment must not fire CA-1 either.
+    doc = repo / DOC_RELPATH
+    doc.write_text(
+        doc.read_text(encoding="utf-8")
+        + "\n<!-- [dead](NO_SUCH_FILE.md) -->\n",
+        encoding="utf-8",
+    )
+    assert run_all_checks(repo) == []
+
+
 def test_slug_matches_github_for_punctuated_heading() -> None:
     heading = (
         "Method 0: Claude Code Plugin (v3.7.0+, recommended for "

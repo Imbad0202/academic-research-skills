@@ -41,6 +41,14 @@ INBOUND_LINK_SURFACES = (Path("README.md"), SETUP_RELPATH)
 _LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$", re.MULTILINE)
 _METHOD_HEADING_RE = re.compile(r"^###\s+Method\b.*$", re.MULTILINE)
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def _strip_html_comments(md_text: str) -> str:
+    """Commented-out markdown does not render: a link or heading inside
+    `<!-- -->` must count for nothing (neither satisfying CA-2/CA-3 nor
+    firing CA-1)."""
+    return _HTML_COMMENT_RE.sub("", md_text)
 
 
 def github_slug(heading: str) -> str:
@@ -57,13 +65,16 @@ def github_slug(heading: str) -> str:
 
 def _heading_slugs(md_text: str) -> set[str]:
     slugs: set[str] = set()
-    for match in _HEADING_RE.finditer(md_text):
+    for match in _HEADING_RE.finditer(_strip_html_comments(md_text)):
         slugs.add(github_slug(match.group(2)))
     return slugs
 
 
 def _doc_links(md_text: str) -> list[str]:
-    return [m.group(1) for m in _LINK_RE.finditer(md_text)]
+    return [
+        m.group(1)
+        for m in _LINK_RE.finditer(_strip_html_comments(md_text))
+    ]
 
 
 def check_links_resolve(root: Path) -> list[str]:
@@ -123,7 +134,7 @@ def check_method_coverage(root: Path) -> list[str]:
             continue
         if (doc_path.parent / path_part).resolve() == setup_path:
             linked_fragments.add(fragment)
-    for match in _METHOD_HEADING_RE.finditer(setup_text):
+    for match in _METHOD_HEADING_RE.finditer(_strip_html_comments(setup_text)):
         heading = match.group(0).lstrip("#").strip()
         slug = github_slug(heading)
         if slug not in linked_fragments:
