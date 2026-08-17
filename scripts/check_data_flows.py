@@ -187,9 +187,13 @@ def _curl_shell_scripts(root: Path) -> list[Path]:
     for base in ("scripts", "hooks"):
         for sh in sorted((root / base).rglob("*.sh")):
             for line in sh.read_text(encoding="utf-8").split("\n"):
+                if line.lstrip().startswith("#"):
+                    continue  # a full comment line executes nothing
                 # Command substitutions execute even inside double quotes:
                 # `resp="$(curl ...)"` is a real network call, so scan their
-                # bodies FIRST, before quote masking can hide them.
+                # bodies FIRST, before quote masking can hide them. (Known
+                # accepted edge: a $(curl) inside a trailing inline comment
+                # would false-fire; the surfaces don't write that.)
                 subs = re.findall(r"\$\(([^)]*)\)", line)
                 if any(_CURL_RE.search(" " + sub) for sub in subs):
                     hits.append(sh)

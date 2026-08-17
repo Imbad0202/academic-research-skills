@@ -260,6 +260,19 @@ def test_df2_curl_inside_command_substitution_fires(
     assert any("DF-2" in e and "subst_fetch.sh" in e for e in errors)
 
 
+def test_df2_commented_command_substitution_not_flagged(
+    fixture_repo: Path,
+) -> None:
+    # A full comment line containing $(curl ...) executes nothing and must
+    # not fire.
+    _write(
+        fixture_repo,
+        "scripts/doc_example.sh",
+        '#!/bin/sh\n# example: resp="$(curl -fsSL URL)"\necho ok\n',
+    )
+    assert run_all_checks(fixture_repo) == []
+
+
 def test_df3_link_inside_code_span_fires(fixture_repo: Path) -> None:
     # A link inside inline backticks renders literally, not as a link
     # (codex R1 finding).
