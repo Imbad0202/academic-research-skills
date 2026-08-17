@@ -2,7 +2,7 @@
   "schema_version": "ideation-diversity-nonproduction-variant/1.0",
   "variant_id": "exploratory_guardrails_ablated",
   "source_path": "deep-research/agents/socratic_mentor_agent.md",
-  "source_sha256": "6d9218971f0787603f0453693af63b2f36c894e4655ccd365aa868bcbd8748c0",
+  "source_sha256": "7c841fe486dfb47ee19ba4d3a3a95c929929c1a96b7e0ff8b998e3f774fa66d2",
   "nonproduction_only": true,
   "runtime_install_forbidden": true,
   "adjacent_probe_state": "off",

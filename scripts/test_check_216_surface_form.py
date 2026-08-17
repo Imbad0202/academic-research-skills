@@ -271,17 +271,35 @@ class TestSynthesizerSurface(unittest.TestCase):
     def test_synth_clause_authorship_removed_fails(self) -> None:
         errors = self._patch(
             lambda t: t.replace(
-                "Authorship (whether a sub-claim originated from a human or an AI reviewer) is **not** a weighting input",
-                "Authorship may weight a sub-claim",
+                "Authorship (whether a sub-claim originated from a human or an AI reviewer) is **not** a decision input",
+                "Authorship may change a sub-claim's decision bearing",
             )
         )
         self.assertTrue(any(SYNTH in e and "authorship-not-input" in e for e in errors), msg=f"{errors!r}")
 
-    def test_synth_clause_reweight_unevaluable_removed_fails(self) -> None:
+    def test_synth_clause_reassess_unevaluable_removed_fails(self) -> None:
         errors = self._patch(
-            lambda t: t.replace("re-weight on substance, or mark the sub-claim unevaluable", "keep the weight")
+            lambda t: t.replace("reassess on substance, or mark the sub-claim unevaluable", "keep the assessment")
         )
-        self.assertTrue(any(SYNTH in e and "reweight-or-unevaluable" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(any(SYNTH in e and "reassess-or-unevaluable" in e for e in errors), msg=f"{errors!r}")
+
+    def test_synth_clause_paper_evidence_removed_fails(self) -> None:
+        errors = self._patch(
+            lambda t: t.replace(
+                "A precise-sounding sub-claim still needs paper evidence",
+                "A precise-sounding sub-claim is sufficient",
+            )
+        )
+        self.assertTrue(any(SYNTH in e and "needs-paper-evidence" in e for e in errors), msg=f"{errors!r}")
+
+    def test_synth_clause_counterfactual_assessment_removed_fails(self) -> None:
+        errors = self._patch(
+            lambda t: t.replace(
+                "would this sub-claim's evidentiary assessment change if the same substance were rewritten in the opposite style",
+                "would the prose sound different",
+            )
+        )
+        self.assertTrue(any(SYNTH in e and "would-assessment-change" in e for e in errors), msg=f"{errors!r}")
 
     def test_synth_marker_block_removed_fails(self) -> None:
         block = csf._marker_block(self._real)

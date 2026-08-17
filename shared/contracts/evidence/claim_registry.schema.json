@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/evidence/claim_registry.schema.json",
+  "title": "E1 Claim Registry",
+  "description": "Closed, exact-draft-bound population produced by semantic/model-mediated E1 extraction. Conformance does not establish extraction completeness, claim truth, or source support.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "draft_raw_sha256", "claims"],
+  "properties": {
+    "schema_version": {"const": "claim-registry/1.0"},
+    "draft_raw_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "claims": {"type": "array", "items": {"$ref": "#/$defs/claim"}}
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "claim_text", "draft_span", "claim_kinds", "ref_slugs", "writer_anchors", "paper_section", "selection_tier"],
+      "properties": {
+        "claim_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+        "claim_text": {"type": "string", "minLength": 3},
+        "draft_span": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start_byte", "end_byte"],
+          "properties": {
+            "start_byte": {"type": "integer", "minimum": 0},
+            "end_byte": {"type": "integer", "minimum": 1}
+          }
+        },
+        "claim_kinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["quantitative", "categorical", "trend", "causal", "other_factual"]}
+        },
+        "ref_slugs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "writer_anchors": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "paper_section": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "selection_tier": {"enum": ["HIGH-IMPACT", "RANDOM", "TOP-UP", "NOT-SELECTED", "ALL"]},
+        "high_impact_basis": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["headline_conclusion", "numerical", "causal", "methods_critical", "disputed"]}
+        }
+      }
+    }
+  }
+}

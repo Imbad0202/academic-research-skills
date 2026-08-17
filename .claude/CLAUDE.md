@@ -6,10 +6,17 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 
 | Skill | Purpose | Key Modes |
 |-------|---------|-----------|
-| `deep-research` v2.12.0 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
-| `academic-paper` v3.3.0 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
-| `academic-paper-reviewer` v1.11.0 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.20.0 | Full pipeline orchestrator | (coordinates all above) |
+| `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
+| `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
+| `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
+| `academic-pipeline` v3.20.1 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.20.1 Key Additions (contract honesty + bounded evaluation substrates)
+
+- **Integrity and review claims match their evidence.** Claim coverage is explicitly bounded to registered or lexically detected populations; semantic completeness remains unknown. Revision claim-strength changes require a byte-bound, per-finding author disposition. Reviewer outputs use categorical criterion judgements, remain `NOT_CALIBRATED` in live packages, and carry typed panel provenance instead of a binary independence claim.
+- **Read attestations and Socratic exits fail visibly.** New read marks require an explicit scope and are resolved from validated, append-safe ledgers; malformed or absent attestations cannot become positive coverage. A user may visibly exit non-generating Socratic RQ mode without the system silently generating candidates.
+- **Evaluation substrates stay bounded and unmeasured.** The claim-standing probe gains closed contracts, discovery adapters, an offline stance runner/renderer, and synthetic seed assets; the ideation-diversity bundle gains a closed first-round assignment gate. No live stance provider, effectiveness result, semantic-completeness guarantee, independent-error proof, or scientific-outcome claim ships with this patch.
+- **Future structure remains opt-in.** The v3.20→v3.22 roadmap stages domain profiles, inquiry branches, alternative registers, capability evidence, and outcome studies behind progressive disclosure and usability gates; it does not enable those structures by default.
 
 ## v3.20 Key Additions (review evidence + integrity advisories + contained transports)
 
@@ -23,7 +30,7 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 
 - **Revision-round claim-drift guards: claim-strength ladder + deterministic token conservation (#569 / #570).** Stands an advisory watch over the epistemic and token halves of the #390 honest-claim residual — the block-anchored patch confines silent-distortion exposure to touched blocks but never checks a touched block's *interior* (DELEGATE-52, arXiv:2604.15597); a guard now watches each half, with the post-guard re-measurement tracked in #652. Two advisory-first layers, mechanism shape borrowed from [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills) by @MissOrangePeel. (1) **Claim-strength ladder** (`shared/references/claim_strength_ladder.md`): an ordered epistemic scale whose invariant is "no silent move, either direction, without an authorizing roadmap item" — wired into `draft_writer_agent` revision mode and a new advisory Phase E6 (`STRENGTH-DRIFTED` → `ADV-E6-<n>`, consuming the per-round Revision-Evidence Bundle). (2) **Deterministic token conservation** (`scripts/check_revision_token_conservation.py`): stdlib checker over numeric/citation/protected-term tokens, pair mode or per-op against a #390 patch, with Unicode fold-before-split; wired as orchestrator revision step 3a. Rather than cite an earlier-generation-model study, a held-out set (`evals/heldout/revision_claim_drift/`) measured the current frontier model's baseline first: 2/8 claim-strength/hedge drift under pressure. 31 tests. Dual-track pre-ship review closed 6 codex findings (0 security).
 - **PDF read-integrity preflight for locally-extracted page anchors (#512).** `scripts/pdf_read_preflight.py` (pypdf-backed) cross-checks three independent page-count signals and emits a JSON verdict sidecar so a truncated / mispaginated PDF read cannot mint an apparently-valid `page` anchor. Firm rule R-L3-1-D on the three v3.7.3 emitters (a locally-read PDF `page` anchor requires a PASS sidecar), the §3.6 orchestrator runs the preflight at Stage 1 corpus intake, FAIL-vs-UNAVAILABLE split (positive truncation evidence refuses; mere absence of verification is an explicit-warning advisory). 8-round cross-model review closed the ISO 32000 lexer-fidelity family.
-- **`read_scope` honest-coverage attestation + anchor-aware finalizer promotion (#513).** `/ars-mark-read` gains an optional declaration-only attestation (`--scope {full_text,sections,abstract_only,toc_only,unknown}` + `--locator` + `--note`) on the user-owned human-read ledger; the Cite-Time Provenance Finalizer's LOW-WARN → ok promotion becomes read-scope-aware (`abstract_only`/`toc_only` → `LOW-WARN-PARTIAL-COVERAGE`; `sections` promotes only inside a declared locator). Sidecar schema, absent = `unknown` never backfilled.
+- **`read_scope` honest-coverage attestation + anchor-aware finalizer promotion (#513).** v3.19 introduced an optional declaration-only `--scope`; current runtime supersedes that input rule and requires `--scope {full_text,sections,abstract_only,toc_only,unknown}` for every new `/ars-mark-read` event (`--locator` + `--note` remain conditional). The Cite-Time Provenance Finalizer's LOW-WARN → ok promotion is anchor-aware (`abstract_only`/`toc_only` → `LOW-WARN-PARTIAL-COVERAGE`; `sections` promotes only inside a declared locator). Legacy absent scope remains `unknown` and is never backfilled or promoted.
 - **Write-scope guard launcher watchdog stall + flaky launcher tests (#545).** `hooks/run_guard.sh`'s watchdog subshell leaked its capture pipe to a forked `sleep`, blocking every healthy PreToolUse call for the full wall-clock bound (~6 s); redirecting to `/dev/null` cuts it to ~0.15 s. Test-harness `ARS_PROBE_BOUND` default raised to 30 s to end load-dependent flakiness; regression pinned by `LauncherSlowInterpreterTest`.
 - **SETUP Method 4a description-length figure de-drifted (#564).** Replaced a hardcoded 440-842 character range (now stale at 566-986) with a durable comparative statement so it cannot silently drift as descriptions evolve.
 
@@ -270,7 +277,7 @@ Spec: `docs/design/2026-05-17-ars-v3.9.0-cross-index-triangulation-measurement-s
 
 - **Anti-sycophancy protocols**: DA agents score rebuttals 1-5 before conceding. No concession below 4/5. Frame-lock detection.
 - **Intent detection**: Socratic Mentor classifies user intent as exploratory vs. goal-oriented. Exploratory mode disables auto-convergence.
-- **Cross-model verification** (optional): Set `ARS_CROSS_MODEL` env var to enable a non-Anthropic verifier (currently GPT-5.5 / GPT-5.5 Pro or Gemini 3.1 Pro) for integrity sample checks, independent Devil's Advocate critique, and blind disagreement checkpoints at design freeze + final editorial decision (#518). The once-planned generic sixth reviewer is retired, not deferred — see the "Why there is no generic 6th reviewer" note in `shared/cross_model_verification.md`, which also carries the supported-model table.
+- **Cross-model verification** (optional): Set `ARS_CROSS_MODEL` env var to enable a non-Anthropic verifier (currently GPT-5.5 / GPT-5.5 Pro or Gemini 3.1 Pro) for integrity sample checks, a blind and separately executed Devil's Advocate critique, and blind disagreement checkpoints at design freeze + final editorial decision (#518). The once-planned generic sixth reviewer is retired, not deferred — see the "Why there is no generic 6th reviewer" note in `shared/cross_model_verification.md`, which also carries the supported-model table. These execution facts are not a binary independence claim.
 - **AI Self-Reflection Report**: Pipeline Stage 6 now includes AI behavioral self-assessment (concession rate, health alerts, sycophancy risk rating).
 
 ## Routing Discipline (v3.9.2)
@@ -344,7 +351,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.20.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-08-14
+- **Suite version**: 3.20.1 (per CHANGELOG.md)
+- **Last Updated**: 2026-08-15
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

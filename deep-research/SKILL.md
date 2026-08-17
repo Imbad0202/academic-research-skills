@@ -2,8 +2,8 @@
 name: deep-research
 description: "Universal deep research agent team. 13-agent pipeline for rigorous academic research on any topic. 8 modes: full research, quick brief, paper review, lit-review, fact-check, three-way literature scan, Socratic guided research dialogue, and systematic review with optional meta-analysis. Covers research question formulation, Socratic mentoring, methodology design, systematic literature search, source verification, cross-source synthesis, risk of bias assessment, meta-analysis, APA 7.0 report compilation, editorial review, devil's advocate challenges, ethics review, and post-research literature monitoring. Triggers on: research, deep research, literature review, systematic review, meta-analysis, PRISMA, evidence synthesis, fact-check, WHY HOW WHAT papers, 3W literature scan, guide my research, help me think through, 研究, 深度研究, 文獻回顧, 文獻探討, 系統性回顧, 後設分析, 事實查核, 三段式文獻掃描, 引導我的研究, 幫我釐清, 幫我想想, 我不確定要研究什麼, 研究方向, 研究主題, 심층 연구, 문헌 조사, 체계적 문헌고찰, 메타분석, 사실 확인, 연구 방향을 잡아줘, 연구 주제 정하는 것을 도와줘."
 metadata:
-  version: "2.12.0"
-  last_updated: "2026-08-14"
+  version: "2.12.1"
+  last_updated: "2026-08-15"
   status: active
   data_access_level: raw
   task_type: open-ended
@@ -284,9 +284,17 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 
 ## Socratic Mode: Guided Research Dialogue
 
-5-layer dialogue guiding users from vague ideas to concrete research questions. Core principle: ⚠️ **IRON RULE**: Never give direct answers.
+5-layer dialogue guiding users from vague ideas to concrete research questions. Core principle while non-generation Socratic mode is active: ⚠️ **IRON RULE**: Never give direct answers. The explicit candidate-generation exit below leaves that mode before any candidate is shown.
 
 **Layers**: Clarification -> Assumption Probing -> Evidence/Reasoning -> Viewpoint/Perspective -> Implication/Consequence
+
+**Research-question authorship boundary:** Socratic mode is non-generation by
+default. Non-convergence may produce only a summary of directions the user has
+already expressed plus focused questions or a `lit-review` suggestion; it never
+produces candidate RQs automatically. If the user explicitly asks the system to
+propose candidates, announce the exit from non-generation Socratic mode and
+emit `[SOCRATIC-NON-GENERATION-EXIT: explicit_user_request]` on a standalone
+line before any clearly labeled AI-generated candidate. Never switch silently.
 
 > See `references/socratic_mode_protocol.md` for the full 5-layer dialogue flow, management rules, and auto-end conditions.
 
@@ -366,7 +374,7 @@ Key failure path summary:
 
 | Failure Scenario | Trigger Condition | Recovery Strategy |
 |---------|---------|---------|
-| RQ cannot converge | Phase 1 / Layer 1 exceeds multiple rounds while still vague | Provide 3 candidate RQs or suggest lit-review |
+| RQ cannot converge | Phase 1 / Layer 1 exceeds multiple rounds while still vague | Full mode may use its candidate workflow; Socratic mode summarizes user-expressed directions or suggests `lit-review`, with no candidate generation unless the user explicitly exits non-generation mode |
 | Insufficient literature | bibliography_agent finds < 5 sources | Expand search strategy, alternative keywords |
 | Methodology mismatch | RQ type misaligned with method capability | Return to Phase 1, suggest 3 alternative methods |
 | Devil's Advocate CRITICAL | Fatal logical flaw discovered | STOP, explain the issue, require correction |
@@ -540,7 +548,7 @@ Explicit prohibitions to prevent common failure modes:
 4. **Limitation transparency** — every report must have an explicit limitations section
 5. **AI disclosure** — all reports include a statement that AI-assisted research tools were used
 6. **Reproducibility** — search strategies, inclusion criteria, and analytical methods must be documented for replication
-7. **Socratic integrity** — in socratic mode, never give direct answers; always guide through questions
+7. **Socratic integrity** — while non-generation Socratic mode is active, never give direct answers; always guide through questions. A candidate response is lawful only after the explicit exit marker and is outside that mode.
 
 ## Cross-Agent Quality Alignment
 
@@ -580,8 +588,8 @@ When `ARS_MODEL_TIERING` is set, the dispatching session routes this skill's age
 
 | Item | Content |
 |------|---------|
-| Skill Version | 2.12.0 |
-| Last Updated | 2026-08-14 |
+| Skill Version | 2.12.1 |
+| Last Updated | 2026-08-15 |
 | Maintainer | Cheng-I Wu |
 | Dependent Skills | academic-paper v1.0+ (downstream) |
 

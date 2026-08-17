@@ -35,7 +35,7 @@ Detected that you have a complete paper — you can proceed directly to Stage 3 
 Before starting, let me confirm a few things:
 1. What's the paper structure? (IMRaD / other)
 2. What review mode would you like?
-   - full: Complete 4-person review (Journal-Fit Reviewer + 3 Peer Reviewers)
+   - full: Complete 5-person review (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)
    - quick: Journal-Fit Reviewer quick assessment (15-minute version)
    - guided: Socratic guided review (interactive dialogue)
 3. Which journal (or what tier) are you targeting?
@@ -137,7 +137,7 @@ Review result: Major Revision direction
 This is the quick review result. You have several options:
 
   a) Proceed directly to Stage 4 (REVISE) to address these 3 issues
-  b) Upgrade to full review (complete 4-person review),
+  b) Upgrade to full review (complete five-seat review),
      to see if there are other issues
   c) Revise on your own first, come back when done
 
@@ -215,8 +215,9 @@ Revision results:
 - Added Ethics section, SHAP analysis, international literature
 - Added 11 new citations
 
-Next step is Stage 3' (RE-REVIEW) -- this time using full mode.
-4 reviewers will do a complete review of the revised version.
+Next step is Stage 3' (RE-REVIEW) -- this time using a user-requested fresh full review,
+not the contract-governed verification re-review. Five role-separated seats will
+review the revised version (four configured identities plus the fixed Devil's Advocate).
 This is revision cycle 1 (max 2 cycles).
 
 Submit for full review?
@@ -252,9 +253,11 @@ Reviewer 2: Higher Education researcher
             Student success, Retention strategies
 Reviewer 3: Research Ethics / Data Science ethicist
             Algorithmic fairness, Educational data mining ethics
+Fixed seat: Devil's Advocate
+            Core-argument stress test, strongest counter-explanations
 ```
 
-**4 Review Reports Compiled:**
+**5 Review Reports Compiled:**
 
 ```
 Journal-Fit Reviewer: Minor Revision
@@ -276,6 +279,10 @@ Reviewer 3: Accept
   - Ethics section quality is high, exceeding typical C&E standards
   - Algorithmic fairness metrics well-chosen
   - Recommend adding a "limitations of fairness metrics" reflection paragraph
+
+Devil's Advocate: No unresolved Critical challenge
+  - Fairness metrics still rely on contested group definitions
+  - Preserve this limitation explicitly rather than presenting the metrics as complete
 ```
 
 **Editorial Decision: Minor Revision (Accept direction)**
@@ -300,7 +307,8 @@ S4: Add fairness metrics limitations paragraph
 Stage 3' (RE-REVIEW) Complete!
 
 Review result: Minor Revision (Accept direction)
-  - 2 out of 4 reviewers Accept + 2 Minor Revision
+  - Among the 4 non-DA scoring reviewers: 2 Accept + 2 Minor Revision
+  - The fixed Devil's Advocate raised no unresolved Critical challenge
   - 2 required items (Abstract update + Practical Implications)
   - 4 suggested modifications
 

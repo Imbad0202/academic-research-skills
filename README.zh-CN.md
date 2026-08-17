@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.20.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.0)
+[![Version](https://img.shields.io/badge/version-v3.20.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.1)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -32,7 +32,7 @@ ARS 建立在这个前提上：**人类研究者 + AI 的组合，比纯自动�
 
 v3.8 补上 L3 缺口的另一半。v3.7.3 让每一条引用都带 locator anchor，v3.8 在这个基础上加一道 opt-in 审计（`ARS_CLAIM_AUDIT=1`）：获取每个 anchor 指向的原始文本，判断论文里的 claim 是否真有被该引用支撑。五类新的 HIGH-WARN annotation（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）会在 formatter terminal hard gate 直接阻止输出。Calibration 随 release 提供 20 条 gold set，采用 FNR<0.15、FPR<0.10 双阈值；正式放大投入前要先有 calibration 证据（v3.8 spec §5）。
 
-v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）：Semantic Scholar API 验证、反泄露协议、VLM 图表验证、分数轨迹追踪。
+v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）：Semantic Scholar API 验证、反泄露协议、VLM 图表验证、修订轨迹追踪。ARS 当前以分类式、证据锚定的准则轨迹实现最后一项，不计算分数差。
 
 ---
 
@@ -82,8 +82,8 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 - **Deep Research** — 13 个 Agent 的研究团队，支持苏格拉底引导、PRISMA 系统性回顾、意图检测、对话健康度监控、可选跨模型 DA、Semantic Scholar API 验证。
 - **Academic Paper** — 12 个 Agent 的论文撰写团队，含风格校准、写作质量检查、LaTeX 输出强化、可视化、修订教练、引用格式转换、反泄露协议、VLM 图表验证。
-- **Academic Paper Reviewer** — 7 个 Agent 的多视角同行评审，0-100 质量量表（Journal-Fit Reviewer + 3 位动态审查者 + 魔鬼代言人），含让步门槛协议、攻击强度保持、可选跨模型 DA critique / calibration、R&R 追溯矩阵、只读约束。
-- **Academic Pipeline** — 10 阶段全流程调度器，含自适应 checkpoint、主张验证、材料护照、可选 `repro_lock`、可选跨模型学术诚信验证、中途强化机制、分数轨迹追踪。
+- **Academic Paper Reviewer** — 7 个 Agent 的多视角同行评审，采用逐准则、证据锚定的叙事判断（Journal-Fit Reviewer + 3 位动态审查者 + 魔鬼代言人），含让步门槛协议、攻击强度保持、可选跨模型 DA critique / calibration、R&R 追溯矩阵、只读约束。目前 live review 一律为 `NOT_CALIBRATED`；完整 calibration 只产生有界候选 profile，尚未接入 live review。
+- **Academic Pipeline** — 10 阶段全流程调度器，含自适应 checkpoint、主张验证、材料护照、可选 `repro_lock`、可选跨模型学术诚信验证、中途强化机制，以及逐项准则的叙事退步检查（typed trajectory 尚未实现）。
 - **数据访问层级标注**（v3.3.2+）— 每个 skill 声明 `data_access_level`（`raw` / `redacted` / `verified_only`），由 `scripts/check_data_access_level.py` 强制执行。设计灵感来自 Anthropic 的 automated-w2s-researcher（2026）。详见 [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md)。
 - **任务类型标注**（v3.3.2+）— 每个 skill 声明 `task_type`（`open-ended` 或 `outcome-gradable`）。目前 ARS 所有 skills 皆为 `open-ended`。
 - **Benchmark 报告 Schema**（v3.3.5+）— JSON Schema + lint script，要求诚实的 benchmark 比较报告。详见 [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md)。
@@ -236,19 +236,19 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 各 agent 的职责与各阶段产出物现已移至 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。版本号保留在此以维持 release metadata 集中管理。
 
-### Deep Research (v2.12.0)
+### Deep Research (v2.12.1)
 
 13 个 Agent 的研究团队。模式：full、quick、review、lit-review、three-way-scan、fact-check、socratic、systematic-review。完整 agent 名单与产出物：见 ARCHITECTURE.md §3。
 
-### Academic Paper (v3.3.0)
+### Academic Paper (v3.3.1)
 
 12 个 Agent 的论文撰写 pipeline。模式：full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure、rebuttal-audit。输出：MD + DOCX（Pandoc 可用时）+ LaTeX（APA 7.0 `apa7` class / IEEE / Chicago）→ tectonic 编译 PDF。完整 agent 名单与各 phase 职责：见 ARCHITECTURE.md §3。
 
-### Academic Paper Reviewer (v1.11.0)
+### Academic Paper Reviewer (v1.11.1)
 
-7 个 Agent 的多视角审查，搭配 **0-100 质量量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**决策对照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
+7 个 Agent 的多视角审查，采用 **逐准则、证据锚定的叙事判断**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 与 Schema 6 package 一律为 `NOT_CALIBRATED`；完整 calibration 可产生有界候选 profile，但尚未接入 live review。不得以固定总分映射接受、小修、大修或退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.20.0)
+### Academic Pipeline (v3.20.1)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）不可跳过；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -313,6 +313,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新纪录
+
+### v3.20.1（2026-08-15）— 契约诚实性强化与有界评估基础
+
+> **强化并限定范围：**v3.20.1 让评审与完整性声明符合套件实际可重放的证据。Claim coverage 明确限定于已登记或词法检测的总体，语义提取完整性仍为未知；修订导致的声明强度变化必须有逐项、byte-bound 的作者处置；新的阅读标记必须声明范围且错误会明确显示；live reviewer package 固定为 `NOT_CALIBRATED`；六轴 provenance 取代二元 independence 说法。本版还加入离线、未测量的 claim-standing probe 基础、ideation-diversity blind bundle 的封闭式首轮分配闸门，以及未来 inquiry branch／alternative 的 opt-in roadmap。这些契约不证明科学结果改善、评审正确性、完整语义检测、已验证的人类身份、独立错误过程或 live provider 的效果。套件／pipeline → v3.20.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
 
 ### v3.20.0（2026-08-14）— 证据绑定的审查与修订、受限传输、可复现的评估基础
 
@@ -557,7 +561,7 @@ v3.5.1 添加 Socratic Mentor 的选用式诚实探测（设置 `ARS_SOCRATIC_RE
 ### v3.3.1 (2026-04-14) — 规格一致性修补
 
 - 同步 README、`.claude/CLAUDE.md`、`MODE_REGISTRY.md` 与各 `SKILL.md` 的 mode 数量与公开版本标注。
-- 修正跨模型叙述：目前已实作的是完整性抽样核查与独立 DA critique；同行评审第六位 reviewer 仍在规划中。
+- **历史说明（已由 v3.16 取代）：**此版本已实作完整性抽样核查与盲化、分开执行的跨模型 DA critique，当时第六位 reviewer 尚在规划；该设计后来已退役，现行 full review 维持固定五席。
 - 厘清 adaptive checkpoint 语意：SLIM checkpoint 仍然必须等待用户明确确认。
 - 再次明确化 Stage 2.5 与 Stage 4.5 学术诚信关卡不可跳过。
 - 添加轻量 spec consistency 检查与 GitHub Actions workflow，避免后续再发生文档漂移。
@@ -569,7 +573,7 @@ v3.5.1 添加 Socratic Mentor 的选用式诚实探测（设置 `ARS_SOCRATIC_RE
 - **Semantic Scholar API 验证** — Tier 0 程序化引用存在性核查。Levenshtein >= 0.70 标题比对、DOI 不符检测、S2 ID 去重。API 不可用时优雅降级。
 - **反泄露协议** — 知识隔离指令优先使用 session 内材料，缺少的内容标记 `[MATERIAL GAP]` 而非用 LLM 记忆填补。降低 Mode 5/6 失败风险。
 - **VLM 图表验证**（可选）— 用视觉模型闭环检查生成图表。10 项检核清单，最多 2 轮修正。
-- **分数轨迹协议** — 跨修订轮次的逐维度评分差异追踪（7 个维度）。检测退步（delta < -3）触发强制 checkpoint。
+- **准则轨迹协议** — 跨修订轮次比较 7 个维度的证据锚定判断；具有决策影响的退步触发强制 checkpoint，不计算分数差。
 - **Stage 2 并行化** — 可视化与论证建构可在大纲完成后并行运行。
 - 新版本：deep-research v2.8、academic-paper v3.0、academic-pipeline v3.2
 
@@ -604,7 +608,7 @@ v3.5.1 添加 Socratic Mentor 的选用式诚实探测（设置 `ARS_SOCRATIC_RE
   - 评审质量思维框架（三镜头法、常见审查陷阱、校准问题）
   - 写作判断力框架（清晰度测试、读者旅程、学科语态、修订决策矩阵）
 - 中途强化机制：每次 stage 转换注入对应 IRON RULE + Anti-Pattern 提醒
-- FULL checkpoint 前的 5 题自我检查（引用完整性、谄媚让步、质量轨迹、范围纪律、完整性）
+- FULL checkpoint 前的 5 题自我检查（引用完整性、谄媚让步、逐项准则退步、范围纪律、完整性；目前不宣称已有 typed trajectory）
 
 **Wave 3：精简 Skill 尺寸**
 - SKILL.md 总大小从 142KB 降至 85KB（-40%），详细协议移至 `references/` 按需加载
@@ -617,7 +621,7 @@ v3.5.1 添加 Socratic Mentor 的选用式诚实探测（设置 `ARS_SOCRATIC_RE
 - **攻击强度保持**（academic-paper-reviewer）：DA 不因被反驳而软化。反驳评估协议含偏移检测。
 - **意图检测层**（deep-research socratic）：检测探索型 vs. 目标型。探索模式停用自动收敛，最大轮数提升至 60。每 5 轮重新评估。
 - **对话健康度指针**（deep-research socratic）：每 5 轮后台自检，检测持续同意、回避冲突、过早收敛。检测到模式时自动注入挑战性问题。
-- **跨模型验证协议**（shared，可选）：用 GPT-5.4 Pro 或 Gemini 3.1 Pro 做学术诚信验证 30% 抽样跨模型检查与独立 DA critique。同行评审第六位 reviewer 仍在规划中，尚未实作。设置 `ARS_CROSS_MODEL` 环境变量激活——未设置时零开销。完整设置指南见 `shared/cross_model_verification.md`。
+- **历史版跨模型验证条目（已由 v3.16 取代）：**此版本加入完整性抽样跨模型核查与盲化、分开执行的 DA critique；当时规划的第六位 reviewer 后来已退役。现行跨模型评审是在固定五席中替换一席的模型基座；最新同意与路由契约见 `shared/cross_model_verification.md`。
 - **AI 自我反思报告**（academic-pipeline Stage 6）：Pipeline 结束后 AI 行为自评——DA 让步率、健康警报、谄媚风险评级（LOW/MEDIUM/HIGH）、框架锁定事件。
 - 来源：四轮辩证实验中发现 DA 让步太快、苏格拉底模式过早收敛、整个辩论锁定在人类设置的框架中。
 - 版本：deep-research v2.5、academic-paper-reviewer v1.5、academic-pipeline v2.8
@@ -663,7 +667,7 @@ v3.5.1 添加 Socratic Mentor 的选用式诚实探测（设置 `ARS_SOCRATIC_RE
 ### v2.6 / v2.4 / v1.4 (2026-03-08) — 15+ 项改进
 - **deep-research v2.3**：添加系统性文献回顾 / PRISMA 模式（第 7 模式）；3 个新 agent（risk_of_bias、meta_analysis、monitoring）；PRISMA 协议/报告模板；苏格拉底收敛准则（4 信号 + 自动结束）；快速模式选择指南
 - **academic-paper v2.4**：2 个新 agent（visualization、revision_coach）；修订追踪模板含 4 种状态；引用格式转换（APA↔Chicago↔MLA↔IEEE↔Vancouver）；统计可视化标准；苏格拉底收敛准则；修订复原范例；**LaTeX 输出强化** — 强制 `apa7` document class、`ragged2e` + `etoolbox` 文本对齐修正、表格栏宽公式、双语摘要置中、标准字体集（Times New Roman + 思源宋体 VF + Courier New）、仅 tectonic 编译 PDF
-- **academic-paper-reviewer v1.4**：0-100 质量量表含行为指针；决策对照（≥80 接受、65-79 小修、50-64 大修、<50 退稿）；快速模式选择指南
+- **academic-paper-reviewer v1.4（历史）**：当时引入的数值量表与固定决策映射现已停用；当前采用逐准则叙事判断，live review 一律为 `NOT_CALIBRATED`，measured profile 尚未接入 live review；快速模式选择指南保留。
 - **academic-pipeline v2.6**：自适应 checkpoint（FULL/SLIM/MANDATORY）；Phase E 主张验证；材料护照（Material Passport）支持中途进入；跨 skill 模式顾问（14 情境）；团队协作协议；强化衔接 schema（9 个含验证规则）；学术诚信审查失败复原范例
 
 ### v2.4 / v1.3 (2026-03-08)

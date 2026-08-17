@@ -15,7 +15,19 @@ ARS is not an autonomous paper-writing system. It is not a replacement for the r
 These are not "out of scope" footnotes. They are the load-bearing boundary that defines what ARS does NOT do, and would not do even if a future system made them feasible. Most are autonomous mechanisms catalogued by Kong et al. (2026), *AI for Auto-Research: Roadmap & User Guide* (arXiv:2605.18661), and rejected against the human-led positioning above. The recorded review test for the autonomous-research mechanisms — "who controls the next research-state transition?" — lives in the [L1 design lesson](docs/design/2026-06-08-kong-255-l1-copilot-not-auto-research.md).
 
 - **End-to-end autonomous research pipeline** (Kong §7.4.8). A system that carries a project from question to manuscript without scholar confirmation at each state transition. Rejected: the scholar would become a reviewer of AI output, not the author. The pipeline's mandatory checkpoints exist precisely to prevent this.
-- **Idea-generation agent** (Kong §3.1). An agent that proposes research hypotheses or questions *for* the scholar. Rejected — and distinct from the shipped wording-pattern advisory (#257): ARS may flag surface-level wording / framing patterns in a scholar-supplied research question and ask a Socratic follow-up, but it must not propose, substitute, rank, expand, or select research hypotheses or questions for the scholar. The boundary is recorded in the [L2 design lesson](docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md).
+- **Autonomous idea-generation agent** (Kong §3.1). An agent that proposes
+  research hypotheses or questions *for* the scholar without an explicit
+  authorship-boundary transition. Rejected — and distinct from the shipped
+  wording-pattern advisory (#257): while non-generation Socratic mode is active,
+  ARS may flag surface wording/framing patterns, summarize only directions the
+  scholar has already expressed, and ask follow-up questions, but it must not
+  propose, substitute, rank, expand, or select research hypotheses or questions
+  for the scholar. Non-convergence is never consent. If the scholar explicitly
+  asks the system itself to propose candidates, ARS must visibly leave that mode
+  by emitting `[SOCRATIC-NON-GENERATION-EXIT: explicit_user_request]` before any
+  candidate content and label the result AI-generated; this is a disclosed mode
+  change, not a hidden Socratic fallback. The boundary is recorded in the
+  [L2 design lesson](docs/design/2026-06-08-kong-255-l2-advisory-not-generation.md).
 - **Paper2X auto-generation** (Kong §6). Autonomous generation of slides / posters / video from a manuscript. Rejected — and distinct from a *fidelity audit*: ARS may audit an already-authored or externally generated dissemination artifact against the manuscript for fidelity, but it must not transform a manuscript into a dissemination artifact by choosing the content, narrative, layout, or output medium itself. (Dissemination *design* is handled by separate, non-ARS skill chains; the fidelity-audit suggestion itself is out of this repo's scope.)
 - **Autonomous experiment execution / coding** (Kong §3.3). An LLM that runs experiments or code without scholar oversight. Rejected — and distinct from the shipped Experiment Provenance Intake (#260): ARS may ingest scholar-declared external experiment provenance and check manuscript claims against the declared results, but it must not initiate, run, modify, iterate, or treat tool-executed experiment / code outputs as evidence inside the pipeline.
 - **Physical wet-lab automation API** (Kong §7.4.6). An interface that drives liquid handlers or automated labs. Rejected: even with safeguards, this extends beyond a research copilot's scope into laboratory infrastructure, and conflicts with the copilot-not-pilot positioning.

@@ -200,30 +200,43 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 
 ---
 
+### Devil's Advocate Review Report (Fixed Fifth Seat)
+
+**Editorial Recommendation**: N/A — findings only
+
+**Core Challenge**: Predictive discrimination does not by itself establish decision utility. The paper reports AUC/F1 but does not specify an operating threshold or compare the policy costs of false positives and false negatives, so the claimed early-warning usefulness is not yet supported.
+
+- **Severity**: Major
+- **Evidence Anchor**: `absence: §4 Results/§5 Discussion — expected threshold-specific confusion costs or a decision-utility analysis; checked model-evaluation tables and policy-implications discussion`
+- **Confidence**: 4 — uncertainty/scope metadata only; predictive-decision stress test
+- **Bounded remedy**: Add threshold-specific error trade-offs and limit the policy-use claim to the evaluated decision context.
+
+---
+
 ## Phase 2: Editorial Synthesis & Decision (Summary Version)
 
 ### Decision: **Major Revision**
 
 ### Consensus Analysis
 
-**[CONSENSUS-4]**:
+**[CONSENSUS-4 across the 4 non-DA scoring reviewers]**:
 1. The research direction is innovative and has practical value
 2. 12 positive cases is a major methodological challenge
 3. The paper needs more educational/policy-oriented discussion
 
-**[CONSENSUS-3]**:
+**[CONSENSUS-3 across the 4 non-DA scoring reviewers]**:
 1. Model evaluation needs to be more rigorous (EIC + R1 + R3)
 2. Need to add ethical considerations discussion (EIC + R2 + R3)
 
 **Disagreement 1: Technical severity**
 - **R1**: Temporal leakage and SMOTE issues are Critical level
 - **R2**: Data handling is basically sound (Minor Revision)
-- **Resolution**: R1 is an ML methodology expert (confidence 5/5), within their area of expertise. Temporal leakage could indeed cause the model to be overly optimistic, listed as P1 required item.
+- **Resolution**: The temporal-leakage finding is retained because the cited split design directly contaminates out-of-time evaluation under the applicable model-validity criterion. R1's competence basis helps readers understand scope; confidence is uncertainty metadata and does not decide priority or severity.
 
 **Disagreement 2: Weight of ethical issues**
 - **R3**: Self-fulfilling prophecy is Critical level
 - **R1/R2**: Ethics is important but doesn't affect academic quality judgment
-- **Resolution**: R3's per-finding Confidence on this issue is 4 (core expertise: AI ethics in public-sector policy application — the per-finding value governs arbitration, not the report-level score, #574 A3), and the viewpoint is a widely recognized core issue in public policy AI applications. Listed as P1 but handled by "adding a discussion section" approach, without requiring the author to modify the model.
+- **Resolution**: The ethics finding is retained because the manuscript proposes a public-policy AI application yet the anchored Discussion/Conclusion lacks analysis of prediction-induced harm. The remedy is bounded to an ethical-implications discussion rather than a model change. Confidence is retained only as uncertainty/scope metadata and never governs arbitration.
 
 ### Revision Roadmap
 
@@ -232,6 +245,7 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 - [ ] R2: Compare SMOTE vs ADASYN vs cost-sensitive learning (Source: R1-W2) — Severity: Critical | Anchor: `text: abstract "12 institutions... employing SMOTE to address class imbalance"` | Confidence: 5
 - [ ] R3a: Add "Ethical Implications" section discussing the self-fulfilling prophecy risk (Source: R3-W1) — Severity: Critical | Anchor: `absence: §5/§6 Discussion — expected an ethical-implications discussion of prediction-induced closure risk; checked §5 Discussion, §6 Conclusion` | Confidence: 4
 - [ ] R3b: Add a fairness/subgroup-bias analysis across institution types (Source: R3-W2) — Severity: Major | Anchor: `absence: §3 Methods — expected a fairness/subgroup-bias analysis across institution type; checked §3 Methods, §4 Results` | Confidence: 4
+- [ ] R3c: Add threshold-specific false-positive/false-negative policy-cost analysis and bound the early-warning claim (Source: DA-W1) — Severity: Major | Anchor: `absence: §4 Results/§5 Discussion — expected threshold-specific confusion costs or a decision-utility analysis; checked model-evaluation tables and policy-implications discussion` | Confidence: 4
 - [ ] R4: Add SHAP analysis, providing case-level explainability (Source: R3-W3) — Severity: Major | Anchor: `absence: §3/§4 Methods/Results — expected case-level explainability (e.g. SHAP) beyond aggregate feature importance; checked §3 Methods, §4 Results` | Confidence: 3
 - [ ] R5: Execute feature selection, report reduced model performance (Source: R1-W3) — Severity: Major | Anchor: `absence: §3 Methods — expected a feature-selection step reported against 47 features vs. 12 positive cases; checked §3 Methods, §4 Results` | Confidence: 5
 
@@ -273,12 +287,12 @@ This is precisely the design value of `perspective_reviewer_agent` — it repres
 
 ### 3. Disagreement Handling Example
 
-R1 considers the technical issues Critical, R2 considers them Minor. The `editorial_synthesizer_agent`'s arbitration was based on:
-- R1 has 5/5 confidence in ML methodology
-- Temporal leakage is indeed a recognized serious problem
-- Therefore, R1's judgment is adopted
+R1 considers the technical issues Critical, while R2 considers them Minor. The `editorial_synthesizer_agent` resolves the disagreement from the applicable criterion and evidence:
+- The described split leaks later-period information into model evaluation.
+- That contamination directly threatens the validity of the reported performance estimate.
+- The anchored defect therefore remains Critical; reviewer confidence is transported only as uncertainty/scope metadata.
 
-R3's ethical viewpoint has only 3/5 confidence, but the viewpoint itself is widely recognized. The arbitration result is "listed as P1 but handled by adding a discussion section" — valuing the viewpoint's validity while considering the confidence limitation.
+R3's ethics finding is handled the same way: its applicability follows from the proposed public-policy use, and its absence anchor shows that the manuscript does not address the resulting harm pathway. The bounded remedy is an ethical-implications discussion. Confidence neither strengthens nor softens that conclusion.
 
 ### 4. Difference from Student-Level ML Research
 

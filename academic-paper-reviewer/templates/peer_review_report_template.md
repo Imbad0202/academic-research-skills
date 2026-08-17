@@ -59,6 +59,8 @@ This template is used by the Journal-Fit Reviewer and Reviewers 1-3. Each review
 | 2 | Some aspects outside my expertise, somewhat uncertain about my assessment |
 | 1 | Mostly outside my expertise, my opinion is for reference only |
 
+Confidence is an uncertainty/scope disclosure only; it never changes consensus counts, severity, decision bearing, or arbitration.
+
 ### Summary Assessment *
 [150-250 word overall assessment]
 
@@ -212,20 +214,27 @@ List minor issues that don't affect academic quality but need correction.
 
 ---
 
-## Dimension Scores *
+## Criterion-Bound Judgements *
 
-Score each dimension 0-100 using the rubrics in `references/quality_rubrics.md`. Report the range descriptor that best matches.
+Calibration status: `NOT_CALIBRATED`
 
-| Dimension | Score (0-100) | Descriptor | Notes |
-|-----------|--------------|------------|-------|
-| Originality (20%) | | [Exceptional/Strong/Adequate/Weak/Insufficient] | |
-| Methodological Rigor (25%) | | [Exceptional/Strong/Adequate/Weak/Insufficient] | |
-| Evidence Sufficiency (25%) | | [Exceptional/Strong/Adequate/Weak/Insufficient] | |
-| Argument Coherence (15%) | | [Exceptional/Strong/Adequate/Weak/Insufficient] | |
-| Writing Quality (15%) | | [Exceptional/Strong/Adequate/Weak/Insufficient] | |
-| Literature Integration (optional) | | [See rubrics] | R2 focus |
-| Significance & Impact (optional) | | [See rubrics] | R3 focus |
-| **Weighted Average** | | **[Accept/Minor/Major/Reject]** | |
+Current seat reports cannot know the final actual panel topology and never
+self-upgrade from a candidate profile. Live package application remains
+unavailable until a closed profile artifact and replay validator ship.
+
+Apply `references/quality_rubrics.md` to each applicable dimension. Do not assign points, calculate a weighted total, rank papers, or derive the recommendation from a fixed mapping.
+
+| Dimension | Criterion source | Judgement | Evidence anchor(s) | Rationale | Uncertainty / scope limit | Decision bearing? |
+|---|---|---|---|---|---|---|
+| Originality | | [EXCEEDS/MEETS/PARTLY_MEETS/DOES_NOT_MEET/NOT_ASSESSED] | | | | |
+| Methodological Rigor | | [EXCEEDS/MEETS/PARTLY_MEETS/DOES_NOT_MEET/NOT_ASSESSED] | | | | |
+| Evidence Sufficiency | | [EXCEEDS/MEETS/PARTLY_MEETS/DOES_NOT_MEET/NOT_ASSESSED] | | | | |
+| Argument Coherence | | [EXCEEDS/MEETS/PARTLY_MEETS/DOES_NOT_MEET/NOT_ASSESSED] | | | | |
+| Writing Quality | | [EXCEEDS/MEETS/PARTLY_MEETS/DOES_NOT_MEET/NOT_ASSESSED] | | | | |
+| Literature Integration | | [EXCEEDS/MEETS/PARTLY_MEETS/DOES_NOT_MEET/NOT_ASSESSED] | | | | |
+| Significance & Impact | | [EXCEEDS/MEETS/PARTLY_MEETS/DOES_NOT_MEET/NOT_ASSESSED] | | | | |
+
+Explain the recommendation by naming the unresolved decision-bearing criteria and their repairability. Do not let strengths on one criterion numerically offset a failure on another.
 ```
 
 ---
@@ -242,7 +251,7 @@ Score each dimension 0-100 using the rubrics in `references/quality_rubrics.md`.
 
 These levels ARE the Schema 6 `severity` enum (`shared/handoff_schemas.md` § Weakness Object) — the single source for finding severity across the reviewer stack (#574 A3). Every weakness entry carries its level explicitly; the Devil's Advocate's OBSERVATION category is a non-defect channel that never maps into this enum. Severity is set by these decision-impact definitions alone: respectful register never lowers a level, and adversarial or rigor-signaling framing never raises one (#574 B1).
 
-Apply the test to each finding independently, never to its surrounding narrative or defect cluster. A finding never inherits a higher band from siblings; joint impact belongs in the dimension score and synthesis. If a defect needs siblings to reach rejection-level impact, it is not Critical alone. These are per-finding decision-impact tests, never distributional targets: there is no expected frequency for any band.
+Apply the test to each finding independently, never to its surrounding narrative or defect cluster. A finding never inherits a higher band from siblings; joint impact belongs in the criterion judgement and synthesis. If a defect needs siblings to reach rejection-level impact, it is not Critical alone. These are per-finding decision-impact tests, never distributional targets: there is no expected frequency for any band.
 
 ### Evidence Anchor Types (#574 A2)
 

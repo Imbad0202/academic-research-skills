@@ -35,18 +35,19 @@ Reviewer Configuration:
   Devil's Advocate: Challenges core premise and identifies overlooked counter-evidence
 ```
 
-### Five-Dimension Scores (Pre-Revision)
+### Five-Dimension Judgements (Pre-Revision)
 
-| Dimension | Weight | R1 | R2 | R3 | DA | Weighted Avg |
-|-----------|--------|----|----|----|----|-------------|
-| Originality | 20% | 72 | 78 | 70 | 65 | 71.3 |
-| Methodological Rigor | 25% | 55 | 62 | 58 | 50 | 56.3 |
-| Evidence Sufficiency | 25% | 60 | 65 | 55 | 48 | 57.0 |
-| Argument Coherence | 15% | 68 | 72 | 62 | 55 | 64.3 |
-| Writing Quality | 15% | 75 | 78 | 74 | 72 | 74.8 |
-| **Weighted Total** | -- | -- | -- | -- | -- | **62.4** |
+`calibration_status: NOT_CALIBRATED`
 
-Per the quality rubrics (50-64 = Major Revision), this score yields:
+| Dimension | Panel judgement | Decision-bearing basis |
+|---|---|---|
+| Originality | PARTLY_MEETS | The replacement framing overstates the gap and is challenged by the DA finding. |
+| Methodological Rigor | DOES_NOT_MEET | The three-university sample cannot support the stated generalization and selection is unclear. |
+| Evidence Sufficiency | PARTLY_MEETS | Relevant theoretical alternatives and required statistical reporting are missing. |
+| Argument Coherence | PARTLY_MEETS | The central strawman weakens the question-to-contribution chain. |
+| Writing Quality | MEETS | The manuscript is reviewable; paragraph-length concerns are non-core. |
+
+The unresolved, substantial but repairable methodology, evidence, and framing criteria support:
 
 **Editorial Decision: Major Revision**
 
@@ -394,18 +395,17 @@ Journal-Fit Reviewer verifying each roadmap item (Round-1 reviewer configuration
 | 4 | Missing CIs and effect sizes | Adequate | 95% bootstrap CIs added to Table 3; Cramer's V with interpretation added to Table 5. Footnotes appropriately note that small effect sizes with large samples should be interpreted cautiously. |
 | 5 | Discussion paragraph length | Adequate (DELIBERATE_LIMITATION) | 14/17 paragraphs restructured. Three retained at 210-220 words with documented justification. This is a reasonable editorial decision and does not compromise the paper's quality. |
 
-### Five-Dimension Scores (Post-Revision)
+### Criterion Trajectory (Post-Revision)
 
-| Dimension | Weight | Pre-Revision | Post-Revision | Change |
-|-----------|--------|-------------|--------------|--------|
-| Originality | 20% | 71.3 | 80.5 | +9.2 |
-| Methodological Rigor | 25% | 56.3 | 74.0 | +17.7 |
-| Evidence Sufficiency | 25% | 57.0 | 76.5 | +19.5 |
-| Argument Coherence | 15% | 64.3 | 82.0 | +17.7 |
-| Writing Quality | 15% | 74.8 | 79.3 | +4.5 |
-| **Weighted Total** | -- | **62.4** | **78.0** | **+15.6** |
+| Dimension | Pre-revision | Post-revision | Change | Evidence-based rationale |
+|---|---|---|---|---|
+| Originality | PARTLY_MEETS | MEETS | IMPROVED | The augmentation-spectrum framing establishes a defensible contribution. |
+| Methodological Rigor | DOES_NOT_MEET | MEETS | IMPROVED | The expanded, bounded sample and clarified selection resolve the decision-bearing concern. |
+| Evidence Sufficiency | PARTLY_MEETS | MEETS | IMPROVED | Theoretical alternatives, confidence intervals, and effect sizes are now integrated. |
+| Argument Coherence | PARTLY_MEETS | MEETS | IMPROVED | The revised question and conclusions now follow the same substantive framing. |
+| Writing Quality | MEETS | MEETS | UNCHANGED | Most long paragraphs were restructured; the documented exceptions do not impair interpretation. |
 
-Per the quality rubrics: 65-79 = Minor Revision, >= 80 = Accept. Score of 78.0 is in the Minor Revision range, but all Major items and the DA-CRITICAL item are fully resolved.
+All previously decision-bearing Major and DA-CRITICAL items are resolved. The remaining suggestions are non-blocking, so the criterion-bound synthesis supports Accept with Minor Edits.
 
 ### DA-CRITICAL Before/After Assessment
 
@@ -445,7 +445,7 @@ S2: The transition between Section 2.2 and the new Section 2.3 could
 Editorial Decision: Accept with Minor Edits
   - The two residual suggestions are editorial improvements,
     not substantive concerns.
-  - Score moved from 62.4 (Major Revision) to 78.0 (upper Minor Revision).
+  - All decision-bearing criteria now meet the target requirements.
   - All SERIOUS/CRITICAL items resolved.
   - Paper is cleared for finalization after minor edits.
 ```
@@ -462,7 +462,7 @@ Review Result: Accept with Minor Edits
 Revision assessment:
   - 5/5 items addressed (4 RESOLVED, 1 DELIBERATE_LIMITATION)
   - DA-CRITICAL item fully resolved (strawman → augmentation spectrum)
-  - Weighted score: 62.4 → 78.0 (+15.6 points)
+  - Criterion trajectory: four dimensions improved; Writing Quality remained met
   - 2 residual suggestions (non-blocking, can be addressed in finalization)
 
 Since the decision is Accept (not Major Revision), the paper
@@ -497,9 +497,9 @@ Not every reviewer suggestion must be accepted. Item 5 (paragraph length) was ac
 
 Each response follows the Reviewer comment - Author response - Changes made structure. For accepted feedback, the response explains *what was done* and *why*. For the DELIBERATE_LIMITATION, the response explains *what was done* (14/17 paragraphs restructured), *what was not done* (3 paragraphs retained), and *why* (argumentative coherence justification).
 
-### 4. Score Improvements Track to Specific Revisions
+### 4. Criterion Improvements Track to Specific Revisions
 
-The quality rubrics score increased from 62.4 (Major Revision threshold) to 78.0 (upper Minor Revision). The largest gains were in Methodological Rigor (+17.7, driven by sample expansion and statistical reporting) and Evidence Sufficiency (+19.5, driven by theoretical framework integration and expanded dataset). Originality gained +9.2 primarily from the DA-CRITICAL reframing.
+The criterion trajectory ties every changed judgement to manuscript evidence: Methodological Rigor improved through the sample expansion and statistical reporting; Evidence Sufficiency improved through theoretical integration and the expanded dataset; Originality and Argument Coherence improved through resolution of the DA-CRITICAL framing problem. No total score is needed to make those changes inspectable.
 
 ### 5. The Revision Tracking Template Provides Accountability
 

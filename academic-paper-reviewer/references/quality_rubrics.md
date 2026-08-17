@@ -1,118 +1,84 @@
-# Quality Rubrics for Academic Paper Review
+# Criterion-Bound Judgement Rubric for Academic Paper Review
 
 ## Purpose
 
-Provides calibrated scoring rubrics for the 7 review dimensions used by all reviewers (R1, R2, R3, DA). Ensures consistent, reproducible scoring across different papers and review sessions.
+This rubric defines what each reviewer must examine and how to make the basis of a judgement inspectable. It does **not** provide a calibrated quality score, a paper-ranking scale, or an acceptance probability.
 
-## Known error profile (v3.2)
+## Calibration status
 
-These rubrics define *what* to measure, not *how accurate* the measurement is. A single LLM reviewer's absolute rubric score has calibration error that depends on domain, paper type, and model version.
+Every review must declare one of these states:
 
-For users who want to know this reviewer's empirical FNR / FPR / balanced accuracy before relying on these rubric scores, run the opt-in **calibration mode** full tier (see `calibration_mode_protocol.md`). Full calibration compares decisions against 5-20 user-labelled papers with repeated runs and attaches a measured-profile disclosure. The explicitly selected 3-paper directional tier is cheaper but yields only raw direction/boundary counts; its disclosure must say that it is directional evidence, not an error-rate estimate.
+- `NOT_CALIBRATED` — the required default. Use this whenever there is no empirical target profile matched to the current domain, article type, venue criteria, rubric version, reviewer/model configuration, and review mode.
+- `PROFILE_MEASURED` — reserved for a package-level resolution backed by a replay-valid, hash-bound empirical target profile whose exact target fields and actual completed-panel `execution_topology_sha256` match. Producing or naming a calibration profile does not by itself authorize this status.
 
-Without calibration, treat rubric scores as *ordinally* meaningful (papers scored 85 are better than papers scored 65) but *not cardinally* interpretable (a 85 does not guarantee venue acceptance).
+Individual reviewer seats always emit `NOT_CALIBRATED`, because the actual
+completed-panel topology (including fallbacks) does not exist until all seats
+finish. The current Schema 6 package adapter also remains
+`NOT_CALIBRATED`; `PROFILE_MEASURED` must not appear in a live review package
+until a closed profile schema and replay validator are shipped. This is an
+honest implementation boundary, not evidence that calibration is impossible.
 
-## Scoring Scale
+Never describe either state as proof that judgements are consistent or reproducible across papers, sessions, fields, venues, or model versions. A directional calibration readout is not an empirical target profile and leaves the status `NOT_CALIBRATED`.
 
-All dimensions scored 0-100. Final weighted score determines editorial decision.
+## Required judgement form
 
-## Decision Mapping
+For every applicable dimension, report:
 
-| Weighted Average | Decision |
-|-----------------|----------|
-| >= 80 | Accept |
-| 65-79 | Minor Revision |
-| 50-64 | Major Revision |
-| < 50 | Reject |
+| Field | Required content |
+|---|---|
+| Criterion source | The target venue criterion, reporting standard, article-type expectation, or reviewer configuration item being applied |
+| Judgement | `EXCEEDS` / `MEETS` / `PARTLY_MEETS` / `DOES_NOT_MEET` / `NOT_ASSESSED` |
+| Evidence anchors | Specific manuscript locations or bounded absence anchors |
+| Rationale | How the cited evidence bears on the named criterion |
+| Uncertainty or scope limit | Missing information, domain dependence, or reviewer limitation |
+| Decision bearing? | Whether this judgement affects the recommendation, with a reason |
 
----
+These labels are criterion-bound categories, not numbers. Do not convert them into points, weights, a total, a percentage, or a latent ranking. Do not map any total or count of labels mechanically to Accept, Minor Revision, Major Revision, or Reject.
 
-## Dimension 1: Originality (Weight: 20%)
-
-| Score Range | Descriptor | Behavioral Indicators |
-|------------|------------|----------------------|
-| 90-100 | Exceptional | Novel theoretical framework supported by empirical evidence; opens entirely new research direction; implications span 3+ fields; no prior work addresses this exact question |
-| 75-89 | Strong | Novel methodology OR novel application of existing theory to new context; clear contribution beyond incremental extension; implications for 2+ fields |
-| 60-74 | Adequate | Extends existing framework with new data, population, or context; contribution is clear but incremental; single-field implications |
-| 45-59 | Weak | Replicates existing study with minor variations; contribution is marginal; "so what?" question not convincingly answered |
-| < 45 | Insufficient | No discernible original contribution; duplicates existing work without justification; purely descriptive without analytical insight |
-
-## Dimension 2: Methodological Rigor (Weight: 25%)
-
-| Score Range | Descriptor | Behavioral Indicators |
-|------------|------------|----------------------|
-| 90-100 | Exceptional | Research design perfectly aligned with RQ; all validity threats addressed; appropriate statistical methods with power analysis; transparent reporting (all EQUATOR items); reproducible |
-| 75-89 | Strong | Sound design with minor gaps; most validity threats addressed; appropriate methods with minor reporting omissions; largely reproducible |
-| 60-74 | Adequate | Acceptable design but some validity concerns; methods appropriate but justification lacking; some reporting gaps (missing effect sizes, CIs) |
-| 45-59 | Weak | Design has significant flaws; method choice questionable; multiple reporting gaps; reproducibility doubtful |
-| < 45 | Insufficient | Fundamental design flaws that invalidate findings; inappropriate methods; results cannot be trusted |
-
-## Dimension 3: Evidence Sufficiency (Weight: 25%)
-
-| Score Range | Descriptor | Behavioral Indicators |
-|------------|------------|----------------------|
-| 90-100 | Exceptional | >40 sources, 80%+ peer-reviewed, multi-method triangulation, primary + secondary data, all claims well-supported, counter-evidence acknowledged |
-| 75-89 | Strong | 25-40 sources, 70%+ peer-reviewed, adequate evidence for main claims, some triangulation |
-| 60-74 | Adequate | 15-25 sources, 60%+ peer-reviewed, key claims supported but some gaps, limited triangulation |
-| 45-59 | Weak | <15 sources OR <50% peer-reviewed, several unsupported claims, no triangulation |
-| < 45 | Insufficient | Severely under-sourced, major claims unsupported, relies heavily on grey literature or anecdotal evidence |
-
-## Dimension 4: Argument Coherence (Weight: 15%)
-
-| Score Range | Descriptor | Behavioral Indicators |
-|------------|------------|----------------------|
-| 90-100 | Exceptional | Crystal-clear logical flow from problem -> gap -> RQ -> method -> findings -> implications; every section builds on previous; no logical jumps; counterarguments pre-empted |
-| 75-89 | Strong | Clear logical flow with minor gaps; most transitions well-handled; argument generally persuasive |
-| 60-74 | Adequate | Main argument visible but some sections feel disconnected; occasional logical jumps; conclusions mostly follow from evidence |
-| 45-59 | Weak | Argument structure unclear; significant logical gaps; conclusions overreach evidence; reader must infer connections |
-| < 45 | Insufficient | No coherent argument; sections appear unrelated; conclusions do not follow from evidence; circular reasoning |
-
-## Dimension 5: Writing Quality (Weight: 15%)
-
-| Score Range | Descriptor | Behavioral Indicators |
-|------------|------------|----------------------|
-| 90-100 | Exceptional | Professional academic prose; precise terminology; excellent paragraph structure; zero grammatical errors; appropriate register throughout |
-| 75-89 | Strong | Good academic writing; minor stylistic inconsistencies; few grammatical issues; terminology mostly precise |
-| 60-74 | Adequate | Acceptable writing but room for improvement; some verbose passages; occasional imprecise terminology; some grammar issues |
-| 45-59 | Weak | Below journal standards; frequent verbose/unclear passages; terminology inconsistent; multiple grammar issues |
-| < 45 | Insufficient | Unacceptable writing quality; incomprehensible passages; severe grammar problems; not suitable for peer review |
-
-## Optional Dimensions (reviewer-specific)
-
-### Literature Integration (R2 Domain Expert focus)
-
-| Score Range | Descriptor |
-|------------|------------|
-| 90-100 | Comprehensive coverage of seminal + recent works; identifies theoretical lineage; positions paper precisely in scholarly conversation |
-| 75-89 | Good coverage; most key works cited; reasonable positioning in literature |
-| 60-74 | Adequate but gaps in coverage; some important works missing; positioning somewhat vague |
-| < 60 | Significant literature gaps; key works missing; poor positioning |
-
-### Significance & Impact (R3 Perspective Reviewer focus)
-
-| Score Range | Descriptor |
-|------------|------------|
-| 90-100 | Clear practical implications for policy/practice AND theory; addresses urgent real-world problem; likely to influence field direction |
-| 75-89 | Good practical OR theoretical implications; addresses relevant problem; moderate influence potential |
-| 60-74 | Some implications but narrowly scoped; relevance clear but impact limited |
-| < 60 | Minimal practical or theoretical significance; unclear why this matters |
+Editorial recommendations instead follow the applicable contract or the qualitative, evidence-anchored rules in `editorial_decision_standards.md`. The recommendation must identify the particular unresolved criteria that make it appropriate.
 
 ---
 
-## Aggregation Formula
+## Dimension 1: Originality
 
-```
-Final Score = (Originality x 0.20) + (Methodology x 0.25) + (Evidence x 0.25) + (Coherence x 0.15) + (Writing x 0.15)
-```
+Judge the claimed contribution against the paper's stated field, article type, and target venue. Examine whether the work identifies a defensible gap; distinguishes its theory, method, evidence, or application from relevant prior work; and avoids overstating novelty. Replication and boundary-testing studies can make an original contribution without introducing a new theory.
 
-Optional dimensions are reported separately and factored into the editorial synthesis narrative but do not change the numerical score.
+## Dimension 2: Methodological Rigor
+
+Judge whether the design can answer the stated research question and whether execution and reporting support the inferences made. Apply paradigm- and design-appropriate criteria, including sampling, measurement, validity threats, analysis choices, uncertainty, transparency, and reproducibility where relevant. A standard applies only when its scope matches the paper.
+
+## Dimension 3: Evidence Sufficiency
+
+Judge whether each material claim has evidence of the right type, quality, relevance, and coverage for that claim and field. Consider counter-evidence, triangulation, source provenance, primary versus secondary evidence, and important omissions where relevant.
+
+There is **no universal minimum source count and no universal peer-reviewed-source ratio**. Literature needs vary by field, article type, claim breadth, evidence base, and venue. A review may apply a numeric requirement only when an identified target venue, reporting standard, or protocol explicitly imposes it; cite that authority and do not generalize it beyond its scope.
+
+## Dimension 4: Argument Coherence
+
+Judge whether the problem, gap, research question, method, findings, and implications form a traceable argument. Identify unsupported logical transitions, conclusions that exceed the evidence, unresolved counterarguments, and contradictions. Do not confuse a familiar rhetorical structure with a sound argument.
+
+## Dimension 5: Writing Quality
+
+Judge whether the manuscript communicates its reasoning precisely enough to be reviewed and used. Separate presentation problems from substantive research quality, and do not penalize non-native phrasing when meaning remains clear. Identify only issues that materially affect interpretation, verification, or venue requirements; route copyediting-level points as minor issues.
+
+## Dimension 6: Literature Integration
+
+Judge whether the manuscript identifies and critically integrates the literature needed to establish its question, conceptual lineage, alternatives, and contribution. Coverage is assessed relative to the claims and field, not by a fixed number of references. Missing work should be named or bounded by a clearly described literature area whenever possible.
+
+## Dimension 7: Significance and Impact
+
+Judge whether the claimed theoretical, empirical, practical, or policy implications follow from the evidence and matter for the stated audience. Separate demonstrated significance from speculative future impact; do not require cross-field reach when the target criterion values a focused contribution.
 
 ---
 
-## Calibration Notes
+## Narrative synthesis
 
-- Scores should reflect the paper's quality relative to the target journal's standards
-- A "75" for Nature is not equivalent to "75" for a regional journal
-- When in doubt, err toward the middle of a range
-- Reviewers should explicitly state which range descriptor best matches, then fine-tune within that range
-- If two dimensions are at odds (e.g., excellent methodology but weak writing), do NOT average down — report both scores honestly
+The synthesis must preserve disagreements and non-compensatory weaknesses. A strong judgement on one criterion cannot numerically cancel a failure on another. Report:
+
+1. criteria positively verified;
+2. unresolved decision-bearing criteria, with evidence anchors;
+3. repairability and the work needed to satisfy each criterion;
+4. material uncertainty or reviewer-scope limitations; and
+5. the resulting recommendation under the applicable decision standard.
+
+If the evidence does not support a judgement, use `NOT_ASSESSED` or state the uncertainty. Do not manufacture precision by selecting a midpoint or averaging reviewers.

@@ -1,96 +1,78 @@
-# Score Trajectory Protocol
+# Criterion Trajectory Protocol
 
-**Status**: v3.3
-**Used by**: `pipeline_orchestrator_agent`, `editorial_synthesizer_agent`
-**Applies at**: Stage 3' (RE-REVIEW) and Stage 4' (RE-REVISE)
-
----
+**Compatibility filename**: `score_trajectory_protocol.md`
+**Status**: design contract, not wired to a current machine producer
+**Current runtime**: `pipeline_orchestrator_agent` performs the narrative,
+criterion-local regression check below; it does not emit a trajectory object
+**Future carrier**: Stage 3' Schema 6 field or a closed, validated sidecar
 
 ## Purpose
 
-Tracks how rubric scores change across revision rounds. Detects score regressions — dimensions where the revised paper scores lower than the original — which indicate that a revision fix inadvertently damaged another aspect of the paper.
+Tracks whether a revision improved, preserved, or weakened each named review criterion. The protocol compares evidence-anchored categorical judgements; it does not calculate rubric scores, numerical deltas, or a paper-quality ranking.
 
-Inspired by PaperOrchestra's Content Refinement Agent (Song et al., 2026), which accepts revisions only when overall score increases and reverts when any sub-axis shows net negative gain.
+## Comparison rule
 
----
+In a future typed implementation, compare the previous and current record for every applicable universal dimension:
 
-## How it works
+| Field | Allowed values / content |
+|---|---|
+| previous_judgement | `EXCEEDS`, `MEETS`, `PARTLY_MEETS`, `DOES_NOT_MEET`, or `NOT_ASSESSED` |
+| current_judgement | same enum |
+| change | `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `NOT_COMPARABLE` |
+| previous_evidence | anchors supporting the earlier judgement |
+| current_evidence | anchors supporting the current judgement |
+| rationale | why the criterion is improved, unchanged, regressed, or not comparable |
+| decision_bearing | whether the change affects the current recommendation, with a reason |
 
-### At Stage 3 (REVIEW)
+`change` is a reasoned, criterion-local comparison. Do not infer it by assigning hidden numbers to judgement labels. Use `NOT_COMPARABLE` when criteria, target venue, article type, manuscript scope, or available evidence changed materially.
 
-The `editorial_synthesizer_agent` produces dimension scores in the Review Report (Schema 6). These are the **baseline scores**.
+## Regression handling
 
-### At Stage 3' (RE-REVIEW)
+A `REGRESSED` item triggers a MANDATORY checkpoint when it is decision-bearing or when its evidence shows a new material weakness. Present:
 
-The `editorial_synthesizer_agent` produces new dimension scores. The `pipeline_orchestrator_agent` computes deltas:
+1. the criterion and previous/current evidence;
+2. the rationale for regression and its decision impact;
+3. whether the change was an intentional trade-off; and
+4. options to proceed with an explicit limitation, make a targeted fix, or restore the affected revision.
 
-```
-For each dimension d in {originality, methodological_rigor, evidence_sufficiency,
-  argument_coherence, writing_quality, literature_integration, significance_impact, overall}:
-  delta[d] = score_re_review[d] - score_review[d]
+No fixed numerical tolerance determines regression. A presentation-only change must not be promoted into a substantive regression, and a newly exposed core flaw must not be softened because other criteria improved.
 
-Note: Dimension names match the 7 universal review dimensions from
-academic-paper-reviewer/references/review_criteria_framework.md plus overall.
-Scores are on the 0-100 scale per
-academic-paper-reviewer/references/quality_rubrics.md — the scale the
-delta thresholds below and the v3.2 Early-Stopping Criterion
-("delta < 3 points on the 0-100 rubric", academic-pipeline/SKILL.md) assume.
-```
+## Early stopping
 
-### Decision rules
+Early stopping is eligible only when:
 
-| Condition | Action |
-|-----------|--------|
-| All deltas >= 0 | Normal: revision improved or maintained all dimensions |
-| Any delta < 0 but >= -3 | Warning: "Dimension X decreased slightly (delta = Y). Verify this is acceptable." Surface at checkpoint. |
-| Any delta < -3 | **Regression detected**: "Dimension X regressed significantly (delta = Y). The revision may have damaged this aspect." Trigger MANDATORY checkpoint. |
-| Overall delta < 3 AND no P0 issues | Early-stop eligible (existing v3.2 criterion). Suggest stopping revision loop. |
+- no P0 issue remains;
+- no unresolved decision-bearing regression remains;
+- no applicable criterion has a substantive status change requiring another revision; and
+- the author has no outstanding required action under the active revision contract.
 
-### Regression checkpoint
+The orchestrator must explain these conditions narratively. Label counts and reviewer agreement counts are not substitutes for that explanation.
 
-When regression is detected, the MANDATORY checkpoint presents:
-1. The dimension(s) that regressed and by how much
-2. The reviewer's comments on those dimensions (from the re-review report)
-3. Three options:
-   - **Proceed**: Accept the regression as a tradeoff (recorded in Stage 6 audit)
-   - **Targeted fix**: Return to Stage 4' to fix only the regressed dimension(s)
-   - **Revert**: Restore the pre-revision version for the regressed section(s)
-
----
-
-## Integration with existing early-stopping
-
-The v3.2 early-stopping criterion (delta < 3 + no P0) remains unchanged. Score trajectory extends it:
-- Early-stopping checks the **overall** delta
-- Trajectory tracking checks **per-dimension** deltas
-- Both can fire at the same checkpoint: "Overall improvement is small (suggest stopping) AND dimension X regressed (suggest investigating)"
-
----
-
-## Stage 6 reporting
-
-The Process Summary includes a "Score Trajectory" subsection showing all rounds:
+## Proposed Stage 6 reporting (not current output)
 
 ```markdown
-### Score Trajectory
+### Criterion Trajectory
 
-| Dimension | Review (Stage 3) | Re-Review (Stage 3') | Delta | Status |
-|-----------|-------------------|----------------------|-------|--------|
-| Originality | 68 | 74 | +6 | Improved |
-| Methodological Rigor | 80 | 78 | -2 | Warning |
-| Evidence Sufficiency | 60 | 72 | +12 | Improved |
-| Argument Coherence | 55 | 66 | +11 | Improved |
-| Writing Quality | 70 | 71 | +1 | Improved |
-| Literature Integration | 74 | 77 | +3 | Improved |
-| Significance & Impact | 62 | 64 | +2 | Improved |
-| Overall | 67 | 71 | +4 | Improved |
+| Dimension | Previous judgement | Current judgement | Change | Evidence and rationale | Decision bearing? |
+|---|---|---|---|---|---|
+| Originality | PARTLY_MEETS | MEETS | IMPROVED | <anchors and reason> | no |
+| Methodological Rigor | MEETS | PARTLY_MEETS | REGRESSED | <anchors and reason> | yes |
+| ... | ... | ... | ... | ... | ... |
 
-Regressions detected: 0 (Methodological Rigor -2 is a Warning, within the >= -3 tolerance)
-Early-stop eligible: No (overall delta = +4 >= 3)
+Unresolved decision-bearing regressions: <list or none>
+Early-stop eligible: <yes/no, with criterion-bound explanation>
 ```
 
----
+## Compatibility
 
-## References
+No current producer emits `criterion_trajectory`. A legacy `score_trajectory`
+or experimental `criterion_trajectory` field may be preserved when reading an
+older artifact, but it is historical metadata only: do not recompute it,
+compare it with current judgements, map it to a decision, or emit it as a
+current workflow result. Current checkpoints compare named criteria
+narratively and use `NOT_COMPARABLE` whenever a valid comparison cannot be
+made.
 
-- Song, Y. et al. (2026). PaperOrchestra. *arXiv:2604.05018*. — Section 4 Step 5 (Content Refinement Agent: score-driven accept/revert).
+## Reference
+
+This replaces the former score-delta adaptation of PaperOrchestra's refinement loop. The useful idea retained is explicit regression checking; numerical accept/revert thresholds are not adopted.

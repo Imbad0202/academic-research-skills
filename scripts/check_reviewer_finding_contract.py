@@ -144,7 +144,7 @@ BAND_ANCHORS = (
 TEMPLATE_BAND_WITNESS = (
     "Apply the test to each finding independently, never to its surrounding "
     "narrative or defect cluster. A finding never inherits a higher band from "
-    "siblings; joint impact belongs in the dimension score and synthesis. If "
+    "siblings; joint impact belongs in the criterion judgement and synthesis. If "
     "a defect needs siblings to reach rejection-level impact, it is not "
     "Critical alone. These are per-finding decision-impact tests, never "
     "distributional targets: there is no expected frequency for any band."
@@ -555,14 +555,15 @@ def check(root: Path) -> list[str]:
     _require(errors, std_norm, STANDARDS_REL, "Affirm genuine merits where they exist",
              "genuine-merits Reject rule (A1/B1)")
 
-    # The calibration leniency prior must stay bridged to B1 (a measurement-
-    # reading prior, never a decision rule) so the two cannot be read as
-    # contradicting surfaces.
+    # External calibration evidence may motivate a hypothesis, but it cannot be
+    # imported as a decision prior or numeric correction for a live review.
     cal_norm = _norm(_read(root, CALIBRATION_REL))
     _require(errors, cal_norm, CALIBRATION_REL,
-             "measurement-reading prior for calibration", "B1 bridge note")
+             "External studies can motivate hypotheses about leniency or harshness",
+             "external-evidence scope note")
     _require(errors, cal_norm, CALIBRATION_REL,
-             "no verdict is shaded stricter on this prior's account", "B1 bridge rule")
+             "must not be imported as correction factors, thresholds, or target-profile measurements",
+             "no imported decision-prior rule")
 
     # Mandatory-strength mirrors (round-2 P2): guided mode's opener and the
     # review-quality balance check are genuine-merit-conditional, never quotas.
@@ -644,7 +645,7 @@ def check(root: Path) -> list[str]:
     # Remaining affirm-first mirrors are genuine-merit-conditional (round-4 P2).
     rcf_norm = _norm(_read(root, RCF_REL))
     _require(errors, rcf_norm, RCF_REL,
-             "Affirm genuine strengths first when they exist",
+             "Acknowledge genuine strengths",
              "conditional hypercriticism guidance (A1/B1)")
 
     # The cross-model DA prompt carries no fixed finding count (round-7 P1),
@@ -728,7 +729,7 @@ def check(root: Path) -> list[str]:
     skill = _read(root, SKILL_REL)
     skill_norm = _norm(skill)
     _require(errors, skill_norm, SKILL_REL,
-             "independent overlap in findings is legitimate corroboration",
+             "overlapping findings may corroborate one another, but role/persona separation is not evidence of independent errors",
              "overlap-corroboration standard (P0-3)")
     _require(errors, skill_norm, SKILL_REL,
              "no manufactured balance and no finding quotas (#574 A1/B1)",

@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/reviewer/review_panel_provenance.schema.json",
+  "title": "Typed Review Panel Provenance",
+  "description": "Deterministically derived, replay-validatable provenance for the canonical reviewer_full panel. The artifact binds the exact reviewer_full contract and EIC/R1/R2/R3/DA roster. The six axes remain separate; no binary independence value is admitted or inferred from role/persona labels. fresh_context is explicitly scoped to within-panel context separation and is not a cross-attempt freshness claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "panel_id",
+    "mode",
+    "contract_id",
+    "contract_sha256",
+    "normalized_manifest_sha256",
+    "execution_topology_sha256",
+    "seats",
+    "axes",
+    "fresh_context_scope",
+    "independence_claim",
+    "correlated_error_disclosure"
+  ],
+  "properties": {
+    "schema_version": {"const": "review-panel-provenance/1.0"},
+    "panel_id": {"type": "string", "minLength": 1},
+    "mode": {"const": "reviewer_full"},
+    "contract_id": {"const": "reviewer/reviewer_full/v2"},
+    "contract_sha256": {
+      "const": "e9712090d2469fea15a37b8e22d4e137afbcb2bf38d5789939c5df56738ef7af",
+      "description": "SHA-256 of the exact raw bytes of shared/contracts/reviewer/full.json."
+    },
+    "normalized_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "execution_topology_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Stable hash of the reviewer_full mode/contract binding and ordered EIC/R1/R2/R3/DA seat role/actor/blinding/substrate/human identity plus the six derived axes and fixed fresh-context scope. It excludes per-run context ids while retaining fresh_context status. Used only for exact configuration/profile matching."
+    },
+    "seats": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "prefixItems": [
+        {"$ref": "#/$defs/eic_seat"},
+        {"$ref": "#/$defs/r1_seat"},
+        {"$ref": "#/$defs/r2_seat"},
+        {"$ref": "#/$defs/r3_seat"},
+        {"$ref": "#/$defs/da_seat"}
+      ],
+      "items": false
+    },
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role_separated",
+        "fresh_context",
+        "blind_to_peer_outputs",
+        "model_family_distinct",
+        "provider_distinct",
+        "human_distinct"
+      ],
+      "properties": {
+        "role_separated": {"$ref": "#/$defs/tri_state"},
+        "fresh_context": {"$ref": "#/$defs/tri_state"},
+        "blind_to_peer_outputs": {"$ref": "#/$defs/tri_state"},
+        "model_family_distinct": {"$ref": "#/$defs/tri_state"},
+        "provider_distinct": {"$ref": "#/$defs/tri_state"},
+        "human_distinct": {"$ref": "#/$defs/tri_state"}
+      }
+    },
+    "fresh_context_scope": {
+      "const": "within_panel_attempt_only",
+      "description": "fresh_context compares context ids only among the five seats in this artifact. No prior-attempt history is supplied or checked."
+    },
+    "independence_claim": {"const": "not_computed_from_personas"},
+    "correlated_error_disclosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "reason", "text"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "reason": {
+          "enum": [
+            "same_model_family",
+            "model_family_unknown",
+            "multiple_model_families"
+          ]
+        },
+        "text": {
+          "anyOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "null"}
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "axes": {
+            "properties": {"model_family_distinct": {"const": false}},
+            "required": ["model_family_distinct"]
+          }
+        },
+        "required": ["axes"]
+      },
+      "then": {
+        "properties": {
+          "correlated_error_disclosure": {
+            "properties": {
+              "required": {"const": true},
+              "reason": {"const": "same_model_family"},
+              "text": {
+                "const": "All model-executed review seats used one model family; role separation does not remove correlated-error risk."
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "axes": {
+            "properties": {"model_family_distinct": {"const": "unknown"}},
+            "required": ["model_family_distinct"]
+          }
+        },
+        "required": ["axes"]
+      },
+      "then": {
+        "properties": {
+          "correlated_error_disclosure": {
+            "properties": {
+              "required": {"const": true},
+              "reason": {"const": "model_family_unknown"},
+              "text": {
+                "const": "Model-family provenance is incomplete; cross-family separation is unknown, so correlated-error risk cannot be ruled out."
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "axes": {
+            "properties": {"model_family_distinct": {"const": true}},
+            "required": ["model_family_distinct"]
+          }
+        },
+        "required": ["axes"]
+      },
+      "then": {
+        "properties": {
+          "correlated_error_disclosure": {
+            "properties": {
+              "required": {"const": false},
+              "reason": {"const": "multiple_model_families"},
+              "text": {"type": "null"}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "tri_state": {"enum": [true, false, "unknown"]},
+    "nullable_identifier": {
+      "anyOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "null"}
+      ]
+    },
+    "nullable_canonical_model_identifier": {
+      "anyOf": [
+        {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:/-]*$"},
+        {"type": "null"}
+      ]
+    },
+    "normalized_seat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seat_id",
+        "role_id",
+        "context_id",
+        "peer_outputs_visible",
+        "actor_type",
+        "model_family",
+        "provider",
+        "human_reviewer_id"
+      ],
+      "properties": {
+        "seat_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+        "role_id": {"$ref": "#/$defs/nullable_identifier"},
+        "context_id": {"$ref": "#/$defs/nullable_identifier"},
+        "peer_outputs_visible": {
+          "anyOf": [{"type": "boolean"}, {"type": "null"}]
+        },
+        "actor_type": {"enum": ["model", "human", "hybrid", "unknown"]},
+        "model_family": {"$ref": "#/$defs/nullable_canonical_model_identifier"},
+        "provider": {"$ref": "#/$defs/nullable_canonical_model_identifier"},
+        "human_reviewer_id": {"$ref": "#/$defs/nullable_identifier"}
+      }
+    },
+    "eic_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/normalized_seat"},
+        {
+          "properties": {
+            "seat_id": {"const": "EIC"}
+          }
+        }
+      ]
+    },
+    "r1_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/normalized_seat"},
+        {
+          "properties": {
+            "seat_id": {"const": "R1"}
+          }
+        }
+      ]
+    },
+    "r2_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/normalized_seat"},
+        {
+          "properties": {
+            "seat_id": {"const": "R2"}
+          }
+        }
+      ]
+    },
+    "r3_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/normalized_seat"},
+        {
+          "properties": {
+            "seat_id": {"const": "R3"}
+          }
+        }
+      ]
+    },
+    "da_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/normalized_seat"},
+        {
+          "properties": {
+            "seat_id": {"const": "DA"}
+          }
+        }
+      ]
+    }
+  }
+}

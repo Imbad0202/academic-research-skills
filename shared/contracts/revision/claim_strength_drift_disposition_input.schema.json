@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/revision/claim_strength_drift_disposition_input.schema.json",
+  "title": "Raw-Event-Bound E6 Disposition Input",
+  "description": "Transient caller input naming one absolute local raw session-event artifact and one explicit choice for every detected E6 finding. Build opens each exact regular non-symlink file and recomputes its raw SHA-256; a supplied 64-hex assertion alone is insufficient. Paths are transient and are never copied to the durable sidecar. Exact byte binding does not authenticate the event source, content meaning, or actor identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "session_event_artifacts", "dispositions"],
+  "properties": {
+    "schema_version": { "const": "claim-strength-drift-disposition-input/1.0" },
+    "session_event_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/session_event_artifact" }
+    },
+    "dispositions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/input_disposition" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonempty_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "absolute_local_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "description": "Transient absolute local path. Runtime absolute-path, regular-file, no-follow, size, and read-stability checks are authoritative."
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^ASSERTED-EVENT-[A-Za-z0-9._-]+$"
+    },
+    "finding_id": {
+      "type": "string",
+      "pattern": "^ADV-E6-[1-9][0-9]*$"
+    },
+    "session_event_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "source_assertion", "actor_role_assertion", "raw_session_event_path", "raw_session_event_sha256"],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/event_id" },
+        "source_assertion": { "const": "session_user_message" },
+        "actor_role_assertion": { "const": "author" },
+        "raw_session_event_path": { "$ref": "#/$defs/absolute_local_path" },
+        "raw_session_event_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "input_disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding_id", "session_event_id", "action"],
+      "properties": {
+        "finding_id": { "$ref": "#/$defs/finding_id" },
+        "session_event_id": { "$ref": "#/$defs/event_id" },
+        "action": { "enum": ["restore", "authorize_with_reason", "pause"] },
+        "reason": { "$ref": "#/$defs/nonempty_string" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["action"],
+            "properties": { "action": { "const": "authorize_with_reason" } }
+          },
+          "then": { "required": ["reason"] },
+          "else": { "not": { "required": ["reason"] } }
+        }
+      ]
+    }
+  }
+}

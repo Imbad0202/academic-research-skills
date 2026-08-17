@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/human_read_log.schema.json",
-  "title": "ARS human-read ledger (peer file of the Material Passport)",
-  "description": "Schema for <passport-stem>_human_read_log.yaml, the user-owned human-read signal ledger written by scripts/ars_mark_read.py (v3.6.8 §3.6; #513 read_scope attestation). Deliberately a sidecar: literature_corpus_entry.schema.json stays adapter-owned and unmodified — corpus entries MUST NOT carry human-read state (firm rule 3). The ledger is append-only; unmark appends rescinded_at, never deletes. read_scope is declaration-only (#513): absent means unknown, never fabricated or backfilled. Exists for audit/debugging and test-time validation; the CLI itself stays dependency-light and does not validate at runtime.",
+  "title": "ARS user-attested reading ledger (peer file of the Material Passport)",
+  "description": "Schema for <passport-stem>_human_read_log.yaml, the user-owned USER_ATTESTED_READ ledger written by scripts/ars_mark_read.py (v3.6.8 §3.6; #513/#738 read_scope attestation). It records a declaration, not verified reading or comprehension. Deliberately a sidecar: literature_corpus_entry.schema.json stays adapter-owned and unmodified. The ledger is append-only; unmark appends rescinded_at, never deletes. New marks require read_scope; legacy absence means coverage_unknown and never licenses promotion to ok. Nothing is inferred or backfilled.",
   "type": "object",
   "additionalProperties": false,
   "required": ["session_id", "created_at", "human_read"],
@@ -11,11 +11,7 @@
       "type": "string",
       "minLength": 1
     },
-    "created_at": {
-      "type": "string",
-      "minLength": 1,
-      "description": "ISO 8601 UTC timestamp of ledger creation."
-    },
+    "created_at": { "$ref": "#/$defs/rfc3339_utc" },
     "human_read": {
       "type": "array",
       "items": { "$ref": "#/$defs/human_read_entry" }
@@ -32,23 +28,33 @@
           "minLength": 1,
           "description": "Joins against literature_corpus[].citation_key in the active passport."
         },
-        "marked_at": {
-          "type": "string",
-          "minLength": 1
+        "attestation_type": {
+          "const": "USER_ATTESTED_READ",
+          "description": "Written on new marks. Optional only so pre-#738 ledger entries remain parseable as legacy declarations."
         },
+        "marked_at": { "$ref": "#/$defs/rfc3339_utc" },
         "rescinded_at": {
-          "type": "string",
-          "minLength": 1,
+          "$ref": "#/$defs/rfc3339_utc",
           "description": "Appended in place by /ars-unmark-read; presence means this mark no longer counts. Most-recent-timestamp-wins per v3.6.8 §3.6."
         },
         "read_scope": { "$ref": "#/$defs/read_scope" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["read_scope"] },
+          "then": { "required": ["attestation_type"] }
+        },
+        {
+          "if": { "required": ["attestation_type"] },
+          "then": { "required": ["read_scope"] }
+        }
+      ]
     },
     "read_scope": {
       "type": "object",
       "additionalProperties": false,
       "required": ["level"],
-      "description": "#513 honest-coverage attestation: how much of the source the user actually read. Declaration-only — adapters and agents never infer or backfill it. Locators require level: sections (the if/then below mirrors the CLI's write-time refusal of the contradictory combination).",
+      "description": "#513/#738 coverage attestation: how much of the source the user declares reading. Declaration-only — adapters and agents never infer or backfill it. `unknown` is explicit coverage_unknown and never licenses promotion to ok. Locators require level: sections.",
       "if": { "required": ["locators"] },
       "then": {
         "properties": { "level": { "const": "sections" } }
@@ -70,6 +76,11 @@
           "maxLength": 1000
         }
       }
+    },
+    "rfc3339_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$",
+      "description": "RFC 3339 timestamp normalized to UTC with a literal Z suffix. The runtime also validates calendar/time values and rescinded_at >= marked_at."
     }
   }
 }

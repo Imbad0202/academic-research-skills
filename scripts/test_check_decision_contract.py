@@ -156,30 +156,33 @@ def test_authority_table_extra_gfm_row_fails(tmp_path, extra_row):
     assert lint.check(root)
 
 
-def test_threshold_removed_from_single_residency_fails(tmp_path):
+def test_retired_threshold_row_is_prohibited_in_quality_rubric(tmp_path):
     root = mirror(tmp_path)
-    mutate(root, lint.QUALITY, "| 65-79 |", "| 66-79 |")
-    assert lint.check(root)
-
-
-def test_threshold_mapping_label_mutation_fails(tmp_path):
-    root = mirror(tmp_path)
-    mutate(
-        root,
-        lint.QUALITY,
-        "| >= 80 | Accept |",
-        "| >= 80 | Reject |",
+    path = root / lint.QUALITY
+    path.write_text(
+        path.read_text(encoding="utf-8") + "\n| 65-79 | Minor Revision |\n",
+        encoding="utf-8",
     )
     assert lint.check(root)
 
 
-def test_threshold_mapping_duplicate_row_fails(tmp_path):
+def test_retired_accept_mapping_is_prohibited_in_quality_rubric(tmp_path):
     root = mirror(tmp_path)
-    mutate(
-        root,
-        lint.QUALITY,
-        "| >= 80 | Accept |",
-        "| >= 80 | Accept |\n| >= 80 | Accept |",
+    path = root / lint.QUALITY
+    path.write_text(
+        path.read_text(encoding="utf-8") + "\n| >= 80 | Accept |\n",
+        encoding="utf-8",
+    )
+    assert lint.check(root)
+
+
+def test_retired_mapping_prose_is_prohibited_in_quality_rubric(tmp_path):
+    root = mirror(tmp_path)
+    path = root / lint.QUALITY
+    path.write_text(
+        path.read_text(encoding="utf-8")
+        + "\nA rubric score of 80 or higher means Accept.\n",
+        encoding="utf-8",
     )
     assert lint.check(root)
 

@@ -137,7 +137,19 @@ In Socratic mode the deliverable shifts from producing the RQ to helping the use
 
 - **Guide the user to derive the RQ themselves** — the RQ Brief is a full-mode output; here you use guiding questions to help the user discover the contours of their own question.
 - **Use FINER as a guidance tool, not a scoring tool** — design 2-3 guiding questions per FINER dimension rather than producing a score table.
-- **Withhold candidate RQs** until the user cannot converge after 5+ rounds in Layer 1 (the `failure_paths F1` escape hatch); only then offer candidates.
+- **Never turn non-convergence into candidate generation.** After any number of
+  rounds, summarize only the directions and preferences the user already
+  expressed, leave unresolved choices unresolved, and either continue with a
+  focused question or suggest `lit-review` before returning to Layer 1.
+- **Candidate generation requires a visible mode exit.** Only when the user
+  explicitly asks the system itself to propose candidate RQs may you leave the
+  non-generation branch. Before any candidate appears, tell the user that the
+  response is no longer non-generation Socratic guidance and emit this exact
+  standalone marker:
+  `[SOCRATIC-NON-GENERATION-EXIT: explicit_user_request]`. Only then apply the
+  full-mode candidate-generation steps, labeling the results as AI-generated
+  starting points. Do not treat them as user-derived insights or silently
+  resume Socratic mode.
 
 #### FINER Guiding Questions
 

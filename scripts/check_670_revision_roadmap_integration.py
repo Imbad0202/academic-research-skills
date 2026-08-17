@@ -63,24 +63,25 @@ RUNTIME_HASHES = {
     RE_REVIEW_RUNTIME: "8347ec3766857366cc0c6ffd30021afcebf8d0528a83927fabfce9ecb66a59ab",
 }
 
-# #670 originally froze the five reviewer finding producers. #684
-# intentionally extends their Phase 1/2 grammar with pointer-only criteria
-# binding and constructive-finding sidecars; these hashes were reviewed and
-# re-pinned with that semantic change. Exact hashes keep subsequent drift
-# auditable without a live-model comparison.
+# #670 originally froze the five reviewer finding producers. Subsequent
+# deliberate contract changes added pointer-only criteria binding, categorical
+# criterion judgements, an explicit NOT_CALIBRATED boundary, typed provenance,
+# and confidence-as-disclosure-only semantics. These hashes are re-pinned with
+# those reviewed changes; exact hashes keep later drift auditable without a
+# live-model comparison.
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
-        "e1ddd06f398b0fbfeaa39d38c92e18da62a230bc640a6c081de89424f504ab12",
+        "c5ec3150c7e7cc4c89358853d13af0bde8f211e0a735bcd8c72330d1f931943d",
     Path("academic-paper-reviewer/agents/methodology_reviewer_agent.md"):
-        "0a056ab04963b4ccb1af050b3e40390da2f675a6fa723f0df44674551e83838a",
+        "91e462ee104cc253a44d387570ea95a49a4efffcc2b4765617baf292431de6cb",
     Path("academic-paper-reviewer/agents/domain_reviewer_agent.md"):
-        "f9ee56957e213c0f850551bf2cf7985002efe2f71f909599bd8ecdac73b37052",
+        "eb6660aafadc851e3fc4545111b5113d467c9eb263ef069394db62c944ece1e5",
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
-        "ee6099e548cefe5c79df73be06a8e1691af7f20bacd288190c960fde76cd1258",
+        "49bb946547593a918bd60faee88555d46a2a10b39f2857ef94163eef65920d81",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
-        "612ea6371ba3107524c72a21cfb1966e196eb0512c9072b18af83caa6005be61",
+        "b42eb5559bf91c8767f85e532dfa240e5e30feb92ae3fc0be96f20058acfcf6a",
     Path("academic-paper-reviewer/templates/peer_review_report_template.md"):
-        "d42f780246191ed84dd2d75a3c40bf7533afdbe74994f1ebd9630902978d2b9b",
+        "5da1f9d24d6e321cec5f38c13fa03fe23b9363b1842cb0d8111c5e39a810c7d1",
 }
 
 AUTHOR_PRESENTATION_FILES = (

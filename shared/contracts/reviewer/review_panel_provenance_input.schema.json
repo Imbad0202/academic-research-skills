@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/reviewer/review_panel_provenance_input.schema.json",
+  "title": "Review Panel Provenance Input",
+  "description": "Closed reviewer_full seat-level observations used to derive typed review-panel provenance. The input is bound to the canonical reviewer_full contract and exact EIC/R1/R2/R3/DA roster. Unrecorded execution observations may be omitted and are normalized to unknown; a role or persona label is never evidence of execution independence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "panel_id",
+    "mode",
+    "contract_id",
+    "contract_sha256",
+    "seats"
+  ],
+  "properties": {
+    "schema_version": {"const": "review-panel-provenance-input/1.0"},
+    "panel_id": {"type": "string", "minLength": 1},
+    "mode": {"const": "reviewer_full"},
+    "contract_id": {"const": "reviewer/reviewer_full/v2"},
+    "contract_sha256": {
+      "const": "e9712090d2469fea15a37b8e22d4e137afbcb2bf38d5789939c5df56738ef7af",
+      "description": "SHA-256 of the exact raw bytes of shared/contracts/reviewer/full.json."
+    },
+    "seats": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "prefixItems": [
+        {"$ref": "#/$defs/eic_seat"},
+        {"$ref": "#/$defs/r1_seat"},
+        {"$ref": "#/$defs/r2_seat"},
+        {"$ref": "#/$defs/r3_seat"},
+        {"$ref": "#/$defs/da_seat"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "nullable_identifier": {
+      "anyOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "null"}
+      ]
+    },
+    "nullable_canonical_model_identifier": {
+      "anyOf": [
+        {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:/-]*$"},
+        {"type": "null"}
+      ]
+    },
+    "seat_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seat_id"],
+      "properties": {
+        "seat_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+        "role_id": {"$ref": "#/$defs/nullable_identifier"},
+        "context_id": {"$ref": "#/$defs/nullable_identifier"},
+        "peer_outputs_visible": {
+          "anyOf": [{"type": "boolean"}, {"type": "null"}]
+        },
+        "actor_type": {"enum": ["model", "human", "hybrid", "unknown"]},
+        "model_family": {"$ref": "#/$defs/nullable_canonical_model_identifier"},
+        "provider": {"$ref": "#/$defs/nullable_canonical_model_identifier"},
+        "human_reviewer_id": {"$ref": "#/$defs/nullable_identifier"}
+      }
+    },
+    "eic_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/seat_observation"},
+        {
+          "properties": {
+            "seat_id": {"const": "EIC"}
+          }
+        }
+      ]
+    },
+    "r1_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/seat_observation"},
+        {
+          "properties": {
+            "seat_id": {"const": "R1"}
+          }
+        }
+      ]
+    },
+    "r2_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/seat_observation"},
+        {
+          "properties": {
+            "seat_id": {"const": "R2"}
+          }
+        }
+      ]
+    },
+    "r3_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/seat_observation"},
+        {
+          "properties": {
+            "seat_id": {"const": "R3"}
+          }
+        }
+      ]
+    },
+    "da_seat": {
+      "allOf": [
+        {"$ref": "#/$defs/seat_observation"},
+        {
+          "properties": {
+            "seat_id": {"const": "DA"}
+          }
+        }
+      ]
+    }
+  }
+}

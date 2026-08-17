@@ -618,6 +618,20 @@ def test_substrate_trigger_constants_match_the_plan_schema() -> None:
     assert schema_tiers == substrate.CHECKPOINT_REQUIRED_TIER
 
 
+def test_substrate_basis_constants_match_the_claim_registry_schema() -> None:
+    schema = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "shared/contracts/evidence/claim_registry.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    basis = schema["$defs"]["claim"]["properties"]["high_impact_basis"]
+    assert set(substrate.HIGH_IMPACT_BASIS_VALUES) == set(basis["items"]["enum"])
+    assert basis["minItems"] == 1
+    assert basis["uniqueItems"] is True
+    assert "high_impact_basis" not in schema["$defs"]["claim"]["required"]
+
+
 # --- inputs stay unmutated (gate 12 support) --------------------------------
 
 

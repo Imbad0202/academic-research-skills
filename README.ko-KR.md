@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.20.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.0)
+[![Version](https://img.shields.io/badge/version-v3.20.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.1)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -32,7 +32,7 @@ ARS는 **AI의 지원을 받는 인간 연구자가 인간이나 AI가 단독으
 
 v3.8은 L3 격차의 나머지 절반을 메웁니다. v3.7.3은 모든 인용이 locator 앵커를 갖도록 했고, v3.8은 각 앵커에 대해 인용된 출처를 가져와 주장이 실제로 뒷받침되는지 판단하는 옵트인 감사 패스(`ARS_CLAIM_AUDIT=1`)를 추가합니다. 다섯 개의 새로운 HIGH-WARN 클래스(claim-not-supported, negative-constraint-violation, fabricated-reference, anchorless, constraint-violation-uncited)의 출력을 formatter terminal hard gate가 거부합니다. 캘리브레이션은 FNR<0.15 + FPR<0.10 합격 임계값을 갖는 20개 항목으로 구성된 골드셋으로 제공됩니다. 단계적 활성화 계획은 v3.8 명세 §5에 따라 캘리브레이션 후 증거가 나올 때까지 보류됩니다.
 
-v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfister & Yoon, 2026, Google)에서 영감을 받았습니다: Semantic Scholar API 검증, anti-leakage 프로토콜, VLM 그림 검증, 점수 궤적 추적.
+v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfister & Yoon, 2026, Google)에서 영감을 받았습니다: Semantic Scholar API 검증, anti-leakage 프로토콜, VLM 그림 검증, 수정 궤적 추적. 현재 ARS는 수치 델타 대신 기준별 증거 기반 서술형 회귀 점검을 수행하며, typed trajectory carrier는 아직 구현되지 않았습니다.
 
 ---
 
@@ -83,8 +83,8 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 - **Deep Research** — 소크라테스식 가이드 모드, PRISMA 체계적 문헌고찰, 의도 감지, 대화 건강도 모니터링, 선택적 교차 모델 DA, Semantic Scholar API 검증을 갖춘 13개 에이전트 연구팀.
 - **Academic Paper** — Style Calibration, Writing Quality Check, LaTeX 하드닝, 시각화, 수정 코칭, 인용 변환, anti-leakage 프로토콜, VLM 그림 검증을 갖춘 12개 에이전트 논문 작성.
-- **Academic Paper Reviewer** — 0–100 품질 루브릭(Journal-Fit Reviewer + 동적 리뷰어 3명 + Devil's Advocate), 양보 임계값 프로토콜, 공격 강도 보존, 선택적 교차 모델 DA 비평 / 캘리브레이션, R&R 추적 매트릭스, 읽기 전용 제약을 갖춘 7개 에이전트 다관점 동료 심사.
-- **Academic Pipeline** — 적응형 체크포인트, 주장 검증, Material Passport, 선택적 `repro_lock`, 선택적 교차 모델 무결성 검증, 대화 중 강화, 점수 궤적 추적을 갖춘 10단계 파이프라인 오케스트레이터.
+- **Academic Paper Reviewer** — 기준별 증거에 연결된 서술형 판단(Journal-Fit Reviewer + 동적 리뷰어 3명 + Devil's Advocate), 양보 임계값 프로토콜, 공격 강도 보존, 선택적 교차 모델 DA 비평 / 캘리브레이션, R&R 추적 매트릭스, 읽기 전용 제약을 갖춘 7개 에이전트 다관점 동료 심사. 현재 live review는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다.
+- **Academic Pipeline** — 적응형 체크포인트, 주장 검증, Material Passport, 선택적 `repro_lock`, 선택적 교차 모델 무결성 검증, 대화 중 강화, 기준별 서술형 회귀 점검을 갖춘 10단계 파이프라인 오케스트레이터(typed trajectory carrier는 아직 미구현).
 - **Data Access Level Metadata** (v3.3.2+) — 모든 스킬이 `data_access_level`(`raw` / `redacted` / `verified_only`)을 선언하며, `scripts/check_data_access_level.py`로 강제됩니다. Anthropic의 automated-w2s-researcher (2026)에서 패턴을 차용했습니다. 자세한 내용은 [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md)를 참조하세요.
 - **Task Type Annotation** (v3.3.2+) — 모든 스킬이 `task_type`(`open-ended` 또는 `outcome-gradable`)을 선언합니다. 현재 모든 ARS 스킬은 `open-ended`입니다.
 - **Benchmark Report Schema** (v3.3.5+) — 정직한 벤치마크 비교를 위한 JSON Schema와 린트입니다. 자세한 내용은 [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md)를 참조하세요.
@@ -243,19 +243,19 @@ You: "status"
 
 에이전트별 책임과 단계별 산출물은 이제 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)에 있습니다. 릴리스 메타데이터를 한 곳에 유지하기 위해 버전 번호는 여기에 고정합니다.
 
-### Deep Research (v2.12.0)
+### Deep Research (v2.12.1)
 
 13개 에이전트 연구팀. 모드: full, quick, review, lit-review, three-way-scan, fact-check, socratic, systematic-review. 전체 에이전트 명단과 산출물: ARCHITECTURE.md §3 참조.
 
-### Academic Paper (v3.3.0)
+### Academic Paper (v3.3.1)
 
 12개 에이전트 논문 작성 파이프라인. 모드: full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit. 출력: MD + DOCX (가능한 경우 Pandoc 경유) + LaTeX (APA 7.0 `apa7` class / IEEE / Chicago) → tectonic 경유 PDF. 전체 에이전트 명단과 단계별 책임: ARCHITECTURE.md §3 참조.
 
-### Academic Paper Reviewer (v1.11.0)
+### Academic Paper Reviewer (v1.11.1)
 
-**0-100 품질 루브릭**을 갖춘 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. **결정 매핑:** ≥80 Accept, 65-79 Minor Revision, 50-64 Major Revision, <50 Reject. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
+기준별 증거에 연결된 **서술형 판단**을 수행하는 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. 현재 live review와 Schema 6 package는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다. 고정 총점을 Accept / Minor Revision / Major Revision / Reject에 매핑하지 않습니다. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.20.0)
+### Academic Pipeline (v3.20.1)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 건너뛸 수 없고, R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -343,6 +343,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 변경 이력
+
+### v3.20.1 (2026-08-15) — 계약 정직성 강화와 범위가 제한된 평가 기반
+
+> **강화 및 범위 명확화:** v3.20.1은 리뷰와 무결성 주장을 실제로 재현 가능한 증거 범위에 맞춥니다. Claim coverage는 등록되었거나 어휘적으로 탐지된 모집단으로 제한되고 의미 추출의 완전성은 여전히 미확인입니다. 개정 과정의 주장 강도 변경에는 항목별 byte-bound 저자 처분이 필요하며, 새 읽기 표시는 범위를 반드시 선언하고 오류를 명시적으로 드러냅니다. Live reviewer package는 `NOT_CALIBRATED`를 유지하고 이분법적 independence 표현을 6축 provenance로 대체합니다. 또한 오프라인·미측정 claim-standing probe 기반, ideation-diversity blind bundle의 폐쇄형 1차 배정 게이트, 향후 inquiry branch／alternative를 opt-in으로 도입하는 roadmap을 포함합니다. 이 계약들은 과학적 성과 개선, 리뷰 정확성, 완전한 의미 탐지, 인증된 인간 신원, 독립 오류 과정 또는 live provider 효과를 입증하지 않습니다. 스위트／pipeline → v3.20.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1.
 
 ### v3.20.0 (2026-08-14) — 증거에 바인딩된 리뷰와 개정, 격리된 전송, 재현 가능한 평가 기반
 
@@ -581,7 +585,7 @@ v3.5.1은 Socratic Mentor에 옵트인 정직성 프로브(`ARS_SOCRATIC_READING
 ### v3.3.1 (2026-04-14) — Spec Consistency Patch
 
 - README, `.claude/CLAUDE.md`, `MODE_REGISTRY.md`, `SKILL.md` 파일을 현재 모드 수와 게시된 스킬 버전에 동기화.
-- 교차 모델 표현 수정: 무결성 샘플 점검과 독립 DA 비평은 오늘날 구현됨; sixth-reviewer 동료 심사는 계획 단계로 유지.
+- **역사적 주석(v3.16에서 대체됨):** 이 버전에는 무결성 샘플 점검과 블라인드·분리 실행 cross-model DA 비평이 구현되었고, 여섯 번째 reviewer는 계획 단계였다. 그 설계는 이후 폐기되었으며 현재 full review는 고정 5석을 유지한다.
 - SLIM 체크포인트도 명시적 사용자 확인을 기다리도록 적응형 체크포인트 의미론 명확화.
 - Stage 2.5와 Stage 4.5 무결성 게이트가 건너뛸 수 없음을 재확인.
 - 향후 드리프트를 잡기 위한 경량 spec consistency 점검과 GitHub Actions 워크플로 추가.
@@ -593,7 +597,7 @@ v3.5.1은 Socratic Mentor에 옵트인 정직성 프로브(`ARS_SOCRATIC_READING
 - **Semantic Scholar API Verification** — S2 API를 통한 Tier 0 프로그래밍 방식 참고문헌 존재 점검. Levenshtein >= 0.70 제목 매칭, DOI 불일치 감지, S2 ID를 통한 bibliography 중복 제거. API 사용 불가 시 우아한 degradation.
 - **Anti-Leakage Protocol** — Knowledge Isolation Directive가 LLM 파라메트릭 메모리보다 세션 자료를 우선. 누락 콘텐츠를 메모리에서 채우는 대신 `[MATERIAL GAP]`로 플래그. Mode 5/6 실패 위험 감소.
 - **VLM Figure Verification**(선택) — vision 가능 LLM으로 렌더링된 그림의 폐루프 검증. 10점 체크리스트, 최대 2회 정제 반복.
-- **Score Trajectory Protocol** — 수정 라운드 전반의 차원별 루브릭 점수 델타 추적(7차원). 회귀(delta < -3) 감지 및 필수 체크포인트 트리거.
+- **Criterion Trajectory Protocol** — 수정 라운드 사이에서 7개 차원의 증거 기반 판단을 비교하며, 결정에 영향을 주는 회귀가 있으면 필수 체크포인트를 트리거합니다. 수치 델타는 계산하지 않습니다.
 - **Stage 2 Parallelization** — outline 완료 후 시각화와 논증 구축을 병렬 실행 가능.
 - 새 버전: deep-research v2.8, academic-paper v3.0, academic-pipeline v3.2
 
@@ -641,7 +645,7 @@ Lu et al. (2026, *Nature* 651:914-919) — 블라인드 동료 심사를 통과�
 - **Attack Intensity Preservation**(academic-paper-reviewer): DA는 반박에 약해지지 않음. 명시적 deflection 감지를 갖는 반박 평가 프로토콜. 안티-아첨 규칙이 끈질긴 반박을 유효한 증거로 취급하지 못하게 함.
 - **Intent Detection Layer**(deep-research socratic): 사용자 의도를 탐색형 대 목표지향형으로 분류. 탐색형 모드는 자동 수렴 비활성화, 최대 라운드 상향, 조기 종료 금지. 매 3턴마다 재평가.
 - **Dialogue Health Indicator**(deep-research socratic): 매 5턴마다 지속적 동의, 갈등 회피, 조기 수렴에 대한 조용한 자기 점검. 동의 패턴 감지 시 도전 자동 주입.
-- **Cross-Model Verification Protocol**(shared, 선택): 무결성 검증 샘플 교차 점검과 독립 DA 비평에 GPT-5.4 Pro 또는 Gemini 3.1 Pro 사용. Sixth-reviewer 동료 심사는 계획 단계로 아직 미구현. `ARS_CROSS_MODEL` env var 설정으로 활성화 — 없으면 모든 것이 이전처럼 동작. 전체 설정 가이드, API 패턴, 비용 추정은 `shared/cross_model_verification.md` 참조.
+- **역사적 Cross-Model Verification 항목(v3.16에서 대체됨):** 이 버전은 무결성 샘플 교차 점검과 블라인드·분리 실행 DA 비평을 도입했다. 당시 계획된 여섯 번째 reviewer는 이후 폐기되었고, 현재 cross-model review는 고정 5석 중 한 자리의 모델 기반을 교체한다. 현행 동의·라우팅 계약은 `shared/cross_model_verification.md` 참조.
 - **AI Self-Reflection Report**(academic-pipeline Stage 6): 파이프라인 후 AI 행동 패턴 자기 평가 — DA 양보율, 체크포인트 건너뜀률, health 경보, 아첨 위험 등급(LOW/MEDIUM/HIGH), 프레임 고착 사건, 수렴 패턴 분석. 아이러니 단서 포함: "이 자기 성찰은 아첨적이었을 수 있는 바로 그 AI가 생성한 것이다."
 - 기원: DA가 너무 빨리 양보하고, Socratic Mentor가 조기 수렴을 시도했으며, 전체 토론이 인간이 설정한 프레임에 갇혔던 4라운드 변증법 실험을 통해 발견.
 - 버전: deep-research v2.5, academic-paper-reviewer v1.5, academic-pipeline v2.8
@@ -687,7 +691,7 @@ Lu et al. (2026, *Nature* 651:914-919) — 블라인드 동료 심사를 통과�
 ### v2.6 / v2.4 / v1.4 (2026-03-08) — 15+ Improvements
 - **deep-research v2.3**: 새 systematic-review / PRISMA 모드(7번째); 새 에이전트 3개(risk_of_bias, meta_analysis, monitoring); PRISMA 프로토콜/보고서 템플릿; Socratic 수렴 기준(4 신호 + auto-end); Quick Mode Selection Guide
 - **academic-paper v2.4**: 새 에이전트 2개(visualization, revision_coach); 4가지 상태 유형을 갖는 수정 추적 템플릿; 인용 형식 변환(APA↔Chicago↔MLA↔IEEE↔Vancouver); 통계 시각화 표준; Socratic 수렴 기준; 수정 복구 예시; **LaTeX 출력 하드닝** — 필수 `apa7` document class, 텍스트 justification 수정(`ragged2e` + `etoolbox`), 표 열 너비 공식, 이중언어 초록 centering, 표준화된 폰트 스택(Times New Roman + Source Han Serif TC VF + Courier New), tectonic 경유 PDF만
-- **academic-paper-reviewer v1.4**: 0-100 점수와 행동 지표를 갖는 품질 루브릭; 결정 매핑(≥80 Accept, 65-79 Minor, 50-64 Major, <50 Reject); Quick Mode Selection Guide
+- **academic-paper-reviewer v1.4(기록)**: 당시 도입된 수치 루브릭과 고정 결정 매핑은 현재 폐기되었습니다. 현재는 기준별 서술형 판단을 사용하며 live review는 항상 `NOT_CALIBRATED`, measured profile의 live 적용은 아직 연결되지 않았습니다. Quick Mode Selection Guide는 유지됩니다.
 - **academic-pipeline v2.6**: 적응형 체크포인트 시스템(FULL/SLIM/MANDATORY); 무결성 점검의 Phase E Claim Verification; 중간 진입 provenance용 Material Passport; 교차 스킬 mode advisor(14 시나리오); 팀 협업 프로토콜; 향상된 핸드오프 스키마(9 스키마); 무결성 실패 복구 예시
 
 ### v2.4 / v1.3 (2026-03-08)

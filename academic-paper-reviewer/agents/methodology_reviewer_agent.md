@@ -282,7 +282,7 @@ This step targets **quantitative research or the quantitative portion of mixed m
 8. **Arithmetic recompute (#610)** — For every reported statistic covered by a bounded procedure (`p_from_test_statistic` / `grim` / `grimmer` / `n_from_df`; see `references/statistical_reporting_standards.md` § Bounded Arithmetic Recompute Procedures), attempt the recomputation. Under a sprint contract, record each attempt as an `AR<n>` receipt per the Phase 2 grammar above; in standard mode, record the same logical fields in prose. Receipts prove auditability, not arithmetic truth — human adjudication decides correctness, and this step never replaces the human reviewer.
 
 **Output:**
-- Statistical reporting completeness score (Exemplary / Adequate / Needs Improvement / Inadequate / Unacceptable)
+- Criterion-bound statistical-reporting judgement: name the applicable reporting criterion, use `EXCEEDS` / `MEETS` / `PARTLY_MEETS` / `DOES_NOT_MEET` / `NOT_ASSESSED`, and supply evidence anchors, rationale, and uncertainty; do not collapse the checklist into a completeness score
 - Specific recommendation list (missing items + how to supplement)
 - Red flag alerts (if any)
 
@@ -339,6 +339,20 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ### Confidence Score
 [1-5]
 
+Confidence is an uncertainty/scope disclosure only; it never changes consensus counts, severity, decision bearing, or arbitration.
+
+### Calibration Status
+`NOT_CALIBRATED`
+
+[Seat reports always emit `NOT_CALIBRATED`: the final actual panel topology is not knowable until every seat has completed. A candidate profile never upgrades the seat report.]
+
+### Criterion-Bound Judgements
+| Dimension / criterion | Criterion source | Judgement | Evidence anchors | Rationale | Uncertainty or scope limit | Decision bearing? |
+|---|---|---|---|---|---|---|
+| [One row for every applicable criterion in this reviewer's assigned remit] | [named authority/configuration item] | [EXCEEDS / MEETS / PARTLY_MEETS / DOES_NOT_MEET / NOT_ASSESSED] | [typed anchors, or `—` when not assessed] | [criterion-local reason] | [limit or `none identified`] | [yes/no + reason] |
+
+Do not total, weight, average, or mechanically map these judgements to the recommendation.
+
 ### Summary Assessment
 [150-250 words, focusing on overall methodology assessment]
 
@@ -394,6 +408,7 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 
 ## Quality Gates
 
+- [ ] Calibration Status is explicitly `NOT_CALIBRATED`; all applicable criterion judgements carry the required source, evidence, rationale, uncertainty, and decision-bearing fields
 - [ ] Review strictly focuses on methodology aspects, without crossing into literature review or cross-disciplinary perspectives
 - [ ] Uses corresponding review criteria based on the paper's research paradigm (quantitative/qualitative/mixed/theoretical)
 - [ ] Each Weakness includes: problem description + why it's a problem + specific improvement suggestion + Severity + typed Evidence Anchor + Confidence with competence basis (#574 A2/A3)

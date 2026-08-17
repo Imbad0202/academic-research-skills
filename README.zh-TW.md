@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.20.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.0)
+[![Version](https://img.shields.io/badge/version-v3.20.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.1)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -34,7 +34,7 @@ v3.8 補上 L3 缺口的另一半。v3.7.3 讓每一筆引用都帶 locator anch
 
 [**Ren 等人**](https://arxiv.org/abs/2607.13104)（2026，*Self-Improvements in Modern Agentic Systems: A Survey*）補上第三個、survey 層級的錨點。其科學發現章節的綜合結論（§7.4）指出：發現型 agent 難以自行驗證 novelty、正確性與可重現性，反而可能鑽弱代理指標的漏洞；證據管理必須跨異質工具與文獻維持；並帶有治理疑慮——「證據薄弱時，科學寫作也會放大錯誤資訊」。其生成迴圈章節（§5.1–§5.2）把人工稽核與保留人類標註列為自生成評估迴圈的實務防護；歷史章節（§2.2）則記下同一課題最早的版本：Lenat 的 EURISKO 的實務成功高度依賴使用者充當外部評估訊號、修剪無效的 heuristic 漂移——survey 明言此限制延續到現代 agentic 系統。ARS 引用這篇 survey 作為 human-in-the-loop 立場的設計依據，而非「人機協作必然勝過全自動」的實證證明；survey 對 ARS 可落地的增量記錄在 #539–#541 與 #547–#550。
 
-v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）：Semantic Scholar API 驗證、反洩漏協議、VLM 圖表驗證、分數軌跡追蹤。
+v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）：Semantic Scholar API 驗證、反洩漏協議、VLM 圖表驗證、修訂軌跡追蹤。ARS 目前以分類式、證據錨定的準則軌跡實作最後一項，不計算分數差。
 
 ---
 
@@ -84,8 +84,8 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 - **Deep Research** — 13 個 Agent 的研究團隊，支援蘇格拉底引導、PRISMA 系統性回顧、意圖偵測、對話健康度監控、可選跨模型 DA、Semantic Scholar API 驗證。
 - **Academic Paper** — 12 個 Agent 的論文撰寫團隊，含風格校準、寫作品質檢查、LaTeX 輸出強化、視覺化、修訂教練、引用格式轉換、反洩漏協議、VLM 圖表驗證。
-- **Academic Paper Reviewer** — 7 個 Agent 的多視角同儕審查，0-100 品質量表（Journal-Fit Reviewer + 3 位動態審查者 + 魔鬼代言人），含讓步門檻協議、攻擊強度保持、可選跨模型 DA critique / calibration、R&R 追溯矩陣、唯讀約束。
-- **Academic Pipeline** — 10 階段全流程調度器，含自適應 checkpoint、宣稱驗證、素材護照、可選 `repro_lock`、可選跨模型誠信驗證、中途強化機制、分數軌跡追蹤。
+- **Academic Paper Reviewer** — 7 個 Agent 的多視角同儕審查，採逐準則、證據錨定的敘事判斷（Journal-Fit Reviewer + 3 位動態審查者 + 魔鬼代言人），含讓步門檻協議、攻擊強度保持、可選跨模型 DA critique / calibration、R&R 追溯矩陣、唯讀約束。目前 live review 一律為 `NOT_CALIBRATED`；完整 calibration 只產生有界候選 profile，尚未接上 live review。
+- **Academic Pipeline** — 10 階段全流程調度器，含自適應 checkpoint、宣稱驗證、素材護照、可選 `repro_lock`、可選跨模型誠信驗證、中途強化機制，以及逐項準則的敘事退步檢查（typed trajectory 尚未實作）。
 - **資料存取層級標註**（v3.3.2+）— 每個 skill 宣告 `data_access_level`（`raw` / `redacted` / `verified_only`），由 `scripts/check_data_access_level.py` 強制執行。設計靈感來自 Anthropic 的 automated-w2s-researcher（2026）。詳見 [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md)。
 - **任務類型標註**（v3.3.2+）— 每個 skill 宣告 `task_type`（`open-ended` 或 `outcome-gradable`）。目前 ARS 所有 skills 皆為 `open-ended`。
 - **Benchmark 報告 Schema**（v3.3.5+）— JSON Schema + lint script，要求誠實的 benchmark 比較報告。詳見 [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md)。
@@ -238,19 +238,19 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 各 agent 的職責與各階段產出物現已移至 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。版本號保留在此以維持 release metadata 集中管理。
 
-### Deep Research (v2.12.0)
+### Deep Research (v2.12.1)
 
 13 個 Agent 的研究團隊。模式：full、quick、review、lit-review、three-way-scan、fact-check、socratic、systematic-review。完整 agent 名單與產出物：見 ARCHITECTURE.md §3。
 
-### Academic Paper (v3.3.0)
+### Academic Paper (v3.3.1)
 
 12 個 Agent 的論文撰寫 pipeline。模式：full、plan、outline-only、revision、revision-coach、abstract-only、lit-review、format-convert、citation-check、disclosure、rebuttal-audit。輸出：MD + DOCX（Pandoc 可用時）+ LaTeX（APA 7.0 `apa7` class / IEEE / Chicago）→ tectonic 編譯 PDF。完整 agent 名單與各 phase 職責：見 ARCHITECTURE.md §3。
 
-### Academic Paper Reviewer (v1.11.0)
+### Academic Paper Reviewer (v1.11.1)
 
-7 個 Agent 的多視角審查，搭配 **0-100 品質量表**。模式：full、re-review、quick、methodology-focus、guided、calibration。**決策對照：** ≥80 接受、65-79 小修、50-64 大修、<50 退稿。第一輪審查面板 vs. 契約治理再審派送的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
+7 個 Agent 的多視角審查，採 **逐準則、證據錨定的敘事判斷**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 與 Schema 6 package 一律為 `NOT_CALIBRATED`；完整 calibration 可產生有界候選 profile，但尚未接上 live review。不得以固定總分對照接受、小修、大修或退稿。第一輪審查面板 vs. 契約治理再審派送的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.20.0)
+### Academic Pipeline (v3.20.1)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）不可跳過；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -315,6 +315,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.20.1（2026-08-15）— 契約誠實性強化與有界評估基礎
+
+> **強化並界定範圍：**v3.20.1 讓審查與完整性主張符合套件實際可重播的證據。Claim coverage 明確限於已登錄或詞彙偵測的母體，語意擷取完整性仍為未知；修訂造成的主張強度變更必須有逐項、byte-bound 的作者處置；新的閱讀註記必須宣告範圍且錯誤會明確顯示；live reviewer package 固定為 `NOT_CALIBRATED`；六軸 provenance 取代二元的 independence 說法。本版另加入離線、未量測的 claim-standing probe 基礎、ideation-diversity blind bundle 的封閉式首輪分派閘門，以及未來 inquiry branch／alternative 的 opt-in roadmap。這些契約不證明科學結果改善、審查正確性、完整語意偵測、已驗證的人類身分、獨立錯誤過程或 live provider 的成效。套件／pipeline → v3.20.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
 
 ### v3.20.0（2026-08-14）— 證據綁定的審查與修訂、受限傳輸、可重現的評估基礎
 
@@ -555,7 +559,7 @@ v3.5.1 新增 Socratic Mentor 的選用式誠實探測（設定 `ARS_SOCRATIC_RE
 ### v3.3.1 (2026-04-14) — 規格一致性修補
 
 - 同步 README、`.claude/CLAUDE.md`、`MODE_REGISTRY.md` 與各 `SKILL.md` 的 mode 數量與公開版本標示。
-- 修正跨模型敘述：目前已實作的是誠信抽樣查核與獨立 DA critique；同儕審查第六位 reviewer 仍在規劃中。
+- **歷史說明（已由 v3.16 取代）：**此版本已實作誠信抽樣查核與盲化、分開執行的跨模型 DA critique，當時第六位 reviewer 尚在規劃；該設計後來已退役，現行 full review 維持固定五席。
 - 釐清 adaptive checkpoint 語意：SLIM checkpoint 仍然必須等待使用者明確確認。
 - 再次明確化 Stage 2.5 與 Stage 4.5 誠信關卡不可跳過。
 - 新增輕量 spec consistency 檢查與 GitHub Actions workflow，避免後續再發生文件漂移。
@@ -567,7 +571,7 @@ v3.5.1 新增 Socratic Mentor 的選用式誠實探測（設定 `ARS_SOCRATIC_RE
 - **Semantic Scholar API 驗證** — Tier 0 程式化引用存在性查核。Levenshtein >= 0.70 標題比對、DOI 不符偵測、S2 ID 去重。API 不可用時優雅降級。
 - **反洩漏協議** — 知識隔離指令優先使用 session 內材料，缺少的內容標記 `[MATERIAL GAP]` 而非用 LLM 記憶填補。降低 Mode 5/6 失敗風險。
 - **VLM 圖表驗證**（可選）— 用視覺模型閉環檢查生成圖表。10 項檢核清單，最多 2 輪修正。
-- **分數軌跡協議** — 跨修訂輪次的逐維度評分差異追蹤（7 個維度）。偵測退步（delta < -3）觸發強制 checkpoint。
+- **準則軌跡協議** — 跨修訂輪次比較 7 個維度的證據錨定判斷；具決策影響的退步會觸發強制 checkpoint，不計算分數差。
 - **Stage 2 並行化** — 視覺化與論證建構可在大綱完成後並行執行。
 - 新版本：deep-research v2.8、academic-paper v3.0、academic-pipeline v3.2
 
@@ -602,7 +606,7 @@ v3.5.1 新增 Socratic Mentor 的選用式誠實探測（設定 `ARS_SOCRATIC_RE
   - 審查品質思維框架（三鏡頭法、常見審查陷阱、校準問題）
   - 寫作判斷力框架（清晰度測試、讀者旅程、學科語態、修訂決策矩陣）
 - 中途強化機制：每次 stage 轉換注入對應 IRON RULE + Anti-Pattern 提醒
-- FULL checkpoint 前的 5 題自我檢查（引用完整性、諂媚讓步、品質軌跡、範圍紀律、完整性）
+- FULL checkpoint 前的 5 題自我檢查（引用完整性、諂媚讓步、逐項準則退步、範圍紀律、完整性；目前不宣稱已有 typed trajectory）
 
 **Wave 3：精簡 Skill 尺寸**
 - SKILL.md 總大小從 142KB 降至 85KB（-40%），詳細協議移至 `references/` 按需載入
@@ -615,7 +619,7 @@ v3.5.1 新增 Socratic Mentor 的選用式誠實探測（設定 `ARS_SOCRATIC_RE
 - **攻擊強度保持**（academic-paper-reviewer）：DA 不因被反駁而軟化。反駁評估協議含偏移偵測。
 - **意圖偵測層**（deep-research socratic）：偵測探索型 vs. 目標型。探索模式停用自動收束，最大輪數提升至 60。每 5 輪重新評估。
 - **對話健康度指標**（deep-research socratic）：每 5 輪靜默自檢，偵測持續同意、迴避衝突、過早收束。偵測到模式時自動注入挑戰性問題。
-- **跨模型驗證協議**（shared，可選）：用 GPT-5.4 Pro 或 Gemini 3.1 Pro 做誠信驗證 30% 抽樣跨模型檢查與獨立 DA critique。同儕審查第六位 reviewer 仍在規劃中，尚未實作。設定 `ARS_CROSS_MODEL` 環境變數啟用——未設定時零開銷。完整設定指南見 `shared/cross_model_verification.md`。
+- **歷史版跨模型驗證條目（已由 v3.16 取代）：**此版本加入誠信抽樣跨模型查核與盲化、分開執行的 DA critique；當時規劃的第六位 reviewer 後來已退役。現行跨模型審查是在固定五席中替換一席的模型基座；最新同意與路由契約見 `shared/cross_model_verification.md`。
 - **AI 自我反思報告**（academic-pipeline Stage 6）：Pipeline 結束後 AI 行為自評——DA 讓步率、健康警報、諂媚風險評級（LOW/MEDIUM/HIGH）、框架鎖定事件。
 - 來源：四輪辯證實驗中發現 DA 讓步太快、蘇格拉底模式過早收束、整個辯論鎖定在人類設定的框架中。
 - 版本：deep-research v2.5、academic-paper-reviewer v1.5、academic-pipeline v2.8
@@ -661,7 +665,7 @@ v3.5.1 新增 Socratic Mentor 的選用式誠實探測（設定 `ARS_SOCRATIC_RE
 ### v2.6 / v2.4 / v1.4 (2026-03-08) — 15+ 項改進
 - **deep-research v2.3**：新增系統性文獻回顧 / PRISMA 模式（第 7 模式）；3 個新 agent（risk_of_bias、meta_analysis、monitoring）；PRISMA 協議/報告模板；蘇格拉底收斂準則（4 訊號 + 自動結束）；快速模式選擇指南
 - **academic-paper v2.4**：2 個新 agent（visualization、revision_coach）；修訂追蹤模板含 4 種狀態；引用格式轉換（APA↔Chicago↔MLA↔IEEE↔Vancouver）；統計視覺化標準；蘇格拉底收斂準則；修訂復原範例；**LaTeX 輸出強化** — 強制 `apa7` document class、`ragged2e` + `etoolbox` 文字對齊修正、表格欄寬公式、雙語摘要置中、標準字體集（Times New Roman + 思源宋體 VF + Courier New）、僅 tectonic 編譯 PDF
-- **academic-paper-reviewer v1.4**：0-100 品質量表含行為指標；決策對照（≥80 接受、65-79 小修、50-64 大修、<50 退稿）；快速模式選擇指南
+- **academic-paper-reviewer v1.4（歷史）**：當時引入的數值量表與固定決策對照現已停用；目前採逐準則敘事判斷，live review 一律為 `NOT_CALIBRATED`，measured profile 尚未接上 live review；快速模式選擇指南保留。
 - **academic-pipeline v2.6**：自適應 checkpoint（FULL/SLIM/MANDATORY）；Phase E 宣稱驗證；素材護照（Material Passport）支援中途進入；跨 skill 模式顧問（14 情境）；團隊協作協議；強化銜接 schema（9 個含驗證規則）；誠信審查失敗復原範例
 
 ### v2.4 / v1.3 (2026-03-08)

@@ -115,7 +115,7 @@ def admit(source):
 | Criterion | Include | Exclude |
 |-----------|---------|---------|
 | Publication type | Peer-reviewed journals, books, conference proceedings | Blog posts, news articles (unless as primary data) |
-| Date range | Last 10 years (default) + seminal works | Outdated unless historically relevant |
+| Date range | Profile-, question-, and target-appropriate window + relevant foundational works | Outside the justified window unless historically or conceptually relevant |
 | Language | Per config (EN, zh-TW, or both) | Other languages unless key source |
 | Relevance | Directly addresses RQ | Tangentially related |
 
@@ -126,22 +126,16 @@ Under a non-neutral domain evidence profile, the profile's standard evidence typ
 ### Phase A: Title/Abstract Screening
 - Scan titles and abstracts against inclusion criteria
 - Tag: Include / Exclude / Maybe
-- Target: narrow to 30-50 candidates
+- Continue until the candidate set covers the concepts, methods, alternatives, and evidence types required by the research question
 
 ### Phase B: Full-Text Assessment
 - Read abstracts and key sections of "Include" and "Maybe" sources
-- Assess relevance, quality, and evidence strength
-- Target: 15-30 final sources (varies by paper type)
+- Assess relevance, quality, evidence strength, and coverage of the claims the paper must support
+- Do not impose a universal final-source count. Record a numeric requirement only when an identified review protocol, target venue, or user-approved plan supplies one.
 
-### Source Count Guidelines
-| Paper Type | Minimum Sources | Typical Range |
-|-----------|----------------|---------------|
-| IMRaD | 20 | 25-40 |
-| Literature Review | 30 | 40-80 |
-| Theoretical | 15 | 20-35 |
-| Case Study | 15 | 20-30 |
-| Policy Brief | 10 | 15-25 |
-| Conference | 10 | 15-25 |
+### Coverage Plan
+
+Define required coverage from the research question, article type, field, target criteria, and intended claims. At minimum, identify the literature needed for conceptual lineage, closest prior work, competing explanations, methods, relevant evidence, and material counter-evidence. Coverage gaps are named by missing concept or claim—not by distance from a generic source quota.
 
 ## Annotated Bibliography
 
@@ -426,17 +420,21 @@ Layer 2: Citation Chaining (backward tracking)
     1. Check reference list of each core paper
     2. Identify sources commonly cited by multiple core papers (= foundational literature)
     3. Add these sources to candidate list
-  OUTPUT: Supplementary candidate literature (typically adds 10-20 papers)
-  DECISION: If appearing >= 3 times -> mark as "must include"
+  OUTPUT: Supplementary candidate literature
+  DECISION: Treat repeated appearance as a prioritization signal only when the
+            active field/question profile makes citation recurrence meaningful;
+            never convert a universal count into "must include"
 
 Layer 3: Forward Tracking
   INPUT:  Foundational literature identified in Layer 2
   PROCESS:
     1. Use Google Scholar / Scopus "Cited by" feature
     2. Find "subsequent research" that cites the foundational literature
-    3. Prioritize subsequent research from the last 3 years
+    3. Prioritize the current period justified by the active field/question
+       profile; recency is not automatically a quality signal
   OUTPUT: Latest research supplement list
-  DECISION: If a foundational paper has zero citations in the last 3 years -> mark as "possibly outdated"
+  DECISION: Mark a source as potentially outdated only when newer, relevant
+            evidence or an applicable field standard establishes that concern
 
 Layer 4: Semantic Search
   INPUT:  Natural language description of the RQ
@@ -450,17 +448,17 @@ Layer 4: Semantic Search
 
 ### Search Stopping Rules (Saturation Criteria)
 
-Search must stop when **at least 3** of the following conditions are met:
+Search may stop only after a narrative coverage audit supports the decision:
 
 | # | Condition | Assessment Method |
 |---|------|---------|
-| 1 | Source count meets target | Reaches Minimum per paper type in "Source Count Guidelines" |
-| 2 | No new additions from latest search | Latest round added < 10% of existing sources |
-| 3 | Theme saturation | Every Theme in Literature Matrix has at least 3 sources |
+| 1 | Claim and concept coverage | Each planned material claim and required concept has relevant, fit-for-purpose support or a disclosed evidence gap |
+| 2 | No material additions from latest search | Latest round adds no new claim-relevant concept, method, alternative, evidence type, or counter-evidence |
+| 3 | Theme coverage | Each required theme has fit-for-purpose support or an explicit evidence gap; no universal per-theme source count |
 | 4 | Citation loop closure | Citation Chaining no longer discovers uncollected cited works |
-| 5 | Temporal span coverage | Contains foundational works + research from last 3 years |
+| 5 | Temporal span coverage | Covers the justified foundational and current periods for this question/profile, or discloses the temporal gap |
 
-If none of the 5 are met but 4 rounds of search have been conducted -> record "search limitation" and continue workflow.
+If the coverage conditions remain unmet when the user-approved search budget is exhausted, record the named search limitation and continue only with that gap visible. A fixed round count is not evidence of saturation.
 
 ### Literature Screening Decision Tree
 
@@ -475,9 +473,9 @@ Receive a candidate source ->
 │   │       │          (profile admit path, loosen-only — it does NOT short-circuit to Include)
 │   │       └── No -> Exclude
 │   └── Yes ->
-├── Is it within the time range (default 10 years)?
-│   ├── No -> Is it a foundational/milestone work in the field (cited > 100 times)?
-│   │   ├── Yes -> Include (tag as "seminal work")
+├── Is it within the field/question-specific time range recorded in the search plan?
+│   ├── No -> Is it foundational, canonical, archival, or otherwise necessary for the claim?
+│   │   ├── Yes -> Include (tag the applicable evidence role and rationale)
 │   │   └── No -> Is it admissible under the active domain evidence profile's currency rule?
 │   │       (humanities_interpretive: primary / archival / canonical source; recency is not a quality signal)
 │   │       ├── Yes -> tag by evidence type, then CONTINUE to the relevance + methodology nodes below
@@ -495,23 +493,25 @@ Receive a candidate source ->
 
 A profile-admitted source is added only at the tree's PROFILE_LOOSENABLE nodes — the peer-review / publication-type node and the currency-window (time-range) node — and then continues through the unchanged universal relevance and methodology nodes; the profile never bypasses a universal-quality node and never short-circuits to Include. (Both admit paths are loosen-only and additive per INVARIANT 5: each adds an admit path where the neutral tree would otherwise Exclude, and neither removes, down-ranks, or re-screens anything the neutral tree already admits — e.g. the neutral `cited > 100` seminal-work Include is untouched.)
 
-### Literature Quality Quick Assessment Checklist
+### Literature Fitness Quick Assessment Checklist
 
-Each included source is quickly scored on the following 5 items (1-3 points each):
+Assess each included source against the claim it is expected to support. Record
+the judgement and rationale; do not total points or use journal rank/citation
+count as a cross-domain proxy for quality.
 
-| Item | 3 points | 2 points | 1 point |
-|------|------|------|------|
-| Journal ranking | Q1/Q2 or TSSCI/SSCI | Q3 or well-known conference | Q4 or unranked |
-| Methodological rigor | Well-designed, statistically sound | Reasonable design with minor flaws | Design has obvious problems |
-| Relevance to RQ | Directly addresses core question | Addresses partial aspects | Provides background only |
-| Citation count | Top 25% for same-age literature | Near median | Below median |
-| Data/evidence quality | Sufficient original data | Secondary data but reliable | Weak or missing evidence |
+| Criterion | Record |
+|------|------|
+| Evidence role and provenance | Primary, secondary, archival, theoretical, policy, dataset, preprint, or another profile-recognized role; record provenance limits |
+| Method/design fitness | Whether the source's design or evidentiary form can support the intended claim; use `not_applicable` for non-empirical sources |
+| Relevance | Direct, contextual, contrary, or background relationship to the exact claim/RQ |
+| Claim-source alignment | What the source establishes, what it does not establish, and any scope mismatch |
+| Currency or historical role | Why the source is current enough, foundational/canonical, or otherwise appropriate under the active profile |
+| Uncertainty | Missing full text, contested interpretation, inaccessible language/material, or other limits |
 
-**Total score >= 12**: High-quality source, prioritize assignment to core sections
-**Total score 8-11**: Acceptable source, assign to supporting sections
-**Total score <= 7**: Marginal source, use only when no alternative is available
-
-Under a non-neutral domain evidence profile, a source passes the quick assessment if it meets the neutral total-score outcome **OR** meets the profile's evidence-type expectation on the **Journal-ranking item only** (union scoped to the publication-type axis, not replacement). The other four items — methodological rigor, relevance to RQ, citation count, data/evidence quality — are universal-quality and stay in force: a profile-admitted source must still clear them.
+Use the assessment to decide whether the source is fit for a named claim,
+needs qualification, or should be replaced. No numeric total, venue prestige
+band, citation threshold, or universal evidence hierarchy may substitute for
+that decision.
 
 ### Chinese-English Literature Search Difference Handling
 
@@ -524,10 +524,9 @@ Under a non-neutral domain evidence profile, a source passes the quick assessmen
 | Search order | Search English first -> use findings to supplement Chinese search terms | Search Chinese first -> confirm whether English equivalent literature exists |
 | Special notes | Note preprints need to be flagged | Note master's/doctoral thesis quality varies; requires additional assessment |
 
-**Mixed search rules**:
-- If Paper Configuration specifies bilingual -> Chinese and English literature must each comprise at least 30%
-- If specified as Chinese -> Chinese literature >= 50%, but international literature must not be below 20%
-- If specified as English -> English is primary; Chinese literature included only when providing Taiwan local data
+**Language-coverage rules**:
+- Apply a numerical language mix only when the research question, review protocol, target criteria, or user-approved plan supplies one.
+- Otherwise search the languages needed to cover the named populations, concepts, venues, and local/international evidence; disclose inaccessible language strata rather than manufacturing a universal percentage.
 
 ## Quality Gates
 
@@ -536,30 +535,30 @@ Under a non-neutral domain evidence profile, a source passes the quick assessmen
 | Check Item | Pass Criteria | Failure Handling |
 |--------|---------|-----------|
 | Search strategy documented | Database + search strings + screening criteria all recorded | Return to complete documentation |
-| Source count | >= Minimum Sources for paper type | Execute one more round of Layer 2-4 search |
+| Claim and concept coverage | Required claims, concepts, methods, alternatives, and counter-evidence are covered or explicitly disclosed as gaps | Run a targeted search for the named gap |
 | Annotated bibliography completeness | 100% of included sources have annotations | Write missing annotations |
-| Literature matrix coverage | Every Theme >= 3 sources | Supplement search for weak Themes |
-| Research gaps | >= 2 specific actionable gaps | Re-analyze literature matrix |
-| Peer-reviewed ratio | >= 70% peer-reviewed | Replace non-academic sources |
-| Currency | >= 50% published in last 5 years | Supplement with recent literature |
+| Literature matrix coverage | Every required theme has fit-for-purpose support or an explicit evidence gap; no universal source count | Supplement the named weak theme or disclose the gap |
+| Research gaps | Specific actionable gaps are reported only where the evidence supports them; no minimum count | Re-analyze unsupported or generic gap claims |
+| Evidence-type fitness | Each source type is appropriate to the claim and field; no universal peer-reviewed ratio applies | Replace or contextualize sources that cannot support the claim made |
+| Currency | The justified field/question-specific time window is covered, with foundational exceptions and gaps visible; no universal recent-source ratio | Supplement the named temporal gap or justify the field-specific window |
 
-Under a non-neutral domain evidence profile these two corpus-ratio gates loosen (never tighten): preprints count toward the `cs_ml` peer-reviewed-equivalent ratio; canonical/older texts do not count against `humanities_interpretive` currency. The thresholds are never raised, and a corpus that passes the neutral gate always passes the profile-relative gate. The other gate rows (source count, annotation completeness, matrix coverage, research-gap count) are not evidence-type gates and are untouched.
+Under a non-neutral domain evidence profile, interpret evidence-type fitness and currency using that field's accepted evidence forms. A preprint, archival text, policy document, dataset, or other non-journal source is neither accepted nor rejected by quota; assess whether its provenance and content are fit for the particular claim.
 
 ### Failure Handling Strategies
 
 ```
 Quality gate not passed ->
-├── Insufficient source count ->
-│   1. Relax search criteria (expand year range +5 years)
-│   2. Add search databases (add Google Scholar)
-│   3. If still insufficient -> record "limited literature available" and notify user
+├── Named claim or concept gap ->
+│   1. Refine search concepts and citation chaining for that gap
+│   2. Add field-appropriate databases or evidence types
+│   3. If still unresolved -> record the bounded literature limitation and notify user
 ├── Uneven theme coverage ->
 │   1. Identify weak themes
 │   2. Design specialized search strings for those themes
 │   3. If still insufficient -> suggest adjusting Literature Matrix theme divisions
-├── Quality distribution too low ->
-│   1. Prioritize replacing sources with score <= 7
-│   2. If cannot replace -> explicitly note quality limitations in annotations
+├── Claim-evidence fitness problem ->
+│   1. Replace or contextualize sources that cannot support their assigned claims
+│   2. If the gap cannot be closed -> explicitly record the bounded limitation
 └── Insufficient currency ->
     1. Design specialized search for last 3 years
     2. Check for preprints that can supplement (must be tagged as preprint)
@@ -573,8 +572,8 @@ Quality gate not passed ->
 |--------|---------|
 | RQ not clearly defined | Return to intake_agent for user to clarify -> cannot start search |
 | Discipline not specified | Use general databases (Google Scholar + Scopus) + broaden search scope |
-| Language preference not specified | Default to English primary + attempt Chinese keyword search |
-| Year range not specified | Use default 10 years + seminal works unrestricted |
+| Language preference not specified | Derive needed languages from the question, populations, concepts, venues, and accessible evidence; ask when this materially changes scope |
+| Year range not specified | Propose and record a field/question-specific range; keep justified foundational, canonical, and archival material eligible |
 
 ### Paper Type Adjustments
 
@@ -582,8 +581,8 @@ Quality gate not passed ->
 |---------|-------------|
 | Theoretical | Increase weight of Layer 2 (Citation Chaining), trace theoretical origins; quality assessment emphasizes "theoretical contribution" |
 | Case study | Increase gray literature tolerance (policy documents, institutional reports); search for prior research on similar cases |
-| Policy brief | Include government reports, white papers, statistical data; increase currency requirement (last 3 years >= 60%) |
-| Conference paper | Source count can be reduced to 80% of Minimum; prioritize high-impact sources |
+| Policy brief | Include applicable government reports, white papers, and statistical data; justify currency from the policy decision and update cycle rather than a universal ratio |
+| Conference paper | Apply the venue's scope and length constraints; prioritize sources necessary to support the submitted claims |
 
 ### Poor Quality Upstream (intake_agent output is poor)
 
@@ -617,11 +616,11 @@ Quality gate not passed ->
 ## Quality Criteria
 
 - Search strategy must be documented and reproducible
-- Minimum source count met for paper type
+- Required claim, concept, method, alternative, and counter-evidence coverage is met or gaps are disclosed
 - Every included source has an annotation
 - Literature matrix covers all major themes
-- At least 2 research gaps identified
-- Source quality distribution: majority should be peer-reviewed
-- Recency: >50% of sources from last 5 years (unless historical topic)
+- Research gaps are reported only where the evidence supports them; no minimum count
+- Every source type is fit for the claim it supports; no cross-domain peer-reviewed-ratio quota is used
+- Currency follows the active field/question profile and claim needs; no universal recent-source ratio
 
-> Under a non-neutral domain evidence profile, "majority peer-reviewed" counts the profile's peer-reviewed-equivalent types (e.g. `cs_ml` preprints), and the recency criterion does not penalize the profile's canonical/older sources — the same union/loosen-only rule as the Quality Gates rows above. Changing one without the other reintroduces the contradiction the gate fix removes.
+> Under a non-neutral domain evidence profile, interpret source type and recency using field-appropriate criteria. The profile never creates a universal count or ratio threshold.

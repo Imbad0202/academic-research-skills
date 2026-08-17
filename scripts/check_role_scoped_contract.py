@@ -52,8 +52,8 @@ SHIPPED_EXAMPLES = (
 )
 SHIPPED_EXAMPLE_ANCHOR_COUNTS = {
     SHIPPED_EXAMPLES[0]: 10,
-    SHIPPED_EXAMPLES[1]: 36,
-    SHIPPED_EXAMPLES[2]: 36,
+    SHIPPED_EXAMPLES[1]: 38,
+    SHIPPED_EXAMPLES[2]: 38,
 }
 SHIPPED_EXAMPLE_ANCHOR_RE = re.compile(
     r"`(?P<anchor>(?:text|table|figure|equation|dataset|absence): [^`\n]+)`",
