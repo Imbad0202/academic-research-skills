@@ -176,6 +176,36 @@ def _write_docs(
         (docs / "PERFORMANCE.zh-TW.md").write_text("# 效能\n\n" + zh_body, encoding="utf-8")
 
 
+def _write_cff(
+    root: Path, version: str, date_released: str = "2026-04-22"
+) -> None:
+    """Fixture CITATION.cff at `version` (invariant 12). The default
+    date-released matches the fixture CHANGELOG's latest-entry date so the
+    ±7-day window passes unless a test drifts it."""
+    (root / "CITATION.cff").write_text(
+        textwrap.dedent(
+            f"""\
+            cff-version: 1.2.0
+            title: fixture
+            type: software
+            version: {version}
+            date-released: {date_released}
+            """
+        ),
+        encoding="utf-8",
+    )
+
+
+def _write_positioning(root: Path, version: str) -> None:
+    """Fixture POSITIONING.md citation prose at `version` (invariant 12)."""
+    (root / "POSITIONING.md").write_text(
+        "# Positioning\n\n"
+        "Wu, C.-I. (2026). Fixture Suite "
+        f"(Version {version}) [Computer software]. Zenodo.\n",
+        encoding="utf-8",
+    )
+
+
 def _write_aligned_fixture(
     root: Path,
     last_updated: str | None = "2026-04-22",
@@ -205,6 +235,8 @@ def _write_aligned_fixture(
     _write_changelog(root, latest_version="3.5.0")
     _write_plugin_manifests(root, "3.5.0")
     _write_readme(root, "3.5.0")
+    _write_cff(root, "3.5.0")
+    _write_positioning(root, "3.5.0")
     # en has an extra plain H2 (translation asymmetry is allowed); the
     # version-bearing heading is present in both and at a past version.
     _write_docs(
@@ -229,6 +261,8 @@ def _write_aligned_fixture_v351(root: Path) -> None:
     _write_changelog(root, latest_version="3.5.1")
     _write_plugin_manifests(root, "3.5.1")
     _write_readme(root, "3.5.1")
+    _write_cff(root, "3.5.1")
+    _write_positioning(root, "3.5.1")
     _write_docs(
         root,
         en_h2=["Token usage", "Corpus ingestion (v3.4.0+)"],
@@ -1171,72 +1205,59 @@ class TestTagMatch(unittest.TestCase):
             self.assertIn("v9.9.9", result.stdout)
 
 
-def _write_citation_surfaces(
-    root: Path,
-    cff_version: str | None = "3.5.0",
-    positioning_version: str | None = "3.5.0",
-) -> None:
-    """Write CITATION.cff / POSITIONING.md citation surfaces (invariant 12).
+class TestCitationSurfaces(unittest.TestCase):
+    """Invariant 12: CITATION.cff (YAML-parsed, absence errors) and
+    POSITIONING.md citation prose (optional) track the release. The aligned
+    baseline is exercised by every pass-case test via _write_aligned_fixture,
+    which writes both surfaces."""
 
-    Pass None to omit a file entirely (absence is a documented skip, matching
-    the invariant-8 optional-claim convention)."""
-    if cff_version is not None:
-        (root / "CITATION.cff").write_text(
-            textwrap.dedent(
-                f"""\
-                cff-version: 1.2.0
-                title: fixture
-                type: software
-                version: {cff_version}
-                date-released: 2026-04-22
-                """
-            ),
-            encoding="utf-8",
-        )
-    if positioning_version is not None:
-        (root / "POSITIONING.md").write_text(
-            "# Positioning\n\n"
-            "Wu, C.-I. (2026). Fixture Suite "
-            f"(Version {positioning_version}) [Computer software]. Zenodo.\n",
-            encoding="utf-8",
-        )
-
-
-class CitationSurfacesInvariant12Test(unittest.TestCase):
-    """Invariant 12: CITATION.cff `version:` and every `(Version X.Y.Z)`
-    token in POSITIONING.md must equal the suite version when present."""
-
-    def test_citation_surfaces_aligned_pass(self) -> None:
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            _write_aligned_fixture(root)
-            _write_citation_surfaces(root, "3.5.0", "3.5.0")
-            result = _run(root)
-            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
-
-    def test_citation_surfaces_absent_pass(self) -> None:
-        """Absence is a skip, not an error (optional-surface convention)."""
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            _write_aligned_fixture(root)
-            _write_citation_surfaces(root, None, None)
-            result = _run(root)
-            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
-
-    def test_citation_cff_drift_fails(self) -> None:
+    def test_cff_drift_fails(self) -> None:
         """CITATION.cff stuck below the suite version — the #754 drift class."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_aligned_fixture(root)
-            _write_citation_surfaces(root, "3.4.0", "3.5.0")
+            _write_cff(root, "3.4.0")
             result = _run(root)
             self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
             self.assertIn("CITATION.cff", result.stdout)
             self.assertIn("3.4.0", result.stdout)
 
-    def test_citation_cff_missing_version_line_fails(self) -> None:
-        """A present CITATION.cff with no version: line is malformed — error,
-        never a silent skip (skip is only for the file being absent)."""
+    def test_cff_quoted_version_passes(self) -> None:
+        """`version: "3.5.0"` is a legitimate CFF spelling — YAML parsing must
+        not report the quotes as drift (regression: the first regex-based
+        draft of this invariant did exactly that)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "CITATION.cff").write_text(
+                'cff-version: 1.2.0\ntitle: fixture\ntype: software\n'
+                'version: "3.5.0"\ndate-released: 2026-04-22\n',
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_cff_noncanonical_version_fails_as_noncanonical(self) -> None:
+        """A 2-segment `version: 3.5` must be reported as non-canonical, not
+        as a drift mismatch a maintainer would chase with a version bump."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "CITATION.cff").write_text(
+                "cff-version: 1.2.0\ntitle: fixture\ntype: software\n"
+                "version: 3.5\ndate-released: 2026-04-22\n",
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("canonical", result.stdout)
+
+    def test_cff_missing_version_key_fails(self) -> None:
+        """A present CITATION.cff with no version key is malformed — error,
+        never a silent skip."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_aligned_fixture(root)
@@ -1248,20 +1269,83 @@ class CitationSurfacesInvariant12Test(unittest.TestCase):
             self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
             self.assertIn("CITATION.cff", result.stdout)
 
-    def test_positioning_citation_drift_fails(self) -> None:
+    def test_cff_absent_fails(self) -> None:
+        """CITATION.cff is outward-facing release metadata like README.md —
+        deleting it must not silently disable the invariant."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "CITATION.cff").unlink()
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("CITATION.cff", result.stdout)
+
+    def test_cff_stale_date_released_fails(self) -> None:
+        """date-released more than 7 days from the CHANGELOG latest-entry date
+        — the second half of the #754 drift (version was bumped by hand while
+        the date sat 6 weeks stale)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_cff(root, "3.5.0", date_released="2026-01-01")
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("date-released", result.stdout)
+
+    def test_cff_date_within_window_passes(self) -> None:
+        """A date-released within the ±7-day window of the CHANGELOG date
+        (fixture CHANGELOG: 2026-04-22) passes."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            _write_cff(root, "3.5.0", date_released="2026-04-25")
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
+    def test_positioning_drift_fails(self) -> None:
         """POSITIONING.md citation prose stuck below the suite version."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_aligned_fixture(root)
-            _write_citation_surfaces(root, "3.5.0", "3.4.0")
+            _write_positioning(root, "3.4.0")
             result = _run(root)
             self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
             self.assertIn("POSITIONING.md", result.stdout)
             self.assertIn("3.4.0", result.stdout)
 
+    def test_positioning_vprefixed_token_fails_as_noncanonical(self) -> None:
+        """`(Version v3.5.0)` — the likeliest human edit of the citation line —
+        must error as non-canonical, not slip through a filtering regex (the
+        pre-#169 pattern this file's header warns about)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "POSITIONING.md").write_text(
+                "# Positioning\n\nCite: Fixture Suite (Version v3.5.0).\n",
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("canonical", result.stdout)
+
+    def test_positioning_absent_passes(self) -> None:
+        """POSITIONING.md is repo-specific prose — absence is a skip."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "POSITIONING.md").unlink()
+            result = _run(root)
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
+
     def test_positioning_without_version_token_passes(self) -> None:
         """A POSITIONING.md with no `(Version X.Y.Z)` token has nothing to
-        check — pass (the token is the claim; no claim, no drift)."""
+        check — the token is the claim; no claim, no drift."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_aligned_fixture(root)
@@ -1269,7 +1353,10 @@ class CitationSurfacesInvariant12Test(unittest.TestCase):
                 "# Positioning\n\nNo citation prose here.\n", encoding="utf-8"
             )
             result = _run(root)
-            self.assertEqual(result.returncode, 0, msg=f"stdout={result.stdout!r}")
+            self.assertEqual(
+                result.returncode, 0,
+                msg=f"stdout={result.stdout!r} stderr={result.stderr!r}",
+            )
 
 
 if __name__ == "__main__":

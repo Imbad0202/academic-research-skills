@@ -35,12 +35,10 @@ Invariants enforced:
  11. The newest "## vX.Y… Key Additions" heading in .claude/CLAUDE.md matches
      the suite version (#487), compared at the heading's own precision —
      `## v3.14 Key Additions` matches suite 3.14.0.
- 12. The citation surfaces track the suite version (#754: both had silently
-     drifted six minor releases behind): CITATION.cff `version:` equals the
-     suite version (a present file with no version: line is malformed — error),
-     and every `(Version X.Y.Z)` token in POSITIONING.md equals the suite
-     version. Either file being ABSENT is a skip, not an error (optional-
-     surface convention, matching invariant 8's stated-claim-only posture).
+ 12. The citation surfaces track the release (#754): CITATION.cff `version`
+     equals the suite version and its `date-released` lies within ±7 days of
+     the latest CHANGELOG entry's date; every `(Version X.Y.Z)` token in
+     POSITIONING.md equals the suite version.
 
 Tag gate (#487): `--tag <ref>` additionally requires the given git tag
 (leading `v` optional) to equal the suite version — the one comparison
@@ -57,6 +55,8 @@ import sys
 from collections import Counter
 from datetime import date
 from pathlib import Path
+
+import yaml
 
 from _skill_lint import parse_frontmatter, FrontmatterError
 
@@ -129,6 +129,12 @@ NEXT_ENTRY_RE = re.compile(r"##\s+\[")
 # Strict YYYY-MM-DD guard: date.fromisoformat() accepts compact 20260422 and
 # ISO week dates, so a shape check gates before parsing (codex P2-2).
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Invariant 12: the POSITIONING.md citation-prose token, e.g. `(Version 3.20.1)`.
+# Broad capture + strict validator (the post-#169 idiom above): a non-canonical
+# spelling inside the parens (`v3.20.1`, `3.20.1-rc1`, bare `3.20`) surfaces as
+# an error instead of being filtered out and silently passing. CITATION.cff has
+# no regex — it is YAML and is parsed as YAML (see _check_citation_surfaces).
+POSITIONING_VERSION_RE = re.compile(r"\(Version\s+([A-Za-z0-9.\-_+]+)\)")
 
 PIPELINE_SKILL_NAME = "academic-pipeline"
 
@@ -372,8 +378,8 @@ def check(root: Path, tag: str | None = None) -> list[str]:
         # Invariant 11: newest Key Additions heading matches the suite version.
         errors.extend(_check_key_additions(claude_md, claude_text, suite_version))
         # Invariant 12: citation surfaces (CITATION.cff / POSITIONING.md)
-        # track the suite version.
-        errors.extend(_check_citation_surfaces(root, suite_version))
+        # track the suite version + release date.
+        errors.extend(_check_citation_surfaces(root, suite_version, latest_date))
 
     # Tag gate: the pushed tag (when given) must equal the suite version. This
     # runs OUTSIDE the `suite_version is not None` block on purpose: `--tag`
@@ -672,36 +678,86 @@ def _check_agent_count_claim(root: Path) -> list[str]:
     return []
 
 
-_CFF_VERSION_RE = re.compile(r"^version:\s*(\S+)\s*$", re.MULTILINE)
-_POSITIONING_VERSION_RE = re.compile(r"\(Version\s+(\d+(?:\.\d+){2,3})\)")
+def _check_citation_surfaces(
+    root: Path, suite_version: str, latest_date: str | None
+) -> list[str]:
+    """Invariant 12: citation surfaces track the release (#754: both surfaces
+    had silently drifted six minor releases behind — the file was added
+    2026-06-15, after this lint existed, and never entered its coverage).
 
+    CITATION.cff is outward-facing release metadata like README.md, so its
+    ABSENCE is an error — a deleted/renamed file must not silently disable
+    the invariant (the invariant-4 marketplace-manifest lesson). It is YAML
+    and is parsed as YAML: a regex scrape would misread legitimate spellings
+    (`version: "3.20.1"`, trailing comments) as drift. `date-released` is
+    checked only when present, against the latest CHANGELOG entry's date
+    with the invariant-10 ±LAST_UPDATED_MAX_DAYS window (skipped when the
+    CHANGELOG date is unavailable — that already errored upstream).
 
-def _check_citation_surfaces(root: Path, suite_version: str) -> list[str]:
-    """Invariant 12: citation surfaces track the suite version (#754).
-
-    CITATION.cff `version:` and every `(Version X.Y.Z)` token in
-    POSITIONING.md must equal the suite version. An ABSENT file is a skip
-    (optional-surface convention, invariant 8's posture); a PRESENT
-    CITATION.cff with no version: line is malformed and errors — skip is
-    only for absence, never for malformation."""
+    POSITIONING.md is repo-specific prose: absence or a token-free file is a
+    skip (the token is the claim; no claim, no drift), but a present token
+    must be canonical and equal to the suite version."""
     errors: list[str] = []
     cff = root / "CITATION.cff"
-    if cff.is_file():
-        match = _CFF_VERSION_RE.search(cff.read_text(encoding="utf-8"))
-        if match is None:
-            errors.append(
-                f"{cff}: no 'version:' line found (malformed citation metadata)"
-            )
-        elif match.group(1) != suite_version:
-            errors.append(
-                f"{cff}: version {match.group(1)!r} does not match suite "
-                f"version {suite_version!r}"
-            )
+    if not cff.is_file():
+        errors.append(f"{cff}: not found")
+    else:
+        try:
+            data = yaml.safe_load(cff.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            data = None
+        if not isinstance(data, dict):
+            errors.append(f"{cff}: not parseable as a YAML mapping")
+        else:
+            raw = data.get("version")
+            if raw is None:
+                errors.append(f"{cff}: no 'version' key found")
+            else:
+                token = str(raw)
+                if not _is_strict_semver(token):
+                    errors.append(
+                        f"{cff}: version token {token!r} is not a canonical "
+                        "N.N.N or N.N.N.N version"
+                    )
+                elif token != suite_version:
+                    errors.append(
+                        f"{cff}: version {token!r} does not match suite "
+                        f"version {suite_version!r}"
+                    )
+            released = data.get("date-released")
+            if released is not None and latest_date is not None:
+                base = _parse_iso_date(latest_date)
+                rel = (
+                    released
+                    if isinstance(released, date)
+                    else _parse_iso_date(str(released))
+                )
+                if rel is None:
+                    errors.append(
+                        f"{cff}: date-released {str(released)!r} is not a "
+                        "strict YYYY-MM-DD date"
+                    )
+                elif (
+                    base is not None
+                    and abs((rel - base).days) > LAST_UPDATED_MAX_DAYS
+                ):
+                    errors.append(
+                        f"{cff}: date-released {rel.isoformat()} is more than "
+                        f"{LAST_UPDATED_MAX_DAYS} days from the latest "
+                        f"CHANGELOG entry date {latest_date} (stale release "
+                        "metadata)"
+                    )
     positioning = root / "POSITIONING.md"
     if positioning.is_file():
-        text = positioning.read_text(encoding="utf-8")
-        for token in _POSITIONING_VERSION_RE.findall(text):
-            if token != suite_version:
+        for token in POSITIONING_VERSION_RE.findall(
+            positioning.read_text(encoding="utf-8")
+        ):
+            if not _is_strict_semver(token):
+                errors.append(
+                    f"{positioning}: citation prose token {token!r} is not a "
+                    "canonical N.N.N or N.N.N.N version"
+                )
+            elif token != suite_version:
                 errors.append(
                     f"{positioning}: citation prose cites Version {token} but "
                     f"suite version is {suite_version!r}"
