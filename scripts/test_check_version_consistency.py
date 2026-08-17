@@ -1398,6 +1398,21 @@ class TestCitationSurfaces(unittest.TestCase):
             self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
             self.assertIn("3.4.0", result.stdout)
 
+    def test_positioning_empty_payload_fails(self) -> None:
+        """`(Version )` — deleting the version mid-edit must reach strict
+        validation and error, not fall out of the capture (codex round-4
+        P2)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_aligned_fixture(root)
+            (root / "POSITIONING.md").write_text(
+                "# Positioning\n\nCite: Fixture Suite (Version ).\n",
+                encoding="utf-8",
+            )
+            result = _run(root)
+            self.assertEqual(result.returncode, 1, msg=f"stdout={result.stdout!r}")
+            self.assertIn("canonical", result.stdout)
+
     def test_positioning_absent_passes(self) -> None:
         """POSITIONING.md is repo-specific prose — absence is a skip."""
         with TemporaryDirectory() as tmp:

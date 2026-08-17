@@ -136,7 +136,7 @@ ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # draft`) surfaces as an error instead of the clause dropping out of a
 # narrower character class and silently passing (codex round-3 P2).
 # CITATION.cff has no regex — it is YAML and is parsed as YAML.
-POSITIONING_VERSION_RE = re.compile(r"\(Version\s+([^)]+)\)")
+POSITIONING_VERSION_RE = re.compile(r"\(Version\s+([^)]*)\)")
 
 PIPELINE_SKILL_NAME = "academic-pipeline"
 
