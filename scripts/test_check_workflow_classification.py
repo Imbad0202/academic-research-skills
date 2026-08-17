@@ -22,8 +22,9 @@ def repo(tmp_path: Path) -> Path:
     dst_doc.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(REPO_ROOT / DOC_RELPATH, dst_doc)
     (tmp_path / WORKFLOWS_DIR).mkdir(parents=True, exist_ok=True)
-    for wf in sorted((REPO_ROOT / WORKFLOWS_DIR).glob("*.yml")):
-        shutil.copyfile(wf, tmp_path / WORKFLOWS_DIR / wf.name)
+    for pattern in ("*.yml", "*.yaml"):
+        for wf in sorted((REPO_ROOT / WORKFLOWS_DIR).glob(pattern)):
+            shutil.copyfile(wf, tmp_path / WORKFLOWS_DIR / wf.name)
     return tmp_path
 
 
@@ -149,6 +150,22 @@ def test_renamed_bypass_token_fires(repo: Path) -> None:
         wf.read_text(encoding="utf-8").replace(
             "[skip-cooldown]", "[cooldown-override]"
         ),
+        encoding="utf-8",
+    )
+    errors = run_all_checks(repo)
+    assert any(
+        "WC-4" in e and "[skip-cooldown]" in e for e in errors
+    )
+
+
+def test_token_surviving_only_in_comment_fires(repo: Path) -> None:
+    # Renaming the executable token while an old comment still mentions it
+    # must not satisfy WC-4 (codex R2 finding).
+    wf = repo / WORKFLOWS_DIR / "release-cooldown.yml"
+    text = wf.read_text(encoding="utf-8")
+    text = text.replace("[skip-cooldown]", "[cooldown-override]")
+    wf.write_text(
+        text + "\n# legacy note: the old token was [skip-cooldown]\n",
         encoding="utf-8",
     )
     errors = run_all_checks(repo)

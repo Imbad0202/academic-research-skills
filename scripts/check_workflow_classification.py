@@ -19,8 +19,11 @@ posture):
         blocking, advisory, administrative, and post-push numbers must
         all match the table.
   WC-4  Every `[bypass-token]` named in a row's Bypass cell appears
-        verbatim in that row's workflow file (a renamed token cannot
-        leave the table stale while CI stays green).
+        verbatim in that row's workflow file, on a non-comment line (a
+        renamed token cannot leave the table stale while CI stays green,
+        and a stale token surviving only in a YAML comment does not
+        count; one surviving only inside a non-comment echo/log string
+        is an accepted edge).
 
 Exit 0 when all hold; exit 1 with one line per violation.
 """
@@ -137,8 +140,14 @@ def run_all_checks(root: Path) -> list[str]:
         else:
             tally[term] += 1
         if name in on_disk:
-            workflow_text = (root / WORKFLOWS_DIR / name).read_text(
-                encoding="utf-8"
+            # Full-comment lines don't execute: a token surviving only in a
+            # comment must not satisfy WC-4.
+            workflow_text = "\n".join(
+                line
+                for line in (root / WORKFLOWS_DIR / name)
+                .read_text(encoding="utf-8")
+                .split("\n")
+                if not line.lstrip().startswith("#")
             )
             for token in _BYPASS_TOKEN_RE.findall(cells[4]):
                 if token not in workflow_text:
