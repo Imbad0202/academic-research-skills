@@ -203,6 +203,60 @@ def test_df3_label_keeps_name_but_target_moves_fires(
     assert any("DF-3" in e and "SECURITY.md" in e for e in errors)
 
 
+def test_df1_basename_substring_collision_fires(fixture_repo: Path) -> None:
+    # The doc names scripts/net_client.py; a NEW scripts/client.py must not
+    # ride on that substring — coverage is full-relative-path based (codex
+    # R1 finding).
+    _write(
+        fixture_repo,
+        "scripts/client.py",
+        "import urllib.request\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-1" in e and "scripts/client.py" in e for e in errors)
+
+
+def test_df2_nested_shell_script_fires(fixture_repo: Path) -> None:
+    _write(
+        fixture_repo,
+        "scripts/tools/fetch_nested.sh",
+        "#!/bin/sh\ncurl -s https://example.invalid/n\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-2" in e and "fetch_nested.sh" in e for e in errors)
+
+
+def test_df2_path_qualified_curl_fires(fixture_repo: Path) -> None:
+    _write(
+        fixture_repo,
+        "scripts/abs_fetch.sh",
+        "#!/bin/sh\n/usr/bin/curl -s https://example.invalid/a\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-2" in e and "abs_fetch.sh" in e for e in errors)
+
+
+def test_df2_quoted_instructional_curl_not_flagged(fixture_repo: Path) -> None:
+    _write(
+        fixture_repo,
+        "scripts/instruct.sh",
+        '#!/bin/sh\necho "to fetch manually, run curl -s URL"\n',
+    )
+    assert run_all_checks(fixture_repo) == []
+
+
+def test_df3_link_inside_code_span_fires(fixture_repo: Path) -> None:
+    # A link inside inline backticks renders literally, not as a link
+    # (codex R1 finding).
+    _write(
+        fixture_repo,
+        "SECURITY.md",
+        "# Security\n\n`[map](docs/DATA_FLOWS.md)`\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert any("DF-3" in e and "SECURITY.md" in e for e in errors)
+
+
 def test_df3_setup_link_removed_fires(fixture_repo: Path) -> None:
     _write(fixture_repo, "docs/SETUP.md", "# Setup\n\nNo link.\n")
     errors = run_all_checks(fixture_repo)

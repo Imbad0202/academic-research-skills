@@ -76,7 +76,11 @@ NETWORK_DOTTED = {
 _LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _QUOTE_PREFIX_RE = re.compile(r"^(\s{0,3}>\s?)+")
-_CURL_RE = re.compile(r"(?:^|[|&;(\s])curl\s")
+_CODE_SPAN_RE = re.compile(r"`[^`\n]+`")
+# `curl`, `/usr/bin/curl`, `./vendor/curl` — a command token whose basename
+# is curl, in command position after start-of-line or a shell separator.
+_CURL_RE = re.compile(r"(?:^|[|&;(\s])(?:[\w./-]*/)?curl(?:\s|$)")
+_SHELL_QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
 
 
 def _strip_fenced_code(md_text: str) -> str:
@@ -180,10 +184,13 @@ def _python_network_scripts(root: Path) -> list[Path]:
 
 def _curl_shell_scripts(root: Path) -> list[Path]:
     hits: list[Path] = []
-    for pattern in ("scripts/*.sh", "hooks/*.sh"):
-        for sh in sorted(root.glob(pattern)):
+    for base in ("scripts", "hooks"):
+        for sh in sorted((root / base).rglob("*.sh")):
             for line in sh.read_text(encoding="utf-8").split("\n"):
-                code = line.split("#", 1)[0]
+                # Mask quoted spans first so `echo "run curl ..."` (quoted
+                # instructional text, no curl process) cannot fire, THEN drop
+                # the comment tail.
+                code = _SHELL_QUOTED_RE.sub("", line).split("#", 1)[0]
                 if _CURL_RE.search(code):
                     hits.append(sh)
                     break
@@ -191,18 +198,23 @@ def _curl_shell_scripts(root: Path) -> list[Path]:
 
 
 def check_network_coverage(root: Path) -> list[str]:
-    """DF-1 + DF-2: every network-capable script is named on the map."""
+    """DF-1 + DF-2: every network-capable script is named on the map.
+
+    Naming means the FULL repo-relative path appears in the doc — basename
+    matching would let a new `scripts/client.py` ride on the substring
+    inside `scripts/semantic_scholar_client.py`.
+    """
     errors: list[str] = []
     doc_text = (root / DOC_RELPATH).read_text(encoding="utf-8")
     for path in _python_network_scripts(root):
-        if path.name not in doc_text:
+        if path.relative_to(root).as_posix() not in doc_text:
             errors.append(
                 f"DF-1: {path.relative_to(root)} imports a network module "
                 f"but is not named in {DOC_RELPATH} — new or renamed "
                 f"network touchpoint missing from the map"
             )
     for path in _curl_shell_scripts(root):
-        if path.name not in doc_text:
+        if path.relative_to(root).as_posix() not in doc_text:
             errors.append(
                 f"DF-2: {path.relative_to(root)} invokes curl but is not "
                 f"named in {DOC_RELPATH}"
@@ -217,7 +229,11 @@ def check_inbound_links(root: Path) -> list[str]:
     for rel in INBOUND_LINK_SURFACES:
         surface = root / rel
         found = False
-        text = _strip_non_rendering(surface.read_text(encoding="utf-8"))
+        # Inline code spans render literally — a link inside backticks is
+        # not a link, so strip them after the block-level passes.
+        text = _CODE_SPAN_RE.sub(
+            "", _strip_non_rendering(surface.read_text(encoding="utf-8"))
+        )
         for match in _LINK_RE.finditer(text):
             target = match.group(1)
             if target.startswith(("http://", "https://", "mailto:", "#")):
