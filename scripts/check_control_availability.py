@@ -125,6 +125,14 @@ def check_links_resolve(root: Path) -> list[str]:
             continue
         path_part, _, fragment = target.partition("#")
         linked = (doc_path.parent / path_part).resolve()
+        if not linked.is_relative_to(root.resolve()):
+            # An existing HOST file outside the repo must not mask a broken
+            # repo link (an over-deep `../../..` slip).
+            errors.append(
+                f"CA-1: link target '{path_part}' escapes the repository "
+                f"(from {DOC_RELPATH})"
+            )
+            continue
         if not linked.exists():
             errors.append(
                 f"CA-1: link target '{path_part}' does not exist "

@@ -265,6 +265,22 @@ def test_ca3_blockquoted_html_block_line_fires(repo: Path) -> None:
     assert any("CA-3" in e and "README.md" in e for e in errors)
 
 
+def test_ca1_link_escaping_repo_fires_even_if_target_exists(repo: Path) -> None:
+    # An over-deep `../..` slip resolving to an EXISTING host file must not
+    # pass CA-1: containment under the repo root is part of the invariant
+    # (codex R6 finding).
+    outside = repo.parent / "outside_target.md"
+    outside.write_text("# Outside\n", encoding="utf-8")
+    doc = repo / DOC_RELPATH
+    doc.write_text(
+        doc.read_text(encoding="utf-8")
+        + "\nSee [escapee](../../outside_target.md).\n",
+        encoding="utf-8",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-1" in e and "escapes the repository" in e for e in errors)
+
+
 def test_slug_matches_github_for_punctuated_heading() -> None:
     heading = (
         "Method 0: Claude Code Plugin (v3.7.0+, recommended for "
