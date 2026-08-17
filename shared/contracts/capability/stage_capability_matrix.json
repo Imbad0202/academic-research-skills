@@ -1,6 +1,5 @@
 {
   "schema_version": "stage-capability-matrix/1.0",
-  "generated_view": "docs/STAGE_CAPABILITY_MATRIX.md",
   "stale_after_days": 365,
   "task_families": [
     "rq_formation",
@@ -26,7 +25,8 @@
         "model": "claude-sonnet-5 (runtime judge)",
         "population": "48-item held-out off-list shell + domain-native negative set, en",
         "measured_at": "2026-07-11",
-        "result_summary": "post-#505 overall miss 0.094 across both replicates (baseline 0.344-0.375); false-fire 0/16 preserved"
+        "result_summary": "post-#505 overall miss 0.094 across both replicates (baseline 0.344-0.375); false-fire 0/16 preserved",
+        "measurement_report": "evals/heldout/rq_framing_offlist/measurement-2026-07-11-505.json"
       },
       "external_outcome_evidence": "none",
       "known_exclusions": [
@@ -37,14 +37,24 @@
         "single judge model (claude-sonnet-5), single language (en), one measurement date"
       ],
       "max_licensed_claim": "On the recorded held-out set and judge model, the advisory's miss rate was 0.094 with zero false fires; no claim beyond that set or model.",
-      "next_required_evaluation": "re-run the held-out set on the current session model family; extend to zh-TW shells"
+      "next_required_evaluation": "re-run the held-out set on the current session model family; extend to zh-TW shells",
+      "conformance_pinned_by": [
+        "scripts/check_rq_framing_patterns.py",
+        "scripts/test_check_rq_framing_patterns.py"
+      ],
+      "claim_anchors": [
+        {
+          "file": "README.md",
+          "anchor": "held-out miss rate 0.34–0.38 → 0.094 with false-fire 0/16 preserved"
+        }
+      ]
     },
     {
       "row_id": "rq_formation.ideation_diversity",
       "task_family": "rq_formation",
       "mechanism": "Within-session ideation-diversity measurement design (#659): two Layer-1 Socratic mechanisms, scholar-owned breadth vs AI-surfaced facet follow-through",
       "mechanism_status": "DESIGNED",
-      "deterministic_conformance": "TESTED",
+      "deterministic_conformance": "CI_GATED",
       "behavioral_evidence": {
         "status": "DESIGNED"
       },
@@ -57,7 +67,11 @@
         "no-call envelope only: no subject, judge, or adjudicator session has been authorized"
       ],
       "max_licensed_claim": "A frozen measurement design and offline validation assets exist; no breadth or diversity claim is computable.",
-      "next_required_evaluation": "dispatch the frozen Phase-2 envelope with two blinded human judges and an arm-blind adjudicator (#659)"
+      "next_required_evaluation": "dispatch the frozen Phase-2 envelope with two blinded human judges and an arm-blind adjudicator (#659)",
+      "conformance_pinned_by": [
+        "scripts/validate_ideation_diversity_assets.py",
+        "scripts/test_validate_ideation_diversity_assets.py"
+      ]
     },
     {
       "row_id": "retrieval.citation_existence_gate",
@@ -77,7 +91,17 @@
         "resolver coverage varies by field and language; legitimately-unindexed work stays unresolvable by design (precision-over-recall)"
       ],
       "max_licensed_claim": "A deterministic lookup gate exists and its classification logic is CI-pinned; no measured hallucinated-citation catch rate is claimed.",
-      "next_required_evaluation": "an independently-authored ground-truth set (not derived from the reducer) measuring end-to-end catch and false-block rates"
+      "next_required_evaluation": "an independently-authored ground-truth set (not derived from the reducer) measuring end-to-end catch and false-block rates",
+      "conformance_pinned_by": [
+        "scripts/test_transport_fixture_citation_gate.py",
+        "scripts/check_v3_9_0_triangulation.py"
+      ],
+      "claim_anchors": [
+        {
+          "file": "README.md",
+          "anchor": "deterministic citation-existence verification gate"
+        }
+      ]
     },
     {
       "row_id": "retrieval.claim_standing_probe",
@@ -97,14 +121,17 @@
         "no live index, model, or judge has run through the probe path"
       ],
       "max_licensed_claim": "A contained, consent-gated probe substrate with deterministic gates exists; no accuracy, usefulness, or coverage claim.",
-      "next_required_evaluation": "live stance-provider adapter + expert ground truth + the #655 baseline measurement row under the heldout-measurement contract"
+      "next_required_evaluation": "live stance-provider adapter + expert ground truth + the #655 baseline measurement row under the heldout-measurement contract",
+      "conformance_pinned_by": [
+        "scripts/check_claim_standing_candidate_ledger_integration.py"
+      ]
     },
     {
       "row_id": "methodology.blueprint",
       "task_family": "methodology",
       "mechanism": "research_architect_agent methodology blueprint (paradigm, method, data strategy) with blind design-freeze disagreement checkpoint (#518)",
       "mechanism_status": "IMPLEMENTED",
-      "deterministic_conformance": "TESTED",
+      "deterministic_conformance": "CI_GATED",
       "behavioral_evidence": {
         "status": "NOT_RUN"
       },
@@ -116,7 +143,10 @@
         "prompt-contract layer; behavior varies with the session model"
       ],
       "max_licensed_claim": "A structured blueprint contract and a blind cross-model disagreement checkpoint exist; no methodology-quality claim.",
-      "next_required_evaluation": "matched stage-substitution comparison on identical upstream artifacts (#745 evaluation program)"
+      "next_required_evaluation": "matched stage-substitution comparison on identical upstream artifacts (#745 evaluation program)",
+      "conformance_pinned_by": [
+        "scripts/check_cross_model_handoff_contract.py"
+      ]
     },
     {
       "row_id": "synthesis.cross_source",
@@ -136,7 +166,10 @@
         "prompt-contract layer; behavior varies with the session model"
       ],
       "max_licensed_claim": "Pattern-protection contracts and an enumerable tension inventory exist; no synthesis-quality or recall claim.",
-      "next_required_evaluation": "seeded-contradiction detection eval over a synthetic corpus with known ground truth"
+      "next_required_evaluation": "seeded-contradiction detection eval over a synthetic corpus with known ground truth",
+      "conformance_pinned_by": [
+        "scripts/check_v3_6_7_pattern_protection.py"
+      ]
     },
     {
       "row_id": "drafting.citation_emission",
@@ -155,7 +188,10 @@
         "prompt-contract layer; behavior varies with the session model"
       ],
       "max_licensed_claim": "Deterministic emission-format gates exist; no measured claim about drafting quality or anchor accuracy.",
-      "next_required_evaluation": "anchor-accuracy audit on a real pipeline run's draft (locator resolves and supports the sentence citing it)"
+      "next_required_evaluation": "anchor-accuracy audit on a real pipeline run's draft (locator resolves and supports the sentence citing it)",
+      "conformance_pinned_by": [
+        "scripts/check_v3_7_3_three_layer_citation.py"
+      ]
     },
     {
       "row_id": "integrity_check.claim_verification",
@@ -175,7 +211,11 @@
         "verification judgment is model-mediated; deterministic layers pin format and replay, not truth"
       ],
       "max_licensed_claim": "Registered claims are verified under a replayable deterministic envelope; the registry's semantic completeness and the checker's catch rate are unmeasured.",
-      "next_required_evaluation": "seeded unsupported-claim detection eval (planted claim-source mismatches with known ground truth)"
+      "next_required_evaluation": "seeded unsupported-claim detection eval (planted claim-source mismatches with known ground truth)",
+      "conformance_pinned_by": [
+        "scripts/test_claim_registry_coverage.py",
+        "scripts/test_claim_verification_coverage_contract.py"
+      ]
     },
     {
       "row_id": "integrity_check.tortured_phrase_screen",
@@ -189,7 +229,8 @@
         "model": "none (deterministic runtime; judge_plan.exception mechanical_suite)",
         "population": "repository-owned synthetic expected-match corpus",
         "measured_at": "2026-08-10",
-        "result_summary": "mechanical conformance 190/190 tests passed (rate 1.0) at the frozen commit; contextual validity and real-world FP/FN remain unmeasured"
+        "result_summary": "mechanical conformance 190/190 tests passed (rate 1.0) at the frozen commit; contextual validity and real-world FP/FN remain unmeasured",
+        "measurement_report": "evals/heldout/tortured_phrase_conformance/measurement-2026-08-10.json"
       },
       "external_outcome_evidence": "none",
       "known_exclusions": [
@@ -200,7 +241,10 @@
         "synthetic conformance only; single frozen run at one commit"
       ],
       "max_licensed_claim": "The deterministic screen conforms to its own synthetic expected-match grammar (190/190); real-world false-positive/negative performance is unmeasured.",
-      "next_required_evaluation": "real-corpus FP/FN measurement against independently labeled tortured-phrase instances"
+      "next_required_evaluation": "real-corpus FP/FN measurement against independently labeled tortured-phrase instances",
+      "conformance_pinned_by": [
+        "scripts/check_tortured_phrase_screening_integration.py"
+      ]
     },
     {
       "row_id": "review.seeded_defect_panel",
@@ -225,14 +269,17 @@
         "single model family and dispatch harness; numbers are commit-frozen and re-measured per change"
       ],
       "max_licensed_claim": "On the recorded seeded-defect tier, recall and clean-control behavior pass and severity agreement currently fails its frozen gate; no calibration or field-general review-quality claim.",
-      "next_required_evaluation": "severity-band anchoring decision (#648) and the first reviewer calibration run (#653)"
+      "next_required_evaluation": "severity-band anchoring decision (#648) and the first reviewer calibration run (#653)",
+      "conformance_pinned_by": [
+        "scripts/check_panel_synthesis.py"
+      ]
     },
     {
       "row_id": "review.calibration",
       "task_family": "review",
       "mechanism": "Reviewer calibration mode (v3.2 protocol + #653 public-corpus manifest instruments): FNR/FPR/balanced-accuracy against ground-truth-bearing public reviews",
       "mechanism_status": "IMPLEMENTED",
-      "deterministic_conformance": "TESTED",
+      "deterministic_conformance": "CI_GATED",
       "behavioral_evidence": {
         "status": "NOT_RUN"
       },
@@ -245,7 +292,11 @@
         "first run blocked on external corpus access (OpenReview account approval)"
       ],
       "max_licensed_claim": "A calibration protocol and reproducible corpus manifest exist; no error-profile numbers exist yet.",
-      "next_required_evaluation": "#653 first measured error profile on the public-corpus manifest"
+      "next_required_evaluation": "#653 first measured error profile on the public-corpus manifest",
+      "conformance_pinned_by": [
+        "scripts/check_calibration_tiers.py",
+        "scripts/test_check_calibration_tiers.py"
+      ]
     },
     {
       "row_id": "revision.claim_drift_guard",
@@ -259,7 +310,8 @@
         "model": "claude-fable-5 subject; codex gpt-5.6-sol judge",
         "population": "8-item revision-pressure set + 2 clean controls, en",
         "measured_at": "2026-08-07",
-        "result_summary": "guarded arm claim-strength/hedge drift 1/16 item-replicates vs 7/16 unguarded in-window; unauthorized numeric/citation drift 0/16 guarded; drift not eliminated, and baseline-vs-post comparison is descriptive only (no causal claim)"
+        "result_summary": "guarded arm claim-strength/hedge drift 1/16 item-replicates vs 7/16 unguarded in-window; unauthorized numeric/citation drift 0/16 guarded; drift not eliminated, and baseline-vs-post comparison is descriptive only (no causal claim)",
+        "measurement_report": "evals/heldout/revision_claim_drift/measurement-2026-08-07.json"
       },
       "external_outcome_evidence": "none",
       "known_exclusions": [
@@ -270,7 +322,16 @@
         "one subject model, one judge model, en-only pressure set"
       ],
       "max_licensed_claim": "In the recorded window, the guarded arm showed 1/16 drift against 7/16 unguarded; the guard does not eliminate drift and no causal or cross-model claim is made.",
-      "next_required_evaluation": "#679 subject-context-isolation re-run producing a causally interpretable comparison row"
+      "next_required_evaluation": "#679 subject-context-isolation re-run producing a causally interpretable comparison row",
+      "conformance_pinned_by": [
+        "scripts/test_check_revision_token_conservation.py"
+      ],
+      "claim_anchors": [
+        {
+          "file": "README.md",
+          "anchor": "a deterministic numeric/citation token-conservation checker"
+        }
+      ]
     },
     {
       "row_id": "finalization.format_and_disclosure",
@@ -289,7 +350,10 @@
         "prompt-contract refusal layer; deterministic locks pin the protocol text, not the runtime behavior"
       ],
       "max_licensed_claim": "Deterministic boundary-semantics locks and stamp-only gate contracts exist; no behavioral refusal-correctness measurement.",
-      "next_required_evaluation": "include finalization refusal surfaces in a pipeline_behavior_robustness run"
+      "next_required_evaluation": "include finalization refusal surfaces in a pipeline_behavior_robustness run",
+      "conformance_pinned_by": [
+        "scripts/check_pipeline_boundary_semantics.py"
+      ]
     }
   ]
 }

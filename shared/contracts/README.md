@@ -12,8 +12,12 @@ ports, and (v3.6.7+) cross-model audit artifact pipelines.
   `MEASURED` / `MIXED` / `OUT_OF_SCOPE`) cannot collapse: an unrun eval can never
   carry a result, a measured row must carry full provenance (in-repo `eval_ref`,
   model, population, ISO date, result summary), and stale measurements require a
-  visible staleness note. Optional `claim_anchors` bind top-level capability
-  sentences verbatim so rewording a claim without touching the matrix fails CI.
+  visible staleness note. A measured row whose suite publishes
+  `measurement-*.json` reports must bind the current one (date-equal, sibling
+  supersession detected), `CI_GATED`/`TESTED` conformance must name existing
+  lints/tests (`conformance_pinned_by`, D4-style), and `claim_anchors` bind
+  top-level capability sentences verbatim so rewording a claim without
+  touching the matrix fails CI.
 - `docs/STAGE_CAPABILITY_MATRIX.md` is GENERATED from the matrix
   (`scripts/check_stage_capability_matrix.py --render`) and byte-pinned by the
   same lint. The matrix indexes evidence, it does not create it: a row licenses

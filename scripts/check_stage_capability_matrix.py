@@ -7,34 +7,54 @@ evidence exists for them, and the maximum claim that evidence licenses — so
 capability language can never silently outrun the recorded evidence:
 
   M1.  Matrix parses, carries the exact schema_version, no unknown top-level
-       fields, no duplicate JSON object keys (fail-closed: a missing or
-       unparseable matrix is an error, never a silent pass).
+       fields, no duplicate JSON object keys, a positive integer
+       stale_after_days (fail-closed: a missing or unparseable matrix is an
+       error, never a silent pass; an invalid staleness policy is an error,
+       never a fabricated default).
   M2.  task_families equals the frozen TASK_FAMILIES vocabulary exactly,
        including order (the same closed list the #742 profile contract
        consumes — additions require touching this lint in the same commit).
-  M3.  Rows are closed shapes: required fields present and non-empty, no
-       unknown fields, unique row_id, task_family from the vocabulary,
+  M3.  Rows are closed shapes: required fields present and non-empty
+       (known_exclusions / transport_limits each carry at least one entry —
+       write "none known" explicitly rather than an empty list), no unknown
+       fields, unique row_id, task_family from the vocabulary,
        mechanism_status and deterministic_conformance from closed enums.
   M4.  behavioral_evidence.status is one of DESIGNED / NOT_RUN / MEASURED /
-       MIXED / OUT_OF_SCOPE and the statuses cannot collapse: MEASURED/MIXED
-       require full provenance (eval_ref existing in-repo, model, population,
-       measured_at ISO date, result_summary); DESIGNED/NOT_RUN must not carry
-       measured_at or result_summary (an unrun eval can never carry numbers);
-       OUT_OF_SCOPE requires a reason.
+       MIXED / OUT_OF_SCOPE and the statuses cannot collapse in either
+       direction: MEASURED/MIXED require full provenance (eval_ref existing
+       in-repo, model, population, measured_at ISO date, result_summary);
+       every other status refuses model / population / measured_at /
+       result_summary / staleness_note; OUT_OF_SCOPE requires a reason and
+       reason is refused elsewhere; eval_ref is allowed on any status (a
+       DESIGNED row may name its frozen suite) and existence-checked
+       wherever it appears.
   M5.  Every task family has at least one row (no silently uncovered stage).
   M6.  max_licensed_claim is non-empty, and on a row whose behavioral status
-       is not MEASURED/MIXED it must not contain effectiveness stems
+       is not MEASURED/MIXED neither the claim nor the mechanism /
+       external_outcome_evidence text may contain effectiveness stems
        (improve/outperform/guarantee/proven/state-of-the-art) — conservative
        language discipline, not semantic parsing.
-  M7.  Every claim_anchors entry names an existing repo file and its anchor
-       (>= 16 chars) appears VERBATIM in that file, so top-level capability
-       claims resolve to a matrix row and fail the build when reworded
-       without touching the matrix.
+  M7.  Every claim_anchors entry names an existing repo file (repo-relative,
+       no absolute paths, resolved path contained in the checkout) and its
+       anchor (>= 16 chars) appears VERBATIM in that file, so top-level
+       capability claims resolve to a matrix row and fail the build when
+       reworded without touching the matrix.
   M8.  A MEASURED/MIXED row older than stale_after_days must carry a
        staleness_note (stale evidence stays visible, never silently current).
   M9.  next_required_evaluation is non-empty except on OUT_OF_SCOPE rows.
   M10. docs/STAGE_CAPABILITY_MATRIX.md is byte-identical to render(matrix)
        (the human view is generated, never hand-drifted).
+  M11. A MEASURED/MIXED row whose suite publishes measurement reports
+       (measurement-*.json under eval_ref) must bind one via
+       measurement_report: the file exists inside eval_ref, parses, its
+       measurement_date equals the row's measured_at, and no sibling report
+       carries a later measurement_date unless the row says why in a
+       staleness_note — so a re-measurement cannot leave a stale row
+       silently authoritative.
+  M12. deterministic_conformance is falsifiable: CI_GATED/TESTED rows carry
+       conformance_pinned_by entries ('path' or 'path::function', existing,
+       function defined for .py paths — the degradation-registry D4
+       convention); NONE rows carry none.
 
 The matrix indexes evidence, it does not create it: this lint verifies
 citation resolution and status discipline, not that the recorded results are
@@ -51,7 +71,9 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -78,7 +100,6 @@ TASK_FAMILIES = (
 
 _TOP_FIELDS = {
     "schema_version",
-    "generated_view",
     "stale_after_days",
     "task_families",
     "rows",
@@ -97,15 +118,15 @@ _ROW_REQUIRED = (
     "max_licensed_claim",
     "next_required_evaluation",
 )
-_ROW_OPTIONAL = ("claim_anchors",)
+_ROW_FIELDS = frozenset(_ROW_REQUIRED) | {"claim_anchors", "conformance_pinned_by"}
 _MECHANISM_STATUSES = ("IMPLEMENTED", "PARTIAL", "DESIGNED")
 _CONFORMANCE_STATUSES = ("CI_GATED", "TESTED", "NONE")
 _BEHAVIORAL_STATUSES = ("DESIGNED", "NOT_RUN", "MEASURED", "MIXED", "OUT_OF_SCOPE")
-_EVIDENCE_PROVENANCE = ("eval_ref", "model", "population", "measured_at", "result_summary")
-_EVIDENCE_FIELDS = set(
-    ("status", "reason", "staleness_note") + _EVIDENCE_PROVENANCE
+_MEASURED_ONLY_FIELDS = ("model", "population", "measured_at", "result_summary", "staleness_note")
+_EVIDENCE_FIELDS = frozenset(
+    ("status", "reason", "eval_ref", "measurement_report") + _MEASURED_ONLY_FIELDS
 )
-# Conservative effectiveness stems: forbidden in max_licensed_claim unless the
+# Conservative effectiveness stems: forbidden in claim-bearing prose unless the
 # row's behavioral evidence is MEASURED/MIXED (which records what was measured).
 _OVERCLAIM_STEMS = (
     "improv",
@@ -114,9 +135,9 @@ _OVERCLAIM_STEMS = (
     "proven",
     "state-of-the-art",
     "state of the art",
-    "sota",
 )
 _MIN_ANCHOR_LEN = 16
+_PIN_RE = re.compile(r"^(?P<path>[^:]+)(::(?P<func>[A-Za-z_][A-Za-z0-9_]*))?$")
 
 
 def _reject_duplicate_keys(pairs):
@@ -128,16 +149,45 @@ def _reject_duplicate_keys(pairs):
     return dict(pairs)
 
 
+def _load(path: Path) -> dict:
+    """Strict matrix loader shared by the lint and --render."""
+    data = json.loads(
+        path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicate_keys
+    )
+    if not isinstance(data, dict):
+        raise ValueError("matrix root must be an object")
+    return data
+
+
+@lru_cache(maxsize=None)
+def _read_repo_file(relative: str) -> str | None:
+    """Containment-checked, memoized repo-relative read (None = unreadable)."""
+    if relative.startswith(("/", "\\")) or ":" in relative.split("/")[0]:
+        return None
+    target = (REPO_ROOT / relative).resolve()
+    try:
+        target.relative_to(REPO_ROOT)
+    except ValueError:
+        return None
+    if not target.is_file():
+        return None
+    return target.read_text(encoding="utf-8")
+
+
 def _nonempty_str(value) -> bool:
     return isinstance(value, str) and value.strip() != ""
 
 
-def _str_list(value) -> bool:
-    return isinstance(value, list) and all(_nonempty_str(v) for v in value)
+def _nonempty_str_list(value) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) >= 1
+        and all(_nonempty_str(v) for v in value)
+    )
 
 
-def _check_behavioral(row_id: str, ev, today: datetime.date, stale_after_days: int,
-                      repo_root: Path, errors: list[str]) -> None:
+def _check_behavioral(row_id: str, ev, today: datetime.date,
+                      stale_after_days: int | None, errors: list[str]) -> None:
     prefix = f"M4 row {row_id}:"
     if not isinstance(ev, dict):
         errors.append(f"{prefix} behavioral_evidence must be an object")
@@ -151,14 +201,24 @@ def _check_behavioral(row_id: str, ev, today: datetime.date, stale_after_days: i
             f"{prefix} status {status!r} not in {_BEHAVIORAL_STATUSES}"
         )
         return
-    if status in ("MEASURED", "MIXED"):
-        for field in _EVIDENCE_PROVENANCE:
+    eval_ref = ev.get("eval_ref")
+    if eval_ref is not None:
+        if not _nonempty_str(eval_ref) or not (REPO_ROOT / eval_ref).exists():
+            errors.append(
+                f"{prefix} eval_ref {eval_ref!r} does not exist in the repo"
+            )
+            eval_ref = None
+    measured = status in ("MEASURED", "MIXED")
+    if measured:
+        if not _nonempty_str(ev.get("eval_ref")):
+            errors.append(f"{prefix} {status} requires non-empty 'eval_ref' provenance")
+        for field in ("model", "population", "measured_at", "result_summary"):
             if not _nonempty_str(ev.get(field)):
                 errors.append(
                     f"{prefix} {status} requires non-empty {field!r} provenance"
                 )
-        measured_at = ev.get("measured_at")
         measured_date = None
+        measured_at = ev.get("measured_at")
         if _nonempty_str(measured_at):
             try:
                 measured_date = datetime.date.fromisoformat(measured_at)
@@ -166,48 +226,119 @@ def _check_behavioral(row_id: str, ev, today: datetime.date, stale_after_days: i
                 errors.append(
                     f"{prefix} measured_at {measured_at!r} is not an ISO date"
                 )
-        eval_ref = ev.get("eval_ref")
-        if _nonempty_str(eval_ref) and not (repo_root / eval_ref).exists():
-            errors.append(
-                f"{prefix} eval_ref {eval_ref!r} does not exist in the repo"
-            )
-        if measured_date is not None:
+        if measured_date is not None and stale_after_days is not None:
             age = (today - measured_date).days
             if age > stale_after_days and not _nonempty_str(ev.get("staleness_note")):
                 errors.append(
                     f"M8 row {row_id}: measurement {measured_at} is older than "
                     f"{stale_after_days} days and has no staleness_note"
                 )
+        _check_report_binding(row_id, ev, eval_ref, measured_date, errors)
     else:
-        for field in ("measured_at", "result_summary"):
+        for field in _MEASURED_ONLY_FIELDS + ("measurement_report",):
             if field in ev:
                 errors.append(
-                    f"{prefix} {status} row must not carry {field!r} — a result "
-                    "cannot ride an unrun or out-of-scope evaluation"
+                    f"{prefix} {status} row must not carry {field!r} — measurement "
+                    "provenance cannot ride an unrun or out-of-scope evaluation"
                 )
-        if status == "OUT_OF_SCOPE" and not _nonempty_str(ev.get("reason")):
-            errors.append(f"{prefix} OUT_OF_SCOPE requires a non-empty reason")
+        if status == "OUT_OF_SCOPE":
+            if not _nonempty_str(ev.get("reason")):
+                errors.append(f"{prefix} OUT_OF_SCOPE requires a non-empty reason")
+        elif "reason" in ev:
+            errors.append(f"{prefix} 'reason' is only lawful on OUT_OF_SCOPE rows")
+    if measured and "reason" in ev:
+        errors.append(f"{prefix} 'reason' is only lawful on OUT_OF_SCOPE rows")
 
 
-def _check_claim(row, errors: list[str]) -> None:
+def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
+                          measured_date: datetime.date | None,
+                          errors: list[str]) -> None:
+    """M11: bind measured rows to their suite's latest measurement report."""
+    prefix = f"M11 row {row_id}:"
+    suite_dir = (REPO_ROOT / eval_ref) if eval_ref else None
+    published = (
+        sorted(suite_dir.glob("measurement-*.json"))
+        if suite_dir is not None and suite_dir.is_dir()
+        else []
+    )
+    binding = ev.get("measurement_report")
+    if binding is None:
+        if published:
+            errors.append(
+                f"{prefix} suite {eval_ref!r} publishes measurement reports; "
+                "bind one via 'measurement_report'"
+            )
+        return
+    if not _nonempty_str(binding):
+        errors.append(f"{prefix} measurement_report must be a non-empty path")
+        return
+    report_path = REPO_ROOT / binding
+    if suite_dir is None or report_path.parent != suite_dir:
+        errors.append(
+            f"{prefix} measurement_report {binding!r} must live directly inside "
+            f"eval_ref {eval_ref!r}"
+        )
+        return
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        errors.append(f"{prefix} cannot load measurement_report {binding!r}: {exc}")
+        return
+    # heldout-measurement/1.0 uses measurement_date; pre-#654 legacy reports
+    # carry measured_at instead — accept either, prefer the contract field.
+    report_date = report.get("measurement_date") or report.get("measured_at")
+    if measured_date is not None and report_date != measured_date.isoformat():
+        errors.append(
+            f"{prefix} measured_at {measured_date.isoformat()} does not equal the "
+            f"bound report's measurement_date {report_date!r}"
+        )
+    dates = []
+    for sibling in published:
+        try:
+            sibling_report = json.loads(sibling.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        sibling_date = sibling_report.get("measurement_date") or sibling_report.get(
+            "measured_at"
+        )
+        if isinstance(sibling_date, str):
+            dates.append(sibling_date)
+    if (
+        isinstance(report_date, str)
+        and dates
+        and max(dates) > report_date
+        and not _nonempty_str(ev.get("staleness_note"))
+    ):
+        errors.append(
+            f"{prefix} a sibling report dated {max(dates)} supersedes the bound "
+            f"{report_date} report — rebind or explain in a staleness_note"
+        )
+
+
+def _check_claim_language(row, errors: list[str]) -> None:
     row_id = row.get("row_id", "?")
     claim = row.get("max_licensed_claim")
     if not _nonempty_str(claim):
         errors.append(f"M6 row {row_id}: max_licensed_claim must be non-empty")
-        return
+        claim = ""
     status = (row.get("behavioral_evidence") or {}).get("status")
-    if status not in ("MEASURED", "MIXED"):
-        lowered = claim.lower()
+    if status in ("MEASURED", "MIXED"):
+        return
+    for field in ("max_licensed_claim", "mechanism", "external_outcome_evidence"):
+        value = row.get(field)
+        if not isinstance(value, str):
+            continue
+        lowered = value.lower()
         for stem in _OVERCLAIM_STEMS:
             if stem in lowered:
                 errors.append(
-                    f"M6 row {row_id}: claim ceiling contains effectiveness stem "
+                    f"M6 row {row_id}: {field} contains effectiveness stem "
                     f"{stem!r} but behavioral evidence is {status}, not "
                     "MEASURED/MIXED"
                 )
 
 
-def _check_anchors(row, repo_root: Path, errors: list[str]) -> None:
+def _check_anchors(row, errors: list[str]) -> None:
     row_id = row.get("row_id", "?")
     anchors = row.get("claim_anchors")
     if anchors is None:
@@ -228,17 +359,66 @@ def _check_anchors(row, repo_root: Path, errors: list[str]) -> None:
                 f"M7 row {row_id}: anchor must be >= {_MIN_ANCHOR_LEN} chars"
             )
             continue
-        target = repo_root / anchor["file"]
-        if not target.is_file():
+        content = (
+            _read_repo_file(anchor["file"])
+            if _nonempty_str(anchor["file"])
+            else None
+        )
+        if content is None:
             errors.append(
-                f"M7 row {row_id}: anchor file {anchor['file']!r} does not exist"
+                f"M7 row {row_id}: anchor file {anchor['file']!r} is not a "
+                "readable repo-relative file inside the checkout"
             )
             continue
-        if text not in target.read_text(encoding="utf-8"):
+        if text not in content:
             errors.append(
                 f"M7 row {row_id}: anchor not found verbatim in "
                 f"{anchor['file']!r}: {text[:60]!r}"
             )
+
+
+def _check_conformance_pins(row, errors: list[str]) -> None:
+    row_id = row.get("row_id", "?")
+    conformance = row.get("deterministic_conformance")
+    pins = row.get("conformance_pinned_by")
+    if conformance == "NONE":
+        if pins is not None:
+            errors.append(
+                f"M12 row {row_id}: NONE conformance must not carry "
+                "conformance_pinned_by"
+            )
+        return
+    if conformance not in ("CI_GATED", "TESTED"):
+        return  # M3 already reported the bad enum value
+    if not _nonempty_str_list(pins):
+        errors.append(
+            f"M12 row {row_id}: {conformance} requires a non-empty "
+            "conformance_pinned_by list ('path' or 'path::function')"
+        )
+        return
+    for pin in pins:
+        match = _PIN_RE.match(pin)
+        if match is None:
+            errors.append(f"M12 row {row_id}: malformed pin {pin!r}")
+            continue
+        path, func = match.group("path"), match.group("func")
+        content = _read_repo_file(path)
+        if content is None:
+            errors.append(
+                f"M12 row {row_id}: pin {pin!r} names a missing file"
+            )
+            continue
+        if func is not None:
+            if not path.endswith(".py"):
+                errors.append(
+                    f"M12 row {row_id}: '::function' pins require a .py path "
+                    f"({pin!r})"
+                )
+            elif not re.search(rf"^def {re.escape(func)}\(", content, re.M):
+                errors.append(
+                    f"M12 row {row_id}: pin {pin!r} names a function not "
+                    "defined in the file"
+                )
 
 
 def run(
@@ -246,24 +426,21 @@ def run(
     *,
     check_view: bool = True,
     view_path: Path | None = None,
-    repo_root: Path = REPO_ROOT,
     today: datetime.date | None = None,
 ) -> list[str]:
     errors: list[str] = []
     today = today or datetime.date.today()
     try:
-        data = json.loads(
-            matrix_path.read_text(encoding="utf-8"),
-            object_pairs_hook=_reject_duplicate_keys,
-        )
+        data = _load(matrix_path)
     except (OSError, ValueError) as exc:
         return [f"M1: cannot load matrix {matrix_path}: {exc}"]
-    if not isinstance(data, dict):
-        return ["M1: matrix root must be an object"]
-    if set(data) != _TOP_FIELDS:
+    shape_ok = set(data) == _TOP_FIELDS
+    if not shape_ok:
         missing = _TOP_FIELDS - set(data)
         unknown = set(data) - _TOP_FIELDS
-        errors.append(f"M1: top-level fields missing={sorted(missing)} unknown={sorted(unknown)}")
+        errors.append(
+            f"M1: top-level fields missing={sorted(missing)} unknown={sorted(unknown)}"
+        )
     if data.get("schema_version") != _SCHEMA_VERSION:
         errors.append(
             f"M1: schema_version must be {_SCHEMA_VERSION!r}, "
@@ -272,8 +449,8 @@ def run(
     stale_after_days = data.get("stale_after_days")
     if not isinstance(stale_after_days, int) or stale_after_days <= 0:
         errors.append("M1: stale_after_days must be a positive integer")
-        stale_after_days = 365
-    if errors and set(data) != _TOP_FIELDS:
+        stale_after_days = None  # skip M8 rather than invent a policy
+    if not shape_ok:
         return errors
 
     if list(data.get("task_families") or []) != list(TASK_FAMILIES):
@@ -297,7 +474,7 @@ def run(
         missing = [f for f in _ROW_REQUIRED if f not in row]
         if missing:
             errors.append(f"M3 row {row_id}: missing fields {missing}")
-        unknown = set(row) - set(_ROW_REQUIRED) - set(_ROW_OPTIONAL)
+        unknown = set(row) - _ROW_FIELDS
         if unknown:
             errors.append(f"M3 row {row_id}: unknown fields {sorted(unknown)}")
         if not _nonempty_str(row.get("row_id")):
@@ -329,18 +506,18 @@ def run(
                 "(use 'none' explicitly)"
             )
         for list_field in ("known_exclusions", "transport_limits"):
-            if list_field in row and not _str_list(row[list_field]):
+            if list_field in row and not _nonempty_str_list(row[list_field]):
                 errors.append(
-                    f"M3 row {row_id}: {list_field} must be a list of "
-                    "non-empty strings"
+                    f"M3 row {row_id}: {list_field} must carry at least one "
+                    "non-empty string (write 'none known' explicitly)"
                 )
 
         _check_behavioral(
-            row_id, row.get("behavioral_evidence"), today, stale_after_days,
-            repo_root, errors,
+            row_id, row.get("behavioral_evidence"), today, stale_after_days, errors
         )
-        _check_claim(row, errors)
-        _check_anchors(row, repo_root, errors)
+        _check_claim_language(row, errors)
+        _check_anchors(row, errors)
+        _check_conformance_pins(row, errors)
 
         status = (row.get("behavioral_evidence") or {}).get("status")
         if status != "OUT_OF_SCOPE" and not _nonempty_str(
@@ -358,7 +535,7 @@ def run(
         )
 
     if check_view:
-        target = view_path or (repo_root / data.get("generated_view", ""))
+        target = view_path or DEFAULT_VIEW
         try:
             current = target.read_text(encoding="utf-8")
         except OSError as exc:
@@ -372,8 +549,8 @@ def run(
     return errors
 
 
-def _cell(text: str) -> str:
-    return text.replace("|", "\\|").replace("\n", " ")
+def _flat(text: str) -> str:
+    return " ".join(str(text).splitlines())
 
 
 def render(data: dict) -> str:
@@ -401,45 +578,54 @@ def render(data: dict) -> str:
             status = ev.get("status", "?")
             lines.append(f"### {row.get('row_id')}")
             lines.append("")
-            lines.append(f"- **Mechanism**: {_cell(row.get('mechanism', ''))}")
-            lines.append(
+            lines.append(f"- **Mechanism**: {_flat(row.get('mechanism', ''))}")
+            conformance_line = (
                 f"- **Mechanism status**: {row.get('mechanism_status', '')} / "
                 f"deterministic conformance: {row.get('deterministic_conformance', '')}"
             )
+            if row.get("conformance_pinned_by"):
+                conformance_line += (
+                    " (pinned by "
+                    + "; ".join(_flat(p) for p in row["conformance_pinned_by"])
+                    + ")"
+                )
+            lines.append(conformance_line)
             detail = [f"**Behavioral evidence**: {status}"]
             if status in ("MEASURED", "MIXED"):
                 detail.append(
-                    f"— {_cell(ev.get('result_summary', ''))} "
-                    f"({_cell(ev.get('eval_ref', ''))}; model {_cell(ev.get('model', ''))}; "
-                    f"population {_cell(ev.get('population', ''))}; {ev.get('measured_at', '')})"
+                    f"— {_flat(ev.get('result_summary', ''))} "
+                    f"({_flat(ev.get('eval_ref', ''))}; model {_flat(ev.get('model', ''))}; "
+                    f"population {_flat(ev.get('population', ''))}; {ev.get('measured_at', '')})"
                 )
+                if ev.get("measurement_report"):
+                    detail.append(f"— report: {_flat(ev['measurement_report'])}")
             if ev.get("staleness_note"):
-                detail.append(f"— STALE: {_cell(ev['staleness_note'])}")
+                detail.append(f"— STALE: {_flat(ev['staleness_note'])}")
             if status == "OUT_OF_SCOPE" and ev.get("reason"):
-                detail.append(f"— {_cell(ev['reason'])}")
+                detail.append(f"— {_flat(ev['reason'])}")
             lines.append("- " + " ".join(detail))
             lines.append(
                 "- **External/human outcome evidence**: "
-                + _cell(row.get("external_outcome_evidence", ""))
+                + _flat(row.get("external_outcome_evidence", ""))
             )
             if row.get("known_exclusions"):
                 lines.append(
                     "- **Known exclusions**: "
-                    + "; ".join(_cell(x) for x in row["known_exclusions"])
+                    + "; ".join(_flat(x) for x in row["known_exclusions"])
                 )
             if row.get("transport_limits"):
                 lines.append(
                     "- **Transport limits**: "
-                    + "; ".join(_cell(x) for x in row["transport_limits"])
+                    + "; ".join(_flat(x) for x in row["transport_limits"])
                 )
             lines.append(
                 "- **Maximum licensed claim**: "
-                + _cell(row.get("max_licensed_claim", ""))
+                + _flat(row.get("max_licensed_claim", ""))
             )
             if row.get("next_required_evaluation"):
                 lines.append(
                     "- **Next required evaluation**: "
-                    + _cell(row.get("next_required_evaluation", ""))
+                    + _flat(row.get("next_required_evaluation", ""))
                 )
             lines.append("")
     return "\n".join(lines)
@@ -447,23 +633,23 @@ def render(data: dict) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--matrix", type=Path, default=DEFAULT_MATRIX)
     parser.add_argument(
         "--render",
         action="store_true",
-        help="rewrite the generated view from the matrix, then exit",
+        help="validate, then rewrite the generated view from the matrix",
     )
     args = parser.parse_args(argv)
     if args.render:
-        data = json.loads(
-            args.matrix.read_text(encoding="utf-8"),
-            object_pairs_hook=_reject_duplicate_keys,
-        )
-        view = REPO_ROOT / data["generated_view"]
-        view.write_text(render(data), encoding="utf-8")
-        print(f"wrote {view}")
+        errors = run(DEFAULT_MATRIX, check_view=False)
+        if errors:
+            for error in errors:
+                print(f"ERROR: {error}", file=sys.stderr)
+            print("refusing to render an invalid matrix", file=sys.stderr)
+            return 1
+        DEFAULT_VIEW.write_text(render(_load(DEFAULT_MATRIX)), encoding="utf-8")
+        print(f"wrote {DEFAULT_VIEW}")
         return 0
-    errors = run(args.matrix)
+    errors = run(DEFAULT_MATRIX)
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)

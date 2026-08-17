@@ -41,6 +41,9 @@ def _valid_matrix() -> dict:
                 "mechanism": f"Synthetic mechanism {i}",
                 "mechanism_status": "IMPLEMENTED",
                 "deterministic_conformance": "CI_GATED",
+                "conformance_pinned_by": [
+                    "scripts/check_stage_capability_matrix.py::run"
+                ],
                 "behavioral_evidence": {"status": "NOT_RUN"},
                 "external_outcome_evidence": "none",
                 "known_exclusions": ["synthetic exclusion"],
@@ -52,14 +55,16 @@ def _valid_matrix() -> dict:
     rows[0]["behavioral_evidence"] = {
         "status": "MEASURED",
         "eval_ref": "evals/heldout/revision_claim_drift",
+        "measurement_report": (
+            "evals/heldout/revision_claim_drift/measurement-2026-08-07.json"
+        ),
         "model": "claude-fable-5",
         "population": "synthetic fixtures",
-        "measured_at": "2026-08-01",
+        "measured_at": "2026-08-07",
         "result_summary": "3/8 baseline drift",
     }
     return {
         "schema_version": "stage-capability-matrix/1.0",
-        "generated_view": "docs/STAGE_CAPABILITY_MATRIX.md",
         "stale_after_days": 365,
         "task_families": list(TASK_FAMILIES),
         "rows": rows,
@@ -289,19 +294,146 @@ def test_short_claim_anchor_fires(tmp_path):
 # ---------- M8: stale evidence ----------
 
 
+def _measured_without_reports(data: dict) -> None:
+    """Point row 0 at a suite that publishes no measurement reports."""
+    ev = data["rows"][0]["behavioral_evidence"]
+    ev["eval_ref"] = "evals/heldout/reviewer_seeded_defects"
+    del ev["measurement_report"]
+
+
 def test_stale_measurement_without_note_fires(tmp_path):
     data = _valid_matrix()
+    _measured_without_reports(data)
     data["rows"][0]["behavioral_evidence"]["measured_at"] = "2024-01-01"
     _assert_fires(_errors_for(tmp_path, data), "M8")
 
 
 def test_stale_measurement_with_note_passes(tmp_path):
     data = _valid_matrix()
+    _measured_without_reports(data)
     data["rows"][0]["behavioral_evidence"]["measured_at"] = "2024-01-01"
     data["rows"][0]["behavioral_evidence"]["staleness_note"] = (
         "measured two model generations ago; re-run queued"
     )
     assert _errors_for(tmp_path, data) == []
+
+
+def test_invalid_stale_after_days_skips_m8_but_fires_m1(tmp_path):
+    """A bad staleness policy is an M1 error, never a fabricated default."""
+    data = _valid_matrix()
+    _measured_without_reports(data)
+    data["stale_after_days"] = 0
+    data["rows"][0]["behavioral_evidence"]["measured_at"] = "2024-01-01"
+    errors = _errors_for(tmp_path, data)
+    _assert_fires(errors, "M1")
+    assert not any("M8" in e for e in errors)
+
+
+# ---------- M11: measurement-report binding ----------
+
+
+def test_measured_row_in_reporting_suite_requires_binding(tmp_path):
+    data = _valid_matrix()
+    del data["rows"][0]["behavioral_evidence"]["measurement_report"]
+    _assert_fires(_errors_for(tmp_path, data), "M11")
+
+
+def test_report_binding_date_mismatch_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][0]["behavioral_evidence"]["measured_at"] = "2026-08-01"
+    _assert_fires(_errors_for(tmp_path, data), "M11")
+
+
+def test_superseded_report_binding_fires(tmp_path):
+    data = _valid_matrix()
+    ev = data["rows"][0]["behavioral_evidence"]
+    ev["measurement_report"] = (
+        "evals/heldout/revision_claim_drift/measurement-2026-07-22.json"
+    )
+    ev["measured_at"] = "2026-07-22"
+    _assert_fires(_errors_for(tmp_path, data), "M11")
+
+
+def test_superseded_report_binding_with_note_passes(tmp_path):
+    data = _valid_matrix()
+    ev = data["rows"][0]["behavioral_evidence"]
+    ev["measurement_report"] = (
+        "evals/heldout/revision_claim_drift/measurement-2026-07-22.json"
+    )
+    ev["measured_at"] = "2026-07-22"
+    ev["staleness_note"] = "pre-guard baseline row kept deliberately"
+    assert _errors_for(tmp_path, data) == []
+
+
+def test_missing_report_file_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][0]["behavioral_evidence"]["measurement_report"] = (
+        "evals/heldout/revision_claim_drift/measurement-2099-01-01.json"
+    )
+    _assert_fires(_errors_for(tmp_path, data), "M11")
+
+
+def test_report_binding_outside_eval_ref_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][0]["behavioral_evidence"]["measurement_report"] = (
+        "evals/heldout/tortured_phrase_conformance/measurement-2026-08-10.json"
+    )
+    _assert_fires(_errors_for(tmp_path, data), "M11")
+
+
+# ---------- M12: falsifiable conformance pins ----------
+
+
+def test_ci_gated_without_pins_fires(tmp_path):
+    data = _valid_matrix()
+    del data["rows"][1]["conformance_pinned_by"]
+    _assert_fires(_errors_for(tmp_path, data), "M12")
+
+
+def test_pin_missing_file_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][1]["conformance_pinned_by"] = ["scripts/ghost_lint.py"]
+    _assert_fires(_errors_for(tmp_path, data), "M12")
+
+
+def test_pin_missing_function_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][1]["conformance_pinned_by"] = [
+        "scripts/check_stage_capability_matrix.py::no_such_function"
+    ]
+    _assert_fires(_errors_for(tmp_path, data), "M12")
+
+
+def test_none_conformance_with_pins_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][1]["deterministic_conformance"] = "NONE"
+    _assert_fires(_errors_for(tmp_path, data), "M12")
+
+
+def test_none_conformance_without_pins_passes(tmp_path):
+    data = _valid_matrix()
+    data["rows"][1]["deterministic_conformance"] = "NONE"
+    del data["rows"][1]["conformance_pinned_by"]
+    assert _errors_for(tmp_path, data) == []
+
+
+# ---------- M7 hardening: path containment ----------
+
+
+def test_anchor_path_escape_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][0]["claim_anchors"] = [
+        {"file": "../outside.md", "anchor": "an anchor of sufficient length"}
+    ]
+    _assert_fires(_errors_for(tmp_path, data), "M7")
+
+
+def test_anchor_absolute_path_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][0]["claim_anchors"] = [
+        {"file": "/etc/hosts", "anchor": "an anchor of sufficient length"}
+    ]
+    _assert_fires(_errors_for(tmp_path, data), "M7")
 
 
 # ---------- M9: next required evaluation ----------
