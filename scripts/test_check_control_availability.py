@@ -210,10 +210,25 @@ def test_ca1_commented_out_dead_link_does_not_fire(repo: Path) -> None:
 
 
 def test_ca3_html_block_line_does_not_render_link(repo: Path) -> None:
-    # GFM type-2 HTML block: a line beginning with `<!--` stays raw HTML
+    # GFM type-2 HTML block: a LINE BEGINNING with `<!--` stays raw HTML
     # through the `-->` line INCLUDING trailing text after the terminator,
     # so a link there does not render and must not satisfy CA-3 (codex R4
-    # finding).
+    # finding). The whole link-carrying line is replaced so the mutated
+    # line starts with `<!--`.
+    readme = repo / "README.md"
+    link = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
+    lines = readme.read_text(encoding="utf-8").split("\n")
+    idx = next(i for i, line in enumerate(lines) if link in line)
+    lines[idx] = f"<!-- note --> {link}"
+    readme.write_text("\n".join(lines), encoding="utf-8")
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)
+
+
+def test_ca3_inline_comment_before_link_still_renders(repo: Path) -> None:
+    # Symmetry: when the line does NOT begin with `<!--`, an inline comment
+    # span before the link is just raw inline HTML — the link still renders,
+    # so CA-3 must stay satisfied.
     readme = repo / "README.md"
     text = readme.read_text(encoding="utf-8")
     old = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
@@ -221,8 +236,7 @@ def test_ca3_html_block_line_does_not_render_link(repo: Path) -> None:
     readme.write_text(
         text.replace(old, f"<!-- note --> {old}"), encoding="utf-8"
     )
-    errors = run_all_checks(repo)
-    assert any("CA-3" in e and "README.md" in e for e in errors)
+    assert run_all_checks(repo) == []
 
 
 def test_ca1_unclosed_comment_swallows_rest_of_document(repo: Path) -> None:
