@@ -86,7 +86,7 @@ The repo is maintained by [Cheng-I Wu](https://github.com/Imbad0202) (HEEACT). T
 
 ## Release checklist
 
-Most release mechanics are CI-enforced (`check_version_consistency.py` keeps CLAUDE.md / SKILL.md / CHANGELOG / plugin manifests / README badge in lockstep; the release-cooldown workflow paces tags; the `changelog-covers-merges` workflow gates release-prep PRs). One step still has a manual form for tag flows that skip a release branch:
+Most release mechanics are CI-enforced (`check_version_consistency.py` keeps CLAUDE.md / SKILL.md / CHANGELOG / plugin manifests / README badge in lockstep; the release-cooldown workflow paces tags; the `changelog-covers-merges` workflow gates release-prep PRs). Not every workflow enforces at the same strength — the per-workflow classification (blocking / advisory / administrative / post-push detection, with bypass tokens) lives in [docs/ARCHITECTURE.md §7.1](docs/ARCHITECTURE.md#71-ci-workflow-enforcement-classes-755). One step still has a manual form for tag flows that skip a release branch:
 
 ### Before tagging: CHANGELOG covers every merge
 

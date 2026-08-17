@@ -234,6 +234,13 @@ jobs:
         # semantics stay in each row's authority file.
         run: python3 scripts/check_degradation_registry.py
 
+      - name: Validate workflow classification table (#755)
+        # Pins docs/ARCHITECTURE.md §7.1's completeness claim: every
+        # .github/workflows/*.yml has exactly one row (both directions,
+        # WC-1) and class cells use the closed four-term vocabulary (WC-2).
+        # Class semantics stay owned by code review.
+        run: python3 scripts/check_workflow_classification.py
+
       - name: Validate data-flow map coverage (#758)
         # Pins docs/DATA_FLOWS.md's exhaustiveness claim: every non-test
         # scripts/*.py with a network-module import (AST scan) and every

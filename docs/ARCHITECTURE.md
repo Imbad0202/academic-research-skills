@@ -264,6 +264,47 @@ Two classes of gate: **🧑 decision-heavy** (user chooses a branch or approves 
 | Stage 5/6 boundary semantics (v3.17.0) | 🤖 + 🧑 | 5 (entry gate), 6 (terminal checkpoint) | Stage 5's "before finalization: always MANDATORY" names exactly one checkpoint — the entry gate between Stage 4.5 PASS and Stage 5 dispatch. Stage 6 gains a defined Stage 5→6 transition, a non-mandatory decline path, a terminal checkpoint after the Process Record is delivered, and canonical terminal-acknowledgement vocabulary (`finish`/`end`/`done`/`confirm`) that sets pipeline global state to `completed`. All five pipeline surfaces (`academic-pipeline/SKILL.md`, `agents/pipeline_orchestrator_agent.md`, `agents/state_tracker_agent.md`, `references/pipeline_state_machine.md`, `references/process_summary_protocol.md`) carry whole-file sha256 content locks in `scripts/check_pipeline_boundary_semantics.py` (66 mutation tests). | Any byte change to a locked surface fails CI until the pinned hash is updated in the same commit |
 | Cross-model handoff envelope (v3.17.0) | 🤖 (dispatch layer) | Design freeze (1), Final editorial decision (3), DA critique (3) | Canonical `[CROSS-MODEL-HANDOFF v1]` envelope + normative Python grammar (`scripts/cross_model_handoff.py`) for the #523 owner→dispatcher→owner transport path. Malformed envelope/result → `[CROSS-MODEL-ERROR]` → outcome `unavailable`, never a fabricated judgment; agreement → mechanical fill with no owner re-invocation; divergence → re-invoke the owner with minimum context. `scripts/check_cross_model_handoff_contract.py` pins the contract across all five surfaces. | `ARS_CROSS_MODEL` unset stays byte-equivalent; malformed transport degrades to `unavailable`, never silently treated as a deliverable |
 
+### 7.1 CI workflow enforcement classes (#755)
+
+The files under `.github/workflows/` are often described collectively as CI gates, but
+they enforce at four different strengths. A reader assessing the control environment
+needs the difference in one place; this table is that place (origin: ISO/IEC
+42001-spirit gap assessment, finding T-5).
+
+Classes: **Blocking** — a failure on the guarded event must be fixed (or explicitly
+bypassed) before proceeding · **Advisory** — warns, never fails · **Administrative** —
+produces work items, audits nothing · **Post-push detection** — triggered by a tag
+push that has already happened; nothing in GitHub Actions can reject a push after the
+fact, so a failure is a remediation signal, not prevention.
+
+| Workflow | Trigger | What it checks | Class | Bypass |
+|---|---|---|---|---|
+| `spec-consistency.yml` | push + PR | the full lint/pytest battery: spec surfaces, contracts, content locks, the pytest manifest | Blocking | none |
+| `pytest.yml` | PR + push to main, path-filtered (scripts/tests/contracts/config) | adapter + script test suite | Blocking when triggered | none |
+| `command-invariants.yml` | push + PR | SessionStart announce list matches the actual command inventory | Blocking | none |
+| `repository-hygiene.yml` | push + PR | gitleaks secret scan | Blocking | none |
+| `eval-harness.yml` | PR + push, path-filtered (scoring/generation logic + gold sets) | eval gold-set thresholds (aggregate + per-class) | Blocking on `pull_request` events only; report-only on push | `[eval-regression-acknowledged]` in the PR body + ≥1 open tracking-issue URL in this repo (passes as noted, by design) |
+| `test-count-monotonic.yml` | PR | collected test count must not drop | Blocking | `[skip-test-count]` in the PR body + justification |
+| `pr-closes-issue.yml` | PR | PR body references an issue via an auto-close keyword | Blocking | `[skip-closes-check]` in the PR body + justification |
+| `changelog-covers-merges.yml` | PR (job runs only when head is `release/**`) | every release-worthy merge since the last tag is documented in CHANGELOG | Blocking for release-prep PRs only; ordinary merges rely on the manual CONTRIBUTING fallback | n/a outside release PRs |
+| `platform-port-reminder.yml` | PR | new top-level directory → platform-ports policy reminder | Advisory (one `::warning::`, always exits 0; the merge decision stays with the maintainer) | n/a |
+| `freshness-check.yml` | schedule + push + dispatch | PRISMA-trAIce snapshot staleness | Advisory (warns on stderr, exits 0) | n/a |
+| `harness-retirement-monthly.yml` | schedule + dispatch | opens the monthly prompt-debt audit issue | Administrative | n/a |
+| `defer-label-gate.yml` | tag push `v*` | open `defer:<tag>` issues must be closed or relabelled | Post-push detection | `[skip-defer-check]` in the tagged commit message |
+| `release-cooldown.yml` | tag push `v*` | paces consecutive release tags | Post-push detection | `[skip-cooldown]` in the commit/tag message |
+| `tag-version-match.yml` | tag push `v*` | re-runs the full version-consistency lint at the tag | Post-push detection | none |
+
+Count, honestly stated: **14 workflows — 8 blocking on at least one event class, 2
+advisory, 1 administrative, 3 post-push detection.** The three tag workflows are
+conventionally called release gates; mechanically they detect after the push, and
+their stop-power is the maintainer acting on the failure.
+
+Inventory sync is pinned by `scripts/check_workflow_classification.py` (every file
+under `.github/workflows/` has exactly one row here and every row names an existing
+file; class values come from the closed four-term vocabulary). The class *semantics*
+— whether a row honestly describes its workflow's behavior — stay owned by code
+review, mirroring the degradation-registry posture.
+
 ## 8. ARS Evolution Timeline
 
 ```mermaid

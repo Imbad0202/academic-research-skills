@@ -625,6 +625,10 @@ id = "745-stage-capability-matrix"
 path = "scripts/test_check_stage_capability_matrix.py"
 
 [[pytest]]
+id = "755-workflow-classification"
+path = "scripts/test_check_workflow_classification.py"
+
+[[pytest]]
 id = "753-distribution-surface-claims"
 path = "scripts/test_check_distribution_surface_claims.py"
 
