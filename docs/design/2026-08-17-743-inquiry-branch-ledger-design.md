@@ -253,7 +253,9 @@ boundary). The passport references it through one optional aggregate:
   passport is the authority).
 
 This is purely additive: existing passports need no migration. Cross-session
-resume (`ARS_PASSPORT_RESET`) carries the pointer like any other aggregate.
+resume (`ARS_PASSPORT_RESET`, per the reset-boundary protocol in
+`academic-pipeline/references/passport_as_reset_boundary.md`) carries the
+pointer like any other aggregate.
 
 ## 8. Evidence registration and evaluation (NOT_RUN)
 
