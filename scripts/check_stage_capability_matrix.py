@@ -320,7 +320,7 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
         errors.append(f"{prefix} measurement_report must be a non-empty path")
         return
     report_path = REPO_ROOT / binding
-    if not _REPORT_NAME_RE.match(report_path.name):
+    if not _REPORT_NAME_RE.fullmatch(report_path.name):
         errors.append(
             f"{prefix} measurement_report {binding!r} must be a "
             "measurement-*.json report file"
@@ -336,6 +336,11 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
         report = json.loads(report_path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         errors.append(f"{prefix} cannot load measurement_report {binding!r}: {exc}")
+        return
+    if not isinstance(report, dict):
+        errors.append(
+            f"{prefix} measurement_report {binding!r} must be a JSON object"
+        )
         return
     # heldout-measurement/1.0 uses measurement_date; pre-#654 legacy reports
     # carry measured_at instead — accept either, prefer the contract field.
@@ -353,6 +358,12 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
             errors.append(
                 f"{prefix} sibling report {sibling.name!r} is unreadable "
                 f"({exc}) — supersession cannot be assessed"
+            )
+            continue
+        if not isinstance(sibling_report, dict):
+            errors.append(
+                f"{prefix} sibling report {sibling.name!r} is not a JSON "
+                "object — supersession cannot be assessed"
             )
             continue
         sibling_date = sibling_report.get("measurement_date") or sibling_report.get(
@@ -403,7 +414,7 @@ def _check_claim_language(row, errors: list[str]) -> None:
                     f"{stem!r} but behavioral evidence is {status}, not "
                     "MEASURED/MIXED"
                 )
-        if field != "mechanism" and _PERCENT_RE.search(lowered):
+        if _PERCENT_RE.search(lowered):
             errors.append(
                 f"M6 row {row_id}: {field} states a percentage but behavioral "
                 f"evidence is {status}, not MEASURED/MIXED"
@@ -616,7 +627,11 @@ def run(
                 "_EXPECTED_ROW_IDS in the same commit)"
             )
         anchors_by_id = {
-            r.get("row_id"): len(r.get("claim_anchors") or [])
+            r.get("row_id"): (
+                len(r["claim_anchors"])
+                if isinstance(r.get("claim_anchors"), list)
+                else 0
+            )
             for r in rows
             if isinstance(r, dict)
         }

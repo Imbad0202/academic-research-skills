@@ -446,6 +446,61 @@ def test_percentage_claim_on_unmeasured_row_fires(tmp_path):
     _assert_fires(_errors_for(tmp_path, data), "M6")
 
 
+def test_percentage_in_mechanism_on_unmeasured_row_fires(tmp_path):
+    data = _valid_matrix()
+    data["rows"][1]["mechanism"] = "Synthetic mechanism achieving 99% accuracy"
+    _assert_fires(_errors_for(tmp_path, data), "M6")
+
+
+def _binding_errors(tmp_path, monkeypatch, sibling_text: str) -> list[str]:
+    """Drive _check_report_binding against a synthetic suite directory."""
+    import check_stage_capability_matrix as mod
+
+    suite = tmp_path / "evals" / "suite"
+    suite.mkdir(parents=True)
+    (suite / "measurement-2026-08-07.json").write_text(
+        '{"measurement_date": "2026-08-07"}', encoding="utf-8"
+    )
+    (suite / "measurement-2026-08-09.json").write_text(
+        sibling_text, encoding="utf-8"
+    )
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    errors: list[str] = []
+    mod._check_report_binding(
+        "r",
+        {"measurement_report": "evals/suite/measurement-2026-08-07.json"},
+        "evals/suite",
+        datetime.date(2026, 8, 7),
+        errors,
+    )
+    return errors
+
+
+def test_non_object_sibling_report_fires_not_crashes(tmp_path, monkeypatch):
+    errors = _binding_errors(tmp_path, monkeypatch, "[1, 2]")
+    assert any("M11" in e for e in errors)
+
+
+def test_unreadable_sibling_report_fires(tmp_path, monkeypatch):
+    errors = _binding_errors(tmp_path, monkeypatch, "{not json")
+    assert any("M11" in e and "unreadable" in e for e in errors)
+
+
+def test_report_name_with_trailing_newline_fires(tmp_path, monkeypatch):
+    import check_stage_capability_matrix as mod
+
+    assert mod._REPORT_NAME_RE.fullmatch("measurement-x.json\n") is None
+
+
+def test_malformed_claim_anchors_on_locked_row_reports_not_crashes(tmp_path):
+    shipped = json.loads(DEFAULT_MATRIX.read_text(encoding="utf-8"))
+    anchored = next(r for r in shipped["rows"] if r.get("claim_anchors"))
+    anchored["claim_anchors"] = 1
+    errors = run(_write(tmp_path, shipped), check_view=False, today=TODAY)
+    assert any("M7" in e for e in errors)
+    assert any("M13" in e and anchored["row_id"] in e for e in errors)
+
+
 def test_percentage_claim_on_measured_row_passes(tmp_path):
     data = _valid_matrix()
     data["rows"][0]["max_licensed_claim"] = (
