@@ -87,7 +87,7 @@ version is a contract violation. Frozen field set, with deterministic shapes:
 | `known_exclusions` | ✓ | list of non-empty strings: work this profile is known NOT to fit |
 | `unresolved_fit_note` | ✓ | non-empty string naming what remains unvalidated about the profile itself |
 | `provenance` | ✓ | `{source: "shipped_default" \| "user_authored" \| "user_modified", source_pointer: string, last_reviewed_at: ISO date, freshness_state: "current" \| "stale" \| "unverified"}` — `source_pointer` names where the profile content came from (a shipped file path, or the user's own declaration); shipped defaults are `current` at release and become `stale` by release policy, never silently |
-| `content_sha256` | ✓ | SHA-256 over the profile document in JSON Canonical Form with this field set to the 64-zero placeholder (the Schema 9 `reset_boundary` hashing convention); published profile files are STORED in canonical form, so the canonical digest and the raw-byte digest coincide and a receipt binding the digest binds the exact stored bytes; consumers verify before use |
+| `content_sha256` | ✓ | SHA-256 over the profile document in JSON Canonical Form with this field set to the 64-zero placeholder (the Schema 9 `reset_boundary` hashing convention). This is a canonical-content digest, not the raw-file digest (the stored file carries the finalized hash, not zeros). Verification is a fixed procedure: a consumer rejects non-canonically-stored profile files, replaces this field with the placeholder, recomputes, and compares the result against both the embedded value and any receipt; a mismatch anywhere is a refusal |
 
 Closed shape: unknown fields are refused (`additionalProperties: false` when
 the schema ships). A profile document carries **no** per-project state — no
@@ -149,7 +149,8 @@ run (protocol requirement, §8).
 
 - Selection is recorded in a **selection receipt** (runtime state, outside the
   profile document): profile id + version + `content_sha256` (binding the
-  exact profile bytes in force), `selected_by: user_explicit |
+  exact canonical content in force, verified by the §3 recompute procedure),
+  `selected_by: user_explicit |
   user_confirmed_proposal | fallback_automatic`, the ARS suite version at
   selection time, a timestamp, and the correction chain (next point).
 - Correction is a first-class operation at any time and never restarts the
