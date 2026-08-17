@@ -12,7 +12,7 @@ informative anchors to ISO/IEC 42001) — not an ISO-mandated artifact.
 
 ## Scope
 
-This page covers the network calls and stores that **ARS's own scripts** perform. Two
+This page covers the network calls and stores that **ARS's own scripts** perform. The
 boundaries around that scope:
 
 - **The Claude session itself is not on this map.** Everything you type, every file the
