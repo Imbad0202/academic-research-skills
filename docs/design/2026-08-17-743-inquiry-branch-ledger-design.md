@@ -77,15 +77,19 @@ Branch state (projection, never stored authoritatively): `branch_id`,
 `parent_id` (nullable), `provenance` (`author_originated` \|
 `ai_surfaced_facet` \| `author_adopted`, §4), `assumptions[]`,
 `evidence_sought[]`, `status` (`active` \| `parked` \| `rejected` \|
-`reopened` \| `merged` — the same closed vocabulary the #742 §7 budget
-counts, `live` = `active` + `reopened`), latest disposition reason,
+`reopened` \| `merged` \| `archived` — the same closed vocabulary the #742
+§7 budget counts, `live` = `active` + `reopened`), latest disposition
+reason,
 `reopen_conditions[]` (each `{condition_id, statement, evidence_pointer?}`),
 `downstream_refs[]` (artifact identifiers derived from this branch),
 `merged_into` (when `merged`).
 
-Artifact-staleness state (projection): per artifact identifier,
-`fresh` \| `stale` \| `reconfirmed` \| `superseded`, with the event ids that
-produced each transition (§5).
+Artifact-staleness state (projection): per artifact identifier, the SET of
+outstanding stale causes (each an `artifact_marked_stale` event id) plus the
+resolution history. An artifact is stale while ANY cause is unresolved; a
+clearing event resolves exactly the cause its `resolves_stale_event_id`
+names (§5), so two branches invalidating the same artifact require two
+resolutions.
 
 ## 3. Event kinds and the frozen state machine
 
@@ -99,8 +103,9 @@ Closed `kind` enum and transitions:
 | `branch_annotated` | author | REPLACES `assumptions` / `evidence_sought` / `reopen_conditions` / `downstream_refs` wholesale (replacement semantics, never a patch — deterministic without merge rules); no status change |
 | `branch_parked` | author | `active` \| `reopened` → `parked`, with `reason` |
 | `branch_rejected` | author | `active` \| `reopened` \| `parked` → `rejected`, with `reason` |
-| `branch_reopened` | author | `parked` \| `rejected` → `reopened`, with `reason` and optionally the `condition_id` + evidence pointer that motivated it; lawful only on author-owned branches (`author_originated` / `author_adopted`) — an unadopted facet's only lawful exits from `parked` are `branch_adopted` or `branch_rejected`, and a rejected unadopted facet is terminal (re-proposal is a NEW `facet_surfaced`); fires §5 invalidation |
+| `branch_reopened` | author | `parked` \| `rejected` → `reopened`, with `reason` and optionally the `condition_id` + evidence pointer that motivated it; lawful only on author-owned branches (`author_originated` / `author_adopted`) — an unadopted facet's only lawful exits from `parked` are `branch_adopted`, `branch_rejected`, or `branch_archived`, and a rejected or archived unadopted facet is terminal (re-proposal is a NEW `facet_surfaced`); fires §5 invalidation |
 | `branch_merged` | author | `active` \| `reopened` → `merged`, with `merged_into` naming a currently-live branch and `reason`; the target's `downstream_refs` becomes target-list-then-merged-list, deduplicated by identifier, order-preserving |
+| `branch_archived` | author | any non-terminal status → `archived`, with `reason`; terminal like `merged` (recovery is a NEW branch, not a reopen); archived branches never count against the budget and are excluded from summaries |
 | `reopen_condition_signal` | ai | records that session evidence claims to satisfy exactly one stored `condition_id` (payload carries the evidence pointer); changes no status — the only lawful consequence is showing the §6 summary to the author, who judges the claim |
 | `profile_rebound` | author | ledger-scope (`branch_id: null`); mirrors a #742 §6 profile correction; the effective binding is the projection over these events |
 | `artifact_marked_stale` | system | artifact-scope; emitted mechanically as part of applying a `branch_reopened` event (§5), one per affected artifact, carrying the reopening `event_id` |
@@ -109,18 +114,21 @@ Closed `kind` enum and transitions:
 
 Any transition not in this table is invalid; replay fails closed on an
 invalid event (a corrupt ledger is an error surface, never a silently
-truncated state). `merged` is terminal. `reopened` is a distinct persistent
+truncated state). `merged` and `archived` are terminal. `reopened` is a distinct persistent
 status — visible as "reopened, awaiting disposition" until the author parks,
 rejects, or merges it — and counts against the live budget precisely so it
 cannot silently accumulate.
 
-**Budget as a replay invariant.** Applying any event that would raise the
-live count (`active` + `reopened`) above the effective profile's
-`branch_budget` is INVALID — replay fails closed. Surfaces therefore must
-obtain the #742 `ask_merge_park_archive` disposition (parking, merging, or
-archiving an existing branch) BEFORE appending the exceeding
-`branch_created` / `branch_adopted` / `branch_reopened` event; the candidate
-awaiting that disposition exists only at the interaction layer, never as
+**Budget as a replay invariant.** After applying ANY event — including
+`profile_rebound` — the live count (`active` + `reopened`) must not exceed
+the then-effective profile's `branch_budget`; an event whose post-state
+violates this is INVALID and replay fails closed. Surfaces therefore must
+obtain the #742 `ask_merge_park_archive` disposition BEFORE appending the
+exceeding `branch_created` / `branch_adopted` / `branch_reopened` event, and
+a rebind to a lower-budget profile is appendable only after the author has
+disposed live branches down to the new budget (the interaction layer walks
+the author through those dispositions first); the candidate or pending
+rebind awaiting disposition exists only at the interaction layer, never as
 ledger state, so the recorded ledger can never exceed the budget. (An
 unadopted `facet_surfaced` enters `parked` and is budget-irrelevant, so the
 AI cannot force this interaction.)
@@ -133,13 +141,13 @@ AI cannot force this interaction.)
 | `facet_surfaced` | `{parent_id: slug\|null, surfaced_text: string}` |
 | `branch_adopted` | `{source_event_id: int (the originating facet_surfaced), surfaced_text: string (retained verbatim), author_formulation: string (non-empty, not byte-identical to surfaced_text)}` |
 | `branch_annotated` | `{field: "assumptions"\|"evidence_sought"\|"reopen_conditions"\|"downstream_refs", value: full replacement list}` |
-| `branch_parked` / `branch_rejected` | `{reason: string}` |
+| `branch_parked` / `branch_rejected` / `branch_archived` | `{reason: string}` |
 | `branch_reopened` | `{reason: string, condition_id?: string, evidence_pointer?: string}` |
 | `branch_merged` | `{merged_into: slug, reason: string}` |
 | `reopen_condition_signal` | `{branch_id_ref: slug, condition_id: string, evidence_pointer: string}` (event-level `branch_id` carries the same slug) |
 | `profile_rebound` | `{profile_id, profile_version, content_sha256, selection_receipt_ref: string}` |
 | `artifact_marked_stale` | `{artifact_ref: string, reopening_event_id: int}` |
-| `artifact_reconfirmed` / `artifact_superseded` | `{artifact_ref: string, note: string}` + (`superseded` only) `{replaced_by: string}` |
+| `artifact_reconfirmed` / `artifact_superseded` | `{artifact_ref: string, resolves_stale_event_id: int (the artifact_marked_stale event being resolved), note: string}` + (`superseded` only) `{replaced_by: string}` |
 
 ## 4. Provenance and the adoption receipt
 
@@ -165,7 +173,12 @@ branches. The frozen rules:
 
 `reopen_conditions[]` are author-owned declarative statements with stable
 `condition_id`s ("reopen if the measurement invariance test fails",
-optionally pointing at an evidence row). The AI may record a
+optionally pointing at an evidence row). Identity is replay-enforced:
+`condition_id`s are unique per branch; a `branch_annotated` replacement may
+keep an existing id only with a byte-identical `statement` (rebinding an id
+to new text is invalid), and a removed id is retired permanently — it can
+never be reused on that branch, so a recorded signal always denotes exactly
+one historical condition text. The AI may record a
 `reopen_condition_signal` naming exactly one `condition_id` when session
 evidence claims to satisfy it; **judging the claim and reopening are always
 author actions**.
@@ -181,9 +194,16 @@ propagation is explicitly out of scope of v1; the visible stale mark on the
 first-degree artifact is the handle the pipeline surfaces from.
 
 Stale marking is visible and non-destructive: nothing is rewritten, deleted,
-or regenerated automatically. A stale mark clears only through
+or regenerated automatically. Each stale cause clears only through
 `artifact_reconfirmed` ("still valid under the reopened line") or
-`artifact_superseded` (named replacement) — the same stale-not-rewritten
+`artifact_superseded` (named replacement), whose `resolves_stale_event_id`
+binds the resolution to one specific cause — an artifact stays stale while
+any other cause remains outstanding. Applying `artifact_superseded`
+additionally replaces `artifact_ref` with `replaced_by` in the
+`downstream_refs` of EVERY branch that lists it (first-degree link
+maintenance, part of the event's deterministic effect — distinct from the
+excluded transitive tracking), so the next reopen invalidates the current
+artifact, not the retired one. This is the same stale-not-rewritten
 discipline the #742 §6 profile correction uses.
 
 ## 6. Interaction constraints (opt-in alpha)
@@ -218,10 +238,12 @@ boundary). The passport references it through one optional aggregate:
 
 - field `inquiry_ledger_ref`: `{ledger_path: workspace-relative path,
   ledger_version: "inquiry-branch-ledger/1.0", content_sha256}` —
-  `content_sha256` is the canonical-content digest of the ledger document
-  under the #742 §3 recompute procedure (zero-placeholder, reject
-  non-canonical storage) and doubles as the trusted head that closes the §2
-  truncation hole;
+  `content_sha256` is defined exactly as SHA-256 over the JSON Canonical
+  Form serialization of the entire ledger document — no placeholder step,
+  because the ledger embeds no self-digest (the digest lives only in this
+  pointer) and nested hashes (profile bindings, event chain) are hashed as
+  ordinary content; consumers reject non-canonically-stored ledgers; this
+  digest is the trusted head that closes the §2 truncation hole;
 - ledger writes are atomic (write-temp, fsync, rename) and every write
   updates the pointer digest in the same passport transaction;
 - absence semantics are closed: no pointer AND no file = feature off or not
