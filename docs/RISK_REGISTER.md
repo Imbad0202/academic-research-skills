@@ -146,12 +146,14 @@ Disclosure guidance cites a venue policy the venue has since changed.
 
 A compromised or drifting third-party dependency alters suite behavior.
 
-- **Existing controls**: stdlib-first runtime scripts; a small pinned dev-dependency
-  set (`requirements-dev.txt`); the plugin-agent tools allowlist
-  (`scripts/check_tools_allowlist.py`); CI lints running repo-side in GitHub Actions.
+- **Existing controls**: stdlib-first runtime scripts; a small declared
+  dev-dependency manifest (`requirements-dev.txt`, lower-bound pins only, no
+  lockfile); the plugin-agent tools allowlist (`scripts/check_tools_allowlist.py`);
+  CI lints running repo-side in GitHub Actions.
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row).
 - **Residual gap**: no SBOM or supplier-review program — assessed and rejected as
-  disproportionate (assessment §6); dependency changes ride ordinary code review.
+  disproportionate (assessment §6); dev dependencies carry no exact version or hash
+  locking; dependency changes ride ordinary code review.
 
 ### R10 — Install-channel enforcement loss
 

@@ -238,6 +238,38 @@ def test_demoted_matrix_citation_fires_inventory_lock(repo: Path) -> None:
     )
 
 
+def test_relocated_matrix_citation_fires_inventory_lock(repo: Path) -> None:
+    # Moving a matrix citation out of the Evidence-status bullet (into the
+    # Residual-gap bullet) while asserting the status must not satisfy the
+    # inventory lock.
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        "- **Evidence status**: `MEASURED` (capability matrix row "
+        "`revision.claim_drift_guard`).\n- **Residual gap**:",
+        "- **Evidence status**: `NOT_RUN` (asserted here; no "
+        "capability-matrix row).\n- **Residual gap**: `MEASURED` "
+        "(capability matrix row `revision.claim_drift_guard`) —",
+    )
+    errors = run_all_checks(repo)
+    assert any(
+        "RR-2" in e and "revision.claim_drift_guard" in e and "no longer" in e
+        for e in errors
+    )
+
+
+def test_space_containing_span_path_still_checked(repo: Path) -> None:
+    # A typo'd path with a space must fail RR-1, not silently opt out.
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        f"`{_WITNESS_SPAN}`",
+        "`scripts/no such gate.py`",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-1" in e and "no such gate" in e for e in errors)
+
+
 def test_malformed_matrix_citation_fires(repo: Path) -> None:
     # Dropping the row_id backticks must not silently demote the citation
     # to unchecked prose.

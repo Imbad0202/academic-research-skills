@@ -26,9 +26,10 @@ index-not-author posture:
         sole authority for MEASURED/MIXED claims. Every occurrence of a
         citation phrase must belong to a well-formed citation (reported per
         segment, so the offending text is locatable), and the shipped
-        matrix-row citations are inventory-locked (house pattern: the
-        degradation registry's D5, the matrix lint's M13) so a lint-pinned
-        citation cannot be silently demoted to an asserted one.
+        matrix-row citations are inventory-locked to Evidence-status bullets
+        (house pattern: the degradation registry's D5, the matrix lint's
+        M13) so a lint-pinned citation can be neither demoted to an asserted
+        one nor relocated out of the bullet the lock is about.
   RR-3  Discoverability: README.md carries at least one rendered link that
         resolves to docs/RISK_REGISTER.md (the #759 acceptance criterion,
         pinned so a refactor cannot orphan the page). Links inside code
@@ -102,12 +103,13 @@ def _doc_text(root: Path) -> str:
 
 def _looks_like_repo_path(token: str) -> bool:
     """A code span is treated as a repo path when it contains a "/" but is
-    not an absolute path or slash command (leading "/"), a URL, or prose
-    with spaces. Everything else (env vars, row_ids, JSON keys) is opted
-    out by construction."""
+    not an absolute path or slash command (leading "/") or a URL. Spaces do
+    NOT opt a span out — a typo'd `scripts/no such file.py` must fail RR-1,
+    not silently skip it. Everything else (env vars, row_ids, JSON keys) is
+    opted out by construction."""
     if "/" not in token or token.startswith("/"):
         return False
-    if " " in token or "://" in token:
+    if "://" in token:
         return False
     return True
 
@@ -181,6 +183,7 @@ def check_status_mirroring(root: Path) -> list[str]:
     cited_matrix_rows: set[str] = set()
     for segment in _SEGMENT_RE.split(doc_text):
         first_line = segment.strip().split("\n", 1)[0]
+        is_evidence_bullet = segment.strip().startswith(_EVIDENCE_BULLET_PREFIX)
         cites = _CITE_RE.findall(segment)
 
         # Malformed-citation guard, reported against the segment so the
@@ -193,7 +196,7 @@ def check_status_mirroring(root: Path) -> list[str]:
                     f"citation in segment starting {first_line!r}"
                 )
 
-        if segment.strip().startswith(_EVIDENCE_BULLET_PREFIX) and not cites:
+        if is_evidence_bullet and not cites:
             errors.append(
                 f"RR-2: evidence-status bullet carries no recognized "
                 f"citation: {first_line!r}"
@@ -206,7 +209,11 @@ def check_status_mirroring(root: Path) -> list[str]:
                     f"{_BEHAVIORAL_STATUSES}"
                 )
             if row_id:
-                cited_matrix_rows.add(row_id)
+                # The inventory lock counts only citations sitting in an
+                # Evidence-status bullet: relocating a matrix citation into
+                # another bullet must not satisfy the lock.
+                if is_evidence_bullet:
+                    cited_matrix_rows.add(row_id)
                 if row_id not in rows:
                     errors.append(
                         f"RR-2: capability matrix row {row_id!r} does not "
@@ -227,8 +234,8 @@ def check_status_mirroring(root: Path) -> list[str]:
     for row_id in sorted(_EXPECTED_MATRIX_ROW_CITATIONS - cited_matrix_rows):
         errors.append(
             f"RR-2: expected matrix-row citation {row_id!r} is no longer "
-            "present; update _EXPECTED_MATRIX_ROW_CITATIONS in the same "
-            "commit if intentional"
+            "present in an Evidence-status bullet; update "
+            "_EXPECTED_MATRIX_ROW_CITATIONS in the same commit if intentional"
         )
     return errors
 
