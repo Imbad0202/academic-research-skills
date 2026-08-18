@@ -147,6 +147,12 @@ def check_pointer_integrity(root: Path) -> list[str]:
                 f"exist relative to {doc_dir.name}/"
             )
         elif fragment:
+            if resolved.suffix.lower() != ".md":
+                errors.append(
+                    f"RR-1: {DOC_RELPATH} links to {target!r}, an anchor "
+                    "on a non-markdown target"
+                )
+                continue
             slugs = _heading_slugs(resolved.read_text(encoding="utf-8"))
             if github_slug(fragment) not in slugs:
                 errors.append(

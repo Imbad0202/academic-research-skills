@@ -139,6 +139,17 @@ def test_unresolvable_anchor_fragment_fires(repo: Path) -> None:
     assert any("RR-1" in e and "no-such-heading" in e for e in errors)
 
 
+def test_anchor_on_non_markdown_target_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        f"({_WITNESS_LINK})",
+        f"(../{MATRIX_RELPATH.as_posix()}#some-heading)",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-1" in e and "non-markdown" in e for e in errors)
+
+
 def test_leading_slash_span_is_not_a_path(repo: Path) -> None:
     # Slash commands like `/ars-mark-read` must stay opted out of RR-1.
     _, spans = referenced_paths(_doc_text(repo))
