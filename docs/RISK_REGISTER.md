@@ -167,5 +167,7 @@ A user installs through a channel where documented enforcement never runs.
   measured.
 - **Residual gap**: guard-launcher degradations not yet indexed in the degradation
   registry ([#769](https://github.com/Imbad0202/academic-research-skills/issues/769));
-  non-plugin channels keep prompt-level protocols but lose hook enforcement, which
-  is documented and not recoverable in-channel.
+  what each channel loses is per-mechanism (see the availability matrix): prompt-level
+  protocols survive in most non-plugin channels but are absent in claude.ai Projects,
+  and hook enforcement is absent outside the plugin channel unless the user wires the
+  hook into their own settings manually (matrix note 3).
