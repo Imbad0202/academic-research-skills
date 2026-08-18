@@ -118,8 +118,10 @@ Annex C's objective list assumes systems this project does not contain. Assessed
 2026-08 against the informative list; re-assess if the project's shape changes:
 
 - **Fairness.** ARS is a text-analysis and writing-support toolkit. It makes no
-  consequential allocation decisions about people — nothing is scored for
-  admission, funding, publication, or access. Behavioral signals do exist inside a
+  consequential allocation decisions about people: no person is scored, and no
+  output allocates admission, funding, publication, or access in the real world
+  (the reviewer skill's manuscript scores and editorial decisions are advisory
+  simulations for the author's own use). Behavioral signals do exist inside a
   session (the advisory Collaboration Depth Observer's collaboration-pattern
   reading; the Socratic Mentor's intent and readiness signals that adapt dialogue
   pacing), but they shape only the user's own session, are read only by that user,
