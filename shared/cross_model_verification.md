@@ -53,6 +53,7 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 |----------|-------------------|------------------------------------------|-------|
 | Xiaomi MiMo | `mimo-v2.5-pro` | `https://token-plan-cn.xiaomimimo.com/v1` | Set `ARS_OPENAI_COMPAT_API_KEY` + `ARS_CROSS_MODEL`. Ungrounded: positive verdicts never count as citation agreement. |
 | DeepSeek | `deepseek-v4-pro` | `https://api.deepseek.com/v1` | Set `ARS_OPENAI_COMPAT_API_KEY` + `ARS_CROSS_MODEL`. Ungrounded. |
+| OrcaRouter | `openai/gpt-5.5` | `https://api.orcarouter.ai/v1` | Set `ARS_OPENAI_COMPAT_API_KEY` + `ARS_CROSS_MODEL`. Ungrounded. Namespaced ids (`openai/*`, `anthropic/*`, `deepseek/*`, …) route through the gateway; a namespaced id does not match a first-party prefix, so it stays on the compatible path. |
 | Any OpenAI-compatible | any non-`gpt-*`/`gemini-*` id | any `/v1/chat/completions` endpoint | Routing is governed solely by `ARS_OPENAI_COMPAT_BASE_URL`; the model id must NOT match a first-party prefix or it takes the grounded first-party route instead. |
 
 > **Compatible providers are ungrounded.** They expose no hosted web-search tool, so there is no grounding evidence behind a verdict. A positive `VERIFIED` is downgraded to `NOT_SEARCHED` and never counts as agreement in citation verification; a `NOT_FOUND`/`MISMATCH` survives as a disagreement. They ARE first-class for Devil's Advocate critique (which needs no grounding) — but a DA finding from any provider is an adversarial hypothesis, not standalone evidence, unless independently sourced.
@@ -83,8 +84,8 @@ You need API keys from at least one additional provider. ARS itself runs inside 
 2. Create a new API key
 3. Copy the key (starts with `AIza`)
 
-**OpenAI-compatible providers (MiMo / DeepSeek / self-hosted):**
-1. Get an API key from your provider (e.g. [platform.deepseek.com](https://platform.deepseek.com) or the Xiaomi MiMo platform)
+**OpenAI-compatible providers (MiMo / DeepSeek / OrcaRouter / self-hosted):**
+1. Get an API key from your provider (e.g. [platform.deepseek.com](https://platform.deepseek.com), the Xiaomi MiMo platform, or [OrcaRouter](https://www.orcarouter.ai))
 2. Note the provider's API root including `/v1` (e.g. `https://api.deepseek.com/v1`)
 3. The key goes in `ARS_OPENAI_COMPAT_API_KEY` and the endpoint in `ARS_OPENAI_COMPAT_BASE_URL` — NOT in `OPENAI_API_KEY`/`OPENAI_BASE_URL` (your real OpenAI key is never sent to a third-party endpoint)
 4. The compatible model id (`ARS_CROSS_MODEL`) must NOT begin with a `gpt-` or `gemini-` prefix. Any such id is claimed by the first-party grounded route, so a self-hosted compatible model named that way would be routed to the (unavailable) first-party path instead of your compatible endpoint.
@@ -110,11 +111,15 @@ export ARS_CROSS_MODEL="gpt-5.5"
 export GOOGLE_AI_API_KEY="<your-google-ai-api-key>"
 export ARS_CROSS_MODEL="gemini-3.1-pro-preview"
 
-# --- Option C: OpenAI-compatible provider (MiMo / DeepSeek / self-hosted) — UNGROUNDED ---
+# --- Option C: OpenAI-compatible provider (MiMo / DeepSeek / OrcaRouter / self-hosted) — UNGROUNDED ---
 # Uses a DEDICATED key; your real OPENAI_API_KEY is never sent to a third-party endpoint.
 export ARS_OPENAI_COMPAT_BASE_URL="https://api.deepseek.com/v1"   # API root incl. /v1
 export ARS_OPENAI_COMPAT_API_KEY="<your-provider-api-key>"
 export ARS_CROSS_MODEL="deepseek-v4-pro"                          # provider id, NOT gpt-*/gemini-*
+# OrcaRouter alternative (namespaced id, same ungrounded path):
+#   export ARS_OPENAI_COMPAT_BASE_URL="https://api.orcarouter.ai/v1"
+#   export ARS_OPENAI_COMPAT_API_KEY="<your-orcarouter-api-key>"
+#   export ARS_CROSS_MODEL="openai/gpt-5.5"
 ```
 
 Then reload: `source ~/.zshrc`
@@ -483,7 +488,7 @@ fi
 
 > **Reasoning effort (OpenAI only):** when `ARS_CROSS_MODEL_REASONING_EFFORT` is set, the payload passes it as `reasoning.effort`, making the effort a verification run uses visible and reproducible. When it is **unset, the field is omitted entirely and the provider's own default for the chosen model applies** — defaults differ across the lineup (GPT-5.6 documents `medium`; other ids carry their own), so forcing one value here would silently change behavior for existing setups. Citation lookup is search-bound, not reasoning-bound, so higher efforts mostly buy latency and cost; set the variable deliberately (never silently run at `xhigh`) if a run shows shallow search behavior. The value is passed through unvalidated (the API rejects unknown values): GPT-5.5 accepts up to `xhigh`, GPT-5.6 adds `max`.
 
-### OpenAI-Compatible API (MiMo, DeepSeek, self-hosted) — ungrounded
+### OpenAI-Compatible API (MiMo, DeepSeek, OrcaRouter, self-hosted) — ungrounded
 
 When `CROSS_MODEL_AVAILABLE=openai_compatible`, use the **Chat Completions API** at
 `ARS_OPENAI_COMPAT_BASE_URL`, authenticated with the dedicated `ARS_OPENAI_COMPAT_API_KEY`.

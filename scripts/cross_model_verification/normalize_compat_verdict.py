@@ -1,6 +1,6 @@
 """Normalize an OpenAI-compatible provider's citation-verification response to ONE status.
 
-Compatible providers (MiMo / DeepSeek / self-hosted) expose no hosted web-search tool, so
+Compatible providers (MiMo / DeepSeek / OrcaRouter / self-hosted) expose no hosted web-search tool, so
 there is no grounding trace to evidence a positive verdict. The security invariant:
 
   - a positive `VERIFIED` is downgraded to NOT_SEARCHED (an ungrounded confirmation can
