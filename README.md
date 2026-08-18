@@ -76,6 +76,8 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 **Third-party platforms and integrations** that wrap or host ARS are listed in [THIRD_PARTY.md](THIRD_PARTY.md) — community-submitted and not reviewed or endorsed by the maintainer.
 
+**Governance:** who decides, what cross-model review does and does not provide, and the project's end-of-life posture are stated in [GOVERNANCE.md](GOVERNANCE.md); security reporting and triage in [SECURITY.md](SECURITY.md).
+
 ## Performance & cost
 
 **👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — per-mode token budgets, full-pipeline estimate (~$4–6 for a 15k-word paper), and recommended Claude Code settings (Auto mode; Agent Team optional).
