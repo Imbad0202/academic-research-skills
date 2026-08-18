@@ -23,7 +23,7 @@ You will receive an acknowledgement within 7 days. What happens after that follo
 
 ## Triage and response procedure
 
-This project is solo-maintained ([GOVERNANCE.md](GOVERNANCE.md)). The 7-day acknowledgement above is the only hard time-bound promise; the fix targets below are best-effort, stated so they can be held to honestly.
+This project is solo-maintained ([GOVERNANCE.md](GOVERNANCE.md)). The 7-day acknowledgement above is the only hard time-bound promise; the fix targets below are best-effort, stated so they can be held to honestly. These promises hold while the project is actively maintained — on end-of-life (GOVERNANCE.md § Continuity and end of life) they lapse with the rest of maintenance.
 
 1. **Acknowledgement** — within 7 days of the report: confirmation it arrived and, where possible, a first read on whether it is in scope.
 2. **Severity classification** — each in-scope report is classified:

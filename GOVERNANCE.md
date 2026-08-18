@@ -36,12 +36,16 @@ controls**: a model with a different training distribution may catch failures th
 first model family misses. The suite makes no measured effectiveness claim for
 this layer.
 
-They are **not organizational independence**. A second model is not a second person:
-the maintainer configures, invokes, and adjudicates every cross-model result, and no
-output of that layer is an independent audit, an external review, or a sign-off by
-anyone other than the maintainer. Surfaces that report cross-model results (panel
-provenance blocks, review records) state execution facts for exactly this reason
-rather than claiming independence.
+They are **not organizational independence**. A second model is not a second person.
+In the user-facing verification layer, the researcher configures, consents to, and
+adjudicates every cross-model result in their own run; in this repository's pre-ship
+reviews, the maintainer does. In neither case is any output of that layer an
+independent audit, an external review, or a sign-off by anyone other than the human
+operating it. Surfaces that report cross-model results (panel provenance blocks,
+review records) state execution facts for exactly this reason rather than claiming
+independence — and where earlier repo records say "independent cross-model audit",
+that names blind, separately executed runs (execution separation), not
+organizational independence.
 
 ## Release authority and change control
 
@@ -59,7 +63,8 @@ under its license, which already permits non-commercial community forks (see
 [LICENSE](LICENSE));
 no handover procedure is promised. Users should treat prolonged maintainer
 inactivity as end-of-life and either pin the last release or move to a fork they
-trust.
+trust; the [SECURITY.md](SECURITY.md) response promises lapse with the rest of
+maintenance at that point.
 
 ## Security response
 
@@ -113,11 +118,13 @@ Annex C's objective list assumes systems this project does not contain. Assessed
 2026-08 against the informative list; re-assess if the project's shape changes:
 
 - **Fairness.** ARS is a text-analysis and writing-support toolkit. It makes no
-  automated decisions about people and gates no one's access to anything. The one
-  behavioral signal about a person — the advisory Collaboration Depth Observer —
-  scores the session's collaboration pattern for the user's own reading, never
-  gates progression, and produces no decision about anyone. Fairness obligations
-  attach to systems that allocate treatment or access; none exists here.
+  consequential allocation decisions about people — nothing is scored for
+  admission, funding, publication, or access. Behavioral signals do exist inside a
+  session (the advisory Collaboration Depth Observer's collaboration-pattern
+  reading; the Socratic Mentor's intent and readiness signals that adapt dialogue
+  pacing), but they shape only the user's own session, are read only by that user,
+  and produce no decision about anyone. Fairness obligations attach to systems
+  that allocate treatment or access; none exists here.
 - **Environmental impact.** The project trains no models and operates no training
   or inference infrastructure. Its footprint is local script execution, CI runs,
   and ordinary LLM API usage under each user's own account, which the user — not
