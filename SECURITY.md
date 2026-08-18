@@ -19,7 +19,23 @@ Instead, use GitHub's **private vulnerability reporting**:
 2. Click **"Report a vulnerability"**.
 3. Fill in the details — what you found, how to reproduce it, and the potential impact.
 
-You will receive a response within 7 days. If the report is accepted, a fix will be issued and credited in the release notes. If declined, you will receive an explanation.
+You will receive an acknowledgement within 7 days. What happens after that follows the triage procedure below.
+
+## Triage and response procedure
+
+This project is solo-maintained ([GOVERNANCE.md](GOVERNANCE.md)). The 7-day acknowledgement above is the only hard promise; the fix targets below are best-effort, stated so they can be held to honestly.
+
+1. **Acknowledgement** — within 7 days of the report: confirmation it arrived and, where possible, a first read on whether it is in scope.
+2. **Severity classification** — each in-scope report is classified:
+
+   | Severity | Definition | Response |
+   |---|---|---|
+   | **Critical** | Exploitable on a default install path: credential exposure, or data leaving the machine beyond the [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md) map | Fix prioritized over all other work; best-effort target 14 days; GitHub security advisory published with the fix |
+   | **High** | Integrity-gate bypass or prompt injection that reaches gate decisions on a default path | Fix in the next release; best-effort target 30 days; advisory published with the fix |
+   | **Moderate / Low** | Hardening of opt-in paths, defense-in-depth, issues requiring unusual configuration | Scheduled into ordinary release work; no target date promised |
+
+3. **Resolution** — accepted reports get a fix on `main` and credit in the release notes (say so if you prefer no credit). Declined reports get a written explanation.
+4. **Coordinated disclosure** — please hold exploit details until a fix is released; a GitHub security advisory is published for Critical and High fixes. If you have heard nothing 30 days after acknowledgement, ask for a status update in the same private thread — silence is a process failure, not a decision.
 
 ## Scope
 

@@ -16,6 +16,11 @@ This project (academic-research-skills) is a personal project by Cheng-I Wu (Imb
 - It is not developed under employer direction or using employer resources.
 - Views and code are the author's own, not the employer's.
 
+## Governance
+
+How decisions are made, what cross-model review does and does not provide, and the
+end-of-life posture are stated in [GOVERNANCE.md](GOVERNANCE.md).
+
 ## License
 
 See LICENSE file for terms.
