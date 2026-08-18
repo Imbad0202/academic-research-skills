@@ -52,6 +52,7 @@ directory listing. See the Platform Port Reminder policy and open an issue to di
 | Project | Maintainer | What it does | Link |
 |---------|-----------|--------------|------|
 | ClawMama | kinhunt (third party) | Hosted OpenClaw/Hermes-style agent offering a first-run trial of the Academic Research Pipeline via Telegram or WhatsApp | [Try in Telegram or WhatsApp](https://app.clawmama.run/skills/639wu5/hermes?utm_source=github&utm_medium=issue&utm_campaign=skill_outreach_academic_research_skills) |
+| OrcaRouter | OrcaRouter team | OpenAI- and Anthropic-compatible gateway usable as the cross-model verification provider in Academic Research Skills via `ARS_OPENAI_COMPAT_BASE_URL` + `ARS_CROSS_MODEL`, with namespaced model IDs (e.g. `anthropic/claude-sonnet-5`) routing through the ungrounded OpenAI-compatible path | [orcarouter.ai](https://www.orcarouter.ai) |
 
 *Columns:* **Project** name as the third party calls it · **Maintainer** the account
 that submitted / operates it · **What it does** a one-line neutral description ·
