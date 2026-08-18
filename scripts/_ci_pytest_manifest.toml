@@ -193,6 +193,10 @@ id = "758-data-flows-map"
 path = "scripts/test_check_data_flows.py"
 
 [[pytest]]
+id = "759-risk-register"
+path = "scripts/test_check_risk_register.py"
+
+[[pytest]]
 id = "756-data-access-level-pins"
 path = "scripts/test_check_data_access_level.py"
 

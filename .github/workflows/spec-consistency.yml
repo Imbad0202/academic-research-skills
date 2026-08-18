@@ -257,6 +257,15 @@ jobs:
         # the generated docs/STAGE_CAPABILITY_MATRIX.md view.
         run: python3 scripts/check_stage_capability_matrix.py
 
+      - name: Validate risk register mirroring (#759)
+        # Pins docs/RISK_REGISTER.md's index-not-author posture: cited repo
+        # paths and relative links exist (RR-1), every evidence-status bullet
+        # carries a recognized citation and matrix-tied statuses mirror
+        # shared/contracts/capability/stage_capability_matrix.json verbatim
+        # (RR-2), README keeps a rendered inbound link (RR-3). Risk wording
+        # and control selection stay owned by code review.
+        run: python3 scripts/check_risk_register.py
+
       - name: Validate control-availability map links (#757)
         # Pins docs/CONTROL_AVAILABILITY.md's pointer integrity: relative
         # links + anchors resolve (CA-1), every SETUP `### Method` heading is

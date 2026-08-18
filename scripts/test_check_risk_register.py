@@ -1,0 +1,203 @@
+"""Mutation tests for check_risk_register.py (#759).
+
+Strategy: build a tmp repo root that mirrors the real register, README, and
+capability matrix, materialize every path the real register cites as a
+placeholder file, verify the baseline passes, then apply one mutation per
+test and assert the intended invariant fires.
+
+The fixture derives the placeholder list with the lint's own extractors, so
+a new register row cannot silently outgrow the fixture — and two hardcoded
+witness assertions keep the extractors themselves honest (a broken extractor
+would empty the witness set, not pass vacuously).
+"""
+from __future__ import annotations
+
+import json
+import shutil
+from pathlib import Path
+
+import pytest
+
+from check_risk_register import (
+    DOC_RELPATH,
+    MATRIX_RELPATH,
+    README_RELPATH,
+    _doc_text,
+    referenced_paths,
+    run_all_checks,
+)
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Files whose real content the lint reads (not merely existence-checks).
+_MIRRORED_FILES = (
+    "docs/RISK_REGISTER.md",
+    "README.md",
+    "shared/contracts/capability/stage_capability_matrix.json",
+)
+
+# Extractor witnesses: paths the real register is known to cite. If the
+# extractor regressed, these assertions fail loudly instead of letting the
+# placeholder fixture (and every RR-1 test) go vacuous.
+_WITNESS_SPAN = "scripts/verify_passport.py"
+_WITNESS_LINK = "STAGE_CAPABILITY_MATRIX.md"
+
+
+@pytest.fixture()
+def repo(tmp_path: Path) -> Path:
+    for rel in _MIRRORED_FILES:
+        dst = tmp_path / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO_ROOT / rel, dst)
+    links, spans = referenced_paths(_doc_text(REPO_ROOT))
+    assert _WITNESS_SPAN in spans
+    assert _WITNESS_LINK in links
+    doc_dir = tmp_path / DOC_RELPATH.parent
+    for rel in spans:
+        target = tmp_path / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+    for rel in links:
+        target = (doc_dir / rel).resolve()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+    return tmp_path
+
+
+def _mutate(root: Path, rel: str, old: str, new: str) -> None:
+    path = root / rel
+    text = path.read_text(encoding="utf-8")
+    assert old in text, f"mutation anchor missing from {rel}: {old!r}"
+    path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def test_baseline_passes(repo: Path) -> None:
+    assert run_all_checks(repo) == []
+
+
+# --- RR-1 pointer integrity -------------------------------------------------
+
+
+def test_nonexistent_backtick_path_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        f"`{_WITNESS_SPAN}`",
+        "`scripts/no_such_gate.py`",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-1" in e and "no_such_gate" in e for e in errors)
+
+
+def test_deleted_cited_file_fires(repo: Path) -> None:
+    (repo / _WITNESS_SPAN).unlink()
+    errors = run_all_checks(repo)
+    assert any("RR-1" in e and _WITNESS_SPAN in e for e in errors)
+
+
+def test_broken_relative_link_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        f"({_WITNESS_LINK})",
+        "(NO_SUCH_PAGE.md)",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-1" in e and "NO_SUCH_PAGE.md" in e for e in errors)
+
+
+def test_leading_slash_span_is_not_a_path(repo: Path) -> None:
+    # Slash commands like `/ars-mark-read` must stay opted out of RR-1.
+    _, spans = referenced_paths(_doc_text(repo))
+    assert not any(token.startswith("/") for token in spans)
+
+
+# --- RR-2 status mirroring --------------------------------------------------
+
+
+def test_doc_side_status_upgrade_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        "`NOT_RUN` (capability matrix row `retrieval.citation_existence_gate`)",
+        "`MEASURED` (capability matrix row `retrieval.citation_existence_gate`)",
+    )
+    errors = run_all_checks(repo)
+    assert any(
+        "RR-2" in e and "retrieval.citation_existence_gate" in e for e in errors
+    )
+
+
+def test_matrix_side_status_change_fires(repo: Path) -> None:
+    matrix_path = repo / MATRIX_RELPATH
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+    mutated = False
+    for row in matrix["rows"]:
+        if row["row_id"] == "review.calibration":
+            row["behavioral_evidence"]["status"] = "MEASURED"
+            mutated = True
+    assert mutated
+    matrix_path.write_text(json.dumps(matrix), encoding="utf-8")
+    errors = run_all_checks(repo)
+    assert any("RR-2" in e and "matrix records" in e for e in errors)
+
+
+def test_unknown_row_id_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        "`retrieval.citation_existence_gate`)",
+        "`retrieval.no_such_row`)",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-2" in e and "does not exist" in e for e in errors)
+
+
+def test_invalid_status_token_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        "`DESIGNED` (asserted here; no capability-matrix row)",
+        "`RUNNING` (asserted here; no capability-matrix row)",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-2" in e and "RUNNING" in e for e in errors)
+
+
+def test_malformed_matrix_citation_fires(repo: Path) -> None:
+    # Dropping the row_id backticks must not silently demote the citation
+    # to unchecked prose.
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        "(capability matrix row `revision.claim_drift_guard`)",
+        "(capability matrix row revision.claim_drift_guard)",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-2" in e and "well-formed" in e for e in errors)
+
+
+def test_citation_free_evidence_bullet_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        "- **Evidence status**: `MEASURED` (capability matrix row "
+        "`revision.claim_drift_guard`).",
+        "- **Evidence status**: measured, trust me.",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-2" in e and "no recognized" in e for e in errors)
+
+
+# --- RR-3 discoverability ---------------------------------------------------
+
+
+def test_removed_readme_link_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(README_RELPATH),
+        "docs/RISK_REGISTER.md",
+        "docs/SOMEWHERE_ELSE.md",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-3" in e for e in errors)
