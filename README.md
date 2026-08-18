@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.20.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.1)
+[![Version](https://img.shields.io/badge/version-v3.21.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -269,9 +269,9 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 
 7-agent multi-perspective review with **criterion-bound narrative judgements**. Modes: full, re-review, quick, methodology-focus, guided, calibration. Current live reviews and Schema 6 packages remain `NOT_CALIBRATED`; full calibration can produce a bounded candidate profile, but application to a live review is not wired. No numerical total is mapped to Accept, Minor Revision, Major Revision, or Reject. First-round review panel vs. contract-governed re-review dispatch boundary: see ARCHITECTURE.md §3 Stage 3 / Stage 3'.
 
-### Academic Pipeline (v3.20.1)
+### Academic Pipeline (v3.21.0)
 
-10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline guarantees: every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) cannot be skipped; R&R Traceability Matrix (Schema 11) independently verifies author revision claims. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
+10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline guarantees: every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) is MANDATORY with no unrecorded bypass (every override requires user reasoning recorded for Stage 6); R&R Traceability Matrix (Schema 11) independently verifies author revision claims. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
 
 ---
 
@@ -357,6 +357,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.21.0 (2026-08-18) — ISO/IEC 42001-spirit transparency, verifiability, and feasibility track
+
+> **Transparency you can check:** v3.21.0 completes the ISO/IEC 42001-spirit audit track (#753–#760). Outward claims are aligned with the evidence record, and four standing artifacts now answer the questions users actually have: which controls operate in your install channel (`docs/CONTROL_AVAILABILITY.md`), what leaves your machine and what is stored (`docs/DATA_FLOWS.md`), how strongly each CI workflow actually enforces (`docs/ARCHITECTURE.md` §7.1), and which risk each mechanism addresses, with what evidence and what residual gap (`docs/RISK_REGISTER.md`) — each defended by its own CI lint. `GOVERNANCE.md` states decision authority, what cross-model review does and does not provide (an error-detection control, not organizational independence), and the end-of-life posture; `SECURITY.md` gains a solo-runnable severity-tiered triage procedure. These are distilled operating principles with informative anchors to ISO/IEC 42001, not a certification claim, and no new effectiveness numbers are claimed. Suite/pipeline → v3.21.0; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.
 
 ### v3.20.1 (2026-08-15) — Contract-honesty hardening and bounded evaluation substrates
 

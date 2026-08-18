@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.20.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.1)
+[![Version](https://img.shields.io/badge/version-v3.21.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -252,9 +252,9 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，采用 **逐准则、证据锚定的叙事判断**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 与 Schema 6 package 一律为 `NOT_CALIBRATED`；完整 calibration 可产生有界候选 profile，但尚未接入 live review。不得以固定总分映射接受、小修、大修或退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.20.1)
+### Academic Pipeline (v3.21.0)
 
-10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）不可跳过；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
+10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
 ---
 
@@ -317,6 +317,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新纪录
+
+### v3.21.0（2026-08-18）— ISO/IEC 42001 精神轨：透明、可验证、可行
+
+> **可被检验的透明：**v3.21.0 完成 ISO/IEC 42001 精神审计轨（#753–#760）。对外声明对齐证据记录，并新增四份常设文件回答用户真正想问的问题：你的安装渠道有哪些控制实际运作（`docs/CONTROL_AVAILABILITY.md`）、哪些数据离开你的机器与存放多久（`docs/DATA_FLOWS.md`）、每个 CI workflow 实际的强制力等级（`docs/ARCHITECTURE.md` §7.1）、每个机制对应哪个风险及其证据状态、残余缺口（`docs/RISK_REGISTER.md`），每份都由专属 CI lint 防漂移。`GOVERNANCE.md` 言明决策权限、cross-model 评审提供与不提供什么（error-detection control、非组织独立性）与 end-of-life 姿态；`SECURITY.md` 新增一人可运转的分级 triage 程序。这些是附 ISO/IEC 42001 信息性锚点的操作原则、不是认证声明，本版也不新增任何效果数字。套件／pipeline → v3.21.0；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
 
 ### v3.20.1（2026-08-15）— 契约诚实性强化与有界评估基础
 

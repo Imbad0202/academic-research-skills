@@ -9,7 +9,14 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.20.1 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.21.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.21.0 Key Additions (ISO/IEC 42001-spirit transparency / verifiability / feasibility track)
+
+- **Dual-track gap assessment + full remediation.** `audits/iso42001-spirit-gap-assessment-2026-08-17.md` distills three operating principles (transparency / verifiability / feasibility, informative ISO/IEC 42001 anchors — certification explicitly not pursued) and files eleven verified findings; all eight remediation issues (#753–#760) shipped in this release.
+- **Claim surfaces aligned with evidence ceilings.** Distribution manifests drop unlicensed language for matrix-licensed wording; no-bypass prose across the pipeline integrity family now names the recorded override/FAIL-loop routes (trust-based controls with audit trails); citation surfaces (`CITATION.cff` / `POSITIONING.md`) are lint-pinned to the suite version (invariant 12); `data_access_level` follows the dirtiest-input rule with per-skill pins.
+- **Four standing transparency artifacts, each defended by a CI lint.** `docs/CONTROL_AVAILABILITY.md` (mechanism × install channel, CA-1..3), `docs/DATA_FLOWS.md` (every network touchpoint + local store, DF-1..3), `docs/ARCHITECTURE.md` §7.1 (per-workflow enforcement classes, WC-1..4), and `docs/RISK_REGISTER.md` (risk → control → evidence status → residual gap, RR-1..3 with matrix-mirrored statuses and an asserted-status ceiling).
+- **Governance stated, security response proceduralized.** Root `GOVERNANCE.md` records decision authority, per-operator cross-model scope (error-detection control, not organizational independence), release authority, EOL posture, and the principles↔42001 mapping with Annex C not-applicable assessments; `SECURITY.md`'s 7-day promise becomes an acknowledgement-only hard promise backed by a severity-tiered, solo-runnable triage procedure.
 
 ## v3.20.1 Key Additions (contract honesty + bounded evaluation substrates)
 
@@ -351,7 +358,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.20.1 (per CHANGELOG.md)
-- **Last Updated**: 2026-08-15
+- **Suite version**: 3.21.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-08-18
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

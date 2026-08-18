@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.20.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.20.1)
+[![Version](https://img.shields.io/badge/version-v3.21.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -259,9 +259,9 @@ You: "status"
 
 기준별 증거에 연결된 **서술형 판단**을 수행하는 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. 현재 live review와 Schema 6 package는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다. 고정 총점을 Accept / Minor Revision / Major Revision / Reject에 매핑하지 않습니다. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.20.1)
+### Academic Pipeline (v3.21.0)
 
-무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 건너뛸 수 없고, R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
+무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 MANDATORY이며 기록 없는 우회 경로가 없고(모든 오버라이드는 Stage 6를 위해 사용자 사유 기록을 요구), R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
 ---
 
@@ -347,6 +347,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 변경 이력
+
+### v3.21.0 (2026-08-18) — ISO/IEC 42001 정신 트랙: 투명성·검증 가능성·실행 가능성
+
+> **검증할 수 있는 투명성:** v3.21.0은 ISO/IEC 42001 정신 감사 트랙(#753–#760)을 완료합니다. 대외 주장을 증거 기록에 정렬하고, 사용자가 실제로 궁금해하는 질문에 답하는 4개의 상설 문서를 추가했습니다: 설치 채널별로 어떤 제어가 실제로 작동하는지(`docs/CONTROL_AVAILABILITY.md`), 무엇이 기기 밖으로 나가고 무엇이 저장되는지(`docs/DATA_FLOWS.md`), 각 CI workflow의 실제 강제력 등급(`docs/ARCHITECTURE.md` §7.1), 각 메커니즘이 어떤 위험에 대응하며 그 증거 상태와 잔여 격차는 무엇인지(`docs/RISK_REGISTER.md`). 각 문서는 전용 CI lint가 드리프트를 막습니다. `GOVERNANCE.md`는 의사결정 권한, cross-model 리뷰가 제공하는 것과 제공하지 않는 것(error-detection control이며 조직적 독립성이 아님), end-of-life 자세를 명시하고, `SECURITY.md`는 1인이 운영 가능한 심각도별 triage 절차를 갖췄습니다. 이는 ISO/IEC 42001에 대한 정보성 앵커를 가진 증류된 운영 원칙이며 인증 주장이 아니고, 새로운 효과 수치도 주장하지 않습니다. 스위트／pipeline → v3.21.0；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1.
 
 ### v3.20.1 (2026-08-15) — 계약 정직성 강화와 범위가 제한된 평가 기반
 
