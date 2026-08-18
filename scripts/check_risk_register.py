@@ -9,9 +9,11 @@ semantics stay owned by code review, mirroring check_degradation_registry.py's
 index-not-author posture:
 
   RR-1  Pointer integrity: every relative markdown link in the doc resolves
-        to an existing file, and every backtick-quoted repo path (a code
-        span containing "/" that does not start with "/") names an existing
-        file or directory. A control a row cites must exist on disk.
+        inside the repo to an existing file (anchor fragments must match a
+        GitHub-slugified heading in the target), and every backtick-quoted
+        repo path (a code span containing "/" that does not start with "/")
+        names an existing file or directory. A control a row cites must
+        exist on disk.
   RR-2  Status mirroring: every "- **Evidence status**:" bullet carries at
         least one recognized citation. A citation of the form
         `STATUS` (capability matrix row `row_id`) must name an existing row
@@ -19,19 +21,23 @@ index-not-author posture:
         STATUS must equal that row's behavioral_evidence.status verbatim —
         the register mirrors the matrix, it can never upgrade it. A citation
         of the form `STATUS` (asserted here; no capability-matrix row) is a
-        declared maintainer assertion. Both forms must use the matrix's
-        behavioral-status vocabulary, and every occurrence of the phrases
-        "capability matrix row" / "asserted here" must belong to a
-        well-formed citation so a malformed one cannot silently drop out.
-  RR-3  Discoverability: README.md carries at least one rendered link to
-        docs/RISK_REGISTER.md (the #759 acceptance criterion, pinned so a
-        refactor cannot orphan the page).
+        declared maintainer assertion and may only carry a no-measurement
+        status (DESIGNED / NOT_RUN / OUT_OF_SCOPE): the matrix stays the
+        sole authority for MEASURED/MIXED claims. Every occurrence of a
+        citation phrase must belong to a well-formed citation (reported per
+        segment, so the offending text is locatable), and the shipped
+        matrix-row citations are inventory-locked (house pattern: the
+        degradation registry's D5, the matrix lint's M13) so a lint-pinned
+        citation cannot be silently demoted to an asserted one.
+  RR-3  Discoverability: README.md carries at least one rendered link that
+        resolves to docs/RISK_REGISTER.md (the #759 acceptance criterion,
+        pinned so a refactor cannot orphan the page). Links inside code
+        spans render literally and do not count.
 
 Exit 0 when all invariants hold; exit 1 with one line per violation.
 """
 from __future__ import annotations
 
-import json
 import re
 import sys
 from pathlib import Path
@@ -40,25 +46,52 @@ _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
-# Reuse the superset markdown-stripping helpers (#771 tracks consolidating
-# them into a shared module; importing beats a third copy) and the matrix's
-# frozen behavioral-status vocabulary so the two lints cannot drift apart.
-from check_data_flows import _strip_non_rendering  # noqa: E402
-from check_stage_capability_matrix import _BEHAVIORAL_STATUSES  # noqa: E402
+# Reuse the sibling lints' helpers instead of keeping third copies (#771
+# tracks consolidating the markdown machinery into a shared module) and the
+# matrix's frozen loader/status vocabulary so the two lints cannot drift.
+from check_control_availability import _heading_slugs, github_slug  # noqa: E402
+from check_data_flows import (  # noqa: E402
+    _CODE_SPAN_RE,
+    _LINK_RE,
+    _strip_non_rendering,
+)
+from check_stage_capability_matrix import (  # noqa: E402
+    _BEHAVIORAL_STATUSES,
+    _load,
+    _status,
+)
 
 DOC_RELPATH = Path("docs/RISK_REGISTER.md")
 MATRIX_RELPATH = Path("shared/contracts/capability/stage_capability_matrix.json")
 README_RELPATH = Path("README.md")
 
-_LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
-_CODE_SPAN_RE = re.compile(r"`([^`\n]+)`")
-_MATRIX_CITE_RE = re.compile(
-    r"`([A-Za-z_]+)`\s*\(capability matrix row\s+`([A-Za-z0-9_.]+)`\)"
+_CITE_RE = re.compile(
+    r"`([A-Za-z_]+)`\s*\((?:capability matrix row\s+`([A-Za-z0-9_.]+)`"
+    r"|asserted here; no capability-matrix row)\)"
 )
-_ASSERTED_CITE_RE = re.compile(
-    r"`([A-Za-z_]+)`\s*\(asserted here; no capability-matrix row\)"
-)
+# Substrings whose every occurrence must be consumed by a well-formed
+# citation, so a typo cannot demote a pinned status to unchecked prose.
+_CITE_PHRASES = ("capability matrix row", "asserted here")
 _EVIDENCE_BULLET_PREFIX = "- **Evidence status**:"
+# Segment boundaries for locatable per-segment reporting: top-level bullets
+# and headings.
+_SEGMENT_RE = re.compile(r"\n(?=- \*\*|#)")
+
+# An asserted-here citation may only describe absence of evidence; any
+# measurement claim (MEASURED / MIXED) must come from the matrix.
+_ASSERTED_ALLOWED = frozenset({"DESIGNED", "NOT_RUN", "OUT_OF_SCOPE"})
+
+# Shipped-inventory lock: every row_id here must stay cited as a matrix-tied
+# citation in the register. Dropping one (or demoting it to asserted-here)
+# fails CI until this constant is updated in the same commit.
+_EXPECTED_MATRIX_ROW_CITATIONS = frozenset(
+    {
+        "retrieval.citation_existence_gate",
+        "integrity_check.claim_verification",
+        "revision.claim_drift_guard",
+        "review.calibration",
+    }
+)
 
 
 def _doc_text(root: Path) -> str:
@@ -80,12 +113,13 @@ def _looks_like_repo_path(token: str) -> bool:
 
 
 def referenced_paths(doc_text: str) -> tuple[list[str], list[str]]:
-    """(relative link targets, backtick repo paths) named by the doc."""
+    """(relative link targets, backtick repo paths) named by the doc.
+    Link targets keep their #fragment; callers split as needed."""
     links = []
     for target in _LINK_RE.findall(doc_text):
         if target.startswith(("http://", "https://", "mailto:", "#")):
             continue
-        links.append(target.split("#", 1)[0])
+        links.append(target)
     spans = [
         token
         for token in _CODE_SPAN_RE.findall(doc_text)
@@ -96,16 +130,32 @@ def referenced_paths(doc_text: str) -> tuple[list[str], list[str]]:
 
 def check_pointer_integrity(root: Path) -> list[str]:
     errors: list[str] = []
+    root_abs = root.resolve()
     doc_dir = (root / DOC_RELPATH).parent
     links, spans = referenced_paths(_doc_text(root))
     for target in links:
-        if not (doc_dir / target).exists():
+        path_part, _, fragment = target.partition("#")
+        resolved = (doc_dir / path_part).resolve()
+        if not resolved.is_relative_to(root_abs):
+            errors.append(
+                f"RR-1: {DOC_RELPATH} links to {target!r}, which escapes "
+                "the repository root"
+            )
+        elif not resolved.exists():
             errors.append(
                 f"RR-1: {DOC_RELPATH} links to {target!r}, which does not "
                 f"exist relative to {doc_dir.name}/"
             )
+        elif fragment:
+            slugs = _heading_slugs(resolved.read_text(encoding="utf-8"))
+            if github_slug(fragment) not in slugs:
+                errors.append(
+                    f"RR-1: {DOC_RELPATH} links to {target!r}, but no "
+                    f"heading in {path_part!r} slugs to {fragment!r}"
+                )
     for token in spans:
-        if not (root / token).exists():
+        resolved = (root / token).resolve()
+        if not resolved.is_relative_to(root_abs) or not resolved.exists():
             errors.append(
                 f"RR-1: {DOC_RELPATH} cites repo path `{token}`, which does "
                 "not exist"
@@ -116,73 +166,81 @@ def check_pointer_integrity(root: Path) -> list[str]:
 def check_status_mirroring(root: Path) -> list[str]:
     errors: list[str] = []
     doc_text = _doc_text(root)
-    matrix = json.loads((root / MATRIX_RELPATH).read_text(encoding="utf-8"))
-    rows = {
-        row.get("row_id"): row.get("behavioral_evidence", {}).get("status")
-        for row in matrix.get("rows", [])
-    }
+    try:
+        matrix = _load(root / MATRIX_RELPATH)
+    except ValueError as exc:
+        return [f"RR-2: cannot load {MATRIX_RELPATH}: {exc}"]
+    rows = {row.get("row_id"): _status(row) for row in matrix.get("rows", [])}
 
-    matrix_cites = _MATRIX_CITE_RE.findall(doc_text)
-    asserted_cites = _ASSERTED_CITE_RE.findall(doc_text)
+    cited_matrix_rows: set[str] = set()
+    for segment in _SEGMENT_RE.split(doc_text):
+        first_line = segment.strip().split("\n", 1)[0]
+        cites = _CITE_RE.findall(segment)
 
-    # Malformed-citation guard: every occurrence of the citation phrases must
-    # be consumed by a well-formed citation, or a typo would silently turn a
-    # lint-pinned status into unchecked prose.
-    if doc_text.count("capability matrix row") != len(matrix_cites):
-        errors.append(
-            "RR-2: a 'capability matrix row' phrase does not parse as a "
-            "well-formed `STATUS` (capability matrix row `row_id`) citation"
-        )
-    if doc_text.count("asserted here") != len(asserted_cites):
-        errors.append(
-            "RR-2: an 'asserted here' phrase does not parse as a well-formed "
-            "`STATUS` (asserted here; no capability-matrix row) citation"
-        )
+        # Malformed-citation guard, reported against the segment so the
+        # offending text is locatable.
+        consumed = _CITE_RE.sub("", segment)
+        for phrase in _CITE_PHRASES:
+            if phrase in consumed:
+                errors.append(
+                    f"RR-2: {phrase!r} appears outside a well-formed "
+                    f"citation in segment starting {first_line!r}"
+                )
 
-    for status, row_id in matrix_cites:
-        if status not in _BEHAVIORAL_STATUSES:
-            errors.append(
-                f"RR-2: status {status!r} (row {row_id!r}) not in matrix "
-                f"vocabulary {_BEHAVIORAL_STATUSES}"
-            )
-        if row_id not in rows:
-            errors.append(
-                f"RR-2: capability matrix row {row_id!r} does not exist in "
-                f"{MATRIX_RELPATH}"
-            )
-        elif rows[row_id] != status:
-            errors.append(
-                f"RR-2: register states {status!r} for matrix row {row_id!r} "
-                f"but the matrix records {rows[row_id]!r}"
-            )
-    for status in asserted_cites:
-        if status not in _BEHAVIORAL_STATUSES:
-            errors.append(
-                f"RR-2: asserted status {status!r} not in matrix vocabulary "
-                f"{_BEHAVIORAL_STATUSES}"
-            )
-
-    # A bullet's citations may wrap onto continuation lines; scan each
-    # bullet's full logical extent (up to the next "- **" bullet).
-    bullets = re.split(r"\n(?=- \*\*)", doc_text)
-    for bullet in bullets:
-        if not bullet.strip().startswith(_EVIDENCE_BULLET_PREFIX):
-            continue
-        if not (_MATRIX_CITE_RE.search(bullet) or _ASSERTED_CITE_RE.search(bullet)):
-            first_line = bullet.strip().split("\n", 1)[0]
+        if segment.strip().startswith(_EVIDENCE_BULLET_PREFIX) and not cites:
             errors.append(
                 f"RR-2: evidence-status bullet carries no recognized "
                 f"citation: {first_line!r}"
             )
+
+        for status, row_id in cites:
+            if status not in _BEHAVIORAL_STATUSES:
+                errors.append(
+                    f"RR-2: status {status!r} not in matrix vocabulary "
+                    f"{_BEHAVIORAL_STATUSES}"
+                )
+            if row_id:
+                cited_matrix_rows.add(row_id)
+                if row_id not in rows:
+                    errors.append(
+                        f"RR-2: capability matrix row {row_id!r} does not "
+                        f"exist in {MATRIX_RELPATH}"
+                    )
+                elif rows[row_id] != status:
+                    errors.append(
+                        f"RR-2: register states {status!r} for matrix row "
+                        f"{row_id!r} but the matrix records {rows[row_id]!r}"
+                    )
+            elif status in _BEHAVIORAL_STATUSES and status not in _ASSERTED_ALLOWED:
+                errors.append(
+                    f"RR-2: asserted-here citation may not claim {status!r}; "
+                    "the matrix is the sole authority for measurement "
+                    "statuses"
+                )
+
+    for row_id in sorted(_EXPECTED_MATRIX_ROW_CITATIONS - cited_matrix_rows):
+        errors.append(
+            f"RR-2: expected matrix-row citation {row_id!r} is no longer "
+            "present; update _EXPECTED_MATRIX_ROW_CITATIONS in the same "
+            "commit if intentional"
+        )
     return errors
 
 
 def check_inbound_link(root: Path) -> list[str]:
-    readme = _strip_non_rendering(
-        (root / README_RELPATH).read_text(encoding="utf-8")
+    """RR-3, same grammar as DF-3/CA-3: resolved-path compare, code spans
+    stripped so a backticked pseudo-link cannot satisfy the invariant."""
+    doc_abs = (root / DOC_RELPATH).resolve()
+    surface = root / README_RELPATH
+    text = _CODE_SPAN_RE.sub(
+        "", _strip_non_rendering(surface.read_text(encoding="utf-8"))
     )
-    for target in _LINK_RE.findall(readme):
-        if target.split("#", 1)[0] in ("docs/RISK_REGISTER.md",):
+    for match in _LINK_RE.finditer(text):
+        target = match.group(1)
+        if target.startswith(("http://", "https://", "mailto:", "#")):
+            continue
+        path_part = target.partition("#")[0]
+        if path_part and (surface.parent / path_part).resolve() == doc_abs:
             return []
     return [
         f"RR-3: {README_RELPATH} carries no rendered link to {DOC_RELPATH}"
@@ -190,6 +248,8 @@ def check_inbound_link(root: Path) -> list[str]:
 
 
 def run_all_checks(root: Path) -> list[str]:
+    if not (root / DOC_RELPATH).exists():
+        return [f"RR-1: {DOC_RELPATH} is missing"]
     errors: list[str] = []
     errors.extend(check_pointer_integrity(root))
     errors.extend(check_status_mirroring(root))
@@ -200,12 +260,15 @@ def run_all_checks(root: Path) -> list[str]:
 def main() -> int:
     root = _SCRIPTS_DIR.parent
     errors = run_all_checks(root)
-    for error in errors:
-        print(error, file=sys.stderr)
     if errors:
-        print(f"check_risk_register: {len(errors)} violation(s)", file=sys.stderr)
+        for line in errors:
+            print(f"ERROR: {line}", file=sys.stderr)
+        print(
+            f"check_risk_register: {len(errors)} violation(s)",
+            file=sys.stderr,
+        )
         return 1
-    print("check_risk_register: OK (RR-1, RR-2, RR-3)")
+    print("check_risk_register: OK (RR-1..RR-3)")
     return 0
 
 

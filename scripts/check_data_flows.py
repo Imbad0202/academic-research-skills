@@ -78,7 +78,7 @@ NETWORK_DOTTED = {
 _LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _QUOTE_PREFIX_RE = re.compile(r"^(\s{0,3}>\s?)+")
-_CODE_SPAN_RE = re.compile(r"`[^`\n]+`")
+_CODE_SPAN_RE = re.compile(r"`([^`\n]+)`")
 _SHELL_QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
 _ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z_0-9]*=")
 # Shell control words that precede a command without consuming its command

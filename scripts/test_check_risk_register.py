@@ -8,7 +8,9 @@ test and assert the intended invariant fires.
 The fixture derives the placeholder list with the lint's own extractors, so
 a new register row cannot silently outgrow the fixture — and two hardcoded
 witness assertions keep the extractors themselves honest (a broken extractor
-would empty the witness set, not pass vacuously).
+would empty the witness set, not pass vacuously). A real-tree test pins the
+lint against the actual repository as well, so a local pytest run catches
+what the separate CI lint step would.
 """
 from __future__ import annotations
 
@@ -30,10 +32,8 @@ from check_risk_register import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Files whose real content the lint reads (not merely existence-checks).
-_MIRRORED_FILES = (
-    "docs/RISK_REGISTER.md",
-    "README.md",
-    "shared/contracts/capability/stage_capability_matrix.json",
+_MIRRORED_FILES = tuple(
+    str(p) for p in (DOC_RELPATH, README_RELPATH, MATRIX_RELPATH)
 )
 
 # Extractor witnesses: paths the real register is known to cite. If the
@@ -58,9 +58,10 @@ def repo(tmp_path: Path) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.touch()
     for rel in links:
-        target = (doc_dir / rel).resolve()
+        target = (doc_dir / rel.partition("#")[0]).resolve()
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.touch()
+        if not target.exists():
+            target.touch()
     return tmp_path
 
 
@@ -73,6 +74,16 @@ def _mutate(root: Path, rel: str, old: str, new: str) -> None:
 
 def test_baseline_passes(repo: Path) -> None:
     assert run_all_checks(repo) == []
+
+
+def test_real_tree_passes() -> None:
+    assert run_all_checks(REPO_ROOT) == []
+
+
+def test_missing_doc_is_single_fatal_error(repo: Path) -> None:
+    (repo / DOC_RELPATH).unlink()
+    errors = run_all_checks(repo)
+    assert errors == [f"RR-1: {DOC_RELPATH} is missing"]
 
 
 # --- RR-1 pointer integrity -------------------------------------------------
@@ -104,6 +115,28 @@ def test_broken_relative_link_fires(repo: Path) -> None:
     )
     errors = run_all_checks(repo)
     assert any("RR-1" in e and "NO_SUCH_PAGE.md" in e for e in errors)
+
+
+def test_repo_escaping_link_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        f"({_WITNESS_LINK})",
+        "(../../outside/escape.md)",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-1" in e and "escapes" in e for e in errors)
+
+
+def test_unresolvable_anchor_fragment_fires(repo: Path) -> None:
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        f"({_WITNESS_LINK})",
+        f"({_WITNESS_LINK}#no-such-heading)",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-1" in e and "no-such-heading" in e for e in errors)
 
 
 def test_leading_slash_span_is_not_a_path(repo: Path) -> None:
@@ -164,6 +197,36 @@ def test_invalid_status_token_fires(repo: Path) -> None:
     assert any("RR-2" in e and "RUNNING" in e for e in errors)
 
 
+def test_asserted_measurement_claim_fires(repo: Path) -> None:
+    # The matrix is the sole authority for MEASURED/MIXED: an asserted-here
+    # citation may not carry a measurement status.
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        "`DESIGNED` (asserted here; no capability-matrix row)",
+        "`MEASURED` (asserted here; no capability-matrix row)",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-2" in e and "sole authority" in e for e in errors)
+
+
+def test_demoted_matrix_citation_fires_inventory_lock(repo: Path) -> None:
+    # Rewriting a lint-pinned matrix citation as an asserted-here one must
+    # fail until _EXPECTED_MATRIX_ROW_CITATIONS is updated in the same
+    # commit.
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        "`MEASURED` (capability matrix row `revision.claim_drift_guard`)",
+        "`NOT_RUN` (asserted here; no capability-matrix row)",
+    )
+    errors = run_all_checks(repo)
+    assert any(
+        "RR-2" in e and "revision.claim_drift_guard" in e and "no longer" in e
+        for e in errors
+    )
+
+
 def test_malformed_matrix_citation_fires(repo: Path) -> None:
     # Dropping the row_id backticks must not silently demote the citation
     # to unchecked prose.
@@ -198,6 +261,18 @@ def test_removed_readme_link_fires(repo: Path) -> None:
         str(README_RELPATH),
         "docs/RISK_REGISTER.md",
         "docs/SOMEWHERE_ELSE.md",
+    )
+    errors = run_all_checks(repo)
+    assert any("RR-3" in e for e in errors)
+
+
+def test_code_span_pseudo_link_does_not_satisfy_rr3(repo: Path) -> None:
+    # A link inside backticks renders literally; it must not count.
+    _mutate(
+        repo,
+        str(README_RELPATH),
+        "[docs/RISK_REGISTER.md](docs/RISK_REGISTER.md)",
+        "`[docs/RISK_REGISTER.md](docs/RISK_REGISTER.md)`",
     )
     errors = run_all_checks(repo)
     assert any("RR-3" in e for e in errors)

@@ -23,8 +23,12 @@ redefines a control or upgrades a status. Statuses use the matrix vocabulary
 (`DESIGNED` / `NOT_RUN` / `MEASURED` / `MIXED`). A status citing a named matrix row
 is lint-pinned to that row's recorded `behavioral_evidence.status` by
 `scripts/check_risk_register.py`; a status marked as asserted-here is a maintainer
-assertion with no matrix backing. An open issue in a Residual gap cell is the honest
-answer, not a defect being hidden: `NOT_RUN` means exactly that.
+assertion with no matrix backing, and may only carry a no-measurement status: the
+matrix stays the sole authority for `MEASURED`/`MIXED`. An open issue in a Residual
+gap cell is the honest answer, not a defect being hidden: `NOT_RUN` means exactly
+that. Two authoring constraints keep this file checkable: a backtick code span
+containing a slash is treated as a repo path that must exist, and the citation
+phrasings are reserved for well-formed citations.
 
 ## Risks
 
