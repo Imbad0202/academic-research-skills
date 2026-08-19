@@ -201,6 +201,15 @@ finally:
     _sweep_orphan_tempdirs()
     _shutil.rmtree(FLEET_TMP, ignore_errors=True)
 failures += len(CARRIED_FAILURES)
+# A fresh fleet that crossed local midnight is unscoreable (the scorer's
+# same-day gate will reject it); fail HERE so the quota loss is visible
+# immediately, not at scoring time (#788 round-20 P2).
+fleet_dates = set()
+for model in MODELS:
+    for p in sorted((OUT / model).glob("*.json")):
+        fleet_dates.add(str(json.loads(p.read_text()).get("ts", ""))[:10])
+if len(fleet_dates) > 1:
+    raise SystemExit(f"MIXED-DATE FLEET: cells span {sorted(fleet_dates)} — archive and rerun in one calendar day.")
 if failures:
     # An incomplete or error-bearing fleet must never look like success to
     # automation (#788 round-8 P2); the scorer's completeness gate is the

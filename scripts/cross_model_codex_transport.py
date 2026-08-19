@@ -1097,6 +1097,12 @@ def parse_app_server_messages(
         # type url/pattern/query as string-or-null and queries as a string
         # array. Item id and results shape are validated for all items;
         # query strictness below applies to search-typed/legacy items.
+        # An EXPLICIT "action": null is protocol-legal — ThreadItem types the
+        # field as anyOf[WebSearchAction, null] (generate-json-schema,
+        # 0.147.0) — so null follows the same path as an absent field: the
+        # item still faces the complete strict search validation below.
+        # Fatal-izing a schema-legal shape is the run-1/run-3 false-fatality
+        # class (#788 round-20, declined with schema evidence).
         action = item.get("action")
         if action is not None:
             if not isinstance(action, dict):

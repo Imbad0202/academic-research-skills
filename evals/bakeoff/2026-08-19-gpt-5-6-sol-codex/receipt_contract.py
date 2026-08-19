@@ -123,6 +123,14 @@ def validate_receipt(rec: dict, where: str) -> None:
         ):
             bail(f"unbound or malformed source {s!r}")
 
+    # Every source must bind to a RETAINED search query: a source whose
+    # search_item_id has no corresponding entry in search_queries carries no
+    # retained evidence and must not count as grounding (#788 round-20 P2).
+    query_ids = {q["search_item_id"] for q in queries}
+    for s in sources:
+        if s["search_item_id"] not in query_ids:
+            bail(f"source bound to unretained search item {s['search_item_id']!r}")
+
     # Per-verdict cross-field invariants (schema allOf + transport semantics).
     if rec["verdict"] in {"VERIFIED", "MISMATCH"}:
         if not rec["searched"] or not sources:
