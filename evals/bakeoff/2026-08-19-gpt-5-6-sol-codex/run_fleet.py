@@ -173,9 +173,6 @@ TIMEOUT_OCCURRED: list[str] = []
 # cleanup, leaving copied auth.json dirs under FLEET_TMP (#788 round-18 P2).
 # In-flight verifier calls finish or hit their own deadline first; the sweep
 # then runs on the drained, fleet-private root.
-STOP = None  # set to threading.Event below before workers start
-
-
 def _terminate(signum, frame):
     # Queued futures must not keep consuming paid quota after a termination
     # signal: STOP makes every not-yet-started job a no-op, so shutdown only
