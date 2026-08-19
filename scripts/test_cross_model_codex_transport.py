@@ -406,11 +406,18 @@ def test_page_open_web_search_items_are_skipped_not_stream_fatal() -> None:
 def test_all_first_party_non_search_actions_are_skipped() -> None:
     # The exemption covers exactly the non-search members of the protocol's
     # closed WebSearchAction set, both spellings.
+    # Bare discriminators are DELIBERATELY accepted: every non-search variant
+    # of the protocol's closed WebSearchAction schema requires only "type"
+    # (url/pattern are nullable optionals per generate-json-schema on
+    # 0.147.0), and a skipped item can never contribute a bound source —
+    # demanding optional fields is the run-1/run-3 false-fatality class.
     for ok_action in (
         {"type": "other"},
         {"type": "openPage", "url": "https://example.org/toc"},
+        {"type": "openPage"},
         {"type": "open_page", "url": "https://example.org/toc"},
         {"type": "findInPage", "url": "https://example.org/toc", "pattern": "x"},
+        {"type": "findInPage"},
         {"type": "find_in_page", "url": "https://example.org/toc", "pattern": "x"},
     ):
         messages, raw = _fixture("grounded_verified.jsonl")

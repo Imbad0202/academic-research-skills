@@ -72,6 +72,12 @@ FORBIDDEN_ITEM_TYPES = {
 ALLOWED_ITEM_TYPES = {"userMessage", "reasoning", "agentMessage", "webSearch"}
 # Non-search members of the app-server protocol's CLOSED WebSearchAction oneOf
 # (both spellings), per `codex app-server generate-json-schema` on 0.147.0.
+# The discriminator is the ONLY required field of every non-search variant in
+# that schema (`required: ["type"]`; `url`/`pattern` are nullable optionals),
+# so the exemption checks exactly the discriminator: demanding the optional
+# fields would re-introduce the false-fatality class that invalidated bakeoff
+# runs 1 and 3 (#787). A skipped item contributes nothing to the receipt —
+# sources can only bind to strictly-validated search-item results.
 NON_SEARCH_WEB_ACTIONS = {"other", "openPage", "open_page", "findInPage", "find_in_page"}
 DISABLED_FEATURES = (
     "shell_tool",
