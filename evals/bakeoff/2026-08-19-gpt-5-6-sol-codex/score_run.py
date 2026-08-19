@@ -121,6 +121,15 @@ fleet_days: set[str] = set()
 for model in MODELS:
     rows = load_rows(model)
     for row in rows:
+        # The runner never persists a receipt together with a truthy error —
+        # such a row is corrupted or externally produced and must be refused,
+        # not scored as grounded evidence (#788 round-23 P2). Error-bearing
+        # rows with a null receipt remain counted as misfires below.
+        if row.get("error") and row.get("receipt") is not None:
+            raise SystemExit(
+                f"CONTRADICTORY ROW: {model} {row.get('ref_id')} r{row.get('repeat')} "
+                f"carries both a receipt and error={row.get('error')!r}"
+            )
         check_identity(model, row)
         check_receipt_contract(model, row)
         # Reproduced fleets (results-dir mode) must be single-effort: every
