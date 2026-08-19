@@ -6,7 +6,7 @@ Output dir: ./results (override with ARS_BAKEOFF_OUT). Score a reproduced
 fleet with: python3 score_run.py <that output dir> — the scorer applies the
 same completeness and identity-binding gates to runner output as to the
 committed gate-run JSONLs."""
-import json, os, subprocess, sys, time
+import json, os, signal, subprocess, sys, time
 
 from receipt_contract import validate_receipt
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -164,6 +164,17 @@ import tempfile as _tempfile
 FLEET_TMP = Path(_tempfile.mkdtemp(prefix="ars-bakeoff-fleet-"))
 FLEET_START = time.time()
 TIMEOUT_OCCURRED: list[str] = []
+# SIGTERM/SIGINT must unwind through the finally-block sweep below —
+# Python's default SIGTERM handler would kill the process without running
+# cleanup, leaving copied auth.json dirs under FLEET_TMP (#788 round-18 P2).
+# In-flight verifier calls finish or hit their own deadline first; the sweep
+# then runs on the drained, fleet-private root.
+def _terminate(signum, frame):
+    raise SystemExit(128 + signum)
+
+signal.signal(signal.SIGTERM, _terminate)
+signal.signal(signal.SIGINT, _terminate)
+
 done = 0
 failures = 0
 try:

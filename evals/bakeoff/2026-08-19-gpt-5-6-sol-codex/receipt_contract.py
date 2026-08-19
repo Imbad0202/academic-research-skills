@@ -55,8 +55,15 @@ def validate_receipt(rec: dict, where: str) -> None:
         bail(f"bad transport {rec['transport']!r}")
     if rec["auth_mode"] != "chatgpt_subscription":
         bail(f"bad auth_mode {rec['auth_mode']!r}")
-    if rec["containment"] != EXPECTED_CONTAINMENT:
-        bail(f"containment flags {rec['containment']!r}")
+    containment = rec["containment"]
+    if (
+        not isinstance(containment, dict)
+        or set(containment) != set(EXPECTED_CONTAINMENT)
+        # `1 == True` in Python; the schema requires boolean constants, so
+        # identity, not equality (#788 round-18 P2).
+        or any(containment[k] is not True for k in EXPECTED_CONTAINMENT)
+    ):
+        bail(f"containment flags {containment!r}")
     if not isinstance(rec["request_id"], str) or not (1 <= len(rec["request_id"]) <= 128) or not _IDENTIFIER.fullmatch(rec["request_id"]):
         bail(f"bad request_id {rec['request_id']!r}")
     if not isinstance(rec["model"], str) or len(rec["model"]) > 128 or not _MODEL_ID.fullmatch(rec["model"]):
@@ -66,11 +73,17 @@ def validate_receipt(rec: dict, where: str) -> None:
     for field in ("request_digest", "event_stream_digest"):
         if not isinstance(rec[field], str) or not _HEX64.fullmatch(rec[field]):
             bail(f"{field} is not a sha256 hex digest")
-    if rec["verdict"] not in VERDICTS:
+    # Membership tests need hashable operands: an array/object verdict must
+    # become a contract failure, not an uncaught TypeError that escapes the
+    # runner's SystemExit handling (#788 round-18 P2).
+    if not isinstance(rec["verdict"], str) or rec["verdict"] not in VERDICTS:
         bail(f"unknown verdict {rec['verdict']!r}")
     if not isinstance(rec["searched"], bool):
         bail("searched is not a bool")
-    if rec["reason_code"] is not None and rec["reason_code"] not in (SHAPE_GUARD_CODES | BEHAVIOR_CODES):
+    if rec["reason_code"] is not None and (
+        not isinstance(rec["reason_code"], str)
+        or rec["reason_code"] not in (SHAPE_GUARD_CODES | BEHAVIOR_CODES)
+    ):
         bail(f"unknown reason_code {rec['reason_code']!r}")
 
     queries = rec["search_queries"]
