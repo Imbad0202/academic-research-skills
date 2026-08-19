@@ -1134,6 +1134,17 @@ def parse_app_server_messages(
         # legitimate zero-hit search) and the oversize cap remain skips.
         if results is not None and not isinstance(results, list):
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        # Every consumed field of a search item is validated here, for EVERY
+        # search item (bound or not) — id, query, results, and each result
+        # entry's object shape — so no downstream reader can encounter an
+        # unvalidated shape and no verdict can mask one (#788 round-11 P1:
+        # entry validation was previously reached only for bound searches).
+        item_id = item.get("id")
+        if not isinstance(item_id, str) or not item_id:
+            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        for entry in results or []:
+            if not isinstance(entry, dict):
+                return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
         if not results or len(results) > MAX_RESULTS_PER_SEARCH:
             continue
         searches.append((index, item))

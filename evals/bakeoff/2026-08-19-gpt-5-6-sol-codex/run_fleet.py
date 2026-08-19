@@ -29,6 +29,7 @@ CALL_TIMEOUT = 420
 refs = json.loads(PROBE.read_text())["references"]
 TODAY = time.strftime("%Y-%m-%d")
 
+CARRIED_FAILURES: list[str] = []
 jobs = []
 for model, short in MODELS.items():
     for ref in refs:
@@ -44,13 +45,17 @@ for model, short in MODELS.items():
                         f"STALE CELL: {out} is from {cell_day or 'unknown'}, not {TODAY}. "
                         "Archive the output dir and run a fresh same-day fleet."
                     )
-                # A same-day cell that recorded a failure is RETRIED, never
-                # silently carried as complete (#788 round-9 P2).
+                # A recorded failed trial is PART of the fleet's outcome —
+                # deleting and retrying it would let a flaky model be re-
+                # rolled until every retained row succeeds, biasing measures
+                # 1/4/5 (#788 round-11 P1). Resume fills only MISSING cells;
+                # a failure is carried forward and forces a nonzero exit, so
+                # the only path past it is rerunning the ENTIRE fleet in a
+                # fresh output directory.
                 if cell.get("receipt") is None or cell.get("error"):
-                    out.unlink()
-                    print(f"[retry] discarding failed cell {out.name} ({cell.get('error')})", flush=True)
-                else:
-                    continue
+                    CARRIED_FAILURES.append(f"{model}/{out.name}: {cell.get('error')}")
+                    print(f"[carried-failure] {out.name} ({cell.get('error')})", flush=True)
+                continue
             jobs.append((model, short, ref, r, out))
 
 print(f"total pending calls: {len(jobs)}", flush=True)
@@ -139,6 +144,7 @@ with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
             print(f"[{done}/{len(jobs)}] WORKER-ERROR {e!r}", flush=True)
 if TIMEOUT_OCCURRED:
     _sweep_orphan_tempdirs()
+failures += len(CARRIED_FAILURES)
 if failures:
     # An incomplete or error-bearing fleet must never look like success to
     # automation (#788 round-8 P2); the scorer's completeness gate is the

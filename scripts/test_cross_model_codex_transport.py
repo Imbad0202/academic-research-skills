@@ -450,23 +450,44 @@ def test_unknown_web_search_action_shapes_stay_stream_fatal() -> None:
 
 
 def test_model_not_searched_never_masks_malformed_result_entries() -> None:
-    # The binding pipeline (including the result-entry object-shape check)
-    # runs before any verdict branch: a bound search carrying a non-object
-    # result entry fails EVENT_STREAM_INVALID even when the model answers
-    # NOT_SEARCHED (#788 round-10 P2 — single-path validation).
-    messages, raw = _fixture("grounded_verified.jsonl")
-    for m in messages:
-        item = m.get("params", {}).get("item", {})
-        if item.get("type") == "webSearch":
-            item["results"] = [42]
-        elif item.get("type") == "agentMessage":
-            item["text"] = json.dumps(
-                {"verdict": "NOT_SEARCHED", "detail": "Search unavailable.", "sources": []}
-            )
-    receipt = runtime.parse_app_server_messages(
-        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
-    )
-    assert receipt["reason_code"] == "EVENT_STREAM_INVALID"
+    # Result-entry object shape is validated for EVERY search item — bound or
+    # unbound — before any verdict branch, so a NOT_SEARCHED answer cannot
+    # mask a malformed stream (#788 round-10 P2 + round-11 P1).
+    for unbound_query in (False, True):
+        messages, raw = _fixture("grounded_verified.jsonl")
+        for m in messages:
+            item = m.get("params", {}).get("item", {})
+            if item.get("type") == "webSearch":
+                item["results"] = [42]
+                if unbound_query:
+                    item["query"] = "completely unrelated gardening tips"
+            elif item.get("type") == "agentMessage":
+                item["text"] = json.dumps(
+                    {"verdict": "NOT_SEARCHED", "detail": "Search unavailable.", "sources": []}
+                )
+        receipt = runtime.parse_app_server_messages(
+            messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )
+        assert receipt["reason_code"] == "EVENT_STREAM_INVALID", f"unbound={unbound_query}"
+
+
+def test_search_item_id_shape_is_validated_pre_verdict() -> None:
+    # The item id is a consumed field (bindings reference it); a missing or
+    # non-string id is stream-fatal regardless of verdict (#788 round-11 —
+    # instrument fixpoint: every consumed field validated).
+    for bad_id in (None, 7, ""):
+        messages, raw = _fixture("grounded_verified.jsonl")
+        for m in messages:
+            item = m.get("params", {}).get("item", {})
+            if item.get("type") == "webSearch":
+                if bad_id is None:
+                    item.pop("id", None)
+                else:
+                    item["id"] = bad_id
+        receipt = runtime.parse_app_server_messages(
+            messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )
+        assert receipt["reason_code"] == "EVENT_STREAM_INVALID", repr(bad_id)
 
 
 def test_not_searched_with_sources_is_an_output_contract_violation() -> None:
