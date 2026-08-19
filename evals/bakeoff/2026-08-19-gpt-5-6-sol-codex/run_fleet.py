@@ -8,7 +8,7 @@ same completeness and identity-binding gates to runner output as to the
 committed gate-run JSONLs."""
 import json, os, signal, subprocess, sys, time
 
-from receipt_contract import validate_receipt
+from receipt_contract import validate_receipt, verify_probe_bytes
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -28,7 +28,9 @@ CONCURRENCY = 3
 # codex round-4 P2).
 CALL_TIMEOUT = 420
 
-refs = json.loads(PROBE.read_text())["references"]
+# Digest preflight BEFORE any paid call: a locally modified fixture must
+# fail here, not after 180 subscription calls (#788 round-24 P2).
+refs = json.loads(verify_probe_bytes(PROBE.read_bytes()).decode("utf-8"))["references"]
 TODAY = time.strftime("%Y-%m-%d")
 
 CARRIED_FAILURES: list[str] = []

@@ -1238,6 +1238,13 @@ def parse_app_server_messages(
         receipt["detail"] = model_output["detail"]
         return receipt
 
+    # Model-output CONTRACT violations outrank stream-emptiness outcomes:
+    # NOT_FOUND carrying sources is FINAL_OUTPUT_INVALID even when the stream
+    # also lacks a bound search — otherwise the shape violation is misfiled
+    # under a behavior code (#788 round-24 P2).
+    if model_output["verdict"] == "NOT_FOUND" and model_output["sources"]:
+        return _empty_receipt(request, model, event_digest, "FINAL_OUTPUT_INVALID")
+
     if not searches:
         return _empty_receipt(request, model, event_digest, "NO_BOUND_SEARCH_RESULTS")
     if not bound_searches:

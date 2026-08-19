@@ -43,17 +43,11 @@ from receipt_contract import SHAPE_GUARD_CODES, validate_receipt  # noqa: E402
 
 # The scoring populations (real/fabricated labels, difficulty tiers) come
 # from the probe set, which the per-receipt request_digest does NOT cover —
-# so the WHOLE frozen file is pinned by hash before anything is scored
-# (#788 round-10 P2). This is the sha256 recorded in the audit report.
-EXPECTED_PROBE_SHA256 = "6db7c1ffeb20d4b6819010f7c7ca79f422acfef560c14cfbaf6896c78db305c2"
+# the whole frozen file is pinned via the shared, line-ending-normalized
+# digest check (#788 rounds 10/24).
+from receipt_contract import verify_probe_bytes  # noqa: E402
 
-probe_bytes = (HERE / "probe_set.json").read_bytes()
-actual_sha = hashlib.sha256(probe_bytes).hexdigest()
-if actual_sha != EXPECTED_PROBE_SHA256:
-    raise SystemExit(
-        f"PROBE SET DRIFT: sha256 {actual_sha} != frozen {EXPECTED_PROBE_SHA256} — "
-        "labels/ground truth changed after the run; scoring refused."
-    )
+probe_bytes = verify_probe_bytes((HERE / "probe_set.json").read_bytes())
 refs = {r["id"]: r for r in json.loads(probe_bytes.decode("utf-8"))["references"]}
 fab_ids = [i for i, r in refs.items() if r["label"] == "fabricated"]
 real_ids = [i for i, r in refs.items() if r["label"] == "real"]

@@ -7,7 +7,26 @@ receipt (#788 rounds 13-17). A COMPLETE stdlib mirror of
 sets (additionalProperties: false at every level), per-field patterns and
 length bounds, array caps, and the per-verdict conditional constraints.
 """
+import hashlib
 import re
+
+# Frozen probe-set digest (the sha256 recorded in the audit report), shared by
+# the runner's pre-flight and the scorer's gate so 180 paid calls can never be
+# spent on a fixture the scorer will refuse (#788 round-24 P2). Hashing
+# normalizes CRLF to LF first: a Windows checkout with core.autocrlf must not
+# read as probe drift (#788 round-24 P2).
+EXPECTED_PROBE_SHA256 = "6db7c1ffeb20d4b6819010f7c7ca79f422acfef560c14cfbaf6896c78db305c2"
+
+
+def verify_probe_bytes(raw: bytes) -> bytes:
+    normalized = raw.replace(b"\r\n", b"\n")
+    actual = hashlib.sha256(normalized).hexdigest()
+    if actual != EXPECTED_PROBE_SHA256:
+        raise SystemExit(
+            f"PROBE SET DRIFT: sha256 {actual} != frozen {EXPECTED_PROBE_SHA256} — "
+            "labels/ground truth changed; refusing."
+        )
+    return normalized
 
 RECEIPT_KEYS = {
     "schema_version", "request_id", "transport", "auth_mode", "model",
