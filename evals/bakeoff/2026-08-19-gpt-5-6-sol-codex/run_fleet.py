@@ -7,6 +7,8 @@ fleet with: python3 score_run.py <that output dir> — the scorer applies the
 same completeness and identity-binding gates to runner output as to the
 committed gate-run JSONLs."""
 import json, os, subprocess, sys, time
+
+from receipt_contract import validate_receipt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -52,7 +54,15 @@ for model, short in MODELS.items():
                 # a failure is carried forward and forces a nonzero exit, so
                 # the only path past it is rerunning the ENTIRE fleet in a
                 # fresh output directory.
-                if cell.get("receipt") is None or cell.get("error"):
+                cell_bad = cell.get("receipt") is None or cell.get("error")
+                if not cell_bad:
+                    # Resumed cells face the same full contract as fresh ones
+                    # (#788 round-15 P2).
+                    try:
+                        validate_receipt(cell["receipt"], f"resumed {out.name}")
+                    except SystemExit as bad:
+                        raise SystemExit(f"RESUMED CELL INVALID: {bad}. Archive the output dir and rerun.")
+                if cell_bad:
                     CARRIED_FAILURES.append(f"{model}/{out.name}: {cell.get('error')}")
                     print(f"[carried-failure] {out.name} ({cell.get('error')})", flush=True)
                 # A carried cell must come from the same pinned-effort
@@ -105,12 +115,10 @@ def run_one(job):
             else:
                 # Parsed-but-malformed output must be a recorded failure, not
                 # a silent ERR row the exit code ignores (#788 round-14 P2).
-                if (
-                    not isinstance(receipt, dict)
-                    or receipt.get("schema_version") != "ars-codex-citation-receipt/1.0"
-                    or "verdict" not in receipt
-                ):
-                    err = f"RECEIPT_INVALID: not a citation receipt; head: {proc.stdout[:200]}"
+                try:
+                    validate_receipt(receipt, f"{model} {ref['id']} r{r}")
+                except SystemExit as bad:
+                    err = f"RECEIPT_INVALID: {bad}"
                     receipt = None
         else:
             err = f"EXIT {proc.returncode}: {proc.stderr[:300]}"

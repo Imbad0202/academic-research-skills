@@ -433,6 +433,25 @@ def test_all_first_party_non_search_actions_are_skipped() -> None:
         assert receipt["searched"] is True, ok_action
 
 
+def test_wrong_typed_action_payload_fields_are_stream_fatal() -> None:
+    # A recognized discriminator with a wrong-typed payload field is
+    # protocol drift, not a benign skip (#788 round-15 P2).
+    for bad_action in (
+        {"type": "openPage", "url": 7},
+        {"type": "findInPage", "pattern": 3},
+        {"type": "other", "url": ["x"]},
+        {"type": "search", "queries": [7]},
+        {"type": "search", "query": 9},
+    ):
+        messages, raw = _fixture("grounded_verified.jsonl")
+        bad = _page_open_event()
+        bad["params"]["item"]["action"] = bad_action
+        receipt = runtime.parse_app_server_messages(
+            [bad] + messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )
+        assert receipt["reason_code"] == "EVENT_STREAM_INVALID", bad_action
+
+
 def test_unknown_web_search_action_shapes_stay_stream_fatal() -> None:
     # Only the closed first-party non-search set is exempt; an empty action
     # object, an unknown type, or a non-dict action fails the stream closed

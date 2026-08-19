@@ -1082,13 +1082,41 @@ def parse_app_server_messages(
     # response-shape drift (#788 rounds 3/7/8: each narrower placement left
     # a masking path).
     for _, item in completed_items:
-        if item["type"] != "webSearch" or _is_page_open(item):
+        if item["type"] != "webSearch":
             continue
+        # Uniform field validation for EVERY webSearch item, page-opens
+        # included (#788 round-15 P2): a recognized discriminator with a
+        # wrong-typed payload field (e.g. openPage url: 7) is protocol
+        # drift, not a benign skip — the closed WebSearchAction variants
+        # type url/pattern/query as string-or-null and queries as a string
+        # array. Item id and results shape are validated for all items;
+        # query strictness below applies to search-typed/legacy items.
         action = item.get("action")
-        if action is not None and (
-            not isinstance(action, dict) or action.get("type") != "search"
-        ):
+        if action is not None:
+            if not isinstance(action, dict):
+                return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+            if action.get("type") not in NON_SEARCH_WEB_ACTIONS and action.get("type") != "search":
+                return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+            for opt_field in ("url", "pattern", "query"):
+                if opt_field in action and action[opt_field] is not None and not isinstance(action[opt_field], str):
+                    return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+            if "queries" in action and action["queries"] is not None:
+                if not isinstance(action["queries"], list) or any(
+                    not isinstance(q, str) for q in action["queries"]
+                ):
+                    return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        item_id_any = item.get("id")
+        if not isinstance(item_id_any, str) or not item_id_any:
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        results_any = item.get("results")
+        if results_any is not None:
+            if not isinstance(results_any, list):
+                return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+            for entry in results_any:
+                if not isinstance(entry, dict):
+                    return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        if _is_page_open(item):
+            continue
         query = item.get("query")
         if not isinstance(query, str) or not query or len(query) > 2048:
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
