@@ -367,12 +367,21 @@ def check_docs_and_wiring() -> list[str]:
     ):
         if token not in protocol:
             errors.append(f"protocol availability routing dropped {token!r}")
-    if "**Recommendation policy (2026-08-19):**" not in protocol:
-        errors.append(
-            "#630 recommendation-policy witness dropped — the default-model "
-            "recommendation must stay an explicit, dated policy note (#783), "
-            "never a silent promotion"
-        )
+    # The policy BODY clauses are pinned alongside the heading: a rewrite that
+    # keeps the marker but asserts measured parity (or drops the bakeoff-only
+    # route to `validated`) must fail, not just a deleted heading (#783).
+    for token in (
+        "**Recommendation policy (2026-08-19):**",
+        "a lifecycle decision, not a measurement claim",
+        "`validated` is earned only there",
+    ):
+        if token not in protocol:
+            errors.append(
+                f"#630 recommendation-policy witness dropped {token!r} — the "
+                "default-model recommendation must stay an explicit, dated, "
+                "no-measurement-claim policy note with the bakeoff as the only "
+                "route to validated (#783), never a silent promotion"
+            )
     if "**provisional pending ARS validation**" not in protocol:
         errors.append("#630 must not promote GPT-5.6 from provisional")
     bash_marker = 'export ARS_CROSS_MODEL_TRANSPORT="codex"'

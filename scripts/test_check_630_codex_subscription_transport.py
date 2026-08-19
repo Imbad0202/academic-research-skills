@@ -202,6 +202,8 @@ def test_reader_helper_construction_must_remain_process_owned(
     [
         ("SPEC", "Source implementation: PR #567 by `dcs-scd`", "Source implementation: internal", "PR #567"),
         ("PROTOCOL", "**Recommendation policy (2026-08-19):**", "**GPT-5.6 is recommended:**", "recommendation-policy"),
+        ("PROTOCOL", "a lifecycle decision, not a measurement claim", "a measured upgrade over GPT-5.5", "recommendation-policy"),
+        ("PROTOCOL", "`validated` is earned only there", "`validated` is granted on release", "recommendation-policy"),
         ("PRODUCER", "This adapter is not available to DA, reviewer, calibration", "This adapter is available to every path", "non-citation"),
         ("CHANGELOG", "@dcs-scd", "@someone-else", "@dcs-scd"),
     ],
