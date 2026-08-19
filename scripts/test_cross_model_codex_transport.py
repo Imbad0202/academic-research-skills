@@ -403,6 +403,22 @@ def test_page_open_web_search_items_are_skipped_not_stream_fatal() -> None:
     assert receipt["reason_code"] == "NO_BOUND_SEARCH_RESULTS"
 
 
+def test_unknown_web_search_action_shapes_stay_stream_fatal() -> None:
+    # ONLY action.type == "other" is the exempt page-open shape; an empty
+    # action object, an unknown type, or a non-dict action fails the stream
+    # closed even when a valid search item is also present (codex round-1 P2
+    # on #788: the exemption must not become a catch-all).
+    for bad_action in ({}, {"type": "browse"}, "other", {"kind": "other"}):
+        messages, raw = _fixture("grounded_verified.jsonl")
+        bad = _page_open_event()
+        bad["params"]["item"]["action"] = bad_action
+        receipt = runtime.parse_app_server_messages(
+            [bad] + messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )
+        assert receipt["verdict"] == "NOT_SEARCHED", bad_action
+        assert receipt["reason_code"] == "EVENT_STREAM_INVALID", bad_action
+
+
 def test_positive_without_source_fails_closed() -> None:
     messages, raw = _fixture("grounded_verified.jsonl")
     messages[1]["params"]["item"]["text"] = json.dumps(

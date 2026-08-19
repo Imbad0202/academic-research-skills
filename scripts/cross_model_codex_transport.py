@@ -1053,17 +1053,27 @@ def parse_app_server_messages(
         receipt["detail"] = model_output["detail"]
         return receipt
 
-    # codex-cli 0.147.0 also emits webSearch items for follow-up page opens
-    # (action.type == "other", no query string). Those are not standalone
-    # searches: they are excluded before the item cap and skipped for binding
-    # purposes — a URL seen only in an opened page can never become a bound
-    # source — but they are not stream-fatal (#787; previously every
-    # fabricated-reference run died as EVENT_STREAM_INVALID because absence
-    # checks legitimately open result pages). Search-typed items keep the
-    # exact strict validation below.
+    # codex-cli 0.147.0 also emits webSearch items for follow-up page opens —
+    # exactly action.type == "other". ONLY that observed shape is exempt: it
+    # is excluded before the item cap and skipped for binding purposes (a URL
+    # seen only in an opened page can never become a bound source) but is not
+    # stream-fatal (#787; previously every fabricated-reference run died as
+    # EVENT_STREAM_INVALID because absence checks legitimately open result
+    # pages). Any other action shape — missing type, unknown type, non-dict —
+    # stays fail-closed, and search-typed items keep the exact strict
+    # validation below.
     def _is_page_open(item: dict[str, Any]) -> bool:
         action = item.get("action")
-        return isinstance(action, dict) and action.get("type") != "search"
+        return isinstance(action, dict) and action.get("type") == "other"
+
+    for _, item in completed_items:
+        if item["type"] != "webSearch":
+            continue
+        action = item.get("action")
+        if action is None or _is_page_open(item):
+            continue
+        if not isinstance(action, dict) or action.get("type") != "search":
+            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
 
     all_searches = [
         (index, item)
