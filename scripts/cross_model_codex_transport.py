@@ -1100,20 +1100,15 @@ def parse_app_server_messages(
         if results_shape is not None and not isinstance(results_shape, list):
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
 
-    if model_output["verdict"] == "NOT_SEARCHED":
-        # The output contract requires an empty sources array for
-        # NOT_SEARCHED (as for NOT_FOUND); a populated array is a
-        # structured-output violation and must fail closed HERE — the early
-        # return must not silently drop the sources and mask the violation
-        # (#788 round-9 P2).
-        if model_output["sources"]:
-            return _empty_receipt(request, model, event_digest, "FINAL_OUTPUT_INVALID")
-        receipt = _empty_receipt(
-            request, model, event_digest, "MODEL_RETURNED_NOT_SEARCHED"
-        )
-        receipt["detail"] = model_output["detail"]
-        return receipt
-
+    # The complete search-processing pipeline — cap, per-item strict
+    # validation, reference-bound filtering, and URL binding (including the
+    # result-entry object-shape check inside _extract_result_urls for bound
+    # searches) — runs BEFORE any verdict branch, so every SHAPE-fatal path
+    # fires identically no matter what the model answered (#788 round-10:
+    # single-path by construction ends the verdict-masking bug class).
+    # Emptiness outcomes are computed here but returned only on the
+    # non-NOT_SEARCHED branch: "no bound search + model honestly said
+    # NOT_SEARCHED" is model behavior, not a stream defect.
     all_searches = [
         (index, item)
         for index, item in completed_items
@@ -1142,16 +1137,12 @@ def parse_app_server_messages(
         if not results or len(results) > MAX_RESULTS_PER_SEARCH:
             continue
         searches.append((index, item))
-    if not searches:
-        return _empty_receipt(request, model, event_digest, "NO_BOUND_SEARCH_RESULTS")
 
     bound_searches = [
         item
         for _, item in searches
         if _query_is_reference_bound(item["query"], request["reference_text"])
     ]
-    if not bound_searches:
-        return _empty_receipt(request, model, event_digest, "NO_REFERENCE_BOUND_QUERY")
 
     url_bindings: dict[str, dict[str, Any]] = {}
     try:
@@ -1171,6 +1162,25 @@ def parse_app_server_messages(
                     )
     except (TypeError, ValueError):
         return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+
+    if model_output["verdict"] == "NOT_SEARCHED":
+        # The output contract requires an empty sources array for
+        # NOT_SEARCHED (as for NOT_FOUND); a populated array is a
+        # structured-output violation and must fail closed HERE — the early
+        # return must not silently drop the sources and mask the violation
+        # (#788 round-9 P2).
+        if model_output["sources"]:
+            return _empty_receipt(request, model, event_digest, "FINAL_OUTPUT_INVALID")
+        receipt = _empty_receipt(
+            request, model, event_digest, "MODEL_RETURNED_NOT_SEARCHED"
+        )
+        receipt["detail"] = model_output["detail"]
+        return receipt
+
+    if not searches:
+        return _empty_receipt(request, model, event_digest, "NO_BOUND_SEARCH_RESULTS")
+    if not bound_searches:
+        return _empty_receipt(request, model, event_digest, "NO_REFERENCE_BOUND_QUERY")
     if not url_bindings:
         return _empty_receipt(request, model, event_digest, "NO_BOUND_SEARCH_RESULTS")
 

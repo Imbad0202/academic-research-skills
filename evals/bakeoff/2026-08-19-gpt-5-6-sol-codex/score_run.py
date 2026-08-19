@@ -43,7 +43,20 @@ SHAPE_GUARD_CODES = {
     "FORBIDDEN_TOOL_EVENT",
 }
 
-refs = {r["id"]: r for r in json.loads((HERE / "probe_set.json").read_text())["references"]}
+# The scoring populations (real/fabricated labels, difficulty tiers) come
+# from the probe set, which the per-receipt request_digest does NOT cover —
+# so the WHOLE frozen file is pinned by hash before anything is scored
+# (#788 round-10 P2). This is the sha256 recorded in the audit report.
+EXPECTED_PROBE_SHA256 = "6db7c1ffeb20d4b6819010f7c7ca79f422acfef560c14cfbaf6896c78db305c2"
+
+probe_bytes = (HERE / "probe_set.json").read_bytes()
+actual_sha = hashlib.sha256(probe_bytes).hexdigest()
+if actual_sha != EXPECTED_PROBE_SHA256:
+    raise SystemExit(
+        f"PROBE SET DRIFT: sha256 {actual_sha} != frozen {EXPECTED_PROBE_SHA256} — "
+        "labels/ground truth changed after the run; scoring refused."
+    )
+refs = {r["id"]: r for r in json.loads(probe_bytes.decode("utf-8"))["references"]}
 fab_ids = [i for i, r in refs.items() if r["label"] == "fabricated"]
 real_ids = [i for i, r in refs.items() if r["label"] == "real"]
 
@@ -170,4 +183,10 @@ gate = {
     "4_zero_shape_guard_misfires (both fleets)": len(c["m4_shape_guard_misfires"]) == 0 and len(b["m4_shape_guard_misfires"]) == 0,
     "5_p95_latency (cand <= 2x base)": c["m5_p95_latency_s"] <= 2 * b["m5_p95_latency_s"],
 }
-print(json.dumps({"models": summary, "gate": gate, "all_pass": all(gate.values())}, ensure_ascii=False, indent=1))
+all_pass = all(gate.values())
+print(json.dumps({"models": summary, "gate": gate, "all_pass": all_pass}, ensure_ascii=False, indent=1))
+if not all_pass:
+    # A failed gate must be a nonzero exit — automation using this scorer as
+    # a promotion gate must never read a failing candidate as success (#788
+    # round-10 P2).
+    raise SystemExit(2)

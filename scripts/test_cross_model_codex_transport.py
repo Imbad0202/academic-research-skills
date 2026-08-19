@@ -449,6 +449,26 @@ def test_unknown_web_search_action_shapes_stay_stream_fatal() -> None:
         assert receipt["reason_code"] == "EVENT_STREAM_INVALID", bad_action
 
 
+def test_model_not_searched_never_masks_malformed_result_entries() -> None:
+    # The binding pipeline (including the result-entry object-shape check)
+    # runs before any verdict branch: a bound search carrying a non-object
+    # result entry fails EVENT_STREAM_INVALID even when the model answers
+    # NOT_SEARCHED (#788 round-10 P2 — single-path validation).
+    messages, raw = _fixture("grounded_verified.jsonl")
+    for m in messages:
+        item = m.get("params", {}).get("item", {})
+        if item.get("type") == "webSearch":
+            item["results"] = [42]
+        elif item.get("type") == "agentMessage":
+            item["text"] = json.dumps(
+                {"verdict": "NOT_SEARCHED", "detail": "Search unavailable.", "sources": []}
+            )
+    receipt = runtime.parse_app_server_messages(
+        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["reason_code"] == "EVENT_STREAM_INVALID"
+
+
 def test_not_searched_with_sources_is_an_output_contract_violation() -> None:
     # NOT_SEARCHED must carry an empty sources array; a populated one fails
     # closed instead of being silently dropped by the early return (#788
