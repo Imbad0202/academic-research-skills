@@ -452,6 +452,25 @@ def test_rejected_url_value_under_recognized_key_stays_behavioral() -> None:
     assert receipt["reason_code"] == "NO_BOUND_SEARCH_RESULTS"
 
 
+def test_url_key_drift_fatal_even_when_model_says_not_searched() -> None:
+    # The key-drift determination runs pre-verdict (#788 round-28 P2): a
+    # NOT_SEARCHED answer on a stream whose bound entries carry a renamed URL
+    # key must surface EVENT_STREAM_INVALID, not the model verdict.
+    messages, raw = _fixture("grounded_verified.jsonl")
+    for m in messages:
+        item = m.get("params", {}).get("item", {})
+        if item.get("type") == "webSearch":
+            item["results"] = [{"type": "text_result", "canonical_url": "https://arxiv.org/abs/1706.03762"}]
+        elif item.get("type") == "agentMessage":
+            item["text"] = json.dumps(
+                {"verdict": "NOT_SEARCHED", "detail": "Search unavailable.", "sources": []}
+            )
+    receipt = runtime.parse_app_server_messages(
+        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["reason_code"] == "EVENT_STREAM_INVALID"
+
+
 def test_url_key_drift_in_bound_results_is_stream_fatal() -> None:
     # A bound search whose non-empty result entries yield no extractable URL
     # means the provider moved/renamed the URL key — shape drift, not a

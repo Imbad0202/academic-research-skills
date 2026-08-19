@@ -1224,6 +1224,30 @@ def parse_app_server_messages(
     except (TypeError, ValueError):
         return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
 
+    # URL-key SHAPE drift is determined pre-verdict (#788 round-28 P2): if
+    # bound searches returned non-empty entries, none of which carries any
+    # recognized URL key, the provider renamed the key — stream-fatal no
+    # matter what the model answered.
+    def _has_url_key(value: Any, depth: int = 0) -> bool:
+        if depth > 16:
+            return False
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if isinstance(key, str):
+                    folded = unicodedata.normalize("NFKC", key).casefold().replace("-", "_")
+                    if folded in URL_KEYS:
+                        return True
+                if isinstance(child, (dict, list)) and _has_url_key(child, depth + 1):
+                    return True
+        elif isinstance(value, list):
+            return any(_has_url_key(child, depth + 1) for child in value)
+        return False
+
+    if not url_bindings:
+        bound_entries = [r for item in bound_searches for r in item["results"]]
+        if bound_entries and not any(_has_url_key(r) for r in bound_entries):
+            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+
     if model_output["verdict"] == "NOT_SEARCHED":
         # The output contract requires an empty sources array for
         # NOT_SEARCHED (as for NOT_FOUND); a populated array is a
@@ -1250,34 +1274,8 @@ def parse_app_server_messages(
     if not bound_searches:
         return _empty_receipt(request, model, event_digest, "NO_REFERENCE_BOUND_QUERY")
     if not url_bindings:
-        # Distinguish URL-key SHAPE drift from value-level rejection (#788
-        # rounds 26/27): entries that carry NO recognized URL key at all mean
-        # the provider moved/renamed the key — measure-4 shape drift. Entries
-        # whose recognized URL keys hold unusable values (http://, empty, a
-        # non-string) are a behavior/content outcome, not key-shape drift.
-        def _has_url_key(value: Any, depth: int = 0) -> bool:
-            if depth > 16:
-                return False
-            if isinstance(value, dict):
-                for key, child in value.items():
-                    if isinstance(key, str):
-                        folded = unicodedata.normalize("NFKC", key).casefold().replace("-", "_")
-                        if folded in URL_KEYS:
-                            return True
-                    if isinstance(child, (dict, list)) and _has_url_key(child, depth + 1):
-                        return True
-            elif isinstance(value, list):
-                return any(_has_url_key(child, depth + 1) for child in value)
-            return False
-
-        any_entries = any(item["results"] for item in bound_searches)
-        any_url_key = any(
-            _has_url_key(result)
-            for item in bound_searches
-            for result in item["results"]
-        )
-        if any_entries and not any_url_key:
-            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        # Key drift was already ruled out pre-verdict above; an empty binding
+        # set here is value-level rejection or a zero-hit — behavioral.
         return _empty_receipt(request, model, event_digest, "NO_BOUND_SEARCH_RESULTS")
 
     verdict = model_output["verdict"]
