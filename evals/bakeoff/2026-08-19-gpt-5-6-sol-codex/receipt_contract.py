@@ -8,7 +8,12 @@ sets (additionalProperties: false at every level), per-field patterns and
 length bounds, array caps, and the per-verdict conditional constraints.
 """
 import hashlib
+import json
 import re
+from datetime import datetime
+
+MODEL_SHORT = {"gpt-5.5": "bk55", "gpt-5.6-sol": "bk56"}
+REPEATS = 3
 
 # Frozen probe-set digest (the sha256 recorded in the audit report), shared by
 # the runner's pre-flight and the scorer's gate so 180 paid calls can never be
@@ -174,3 +179,56 @@ def validate_receipt(rec: dict, where: str) -> None:
             bail("NOT_SEARCHED without a reason_code")
     if rec["searched"] and not queries:
         bail("searched without search_queries")
+
+
+def canonical_json(value) -> bytes:
+    # Byte-identical to scripts/cross_model_codex_transport.py::canonical_json.
+    return json.dumps(
+        value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def validate_row(row: dict, expected_model: str, ref: dict) -> None:
+    """Complete row-level validation shared by the scorer and the runner's
+    resume preflight (#788 round-25 P1): contradictory receipt+error rows,
+    outer identity, exact-integer repeat, full ISO timestamp, sane latency,
+    the receipt identity binding to the probe row, and the closed receipt
+    contract. Raises SystemExit on the first violation.
+    """
+    where = f"{expected_model} {row.get('ref_id')} r{row.get('repeat')}"
+    if row.get("error") and row.get("receipt") is not None:
+        raise SystemExit(f"CONTRADICTORY ROW: {where} carries both a receipt and error={row.get('error')!r}")
+    if row.get("model") != expected_model:
+        raise SystemExit(f"IDENTITY: row model {row.get('model')!r} in the {expected_model} fleet")
+    if row.get("ref_id") != ref["id"]:
+        raise SystemExit(f"IDENTITY: row ref_id {row.get('ref_id')!r} != {ref['id']!r}")
+    rep = row.get("repeat")
+    if isinstance(rep, bool) or not isinstance(rep, int) or not 1 <= rep <= REPEATS:
+        raise SystemExit(f"IDENTITY: non-integer repeat {rep!r} at {where}")
+    try:
+        datetime.strptime(str(row.get("ts", "")), "%Y-%m-%dT%H:%M:%S%z")
+    except ValueError:
+        raise SystemExit(f"UNDATED ROW: {where} has ts={row.get('ts')!r}")
+    ws = row.get("wall_seconds")
+    if isinstance(ws, bool) or not isinstance(ws, (int, float)) or not (0 <= ws < 10_000):
+        raise SystemExit(f"BAD LATENCY: {where} wall_seconds={ws!r}")
+    rec = row.get("receipt")
+    if rec is None:
+        return  # failed trial; carried as a misfire by both consumers
+    expected_id = f"{MODEL_SHORT[expected_model]}-{ref['id']}-r{rep}"
+    expected_digest = hashlib.sha256(canonical_json({
+        "schema_version": "ars-codex-citation-request/1.0",
+        "request_id": expected_id,
+        "reference_text": ref["reference_text"],
+        "citation_context": ref["citation_context"],
+    })).hexdigest()
+    if rec.get("model") != expected_model:
+        raise SystemExit(f"IDENTITY: receipt.model {rec.get('model')!r} != {expected_model} at {expected_id}")
+    if rec.get("request_id") != expected_id:
+        raise SystemExit(f"IDENTITY: receipt.request_id {rec.get('request_id')!r} != {expected_id}")
+    if rec.get("request_digest") != expected_digest:
+        raise SystemExit(
+            f"IDENTITY: request_digest mismatch at {expected_id} — the receipt does not "
+            f"bind to this probe row (edited fixture or mis-associated fleet)"
+        )
+    validate_receipt(rec, where)

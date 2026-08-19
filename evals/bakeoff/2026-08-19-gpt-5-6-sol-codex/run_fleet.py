@@ -8,7 +8,7 @@ same completeness and identity-binding gates to runner output as to the
 committed gate-run JSONLs."""
 import json, os, signal, subprocess, sys, time
 
-from receipt_contract import validate_receipt, verify_probe_bytes
+from receipt_contract import validate_receipt, validate_row, verify_probe_bytes
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -32,6 +32,18 @@ CALL_TIMEOUT = 420
 # fail here, not after 180 subscription calls (#788 round-24 P2).
 refs = json.loads(verify_probe_bytes(PROBE.read_bytes()).decode("utf-8"))["references"]
 TODAY = time.strftime("%Y-%m-%d")
+
+# Exclusive fleet lock: two concurrent runners on one output dir would both
+# see cells as missing, duplicate paid calls, and race on the same .tmp and
+# destination paths (#788 round-25 P2). flock is advisory but both writers
+# are this script.
+import fcntl
+OUT.mkdir(parents=True, exist_ok=True)
+_LOCK_FH = open(OUT / ".fleet.lock", "w")
+try:
+    fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except OSError:
+    raise SystemExit(f"FLEET LOCKED: another run_fleet.py holds {OUT / '.fleet.lock'}")
 
 CARRIED_FAILURES: list[str] = []
 jobs = []
@@ -58,10 +70,13 @@ for model, short in MODELS.items():
                 # fresh output directory.
                 cell_bad = cell.get("receipt") is None or cell.get("error")
                 if not cell_bad:
-                    # Resumed cells face the same full contract as fresh ones
-                    # (#788 round-15 P2).
+                    # Resumed cells face the scorer-equivalent ROW validation
+                    # (identity binding, ts, latency, full receipt contract)
+                    # BEFORE any further quota is spent — a misnamed or
+                    # copied cell must fail here, not at scoring time (#788
+                    # round-25 P1).
                     try:
-                        validate_receipt(cell["receipt"], f"resumed {out.name}")
+                        validate_row(cell, model, ref)
                     except SystemExit as bad:
                         raise SystemExit(f"RESUMED CELL INVALID: {bad}. Archive the output dir and rerun.")
                 if cell_bad:

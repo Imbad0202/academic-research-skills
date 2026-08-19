@@ -39,7 +39,7 @@ DISAGREE = {"NOT_FOUND", "MISMATCH"}
 # NOT_SEARCHED, NO_BOUND_SEARCH_RESULTS, NO_REFERENCE_BOUND_QUERY,
 # MISSING_SOURCE_FOR_VERDICT, SOURCE_NOT_IN_SEARCH_RESULTS — are model
 # behavior: they count against measures 1-3, never against measure 4.
-from receipt_contract import SHAPE_GUARD_CODES, validate_receipt  # noqa: E402
+from receipt_contract import SHAPE_GUARD_CODES, validate_row  # noqa: E402
 
 # The scoring populations (real/fabricated labels, difficulty tiers) come
 # from the probe set, which the per-receipt request_digest does NOT cover —
@@ -68,64 +68,18 @@ def load_rows(model: str) -> list[dict]:
     return [json.loads(line) for line in (HERE / f"run6_receipts_{model}.jsonl").read_text().splitlines() if line]
 
 
-def check_receipt_contract(model: str, row: dict) -> None:
-    """Full closed-contract validation via the shared receipt_contract module
-    (#788 round-15 P2: one implementation for runner and scorer)."""
-    rec = row["receipt"]
-    if rec is None:
-        return
-    validate_receipt(rec, f"{model} {row.get('ref_id')} r{row.get('repeat')}")
-
-
-def check_identity(model: str, row: dict) -> None:
-    ref = refs.get(row["ref_id"])
-    if ref is None:
-        raise SystemExit(f"IDENTITY: unknown ref_id {row['ref_id']!r} in {model} rows")
-    if row["model"] != model:
-        raise SystemExit(f"IDENTITY: row model {row['model']!r} in the {model} fleet")
-    # repeat must be an exact integer in the fixed call plan: 1.0 compares
-    # equal to 1 in the completeness Counter yet mints a noncanonical
-    # request id like ...-r1.0 (#788 round-19 P2).
-    rep = row.get("repeat")
-    if isinstance(rep, bool) or not isinstance(rep, int) or not 1 <= rep <= REPEATS:
-        raise SystemExit(f"IDENTITY: non-integer repeat {rep!r} at {model} {row['ref_id']}")
-    rec = row["receipt"]
-    if rec is None:
-        return  # no receipt to bind; the row still counts as a misfire below
-    expected_id = f"{MODEL_SHORT[model]}-{row['ref_id']}-r{row['repeat']}"
-    expected_digest = hashlib.sha256(canonical_json({
-        "schema_version": "ars-codex-citation-request/1.0",
-        "request_id": expected_id,
-        "reference_text": ref["reference_text"],
-        "citation_context": ref["citation_context"],
-    })).hexdigest()
-    if rec.get("model") != model:
-        raise SystemExit(f"IDENTITY: receipt.model {rec.get('model')!r} != {model} at {expected_id}")
-    if rec.get("request_id") != expected_id:
-        raise SystemExit(f"IDENTITY: receipt.request_id {rec.get('request_id')!r} != {expected_id}")
-    if rec.get("request_digest") != expected_digest:
-        raise SystemExit(
-            f"IDENTITY: request_digest mismatch at {expected_id} — the receipt does not "
-            f"bind to this probe row (edited fixture or mis-associated fleet)"
-        )
-
-
 summary = {}
 fleet_days: set[str] = set()
 for model in MODELS:
     rows = load_rows(model)
     for row in rows:
-        # The runner never persists a receipt together with a truthy error —
-        # such a row is corrupted or externally produced and must be refused,
-        # not scored as grounded evidence (#788 round-23 P2). Error-bearing
-        # rows with a null receipt remain counted as misfires below.
-        if row.get("error") and row.get("receipt") is not None:
-            raise SystemExit(
-                f"CONTRADICTORY ROW: {model} {row.get('ref_id')} r{row.get('repeat')} "
-                f"carries both a receipt and error={row.get('error')!r}"
-            )
-        check_identity(model, row)
-        check_receipt_contract(model, row)
+        ref = refs.get(row.get("ref_id"))
+        if ref is None:
+            raise SystemExit(f"IDENTITY: unknown ref_id {row.get('ref_id')!r} in {model} rows")
+        # Shared row validation — identical to the runner's resume preflight
+        # (#788 round-25 P1): contradiction, identity binding, ts, latency,
+        # full receipt contract.
+        validate_row(row, model, ref)
         # Reproduced fleets (results-dir mode) must be single-effort: every
         # row carries the runner's pinned-effort marker (#788 round-13 P2).
         # The committed gate-run rows predate the marker; the audit report
@@ -135,25 +89,10 @@ for model in MODELS:
                 f"EFFORT UNPINNED: {model} {row.get('ref_id')} r{row.get('repeat')} "
                 f"reasoning_effort={row.get('reasoning_effort')!r} — mixed- or unpinned-effort fleets are not scorable."
             )
-        # Every row must carry a real ISO date — an undated fleet must not
-        # slip through the same-day gate on a set of empty strings (#788
-        # round-9 P2).
-        ts = row.get("ts", "")
-        try:
-            parsed_ts = datetime.strptime(str(ts), "%Y-%m-%dT%H:%M:%S%z")
-        except ValueError:
-            raise SystemExit(
-                f"UNDATED ROW: {model} {row.get('ref_id')} r{row.get('repeat')} has ts={ts!r} "
-                "(a full ISO timestamp with offset is required, not a digit-shaped prefix)"
-            )
+        # ts already validated by validate_row; aggregate the calendar day
+        # for the same-day gate.
+        parsed_ts = datetime.strptime(str(row["ts"]), "%Y-%m-%dT%H:%M:%S%z")
         fleet_days.add(parsed_ts.strftime("%Y-%m-%d"))
-        # Latency evidence must be a finite, non-boolean, non-negative number
-        # before it may feed the percentile gate (#788 round-17 P2).
-        ws = row.get("wall_seconds")
-        if isinstance(ws, bool) or not isinstance(ws, (int, float)) or not (0 <= ws < 10_000):
-            raise SystemExit(
-                f"BAD LATENCY: {model} {row.get('ref_id')} r{row.get('repeat')} wall_seconds={ws!r}"
-            )
     # Fleet completeness gate: exactly one row per (ref_id, repeat) across the
     # declared 30 x 3 design — a truncated, duplicated, or partial receipt
     # file must never certify a passing result.
