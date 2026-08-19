@@ -127,6 +127,28 @@ for model in MODELS:
         if orphans:
             raise SystemExit(f"ORPHANED TEMP CELLS in {mdir}: {orphans[:5]} — inspect/archive before resuming.")
 
+# Pair-completeness on resume (#788 round-33 P1): an interruption that left
+# only one model's cell for a (reference, repeat) pair would make the resumed
+# counterpart run far from its partner, silently reintroducing the
+# model-vs-time confound the counterbalanced schedule eliminates. Every pair
+# must be wholly present or wholly missing.
+_present = {
+    (model, ref["id"], r)
+    for model in MODELS
+    for ref in refs
+    for r in range(1, REPEATS + 1)
+    if (OUT / model / f"{ref['id']}-r{r}.json").exists()
+}
+_model_names = list(MODELS)
+for ref in refs:
+    for r in range(1, REPEATS + 1):
+        sides = sum(1 for m in _model_names if (m, ref["id"], r) in _present)
+        if sides == 1:
+            raise SystemExit(
+                f"HALF-COMPLETE PAIR: {ref['id']} r{r} has only one model's cell — "
+                "resuming would break counterbalanced pairing. Archive the output dir and rerun."
+            )
+
 print(f"total pending calls: {len(jobs)}", flush=True)
 
 def run_one(job):
