@@ -1112,6 +1112,13 @@ def parse_app_server_messages(
                 action_type not in NON_SEARCH_WEB_ACTIONS and action_type != "search"
             ):
                 return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+            # No closed-key check here BY DESIGN: none of the protocol's
+            # WebSearchAction variants sets additionalProperties, so extra
+            # fields are schema-LEGAL (generate-json-schema, 0.147.0) — a
+            # future codex minor adding an informational field must not
+            # become fleet-wide fatality (#788 round-21, declined with
+            # schema evidence). Known fields, when present, are still
+            # type-checked below.
             for opt_field in ("url", "pattern", "query"):
                 if opt_field in action and action[opt_field] is not None and not isinstance(action[opt_field], str):
                     return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")

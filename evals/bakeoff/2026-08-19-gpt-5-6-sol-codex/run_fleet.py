@@ -80,6 +80,8 @@ print(f"total pending calls: {len(jobs)}", flush=True)
 
 def run_one(job):
     model, short, ref, r, out = job
+    if STOP is not None and STOP.is_set():
+        return f"{model} {ref['id']} r{r}: SKIPPED (termination requested) [CANCELLED]"
     out.parent.mkdir(parents=True, exist_ok=True)
     request = {
         "schema_version": "ars-codex-citation-request/1.0",
@@ -161,6 +163,8 @@ def _sweep_orphan_tempdirs() -> None:
 
 
 import tempfile as _tempfile
+import threading as _threading
+STOP = _threading.Event()
 FLEET_TMP = Path(_tempfile.mkdtemp(prefix="ars-bakeoff-fleet-"))
 FLEET_START = time.time()
 TIMEOUT_OCCURRED: list[str] = []
@@ -169,7 +173,15 @@ TIMEOUT_OCCURRED: list[str] = []
 # cleanup, leaving copied auth.json dirs under FLEET_TMP (#788 round-18 P2).
 # In-flight verifier calls finish or hit their own deadline first; the sweep
 # then runs on the drained, fleet-private root.
+STOP = None  # set to threading.Event below before workers start
+
+
 def _terminate(signum, frame):
+    # Queued futures must not keep consuming paid quota after a termination
+    # signal: STOP makes every not-yet-started job a no-op, so shutdown only
+    # waits for the (at most CONCURRENCY) in-flight calls (#788 round-21 P1).
+    if STOP is not None:
+        STOP.set()
     raise SystemExit(128 + signum)
 
 signal.signal(signal.SIGTERM, _terminate)
@@ -179,17 +191,34 @@ done = 0
 failures = 0
 try:
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
-        futs = [ex.submit(run_one, j) for j in jobs]
+        futs = {ex.submit(run_one, j): j for j in jobs}
         for f in as_completed(futs):
             done += 1
             try:
                 line = f.result()
                 print(f"[{done}/{len(jobs)}]", line, flush=True)
-                if any(tag in line for tag in ("[CALL_TIMEOUT]", "[EXIT ", "[RECEIPT_PARSE", "[RECEIPT_INVALID")):
+                if any(tag in line for tag in ("[CALL_TIMEOUT]", "[EXIT ", "[RECEIPT_PARSE", "[RECEIPT_INVALID", "[CANCELLED]")):
                     failures += 1
             except Exception as e:
                 failures += 1
-                print(f"[{done}/{len(jobs)}] WORKER-ERROR {e!r}", flush=True)
+                model, short, ref, r_, out = futs[f]
+                print(f"[{done}/{len(jobs)}] WORKER-ERROR {model} {ref['id']} r{r_}: {e!r}", flush=True)
+                # A worker exception after the paid call must leave a
+                # persisted failed cell — otherwise the next resume treats
+                # the trial as missing and silently re-rolls it (#788
+                # round-21 P2).
+                if not out.exists():
+                    try:
+                        out.parent.mkdir(parents=True, exist_ok=True)
+                        out.write_text(json.dumps({
+                            "model": model, "ref_id": ref["id"], "repeat": r_,
+                            "wall_seconds": 0.0, "receipt": None,
+                            "error": f"WORKER_EXCEPTION: {e!r}",
+                            "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                            "reasoning_effort": "provider-default (env unset)",
+                        }, ensure_ascii=False, indent=1))
+                    except OSError:
+                        pass
 finally:
     # The fleet-private root is swept on EVERY outcome once workers have
     # drained — a verifier killed by a signal/OOM leaves its ephemeral
