@@ -99,6 +99,16 @@ for model, short in MODELS.items():
                 continue
             jobs.append((model, short, ref, r, out))
 
+# Unexpected files in the output dir make the fleet unscoreable (the scorer
+# loads every <model>/*.json); refuse BEFORE spending quota (#788 round-30 P2).
+expected_names = {f"{ref['id']}-r{r}.json" for ref in refs for r in range(1, REPEATS + 1)}
+for model in MODELS:
+    mdir = OUT / model
+    if mdir.is_dir():
+        stray = sorted(p.name for p in mdir.glob("*.json") if p.name not in expected_names)
+        if stray:
+            raise SystemExit(f"UNEXPECTED FILES in {mdir}: {stray[:5]} — archive the output dir and rerun.")
+
 print(f"total pending calls: {len(jobs)}", flush=True)
 
 def run_one(job):
@@ -128,10 +138,16 @@ def run_one(job):
         # The transport is invoked via sys.executable, not the .sh wrapper
         # (no shebang dependence), and text I/O is pinned to strict UTF-8 so
         # multilingual receipts survive non-UTF-8 locales (#788 round-27).
+        # start_new_session detaches the verifier from the runner's
+        # foreground process group: an interactive Ctrl-C then reaches only
+        # the runner, in-flight verifiers finish (or hit their own deadline)
+        # and their cells persist normally instead of becoming EXIT failures
+        # that poison resumability (#788 round-30 P2).
         proc = subprocess.run(
             [sys.executable, str(REPO / "scripts/cross_model_codex_transport.py"), "verify"],
             input=json.dumps(request, ensure_ascii=False), capture_output=True,
             text=True, encoding="utf-8", timeout=CALL_TIMEOUT, env=env, cwd=str(REPO),
+            start_new_session=True,
         )
         wall = time.monotonic() - t0
         receipt = None
