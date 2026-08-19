@@ -90,10 +90,12 @@ def check_identity(model: str, row: dict) -> None:
 
 
 summary = {}
+fleet_days: set[str] = set()
 for model in MODELS:
     rows = load_rows(model)
     for row in rows:
         check_identity(model, row)
+        fleet_days.add(str(row.get("ts", ""))[:10])
     # Fleet completeness gate: exactly one row per (ref_id, repeat) across the
     # declared 30 x 3 design — a truncated, duplicated, or partial receipt
     # file must never certify a passing result.
@@ -143,6 +145,11 @@ for model in MODELS:
         "median_latency_s": statistics.median(latencies),
         "fab_verdicts": fab_verdicts,
     }
+
+# Same-day paired comparison is a gate requirement: baseline and candidate
+# fleets must all carry the same calendar date (#788 round-7 P2).
+if len(fleet_days) != 1:
+    raise SystemExit(f"MIXED-DATE FLEET: calls span {sorted(fleet_days)} — the gate requires one same-day paired run.")
 
 b, c = summary["gpt-5.5"], summary["gpt-5.6-sol"]
 gate = {

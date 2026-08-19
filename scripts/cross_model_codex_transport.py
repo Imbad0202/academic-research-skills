@@ -1083,6 +1083,14 @@ def parse_app_server_messages(
             continue
         if not isinstance(action, dict) or action.get("type") != "search":
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        # Search-item `results` is array-or-null in the protocol schema; a
+        # non-null non-list value is a shape violation and must fail here —
+        # BEFORE the MODEL_RETURNED_NOT_SEARCHED early return — so a model
+        # NOT_SEARCHED verdict can never mask it (#788 round-7 P2, the same
+        # ordering class as the action-shape check above).
+        results_shape = item.get("results")
+        if results_shape is not None and not isinstance(results_shape, list):
+            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
 
     if model_output["verdict"] == "NOT_SEARCHED":
         receipt = _empty_receipt(

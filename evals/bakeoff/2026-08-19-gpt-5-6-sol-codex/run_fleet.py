@@ -27,13 +27,24 @@ CONCURRENCY = 3
 CALL_TIMEOUT = 420
 
 refs = json.loads(PROBE.read_text())["references"]
+TODAY = time.strftime("%Y-%m-%d")
+
 jobs = []
 for model, short in MODELS.items():
     for ref in refs:
         for r in range(1, REPEATS + 1):
             out = OUT / model / f"{ref['id']}-r{r}.json"
-            if not out.exists():
-                jobs.append((model, short, ref, r, out))
+            if out.exists():
+                # Same-day comparison is a gate requirement: a resumed cell
+                # from an earlier date poisons the fleet (#788 round-7 P2).
+                cell_day = json.loads(out.read_text()).get("ts", "")[:10]
+                if cell_day != TODAY:
+                    raise SystemExit(
+                        f"STALE CELL: {out} is from {cell_day or 'unknown'}, not {TODAY}. "
+                        "Archive the output dir and run a fresh same-day fleet."
+                    )
+                continue
+            jobs.append((model, short, ref, r, out))
 
 print(f"total pending calls: {len(jobs)}", flush=True)
 

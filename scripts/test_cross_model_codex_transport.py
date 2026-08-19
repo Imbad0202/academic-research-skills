@@ -449,6 +449,23 @@ def test_unknown_web_search_action_shapes_stay_stream_fatal() -> None:
         assert receipt["reason_code"] == "EVENT_STREAM_INVALID", bad_action
 
 
+def test_model_not_searched_never_masks_results_shape_drift() -> None:
+    # Same ordering class as the action-shape check: a NOT_SEARCHED final
+    # answer on a stream whose search item carries dict-shaped results must
+    # surface EVENT_STREAM_INVALID, not the model verdict (#788 round-7 P2).
+    messages, raw = _fixture("wrong_search_shape.jsonl")
+    for m in messages:
+        item = m.get("params", {}).get("item", {})
+        if item.get("type") == "agentMessage":
+            item["text"] = json.dumps(
+                {"verdict": "NOT_SEARCHED", "detail": "Search unavailable.", "sources": []}
+            )
+    receipt = runtime.parse_app_server_messages(
+        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["reason_code"] == "EVENT_STREAM_INVALID"
+
+
 def test_model_not_searched_never_masks_action_shape_drift() -> None:
     # Shape validation runs BEFORE the MODEL_RETURNED_NOT_SEARCHED early
     # return: a NOT_SEARCHED final answer on a stream carrying an unknown
