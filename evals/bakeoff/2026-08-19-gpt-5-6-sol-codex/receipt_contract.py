@@ -73,10 +73,15 @@ def validate_receipt(rec: dict, where: str) -> None:
     for s in rec["sources"]:
         if (
             not isinstance(s, dict)
+            or set(s) != {"url", "search_item_id", "result_index", "search_result_digest"}
             or not isinstance(s.get("url"), str)
             or not s["url"].startswith("https://")
+            or len(s["url"]) <= len("https://")
             or not isinstance(s.get("search_item_id"), str)
+            or not s["search_item_id"]
             or not isinstance(s.get("result_index"), int)
+            or isinstance(s.get("result_index"), bool)
+            or not 0 <= s["result_index"] <= 127
             or not isinstance(s.get("search_result_digest"), str)
             or not _HEX64.fullmatch(s["search_result_digest"])
         ):

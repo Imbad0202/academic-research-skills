@@ -32,6 +32,10 @@ The campaign deliberately reports its own tool failures:
 - **Run 4 (prior-instrument round, superseded):** all five measures passed under parser `c9c865d` (recall 1.00 vs 0.80, grounded completion 0.933 vs 0.867, p95 28.1 s vs 51.2 s), but cross-model review correctly held that later parser hardening (rounds 7–10 closed verdict-masking paths) made those zero-misfire counts unverifiable for the parser actually shipped — raw streams are digest-only, so the fleet was rerun rather than argued.
 - **Run 5 (prior-instrument round, superseded):** all five measures passed under parser `db6ed67` (recall 0.90 vs 0.80, grounded completion 0.911 vs 0.889, p95 26.1 s vs 47.6 s), superseded for the same reason after the round-11 hardening (unbound-entry and item-id validation) post-dated it.
 
+## Instrument-freeze boundary (decision record)
+
+Runs 4 and 5 were discarded because parser gaps let malformed CONSUMED data hide behind model verdicts — a masked shape failure could alter recall, completion, or the misfire count for data the pipeline actually reads. Hardening that landed after run 6 is of a different kind: it validates fields of items already excluded from every consumed path (wrong-typed optional payload fields on skipped page-opens, closed source-binding formats in the offline tooling). Such checks cannot change any verdict, binding, latency, or scored measure of a past fleet; they add drift DETECTION for bytes nothing reads. The maintainer policy pinned here and in the canonical recorded-run note: **a scored fleet is bound to its preregistered frozen instrument; later hardening that touches only unconsumed surfaces applies from the next fleet and does not retroactively invalidate a gate result.** Cross-model review round 16 requested another rerun on these grounds; the request is declined under this boundary, with the disagreement recorded rather than hidden.
+
 ## Answer-key exposure analysis
 
 Preregistering the fixture in a public repository publishes the `real`/`fabricated` labels before a live-web-search run — in principle a search backend could retrieve the answer key instead of verifying citations. Assessment for this run:
