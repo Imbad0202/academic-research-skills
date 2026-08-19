@@ -59,45 +59,56 @@ except OSError:
 
 CARRIED_FAILURES: list[str] = []
 jobs = []
-for model, short in MODELS.items():
-    for ref in refs:
-        for r in range(1, REPEATS + 1):
-            out = OUT / model / f"{ref['id']}-r{r}.json"
-            if out.exists():
-                # Same-day comparison is a gate requirement: a resumed cell
-                # from an earlier date poisons the fleet (#788 round-7 P2).
-                cell = json.loads(out.read_text(encoding="utf-8"))
-                cell_day = str(cell.get("ts", ""))[:10]
-                if cell_day != TODAY:
-                    raise SystemExit(
-                        f"STALE CELL: {out} is from {cell_day or 'unknown'}, not {TODAY}. "
-                        "Archive the output dir and run a fresh same-day fleet."
-                    )
-                # EVERY resumed cell — failed ones included — faces the
-                # scorer-equivalent row validation and the effort check, so a
-                # copied/misnamed/corrupted cell of either kind fails before
-                # any further quota is spent (#788 round-27 P2).
-                try:
-                    validate_row(cell, model, ref)
-                except SystemExit as bad:
-                    raise SystemExit(f"RESUMED CELL INVALID: {bad}. Archive the output dir and rerun.")
-                if cell.get("reasoning_effort") != "provider-default (env unset)":
-                    raise SystemExit(
-                        f"EFFORT UNPINNED CELL: {out} has reasoning_effort="
-                        f"{cell.get('reasoning_effort')!r}. Archive the output dir and rerun."
-                    )
-                # A recorded failed trial is PART of the fleet's outcome —
-                # deleting and retrying it would let a flaky model be re-
-                # rolled until every retained row succeeds, biasing measures
-                # 1/4/5 (#788 round-11 P1). Resume fills only MISSING cells;
-                # a failure is carried forward and forces a nonzero exit, so
-                # the only path past it is rerunning the ENTIRE fleet in a
-                # fresh output directory.
-                if cell.get("receipt") is None or cell.get("error"):
-                    CARRIED_FAILURES.append(f"{model}/{out.name}: {cell.get('error')}")
-                    print(f"[carried-failure] {out.name} ({cell.get('error')})", flush=True)
-                continue
-            jobs.append((model, short, ref, r, out))
+# Counterbalanced scheduling (#788 round-32 P1): the two models' calls for
+# each (reference, repeat) cell are adjacent in the queue, with the pair
+# order alternating deterministically by (reference index + repeat) parity —
+# model identity is decorrelated from execution time, so provider load or
+# search-state drift during the fleet cannot masquerade as a model effect.
+_MODEL_ITEMS = list(MODELS.items())
+_cell_plan = []
+for ref_idx, ref in enumerate(refs):
+    for r in range(1, REPEATS + 1):
+        pair = _MODEL_ITEMS if (ref_idx + r) % 2 == 0 else list(reversed(_MODEL_ITEMS))
+        for model, short in pair:
+            _cell_plan.append((model, short, ref, r))
+
+for model, short, ref, r in _cell_plan:
+    out = OUT / model / f"{ref['id']}-r{r}.json"
+    if out.exists():
+        # Same-day comparison is a gate requirement: a resumed cell
+        # from an earlier date poisons the fleet (#788 round-7 P2).
+        cell = json.loads(out.read_text(encoding="utf-8"))
+        cell_day = str(cell.get("ts", ""))[:10]
+        if cell_day != TODAY:
+            raise SystemExit(
+                f"STALE CELL: {out} is from {cell_day or 'unknown'}, not {TODAY}. "
+                "Archive the output dir and run a fresh same-day fleet."
+            )
+        # EVERY resumed cell — failed ones included — faces the
+        # scorer-equivalent row validation and the effort check, so a
+        # copied/misnamed/corrupted cell of either kind fails before
+        # any further quota is spent (#788 round-27 P2).
+        try:
+            validate_row(cell, model, ref)
+        except SystemExit as bad:
+            raise SystemExit(f"RESUMED CELL INVALID: {bad}. Archive the output dir and rerun.")
+        if cell.get("reasoning_effort") != "provider-default (env unset)":
+            raise SystemExit(
+                f"EFFORT UNPINNED CELL: {out} has reasoning_effort="
+                f"{cell.get('reasoning_effort')!r}. Archive the output dir and rerun."
+            )
+        # A recorded failed trial is PART of the fleet's outcome —
+        # deleting and retrying it would let a flaky model be re-
+        # rolled until every retained row succeeds, biasing measures
+        # 1/4/5 (#788 round-11 P1). Resume fills only MISSING cells;
+        # a failure is carried forward and forces a nonzero exit, so
+        # the only path past it is rerunning the ENTIRE fleet in a
+        # fresh output directory.
+        if cell.get("receipt") is None or cell.get("error"):
+            CARRIED_FAILURES.append(f"{model}/{out.name}: {cell.get('error')}")
+            print(f"[carried-failure] {out.name} ({cell.get('error')})", flush=True)
+        continue
+    jobs.append((model, short, ref, r, out))
 
 # Unexpected files in the output dir make the fleet unscoreable (the scorer
 # loads every <model>/*.json); refuse BEFORE spending quota (#788 round-30 P2).
