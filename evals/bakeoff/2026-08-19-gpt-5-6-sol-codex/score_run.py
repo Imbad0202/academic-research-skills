@@ -1,16 +1,31 @@
 #!/usr/bin/env python3
 """Deterministic scorer for the 2026-08-19 codex-transport Promotion Bakeoff (#787).
 
-Replays the five § Promotion Bakeoff measures from the committed artifacts in
-this directory alone: `probe_set.json` + `run4_receipts_<model>.jsonl`.
-Offline; stdlib-only. Run: python3 score_run.py
+Replays the five § Promotion Bakeoff measures from `probe_set.json` plus either
+the committed `run4_receipts_<model>.jsonl` files (default) or a fleet-runner
+output directory (`python3 score_run.py <results_dir>`, i.e. the runner's
+`results/` or `$ARS_BAKEOFF_OUT`, holding `<model>/<ref>-r<k>.json` cells).
+Every scored row must pass an identity binding — outer model/ref/repeat,
+`receipt.model`, `receipt.request_id`, and a recomputed `request_digest`
+against the probe set — so a mis-associated or edited fleet cannot certify a
+result. Offline; stdlib-only.
 """
+import hashlib
 import json
 import statistics
+import sys
 from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+MODEL_SHORT = {"gpt-5.5": "bk55", "gpt-5.6-sol": "bk56"}
+
+
+def canonical_json(value) -> bytes:
+    # Byte-identical to scripts/cross_model_codex_transport.py::canonical_json.
+    return json.dumps(
+        value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
 MODELS = ["gpt-5.5", "gpt-5.6-sol"]
 REPEATS = 3
 DISAGREE = {"NOT_FOUND", "MISMATCH"}
@@ -30,9 +45,47 @@ def p95_nearest_rank(values: list[float]) -> float:
     return ordered[math.ceil(0.95 * len(ordered)) - 1]
 
 
+RESULTS_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+
+
+def load_rows(model: str) -> list[dict]:
+    if RESULTS_DIR is not None:
+        return [json.loads(p.read_text()) for p in sorted((RESULTS_DIR / model).glob("*.json"))]
+    return [json.loads(line) for line in (HERE / f"run4_receipts_{model}.jsonl").read_text().splitlines() if line]
+
+
+def check_identity(model: str, row: dict) -> None:
+    ref = refs.get(row["ref_id"])
+    if ref is None:
+        raise SystemExit(f"IDENTITY: unknown ref_id {row['ref_id']!r} in {model} rows")
+    if row["model"] != model:
+        raise SystemExit(f"IDENTITY: row model {row['model']!r} in the {model} fleet")
+    rec = row["receipt"]
+    if rec is None:
+        return  # no receipt to bind; the row still counts as a misfire below
+    expected_id = f"{MODEL_SHORT[model]}-{row['ref_id']}-r{row['repeat']}"
+    expected_digest = hashlib.sha256(canonical_json({
+        "schema_version": "ars-codex-citation-request/1.0",
+        "request_id": expected_id,
+        "reference_text": ref["reference_text"],
+        "citation_context": ref["citation_context"],
+    })).hexdigest()
+    if rec.get("model") != model:
+        raise SystemExit(f"IDENTITY: receipt.model {rec.get('model')!r} != {model} at {expected_id}")
+    if rec.get("request_id") != expected_id:
+        raise SystemExit(f"IDENTITY: receipt.request_id {rec.get('request_id')!r} != {expected_id}")
+    if rec.get("request_digest") != expected_digest:
+        raise SystemExit(
+            f"IDENTITY: request_digest mismatch at {expected_id} — the receipt does not "
+            f"bind to this probe row (edited fixture or mis-associated fleet)"
+        )
+
+
 summary = {}
 for model in MODELS:
-    rows = [json.loads(line) for line in (HERE / f"run4_receipts_{model}.jsonl").read_text().splitlines() if line]
+    rows = load_rows(model)
+    for row in rows:
+        check_identity(model, row)
     # Fleet completeness gate: exactly one row per (ref_id, repeat) across the
     # declared 30 x 3 design — a truncated, duplicated, or partial receipt
     # file must never certify a passing result.

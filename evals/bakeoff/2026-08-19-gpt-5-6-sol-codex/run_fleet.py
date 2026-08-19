@@ -2,7 +2,10 @@
 """#787 bakeoff fleet runner — probe_set x {gpt-5.5, gpt-5.6-sol} x 3 repeats
 through scripts/cross_model_codex_verify.sh (live subscription calls; consumes
 ChatGPT-subscription capacity). Resumable: existing receipt files are skipped.
-Output dir: ./results (override with ARS_BAKEOFF_OUT)."""
+Output dir: ./results (override with ARS_BAKEOFF_OUT). Score a reproduced
+fleet with: python3 score_run.py <that output dir> — the scorer applies the
+same completeness and identity-binding gates to runner output as to the
+committed run-4 JSONLs."""
 import json, os, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
