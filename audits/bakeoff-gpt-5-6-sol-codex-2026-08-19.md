@@ -53,7 +53,7 @@ Boundary of replayability, stated plainly: raw app-server event streams are not 
 
 ## Scored run (run 6, 2026-08-20, instrument `adf18f9`): 30 refs × 3 repeats × 2 models = 180 calls
 
-Per-reference verdict = majority of 3 repeats (no 1–1–1 split occurred). Concurrency 3, one call per reference per repeat, both models same day.
+Per-reference verdict = majority of 3 repeats. One 1–1–1 split occurred: baseline `fab-05` returned MISMATCH / NOT_SEARCHED / NOT_FOUND across its repeats and is scored INDETERMINATE — a conservative recall miss, exactly as the canonical procedure prescribes. Concurrency 3, one call per reference per repeat, both models same day. `ARS_CROSS_MODEL_REASONING_EFFORT` was unset for every fleet (provider default; recorded per row in the committed receipts going forward).
 
 | Measure | `gpt-5.5` (baseline) | `gpt-5.6-sol` (candidate) | Threshold | Result |
 |---|---|---|---|---|
@@ -63,7 +63,7 @@ Per-reference verdict = majority of 3 repeats (no 1–1–1 split occurred). Con
 | 4. Receipt-guard misfires (shape families) | **0** | **0** | zero (both fleets) | PASS |
 | 5. p95 latency (nearest-rank) | 43.3 s | **28.8 s** | ≤ 2× base | PASS |
 
-Measure-2 misses (majority `NOT_SEARCHED`, scored conservatively): baseline 3 fabrications, candidate 0. p95 is the nearest-rank order statistic (ceil(0.95·n)-th smallest); the committed scorer additionally refuses probe-set hash drift, identity-binding violations, truncated/duplicated/partial fleets, undated rows, and mixed-date fleets, and exits nonzero on any gate failure. Zero misfires on BOTH fleets under the shipped parser — run 6 is also that parser's live validation. Across the four full paired fleets (runs 2, 4, 5, 6) the candidate led on measures 1, 2, and 5 every single time.
+Measure-2 misses for the baseline (scored conservatively): `fab-01` and `fab-08` majority `NOT_SEARCHED`, `fab-05` INDETERMINATE (the 1–1–1 split above); candidate: none. p95 is the nearest-rank order statistic (ceil(0.95·n)-th smallest); the committed scorer additionally refuses probe-set hash drift, identity-binding violations, truncated/duplicated/partial fleets, undated rows, and mixed-date fleets, and exits nonzero on any gate failure. Zero misfires on BOTH fleets under the shipped parser — run 6 is also that parser's live validation. Across the four full paired fleets (runs 2, 4, 5, 6) the candidate led on measures 1, 2, and 5 every single time.
 
 The exploratory run 2, on the pre-correction fixture and interim parser, produced the same qualitative ordering (candidate superior on measures 1, 2, 5; tie on 3) — reported for transparency, carrying no gate weight.
 

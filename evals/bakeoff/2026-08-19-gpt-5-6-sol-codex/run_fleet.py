@@ -5,7 +5,7 @@ ChatGPT-subscription capacity). Resumable: existing receipt files are skipped.
 Output dir: ./results (override with ARS_BAKEOFF_OUT). Score a reproduced
 fleet with: python3 score_run.py <that output dir> — the scorer applies the
 same completeness and identity-binding gates to runner output as to the
-committed run-4 JSONLs."""
+committed gate-run JSONLs."""
 import json, os, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -72,6 +72,14 @@ def run_one(job):
     env = dict(os.environ)
     env["ARS_CROSS_MODEL_TRANSPORT"] = "codex"
     env["ARS_CROSS_MODEL"] = model
+    # Reasoning effort is PINNED to the provider default: an inherited
+    # ARS_CROSS_MODEL_REASONING_EFFORT would silently change both models'
+    # calls without being recorded (#788 round-12 P2). Every row records the
+    # effective setting.
+    env.pop("ARS_CROSS_MODEL_REASONING_EFFORT", None)
+    # Fleet-private temp root: the transport's ars-codex-citation-* dirs land
+    # here, so the timeout sweep can never touch another invocation's dirs.
+    env["TMPDIR"] = str(FLEET_TMP)
     t0 = time.monotonic()
     try:
         proc = subprocess.run(
@@ -98,7 +106,8 @@ def run_one(job):
         receipt, err = None, "CALL_TIMEOUT"
         TIMEOUT_OCCURRED.append(out.name)
     row = {"model": model, "ref_id": ref["id"], "repeat": r, "wall_seconds": round(wall, 2),
-           "receipt": receipt, "error": err, "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+           "receipt": receipt, "error": err, "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+           "reasoning_effort": "provider-default (env unset)"}
     tmp = out.with_suffix(".tmp")
     tmp.write_text(json.dumps(row, ensure_ascii=False, indent=1))
     tmp.rename(out)
@@ -110,13 +119,12 @@ def _sweep_orphan_tempdirs() -> None:
     """Remove adapter temp dirs left by outer-timeout kills.
 
     Runs ONLY after the executor has drained (no live worker owns a dir any
-    more — a mid-fleet sweep would delete concurrent workers' ephemeral
-    CODEX_HOMEs, #788 round-9 P2). Assumes one fleet per machine at a time;
-    every removal is logged.
+    more, #788 round-9 P2) and sweeps ONLY the fleet-private temp root, so it
+    can never touch another invocation's dirs (#788 round-12 P2). Every
+    removal is logged.
     """
     import shutil
-    import tempfile
-    root = Path(os.environ.get("TMPDIR", tempfile.gettempdir()))
+    root = FLEET_TMP
     for d in root.glob("ars-codex-citation-*"):
         try:
             if d.is_dir() and d.stat().st_mtime >= FLEET_START - 5:
@@ -126,6 +134,8 @@ def _sweep_orphan_tempdirs() -> None:
             pass
 
 
+import tempfile as _tempfile
+FLEET_TMP = Path(_tempfile.mkdtemp(prefix="ars-bakeoff-fleet-"))
 FLEET_START = time.time()
 TIMEOUT_OCCURRED: list[str] = []
 done = 0
