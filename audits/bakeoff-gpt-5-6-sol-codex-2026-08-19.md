@@ -18,11 +18,11 @@ The canonical bakeoff was written for the first-party API route. This run substi
 ## Preregistration
 
 - **Probe set frozen before the scored run:** `evals/bakeoff/2026-08-19-gpt-5-6-sol-codex/probe_set.json`, sha256 **`6db7c1ffeb20d4b6819010f7c7ca79f422acfef560c14cfbaf6896c78db305c2`**, committed and pushed at branch commit `3fc6ddb` prior to run 4; not modified afterward.
-- **Instrument frozen before the scored run:** the receipt parser and gate scorer used for run 5 are branch commit `db6ed67` (single-path pre-verdict validation; scorer with probe-hash pin, identity binding, completeness, same-day, and nonzero-on-fail gates), committed and pushed prior to run 5.
+- **Instrument frozen before the scored run:** the receipt parser, gate scorer, and fleet runner used for run 6 are branch commit `adf18f9` — the instrument FIXPOINT: the strict pre-verdict loop validates every consumed field of every search item (action, query, results-list shape, each entry's object shape, item id), so no field the pipeline reads is unvalidated and no verdict-conditional masking path remains; the runner cannot erase failed trials; the scorer enforces probe-hash, identity-binding, completeness, dated same-day, and nonzero-on-fail gates. Committed and pushed prior to run 6.
 
 Probe set: 30 references — 10 easy (DOI-keyed journal articles), 10 hard (3 arXiv preprints, 2 DOI-less NeurIPS proceedings papers, 5 non-English: 3 zh-TW higher-education-QA articles, 1 de, 1 fr), 10 synthetic fabrications. Every real row was resolver-confirmed the same day (Crossref direct DOI lookup / arXiv API id lookup / live papers.nips.cc fetch); every fabricated row was negative-checked against Crossref bibliographic search.
 
-## Exploratory rounds (runs 1–4, archived, not scored)
+## Exploratory rounds (runs 1–5, archived, not scored)
 
 The campaign deliberately reports its own tool failures:
 
@@ -30,12 +30,13 @@ The campaign deliberately reports its own tool failures:
 - **Run 2 (exploratory; ground-truth correction):** all five measures passed (recall 1.00 vs 0.80, p95 26.5 s vs 58.7 s), but three real probe rows carried operator transcription defects (missing co-authors 許羿梃 / 陳瑩; a wrong author initial and a fabricated completion of a truncated German title) — **both models correctly flagged all three as MISMATCH**. The rows were independently re-verified against full Crossref records and corrected. Because the fixture changed after observing outputs, run 2 is exploratory, not a gate result — the preregistration clause exists precisely for this.
 - **Run 3 (instrument defect):** an interim over-narrow page-open exemption (single observed shape `other`) rejected the equally legitimate `openPage` shape, tool-suppressing the baseline's measures (13 `EVENT_STREAM_INVALID` cells, recall 0.50) while leaving the candidate at zero misfires — a comparison flattering the candidate, therefore discarded. The exemption was re-anchored to the protocol's closed `WebSearchAction` set (verified via `codex app-server generate-json-schema`).
 - **Run 4 (prior-instrument round, superseded):** all five measures passed under parser `c9c865d` (recall 1.00 vs 0.80, grounded completion 0.933 vs 0.867, p95 28.1 s vs 51.2 s), but cross-model review correctly held that later parser hardening (rounds 7–10 closed verdict-masking paths) made those zero-misfire counts unverifiable for the parser actually shipped — raw streams are digest-only, so the fleet was rerun rather than argued.
+- **Run 5 (prior-instrument round, superseded):** all five measures passed under parser `db6ed67` (recall 0.90 vs 0.80, grounded completion 0.911 vs 0.889, p95 26.1 s vs 47.6 s), superseded for the same reason after the round-11 hardening (unbound-entry and item-id validation) post-dated it.
 
 ## Answer-key exposure analysis
 
 Preregistering the fixture in a public repository publishes the `real`/`fabricated` labels before a live-web-search run — in principle a search backend could retrieve the answer key instead of verifying citations. Assessment for this run:
 
-- **Empirical scan (primary):** across all 720 retained receipts (runs 2–5, both models), zero bound search queries and zero bound sources reference `github.com/Imbad0202`, `raw.githubusercontent.com`, the repository name, or the fixture filename. Scope caveat: receipts record reference-bound queries and bound sources; unbound queries and opened-page contents are not retained, so the scan covers what the verdicts were actually allowed to rest on.
+- **Empirical scan (primary):** across all 900 retained receipts (runs 2–6, both models), zero bound search queries and zero bound sources reference `github.com/Imbad0202`, `raw.githubusercontent.com`, the repository name, or the fixture filename. Scope caveat: receipts record reference-bound queries and bound sources; unbound queries and opened-page contents are not retained, so the scan covers what the verdicts were actually allowed to rest on.
 - **Corroboration:** fabricated-row rationales cite domain evidence (journal tables of contents, publisher records), not the repository; the fixture reached a non-default branch roughly one hour before run 4, inside ordinary search-index latency; and the baseline's recall stayed at 0.80 — an accessible answer key would have lifted both models.
 - **Residual risk + forward fix:** the exposure is a property of the canonical procedure (public repo + commit-before-run), not of this run's compliance. A sealed-preregistration variant (commit the fixture's hash, reveal contents after the fleet) is filed as a follow-up for future bakeoffs; the labels of THIS probe set are now public permanently, so any future run needs a fresh fabrication pool regardless.
 
@@ -43,33 +44,33 @@ Preregistering the fixture in a public repository publishes the `real`/`fabricat
 
 Everything the scoring rests on is committed beside the probe set in `evals/bakeoff/2026-08-19-gpt-5-6-sol-codex/`:
 
-- `run5_receipts_gpt-5.5.jsonl` / `run5_receipts_gpt-5.6-sol.jsonl` — the 180 full receipt rows (verdict, searched, reason_code, bound sources, search queries, request/event digests, wall-clock latency).
+- `run6_receipts_gpt-5.5.jsonl` / `run6_receipts_gpt-5.6-sol.jsonl` — the 180 full receipt rows (verdict, searched, reason_code, bound sources, search queries, request/event digests, wall-clock latency).
 - `score_run.py` — offline stdlib scorer; recomputes all five measures and the gate from the committed receipts alone (verified to reproduce the table below byte-for-byte).
 - `run_fleet.py` — the runner (live subscription calls; reproduction consumes quota and web results vary by day).
-- `run5_call_index.jsonl` — compact per-call index.
+- `run6_call_index.jsonl` — compact per-call index.
 
-Boundary of replayability, stated plainly: raw app-server event streams are not retained — the closed transport emits only receipts with event-stream digests, by design. The `searched` bit and source bindings therefore rest on the transport's fail-closed validation (pinned by its 58-test suite), not on re-inspection of the streams.
+Boundary of replayability, stated plainly: raw app-server event streams are not retained — the closed transport emits only receipts with event-stream digests, by design. The `searched` bit and source bindings therefore rest on the transport's fail-closed validation (pinned by its 59-test suite), not on re-inspection of the streams.
 
-## Scored run (run 5, 2026-08-20, instrument `db6ed67`): 30 refs × 3 repeats × 2 models = 180 calls
+## Scored run (run 6, 2026-08-20, instrument `adf18f9`): 30 refs × 3 repeats × 2 models = 180 calls
 
 Per-reference verdict = majority of 3 repeats (no 1–1–1 split occurred). Concurrency 3, one call per reference per repeat, both models same day.
 
 | Measure | `gpt-5.5` (baseline) | `gpt-5.6-sol` (candidate) | Threshold | Result |
 |---|---|---|---|---|
-| 1. Grounded-search completion (per call) | 0.889 | **0.911** | ≥ base − 5 pp | PASS |
-| 2. Fabrication recall (10 fabs, majority) | 0.80 | **0.90** | ≥ base − 5 pp AND ≥ 0.80 | PASS |
+| 1. Grounded-search completion (per call) | 0.867 | **0.911** | ≥ base − 5 pp | PASS |
+| 2. Fabrication recall (10 fabs, majority) | 0.70 | **1.00** | ≥ base − 5 pp AND ≥ 0.80 | PASS |
 | 3. False disagreement (20 real, majority) | 0.00 | 0.00 | ≤ base + 5 pp | PASS |
 | 4. Receipt-guard misfires (shape families) | **0** | **0** | zero (both fleets) | PASS |
-| 5. p95 latency (nearest-rank) | 47.6 s | **26.1 s** | ≤ 2× base | PASS |
+| 5. p95 latency (nearest-rank) | 43.3 s | **28.8 s** | ≤ 2× base | PASS |
 
-Measure-2 misses (majority `NOT_SEARCHED`, scored conservatively): baseline 2 fabrications, candidate 1. p95 is the nearest-rank order statistic (ceil(0.95·n)-th smallest); the committed scorer additionally refuses probe-set hash drift, identity-binding violations, truncated/duplicated/partial fleets, undated rows, and mixed-date fleets, and exits nonzero on any gate failure. Zero misfires on BOTH fleets under the shipped parser — run 5 is also that parser's live validation. Across the three full paired fleets (runs 2, 4, 5) the candidate led on measures 1, 2, and 5 every time.
+Measure-2 misses (majority `NOT_SEARCHED`, scored conservatively): baseline 3 fabrications, candidate 0. p95 is the nearest-rank order statistic (ceil(0.95·n)-th smallest); the committed scorer additionally refuses probe-set hash drift, identity-binding violations, truncated/duplicated/partial fleets, undated rows, and mixed-date fleets, and exits nonzero on any gate failure. Zero misfires on BOTH fleets under the shipped parser — run 6 is also that parser's live validation. Across the four full paired fleets (runs 2, 4, 5, 6) the candidate led on measures 1, 2, and 5 every single time.
 
 The exploratory run 2, on the pre-correction fixture and interim parser, produced the same qualitative ordering (candidate superior on measures 1, 2, 5; tie on 3) — reported for transparency, carrying no gate weight.
 
 ## Outcome (per the two-promotion rule)
 
 1. **All five measures pass → `gpt-5.6-sol` is `validated` for the ChatGPT-subscription citation transport.**
-2. **Superiority case (stated, measured):** +10 pp fabrication recall (0.90 vs 0.80), +2.2 pp grounded completion (0.911 vs 0.889), and p95 latency at 55% of baseline (26.1 s vs 47.6 s, nearest-rank), with no inferiority on any measure — the same ordering held in every full paired fleet of the campaign. This licenses measured-superiority claims for this transport per § Promotion Bakeoff.
+2. **Superiority case (stated, measured):** +30 pp fabrication recall (1.00 vs 0.70), +4.4 pp grounded completion (0.911 vs 0.867), and p95 latency at 67% of baseline (28.8 s vs 43.3 s, nearest-rank), with no inferiority on any measure — the candidate led measures 1, 2, and 5 in every one of the four full paired fleets of the campaign. This licenses measured-superiority claims for this transport per § Promotion Bakeoff.
 3. `gpt-5.6-sol` **stays provisional on the first-party API route** — an API-route bakeoff is the remaining step to full validation, and it requires a FRESH probe set under the #789 sealed-preregistration protocol (this set's labels are now public); tracked as follow-up in #787.
 
 ## Reproduction
