@@ -662,9 +662,9 @@ The run that flips a provisional id (today: `gpt-5.6-sol`) to validated is defin
   3. **False-disagreement rate** on the 20 real references (share incorrectly flagged `NOT_FOUND`/`MISMATCH`) ≤ baseline + 5 pp.
   4. **jq-guard shape stability:** zero guard misfires attributable to response-shape change across all calls (hard requirement — a shape change that trips the fail-closed guards disqualifies regardless of the other measures).
   5. **p95 latency** ≤ 2× baseline.
-- **Outcome — two distinct promotions, not one:**
+- **Outcome — validation, plus a separate claim rule:**
   - **All five pass → `provisional` becomes `validated`** (the id-status allowlist and the Supported Models note update; a promotion PR records the run under `audits/` with the probe-set hash). Non-inferiority earns trust, nothing more.
-  - **Any claim of measured superiority requires a separate, stated case on top of the validated pass** — superiority on at least one measure with no inferiority elsewhere, or a concrete operational benefit (cost, latency, capability) the promotion PR names explicitly. A candidate that merely scraped under every tolerance (−5 pp grounding, −5 pp recall, +5 pp false disagreements, 2× latency) is validated, nothing more. (Recommendation itself follows generation currency — see the 2026-08-19 note above — but stays caveated as provisional/unmeasured until this run passes.)
+  - **A measured-superiority claim additionally requires observed superiority on at least one of the five measures, with no inferiority elsewhere, named explicitly in the promotion PR.** An operational benefit (cost, latency, capability) is a recommendation-policy argument, never a measurement claim. A candidate that merely scraped under every tolerance (−5 pp grounding, −5 pp recall, +5 pp false disagreements, 2× latency) is validated, nothing more. (Recommendation itself follows generation currency — see the 2026-08-19 note above — but stays caveated as provisional/unmeasured until this run passes.)
   - Any fail → the id stays provisional; the results are still recorded.
 
 Web-search results vary day to day; the 3-repeat majority verdict and same-day paired runs are what make the comparison fair. Thresholds are the #518 spec's choice and are tunable in a future spec without redesigning the procedure.
