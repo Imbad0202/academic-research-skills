@@ -23,13 +23,33 @@ refs = {r["id"]: r for r in json.loads((HERE / "probe_set.json").read_text())["r
 fab_ids = [i for i, r in refs.items() if r["label"] == "fabricated"]
 real_ids = [i for i, r in refs.items() if r["label"] == "real"]
 
+def p95_nearest_rank(values: list[float]) -> float:
+    """Nearest-rank percentile: the ceil(0.95 * n)-th smallest observation."""
+    import math
+    ordered = sorted(values)
+    return ordered[math.ceil(0.95 * len(ordered)) - 1]
+
+
 summary = {}
 for model in MODELS:
     rows = [json.loads(line) for line in (HERE / f"run4_receipts_{model}.jsonl").read_text().splitlines() if line]
+    # Fleet completeness gate: exactly one row per (ref_id, repeat) across the
+    # declared 30 x 3 design — a truncated, duplicated, or partial receipt
+    # file must never certify a passing result.
+    seen = Counter((r["ref_id"], r["repeat"]) for r in rows)
+    expected = {(rid, k) for rid in refs for k in range(1, REPEATS + 1)}
+    if set(seen) != expected or any(v != 1 for v in seen.values()):
+        missing = sorted(expected - set(seen))[:5]
+        dupes = sorted(k for k, v in seen.items() if v > 1)[:5]
+        extra = sorted(set(seen) - expected)[:5]
+        raise SystemExit(
+            f"FLEET INCOMPLETE for {model}: rows={len(rows)} "
+            f"missing={missing} duplicates={dupes} unexpected={extra}"
+        )
     n_calls = len(rows)
     grounded = sum(1 for r in rows if r["receipt"] and r["receipt"].get("searched") is True)
-    latencies = sorted(r["wall_seconds"] for r in rows)
-    p95 = latencies[int(0.95 * len(latencies)) - 1]
+    latencies = [r["wall_seconds"] for r in rows]
+    p95 = p95_nearest_rank(latencies)
     misfires = [
         {"ref": r["ref_id"], "repeat": r["repeat"], "reason": (r["receipt"] or {}).get("reason_code") or r["error"]}
         for r in rows

@@ -59,17 +59,17 @@ Per-reference verdict = majority of 3 repeats (no 1–1–1 split occurred). Con
 | 2. Fabrication recall (10 fabs, majority) | 0.80 | **1.00** | ≥ base − 5 pp AND ≥ 0.80 | PASS |
 | 3. False disagreement (20 real, majority) | 0.00 | 0.00 | ≤ base + 5 pp | PASS |
 | 4. Receipt-guard misfires (shape families) | **0** | **0** | zero (candidate) | PASS |
-| 5. p95 latency | 51.1 s | **27.5 s** | ≤ 2× base | PASS |
+| 5. p95 latency (nearest-rank) | 51.2 s | **28.1 s** | ≤ 2× base | PASS |
 
-Baseline misses on measure 2: `fab-01`, `fab-08` returned majority `NOT_SEARCHED` for `gpt-5.5` (scored as misses, conservatively). Median latency: 16.2 s (base) / 16.2 s (candidate). Zero misfires on BOTH models confirms the final instrument is clean — run 4 is also the parser's live validation.
+Baseline misses on measure 2: `fab-01`, `fab-08` returned majority `NOT_SEARCHED` for `gpt-5.5` (scored as misses, conservatively). Median latency: 16.2 s (base) / 16.2 s (candidate); p95 is the nearest-rank order statistic (ceil(0.95·n)-th smallest), and the committed scorer refuses truncated, duplicated, or partial fleets before computing any measure. Zero misfires on BOTH models confirms the final instrument is clean — run 4 is also the parser's live validation.
 
 The exploratory run 2, on the pre-correction fixture and interim parser, produced the same qualitative ordering (candidate superior on measures 1, 2, 5; tie on 3) — reported for transparency, carrying no gate weight.
 
 ## Outcome (per the two-promotion rule)
 
 1. **All five measures pass → `gpt-5.6-sol` is `validated` for the ChatGPT-subscription citation transport.**
-2. **Superiority case (stated, measured):** +20 pp fabrication recall (1.00 vs 0.80), +6.7 pp grounded completion (0.933 vs 0.867), and p95 latency roughly half of baseline (27.5 s vs 51.1 s), with no inferiority on any measure. This licenses measured-superiority claims for this transport per § Promotion Bakeoff.
-3. `gpt-5.6-sol` **stays provisional on the first-party API route** — an API-route bakeoff (same probe set reusable by hash) is the remaining step to full validation; tracked as follow-up in #787.
+2. **Superiority case (stated, measured):** +20 pp fabrication recall (1.00 vs 0.80), +6.7 pp grounded completion (0.933 vs 0.867), and p95 latency roughly half of baseline (28.1 s vs 51.2 s, nearest-rank), with no inferiority on any measure. This licenses measured-superiority claims for this transport per § Promotion Bakeoff.
+3. `gpt-5.6-sol` **stays provisional on the first-party API route** — an API-route bakeoff is the remaining step to full validation, and it requires a FRESH probe set under the #789 sealed-preregistration protocol (this set's labels are now public); tracked as follow-up in #787.
 
 ## Reproduction
 

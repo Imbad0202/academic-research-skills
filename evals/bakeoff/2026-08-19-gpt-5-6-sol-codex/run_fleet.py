@@ -15,7 +15,13 @@ VERIFY = REPO / "scripts/cross_model_codex_verify.sh"
 MODELS = {"gpt-5.5": "bk55", "gpt-5.6-sol": "bk56"}
 REPEATS = 3
 CONCURRENCY = 3
-CALL_TIMEOUT = 300
+# Outer backstop only: it MUST exceed the transport's own 300 s app-server
+# deadline plus detection/setup/drain margin, so the transport's finally-block
+# cleanup (ephemeral CODEX_HOME with the copied auth.json; process-group reap)
+# always fires before this kill. An outer kill at exactly the inner deadline
+# could orphan the detached codex child and leak the temp auth copy (#788
+# codex round-4 P2).
+CALL_TIMEOUT = 420
 
 refs = json.loads(PROBE.read_text())["references"]
 jobs = []
