@@ -30,9 +30,28 @@ The campaign deliberately reports its own tool failures:
 - **Run 2 (exploratory; ground-truth correction):** all five measures passed (recall 1.00 vs 0.80, p95 26.5 s vs 58.7 s), but three real probe rows carried operator transcription defects (missing co-authors 許羿梃 / 陳瑩; a wrong author initial and a fabricated completion of a truncated German title) — **both models correctly flagged all three as MISMATCH**. The rows were independently re-verified against full Crossref records and corrected. Because the fixture changed after observing outputs, run 2 is exploratory, not a gate result — the preregistration clause exists precisely for this.
 - **Run 3 (instrument defect):** an interim over-narrow page-open exemption (single observed shape `other`) rejected the equally legitimate `openPage` shape, tool-suppressing the baseline's measures (13 `EVENT_STREAM_INVALID` cells, recall 0.50) while leaving the candidate at zero misfires — a comparison flattering the candidate, therefore discarded. The exemption was re-anchored to the protocol's closed `WebSearchAction` set (verified via `codex app-server generate-json-schema`).
 
+## Answer-key exposure analysis
+
+Preregistering the fixture in a public repository publishes the `real`/`fabricated` labels before a live-web-search run — in principle a search backend could retrieve the answer key instead of verifying citations. Assessment for this run:
+
+- **Empirical scan (primary):** across all 540 retained receipts (runs 2–4, both models), zero bound search queries and zero bound sources reference `github.com/Imbad0202`, `raw.githubusercontent.com`, the repository name, or the fixture filename. Scope caveat: receipts record reference-bound queries and bound sources; unbound queries and opened-page contents are not retained, so the scan covers what the verdicts were actually allowed to rest on.
+- **Corroboration:** fabricated-row rationales cite domain evidence (journal tables of contents, publisher records), not the repository; the fixture reached a non-default branch roughly one hour before run 4, inside ordinary search-index latency; and the baseline's recall stayed at 0.80 — an accessible answer key would have lifted both models.
+- **Residual risk + forward fix:** the exposure is a property of the canonical procedure (public repo + commit-before-run), not of this run's compliance. A sealed-preregistration variant (commit the fixture's hash, reveal contents after the fleet) is filed as a follow-up for future bakeoffs; the labels of THIS probe set are now public permanently, so any future run needs a fresh fabrication pool regardless.
+
+## Retained artifacts (replayability)
+
+Everything the scoring rests on is committed beside the probe set in `evals/bakeoff/2026-08-19-gpt-5-6-sol-codex/`:
+
+- `run4_receipts_gpt-5.5.jsonl` / `run4_receipts_gpt-5.6-sol.jsonl` — the 180 full receipt rows (verdict, searched, reason_code, bound sources, search queries, request/event digests, wall-clock latency).
+- `score_run.py` — offline stdlib scorer; recomputes all five measures and the gate from the committed receipts alone (verified to reproduce the table below byte-for-byte).
+- `run_fleet.py` — the runner (live subscription calls; reproduction consumes quota and web results vary by day).
+- `run4_call_index.jsonl` — compact per-call index.
+
+Boundary of replayability, stated plainly: raw app-server event streams are not retained — the closed transport emits only receipts with event-stream digests, by design. The `searched` bit and source bindings therefore rest on the transport's fail-closed validation (pinned by its 55-test suite), not on re-inspection of the streams.
+
 ## Scored run (run 4): 30 refs × 3 repeats × 2 models = 180 calls
 
-Per-reference verdict = majority of 3 repeats (no 1–1–1 split occurred). Concurrency 3, one call per reference per repeat, both models same day. Per-call index: `evals/bakeoff/2026-08-19-gpt-5-6-sol-codex/run4_call_index.jsonl` (verdict, searched, reason_code, latency, receipt digests per call).
+Per-reference verdict = majority of 3 repeats (no 1–1–1 split occurred). Concurrency 3, one call per reference per repeat, both models same day.
 
 | Measure | `gpt-5.5` (baseline) | `gpt-5.6-sol` (candidate) | Threshold | Result |
 |---|---|---|---|---|

@@ -1055,13 +1055,6 @@ def parse_app_server_messages(
         model_output = _validate_model_output(strict_json_loads(text))
     except (UnicodeError, ValueError, json.JSONDecodeError):
         return _empty_receipt(request, model, event_digest, "FINAL_OUTPUT_INVALID")
-    if model_output["verdict"] == "NOT_SEARCHED":
-        receipt = _empty_receipt(
-            request, model, event_digest, "MODEL_RETURNED_NOT_SEARCHED"
-        )
-        receipt["detail"] = model_output["detail"]
-        return receipt
-
     # codex-cli 0.147.0 also emits webSearch items for follow-up page
     # activity. The app-server protocol's WebSearchAction is a CLOSED oneOf —
     # {"search", "openPage", "findInPage", "other"} (Responses-API spelling
@@ -1074,7 +1067,10 @@ def parse_app_server_messages(
     # EVENT_STREAM_INVALID because absence checks legitimately open result
     # pages). Any action shape OUTSIDE the closed set — missing type, unknown
     # type, non-dict — stays fail-closed, and search-typed items keep the
-    # exact strict validation below.
+    # exact strict validation below. This shape validation deliberately runs
+    # BEFORE the MODEL_RETURNED_NOT_SEARCHED early return: a model
+    # NOT_SEARCHED verdict must never mask response-shape drift (#788
+    # round-3 P2).
     def _is_page_open(item: dict[str, Any]) -> bool:
         action = item.get("action")
         return isinstance(action, dict) and action.get("type") in NON_SEARCH_WEB_ACTIONS
@@ -1087,6 +1083,13 @@ def parse_app_server_messages(
             continue
         if not isinstance(action, dict) or action.get("type") != "search":
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+
+    if model_output["verdict"] == "NOT_SEARCHED":
+        receipt = _empty_receipt(
+            request, model, event_digest, "MODEL_RETURNED_NOT_SEARCHED"
+        )
+        receipt["detail"] = model_output["detail"]
+        return receipt
 
     all_searches = [
         (index, item)

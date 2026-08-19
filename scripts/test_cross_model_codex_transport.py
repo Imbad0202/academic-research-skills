@@ -446,6 +446,23 @@ def test_unknown_web_search_action_shapes_stay_stream_fatal() -> None:
         assert receipt["reason_code"] == "EVENT_STREAM_INVALID", bad_action
 
 
+def test_model_not_searched_never_masks_action_shape_drift() -> None:
+    # Shape validation runs BEFORE the MODEL_RETURNED_NOT_SEARCHED early
+    # return: a NOT_SEARCHED final answer on a stream carrying an unknown
+    # action shape must surface EVENT_STREAM_INVALID, not the model verdict
+    # (#788 round-3 P2 — measure 4 depends on this ordering).
+    messages, raw = _fixture("grounded_verified.jsonl")
+    bad = _page_open_event()
+    bad["params"]["item"]["action"] = {"type": "browse"}
+    messages[1]["params"]["item"]["text"] = json.dumps(
+        {"verdict": "NOT_SEARCHED", "detail": "Search unavailable.", "sources": []}
+    )
+    receipt = runtime.parse_app_server_messages(
+        [bad] + messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["reason_code"] == "EVENT_STREAM_INVALID"
+
+
 def test_positive_without_source_fails_closed() -> None:
     messages, raw = _fixture("grounded_verified.jsonl")
     messages[1]["params"]["item"]["text"] = json.dumps(
