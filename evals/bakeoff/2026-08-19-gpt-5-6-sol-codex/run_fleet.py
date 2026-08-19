@@ -37,16 +37,23 @@ TODAY = time.strftime("%Y-%m-%d")
 # see cells as missing, duplicate paid calls, and race on the same .tmp and
 # destination paths (#788 round-25 P2). flock is advisory but both writers
 # are this script.
+# POSIX-only, stated up front (#788 round-29 P1): the #630 transport's
+# process-group containment (start_new_session + os.killpg in
+# _stop_process) is POSIX-only, so a native-Windows fleet would consume
+# paid calls and fail every cell during cleanup. Windows users reproduce
+# under WSL or another POSIX environment.
+if os.name != "posix":
+    raise SystemExit(
+        "UNSUPPORTED PLATFORM: the bakeoff fleet requires a POSIX environment "
+        "(the #630 transport's process-group cleanup is POSIX-only). On "
+        "Windows, run under WSL."
+    )
+
 OUT.mkdir(parents=True, exist_ok=True)
 _LOCK_FH = open(OUT / ".fleet.lock", "a+")
 try:
-    if os.name == "nt":  # Windows is a supported reproduction path (#788 round-26 P2)
-        import msvcrt
-        _LOCK_FH.seek(0)
-        msvcrt.locking(_LOCK_FH.fileno(), msvcrt.LK_NBLCK, 1)
-    else:
-        import fcntl
-        fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    import fcntl
+    fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
 except OSError:
     raise SystemExit(f"FLEET LOCKED: another run_fleet.py holds {OUT / '.fleet.lock'}")
 
@@ -118,10 +125,9 @@ def run_one(job):
     env["TMPDIR"] = str(FLEET_TMP)
     t0 = time.monotonic()
     try:
-        # The transport is invoked via sys.executable, not the .sh wrapper:
-        # Windows CreateProcess does not honor shebangs, and text I/O is
-        # pinned to strict UTF-8 so multilingual receipts survive non-UTF-8
-        # locales (#788 round-27 P2 x2).
+        # The transport is invoked via sys.executable, not the .sh wrapper
+        # (no shebang dependence), and text I/O is pinned to strict UTF-8 so
+        # multilingual receipts survive non-UTF-8 locales (#788 round-27).
         proc = subprocess.run(
             [sys.executable, str(REPO / "scripts/cross_model_codex_transport.py"), "verify"],
             input=json.dumps(request, ensure_ascii=False), capture_output=True,
