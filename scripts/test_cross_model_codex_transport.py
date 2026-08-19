@@ -403,11 +403,31 @@ def test_page_open_web_search_items_are_skipped_not_stream_fatal() -> None:
     assert receipt["reason_code"] == "NO_BOUND_SEARCH_RESULTS"
 
 
+def test_all_first_party_non_search_actions_are_skipped() -> None:
+    # The exemption covers exactly the non-search members of the protocol's
+    # closed WebSearchAction set, both spellings.
+    for ok_action in (
+        {"type": "other"},
+        {"type": "openPage", "url": "https://example.org/toc"},
+        {"type": "open_page", "url": "https://example.org/toc"},
+        {"type": "findInPage", "url": "https://example.org/toc", "pattern": "x"},
+        {"type": "find_in_page", "url": "https://example.org/toc", "pattern": "x"},
+    ):
+        messages, raw = _fixture("grounded_verified.jsonl")
+        opener = _page_open_event()
+        opener["params"]["item"]["action"] = ok_action
+        receipt = runtime.parse_app_server_messages(
+            [opener] + messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )
+        assert receipt["verdict"] == "VERIFIED", ok_action
+        assert receipt["searched"] is True, ok_action
+
+
 def test_unknown_web_search_action_shapes_stay_stream_fatal() -> None:
-    # ONLY action.type == "other" is the exempt page-open shape; an empty
-    # action object, an unknown type, or a non-dict action fails the stream
-    # closed even when a valid search item is also present (codex round-1 P2
-    # on #788: the exemption must not become a catch-all).
+    # Only the closed first-party non-search set is exempt; an empty action
+    # object, an unknown type, or a non-dict action fails the stream closed
+    # even when a valid search item is also present (codex round-1 P2 on
+    # #788: the exemption must not become a catch-all).
     for bad_action in ({}, {"type": "browse"}, "other", {"kind": "other"}):
         messages, raw = _fixture("grounded_verified.jsonl")
         bad = _page_open_event()

@@ -70,6 +70,9 @@ FORBIDDEN_ITEM_TYPES = {
     "plan",
 }
 ALLOWED_ITEM_TYPES = {"userMessage", "reasoning", "agentMessage", "webSearch"}
+# Non-search members of the app-server protocol's CLOSED WebSearchAction oneOf
+# (both spellings), per `codex app-server generate-json-schema` on 0.147.0.
+NON_SEARCH_WEB_ACTIONS = {"other", "openPage", "open_page", "findInPage", "find_in_page"}
 DISABLED_FEATURES = (
     "shell_tool",
     "unified_exec",
@@ -1053,18 +1056,22 @@ def parse_app_server_messages(
         receipt["detail"] = model_output["detail"]
         return receipt
 
-    # codex-cli 0.147.0 also emits webSearch items for follow-up page opens —
-    # exactly action.type == "other". ONLY that observed shape is exempt: it
-    # is excluded before the item cap and skipped for binding purposes (a URL
-    # seen only in an opened page can never become a bound source) but is not
-    # stream-fatal (#787; previously every fabricated-reference run died as
+    # codex-cli 0.147.0 also emits webSearch items for follow-up page
+    # activity. The app-server protocol's WebSearchAction is a CLOSED oneOf —
+    # {"search", "openPage", "findInPage", "other"} (Responses-API spelling
+    # {"search", "open_page", "find_in_page", "other"}), verified against
+    # `codex app-server generate-json-schema` output on 0.147.0 (#787/#788).
+    # Exactly the non-search members of that first-party closed set are
+    # exempt: excluded before the item cap and skipped for binding purposes —
+    # a URL seen only in an opened page can never become a bound source — but
+    # not stream-fatal (previously every fabricated-reference run died as
     # EVENT_STREAM_INVALID because absence checks legitimately open result
-    # pages). Any other action shape — missing type, unknown type, non-dict —
-    # stays fail-closed, and search-typed items keep the exact strict
-    # validation below.
+    # pages). Any action shape OUTSIDE the closed set — missing type, unknown
+    # type, non-dict — stays fail-closed, and search-typed items keep the
+    # exact strict validation below.
     def _is_page_open(item: dict[str, Any]) -> bool:
         action = item.get("action")
-        return isinstance(action, dict) and action.get("type") == "other"
+        return isinstance(action, dict) and action.get("type") in NON_SEARCH_WEB_ACTIONS
 
     for _, item in completed_items:
         if item["type"] != "webSearch":
