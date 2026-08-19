@@ -1073,7 +1073,13 @@ def parse_app_server_messages(
     # round-3 P2).
     def _is_page_open(item: dict[str, Any]) -> bool:
         action = item.get("action")
-        return isinstance(action, dict) and action.get("type") in NON_SEARCH_WEB_ACTIONS
+        if not isinstance(action, dict):
+            return False
+        # The discriminator must be type-checked before set membership: an
+        # array/object type would raise TypeError (unhashable) and crash the
+        # verifier instead of failing closed (#788 round-19 P2).
+        action_type = action.get("type")
+        return isinstance(action_type, str) and action_type in NON_SEARCH_WEB_ACTIONS
 
     # The COMPLETE search-item strict validation runs here, BEFORE the
     # MODEL_RETURNED_NOT_SEARCHED early return, over every completed
@@ -1095,7 +1101,10 @@ def parse_app_server_messages(
         if action is not None:
             if not isinstance(action, dict):
                 return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
-            if action.get("type") not in NON_SEARCH_WEB_ACTIONS and action.get("type") != "search":
+            action_type = action.get("type")
+            if not isinstance(action_type, str) or (
+                action_type not in NON_SEARCH_WEB_ACTIONS and action_type != "search"
+            ):
                 return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
             for opt_field in ("url", "pattern", "query"):
                 if opt_field in action and action[opt_field] is not None and not isinstance(action[opt_field], str):

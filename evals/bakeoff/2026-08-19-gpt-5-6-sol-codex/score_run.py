@@ -12,6 +12,7 @@ result. Offline; stdlib-only.
 """
 import hashlib
 import json
+from datetime import datetime
 import re
 import statistics
 import sys
@@ -88,6 +89,12 @@ def check_identity(model: str, row: dict) -> None:
         raise SystemExit(f"IDENTITY: unknown ref_id {row['ref_id']!r} in {model} rows")
     if row["model"] != model:
         raise SystemExit(f"IDENTITY: row model {row['model']!r} in the {model} fleet")
+    # repeat must be an exact integer in the fixed call plan: 1.0 compares
+    # equal to 1 in the completeness Counter yet mints a noncanonical
+    # request id like ...-r1.0 (#788 round-19 P2).
+    rep = row.get("repeat")
+    if isinstance(rep, bool) or not isinstance(rep, int) or not 1 <= rep <= REPEATS:
+        raise SystemExit(f"IDENTITY: non-integer repeat {rep!r} at {model} {row['ref_id']}")
     rec = row["receipt"]
     if rec is None:
         return  # no receipt to bind; the row still counts as a misfire below
@@ -128,12 +135,15 @@ for model in MODELS:
         # Every row must carry a real ISO date — an undated fleet must not
         # slip through the same-day gate on a set of empty strings (#788
         # round-9 P2).
-        day = str(row.get("ts", ""))[:10]
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+        ts = row.get("ts", "")
+        try:
+            parsed_ts = datetime.strptime(str(ts), "%Y-%m-%dT%H:%M:%S%z")
+        except ValueError:
             raise SystemExit(
-                f"UNDATED ROW: {model} {row.get('ref_id')} r{row.get('repeat')} has ts={row.get('ts')!r}"
+                f"UNDATED ROW: {model} {row.get('ref_id')} r{row.get('repeat')} has ts={ts!r} "
+                "(a full ISO timestamp with offset is required, not a digit-shaped prefix)"
             )
-        fleet_days.add(day)
+        fleet_days.add(parsed_ts.strftime("%Y-%m-%d"))
         # Latency evidence must be a finite, non-boolean, non-negative number
         # before it may feed the percentile gate (#788 round-17 P2).
         ws = row.get("wall_seconds")
