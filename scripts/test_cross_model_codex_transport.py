@@ -433,6 +433,25 @@ def test_all_first_party_non_search_actions_are_skipped() -> None:
         assert receipt["searched"] is True, ok_action
 
 
+def test_rejected_url_value_under_recognized_key_stays_behavioral() -> None:
+    # A recognized URL key holding an unusable value (http://) is a
+    # value-level outcome, not key-shape drift — it must stay in the
+    # behavior family (#788 round-27 P2).
+    messages, raw = _fixture("grounded_verified.jsonl")
+    for m in messages:
+        item = m.get("params", {}).get("item", {})
+        if item.get("type") == "webSearch":
+            item["results"] = [{"type": "text_result", "url": "http://arxiv.org/abs/1706.03762"}]
+        elif item.get("type") == "agentMessage":
+            item["text"] = json.dumps(
+                {"verdict": "NOT_FOUND", "detail": "No matching work found.", "sources": []}
+            )
+    receipt = runtime.parse_app_server_messages(
+        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["reason_code"] == "NO_BOUND_SEARCH_RESULTS"
+
+
 def test_url_key_drift_in_bound_results_is_stream_fatal() -> None:
     # A bound search whose non-empty result entries yield no extractable URL
     # means the provider moved/renamed the URL key — shape drift, not a

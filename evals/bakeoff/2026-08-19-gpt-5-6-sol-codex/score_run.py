@@ -64,8 +64,8 @@ RESULTS_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 
 def load_rows(model: str) -> list[dict]:
     if RESULTS_DIR is not None:
-        return [json.loads(p.read_text()) for p in sorted((RESULTS_DIR / model).glob("*.json"))]
-    return [json.loads(line) for line in (HERE / f"run6_receipts_{model}.jsonl").read_text().splitlines() if line]
+        return [json.loads(p.read_text(encoding="utf-8")) for p in sorted((RESULTS_DIR / model).glob("*.json"))]
+    return [json.loads(line) for line in (HERE / f"run6_receipts_{model}.jsonl").read_text(encoding="utf-8").splitlines() if line]
 
 
 summary = {}

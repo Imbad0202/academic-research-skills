@@ -59,12 +59,25 @@ for model, short in MODELS.items():
             if out.exists():
                 # Same-day comparison is a gate requirement: a resumed cell
                 # from an earlier date poisons the fleet (#788 round-7 P2).
-                cell = json.loads(out.read_text())
+                cell = json.loads(out.read_text(encoding="utf-8"))
                 cell_day = str(cell.get("ts", ""))[:10]
                 if cell_day != TODAY:
                     raise SystemExit(
                         f"STALE CELL: {out} is from {cell_day or 'unknown'}, not {TODAY}. "
                         "Archive the output dir and run a fresh same-day fleet."
+                    )
+                # EVERY resumed cell — failed ones included — faces the
+                # scorer-equivalent row validation and the effort check, so a
+                # copied/misnamed/corrupted cell of either kind fails before
+                # any further quota is spent (#788 round-27 P2).
+                try:
+                    validate_row(cell, model, ref)
+                except SystemExit as bad:
+                    raise SystemExit(f"RESUMED CELL INVALID: {bad}. Archive the output dir and rerun.")
+                if cell.get("reasoning_effort") != "provider-default (env unset)":
+                    raise SystemExit(
+                        f"EFFORT UNPINNED CELL: {out} has reasoning_effort="
+                        f"{cell.get('reasoning_effort')!r}. Archive the output dir and rerun."
                     )
                 # A recorded failed trial is PART of the fleet's outcome —
                 # deleting and retrying it would let a flaky model be re-
@@ -73,28 +86,9 @@ for model, short in MODELS.items():
                 # a failure is carried forward and forces a nonzero exit, so
                 # the only path past it is rerunning the ENTIRE fleet in a
                 # fresh output directory.
-                cell_bad = cell.get("receipt") is None or cell.get("error")
-                if not cell_bad:
-                    # Resumed cells face the scorer-equivalent ROW validation
-                    # (identity binding, ts, latency, full receipt contract)
-                    # BEFORE any further quota is spent — a misnamed or
-                    # copied cell must fail here, not at scoring time (#788
-                    # round-25 P1).
-                    try:
-                        validate_row(cell, model, ref)
-                    except SystemExit as bad:
-                        raise SystemExit(f"RESUMED CELL INVALID: {bad}. Archive the output dir and rerun.")
-                if cell_bad:
+                if cell.get("receipt") is None or cell.get("error"):
                     CARRIED_FAILURES.append(f"{model}/{out.name}: {cell.get('error')}")
                     print(f"[carried-failure] {out.name} ({cell.get('error')})", flush=True)
-                # A carried cell must come from the same pinned-effort
-                # configuration; mixing pre-pin or differently-configured
-                # cells into a fleet is not comparable (#788 round-13 P2).
-                elif cell.get("reasoning_effort") != "provider-default (env unset)":
-                    raise SystemExit(
-                        f"EFFORT UNPINNED CELL: {out} has reasoning_effort="
-                        f"{cell.get('reasoning_effort')!r}. Archive the output dir and rerun."
-                    )
                 continue
             jobs.append((model, short, ref, r, out))
 
@@ -124,9 +118,14 @@ def run_one(job):
     env["TMPDIR"] = str(FLEET_TMP)
     t0 = time.monotonic()
     try:
+        # The transport is invoked via sys.executable, not the .sh wrapper:
+        # Windows CreateProcess does not honor shebangs, and text I/O is
+        # pinned to strict UTF-8 so multilingual receipts survive non-UTF-8
+        # locales (#788 round-27 P2 x2).
         proc = subprocess.run(
-            [str(VERIFY)], input=json.dumps(request), capture_output=True,
-            text=True, timeout=CALL_TIMEOUT, env=env, cwd=str(REPO),
+            [sys.executable, str(REPO / "scripts/cross_model_codex_transport.py"), "verify"],
+            input=json.dumps(request, ensure_ascii=False), capture_output=True,
+            text=True, encoding="utf-8", timeout=CALL_TIMEOUT, env=env, cwd=str(REPO),
         )
         wall = time.monotonic() - t0
         receipt = None
@@ -159,7 +158,7 @@ def run_one(job):
            "receipt": receipt, "error": err, "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
            "reasoning_effort": "provider-default (env unset)"}
     tmp = out.with_suffix(".tmp")
-    tmp.write_text(json.dumps(row, ensure_ascii=False, indent=1))
+    tmp.write_text(json.dumps(row, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.rename(out)
     v = receipt.get("verdict") if receipt else "ERR"
     s = receipt.get("searched") if receipt else "-"
@@ -255,7 +254,7 @@ failures += len(CARRIED_FAILURES)
 fleet_dates = set()
 for model in MODELS:
     for p in sorted((OUT / model).glob("*.json")):
-        fleet_dates.add(str(json.loads(p.read_text()).get("ts", ""))[:10])
+        fleet_dates.add(str(json.loads(p.read_text(encoding="utf-8")).get("ts", ""))[:10])
 if len(fleet_dates) > 1:
     raise SystemExit(f"MIXED-DATE FLEET: cells span {sorted(fleet_dates)} — archive and rerun in one calendar day.")
 if failures:

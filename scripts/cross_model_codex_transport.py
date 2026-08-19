@@ -1250,12 +1250,33 @@ def parse_app_server_messages(
     if not bound_searches:
         return _empty_receipt(request, model, event_digest, "NO_REFERENCE_BOUND_QUERY")
     if not url_bindings:
-        # Distinguish URL-binding SHAPE drift from a genuine zero-hit: bound
-        # searches that returned non-empty result entries from which no URL
-        # could be extracted mean the provider moved/renamed the URL key —
-        # response-shape drift that must hit measure 4, not hide in the
-        # behavior family (#788 round-26 P1).
-        if any(item["results"] for item in bound_searches):
+        # Distinguish URL-key SHAPE drift from value-level rejection (#788
+        # rounds 26/27): entries that carry NO recognized URL key at all mean
+        # the provider moved/renamed the key — measure-4 shape drift. Entries
+        # whose recognized URL keys hold unusable values (http://, empty, a
+        # non-string) are a behavior/content outcome, not key-shape drift.
+        def _has_url_key(value: Any, depth: int = 0) -> bool:
+            if depth > 16:
+                return False
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    if isinstance(key, str):
+                        folded = unicodedata.normalize("NFKC", key).casefold().replace("-", "_")
+                        if folded in URL_KEYS:
+                            return True
+                    if isinstance(child, (dict, list)) and _has_url_key(child, depth + 1):
+                        return True
+            elif isinstance(value, list):
+                return any(_has_url_key(child, depth + 1) for child in value)
+            return False
+
+        any_entries = any(item["results"] for item in bound_searches)
+        any_url_key = any(
+            _has_url_key(result)
+            for item in bound_searches
+            for result in item["results"]
+        )
+        if any_entries and not any_url_key:
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
         return _empty_receipt(request, model, event_digest, "NO_BOUND_SEARCH_RESULTS")
 
