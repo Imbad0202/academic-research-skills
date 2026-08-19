@@ -12,6 +12,7 @@ result. Offline; stdlib-only.
 """
 import hashlib
 import json
+import re
 import statistics
 import sys
 from collections import Counter
@@ -95,7 +96,15 @@ for model in MODELS:
     rows = load_rows(model)
     for row in rows:
         check_identity(model, row)
-        fleet_days.add(str(row.get("ts", ""))[:10])
+        # Every row must carry a real ISO date — an undated fleet must not
+        # slip through the same-day gate on a set of empty strings (#788
+        # round-9 P2).
+        day = str(row.get("ts", ""))[:10]
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+            raise SystemExit(
+                f"UNDATED ROW: {model} {row.get('ref_id')} r{row.get('repeat')} has ts={row.get('ts')!r}"
+            )
+        fleet_days.add(day)
     # Fleet completeness gate: exactly one row per (ref_id, repeat) across the
     # declared 30 x 3 design — a truncated, duplicated, or partial receipt
     # file must never certify a passing result.

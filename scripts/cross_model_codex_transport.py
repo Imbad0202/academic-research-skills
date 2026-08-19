@@ -1101,6 +1101,13 @@ def parse_app_server_messages(
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
 
     if model_output["verdict"] == "NOT_SEARCHED":
+        # The output contract requires an empty sources array for
+        # NOT_SEARCHED (as for NOT_FOUND); a populated array is a
+        # structured-output violation and must fail closed HERE — the early
+        # return must not silently drop the sources and mask the violation
+        # (#788 round-9 P2).
+        if model_output["sources"]:
+            return _empty_receipt(request, model, event_digest, "FINAL_OUTPUT_INVALID")
         receipt = _empty_receipt(
             request, model, event_digest, "MODEL_RETURNED_NOT_SEARCHED"
         )

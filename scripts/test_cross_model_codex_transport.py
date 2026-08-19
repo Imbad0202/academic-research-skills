@@ -449,6 +449,24 @@ def test_unknown_web_search_action_shapes_stay_stream_fatal() -> None:
         assert receipt["reason_code"] == "EVENT_STREAM_INVALID", bad_action
 
 
+def test_not_searched_with_sources_is_an_output_contract_violation() -> None:
+    # NOT_SEARCHED must carry an empty sources array; a populated one fails
+    # closed instead of being silently dropped by the early return (#788
+    # round-9 P2).
+    messages, raw = _fixture("grounded_verified.jsonl")
+    messages[1]["params"]["item"]["text"] = json.dumps(
+        {
+            "verdict": "NOT_SEARCHED",
+            "detail": "Claimed unavailable yet cites a source.",
+            "sources": ["https://arxiv.org/abs/1706.03762"],
+        }
+    )
+    receipt = runtime.parse_app_server_messages(
+        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["reason_code"] == "FINAL_OUTPUT_INVALID"
+
+
 def test_model_not_searched_never_masks_results_shape_drift() -> None:
     # Same ordering class as the action-shape check: a NOT_SEARCHED final
     # answer on a stream whose search item carries dict-shaped results must

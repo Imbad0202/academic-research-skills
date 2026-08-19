@@ -37,13 +37,20 @@ for model, short in MODELS.items():
             if out.exists():
                 # Same-day comparison is a gate requirement: a resumed cell
                 # from an earlier date poisons the fleet (#788 round-7 P2).
-                cell_day = json.loads(out.read_text()).get("ts", "")[:10]
+                cell = json.loads(out.read_text())
+                cell_day = str(cell.get("ts", ""))[:10]
                 if cell_day != TODAY:
                     raise SystemExit(
                         f"STALE CELL: {out} is from {cell_day or 'unknown'}, not {TODAY}. "
                         "Archive the output dir and run a fresh same-day fleet."
                     )
-                continue
+                # A same-day cell that recorded a failure is RETRIED, never
+                # silently carried as complete (#788 round-9 P2).
+                if cell.get("receipt") is None or cell.get("error"):
+                    out.unlink()
+                    print(f"[retry] discarding failed cell {out.name} ({cell.get('error')})", flush=True)
+                else:
+                    continue
             jobs.append((model, short, ref, r, out))
 
 print(f"total pending calls: {len(jobs)}", flush=True)
@@ -84,7 +91,7 @@ def run_one(job):
         # round-8 P2).
         wall = time.monotonic() - t0
         receipt, err = None, "CALL_TIMEOUT"
-        _sweep_orphan_tempdirs()
+        TIMEOUT_OCCURRED.append(out.name)
     row = {"model": model, "ref_id": ref["id"], "repeat": r, "wall_seconds": round(wall, 2),
            "receipt": receipt, "error": err, "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     tmp = out.with_suffix(".tmp")
@@ -95,6 +102,13 @@ def run_one(job):
     return f"{model} {ref['id']} r{r}: {v} searched={s} {wall:.0f}s" + (f" [{err}]" if err else "")
 
 def _sweep_orphan_tempdirs() -> None:
+    """Remove adapter temp dirs left by outer-timeout kills.
+
+    Runs ONLY after the executor has drained (no live worker owns a dir any
+    more — a mid-fleet sweep would delete concurrent workers' ephemeral
+    CODEX_HOMEs, #788 round-9 P2). Assumes one fleet per machine at a time;
+    every removal is logged.
+    """
     import shutil
     import tempfile
     root = Path(os.environ.get("TMPDIR", tempfile.gettempdir()))
@@ -108,6 +122,7 @@ def _sweep_orphan_tempdirs() -> None:
 
 
 FLEET_START = time.time()
+TIMEOUT_OCCURRED: list[str] = []
 done = 0
 failures = 0
 with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
@@ -122,6 +137,8 @@ with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
         except Exception as e:
             failures += 1
             print(f"[{done}/{len(jobs)}] WORKER-ERROR {e!r}", flush=True)
+if TIMEOUT_OCCURRED:
+    _sweep_orphan_tempdirs()
 if failures:
     # An incomplete or error-bearing fleet must never look like success to
     # automation (#788 round-8 P2); the scorer's completeness gate is the
