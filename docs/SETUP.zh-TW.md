@@ -221,10 +221,10 @@ OpenAI API key 而改走該訂閱。這不涵蓋魔鬼代言人、Reviewer 2、�
 ```bash
 # Citation-integrity calls only. General DA/reviewer/judgment calls remain on API transport.
 export ARS_CROSS_MODEL_TRANSPORT="codex"
-# Deliberate transport-specific exception to the generation-currency recommendation:
-# this closed citation adapter's example stays on validated gpt-5.5. Set another id
-# only after scripts/cross_model_smoke_test_codex.sh passes against your subscription.
-export ARS_CROSS_MODEL="gpt-5.5"
+# gpt-5.6-sol is validated for THIS transport (2026-08-19 codex-transport bakeoff,
+# superiority on recall + latency — audits/bakeoff-gpt-5-6-sol-codex-2026-08-19.md).
+# gpt-5.5 remains the validated bakeoff baseline alternative.
+export ARS_CROSS_MODEL="gpt-5.6-sol"
 
 python3 scripts/cross_model_codex_transport.py detect
 # The producer sends one closed codex_citation_request/1.0 object on stdin:

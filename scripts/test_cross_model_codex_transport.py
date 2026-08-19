@@ -352,6 +352,57 @@ def test_grounded_mismatch_and_model_not_searched_are_closed() -> None:
     assert receipt["reason_code"] == "MODEL_RETURNED_NOT_SEARCHED"
 
 
+def _page_open_event(url: str = "https://example.org/toc") -> dict[str, Any]:
+    # codex-cli 0.147.0 emits follow-up page opens as webSearch items with a
+    # non-"search" action type and no query string (#787).
+    return {
+        "method": "item/completed",
+        "params": {
+            "item": {
+                "id": "exec-view-1",
+                "type": "webSearch",
+                "action": {"type": "other"},
+                "results": [{"type": "text_result", "url": url, "title": "TOC"}],
+            }
+        },
+    }
+
+
+def test_page_open_web_search_items_are_skipped_not_stream_fatal() -> None:
+    messages, raw = _fixture("grounded_verified.jsonl")
+    messages = [_page_open_event()] + messages
+    receipt = runtime.parse_app_server_messages(
+        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["verdict"] == "VERIFIED"
+    assert receipt["searched"] is True
+
+    # A page-open's URL never becomes a bindable source.
+    model_output = {
+        "verdict": "VERIFIED",
+        "detail": "Claimed from an opened page, not a search result.",
+        "sources": ["https://example.org/toc"],
+    }
+    messages2, raw2 = _fixture("grounded_verified.jsonl")
+    messages2 = [_page_open_event()] + messages2
+    messages2[2]["params"]["item"]["text"] = json.dumps(model_output)
+    receipt = runtime.parse_app_server_messages(
+        messages2, raw_stream=raw2, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["reason_code"] == "SOURCE_NOT_IN_SEARCH_RESULTS"
+
+    # A stream whose only webSearch items are page opens has no bound search.
+    messages3, raw3 = _fixture("grounded_verified.jsonl")
+    messages3 = [_page_open_event()] + [
+        m for m in messages3 if m.get("params", {}).get("item", {}).get("type") != "webSearch"
+    ]
+    receipt = runtime.parse_app_server_messages(
+        messages3, raw_stream=raw3, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["verdict"] == "NOT_SEARCHED"
+    assert receipt["reason_code"] == "NO_BOUND_SEARCH_RESULTS"
+
+
 def test_positive_without_source_fails_closed() -> None:
     messages, raw = _fixture("grounded_verified.jsonl")
     messages[1]["params"]["item"]["text"] = json.dumps(

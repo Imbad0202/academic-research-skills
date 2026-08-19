@@ -1,0 +1,249 @@
+{
+  "schema_version": "ars-bakeoff-probe-set/1.0",
+  "created": "2026-08-19",
+  "issue": 787,
+  "purpose": "Promotion Bakeoff probe set (shared/cross_model_verification.md § Promotion Bakeoff): 30 references — 20 real (10 easy DOI-keyed journal articles; 10 hard: arXiv preprints, DOI-less conference papers, non-English articles) + 10 synthetic plausible fabrications. Every real row was resolver-confirmed on 2026-08-19 (Crossref direct DOI lookup, arXiv API id lookup, or live papers.nips.cc fetch); every fabricated row was negative-checked against Crossref bibliographic search on the same day.",
+  "labels": {"real": "the work exists; ground_truth records the confirmed identifier", "fabricated": "synthetic; no such work exists (negative-checked)"},
+  "references": [
+    {
+      "id": "real-easy-01",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Breiman, L. (2001). Random forests. Machine Learning, 45(1), 5-32.",
+      "citation_context": "Cited as the origin of the random forest ensemble method.",
+      "ground_truth": {"doi": "10.1023/a:1010933404324", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-02",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Greenland, S., Senn, S. J., Rothman, K. J., Carlin, J. B., Poole, C., Goodman, S. N., & Altman, D. G. (2016). Statistical tests, P values, confidence intervals, and power: A guide to misinterpretations. European Journal of Epidemiology, 31(4), 337-350.",
+      "citation_context": "Cited for common misinterpretations of significance testing.",
+      "ground_truth": {"doi": "10.1007/s10654-016-0149-3", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-03",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Page, M. J., McKenzie, J. E., Bossuyt, P. M., Boutron, I., Hoffmann, T. C., Mulrow, C. D., et al. (2021). The PRISMA 2020 statement: An updated guideline for reporting systematic reviews. BMJ, 372, n71.",
+      "citation_context": "Cited as the reporting guideline followed by the systematic review.",
+      "ground_truth": {"doi": "10.1136/bmj.n71", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-04",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Open Science Collaboration. (2015). Estimating the reproducibility of psychological science. Science, 349(6251), aac4716.",
+      "citation_context": "Cited as the large-scale replication project in psychology.",
+      "ground_truth": {"doi": "10.1126/science.aac4716", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-05",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Ioannidis, J. P. A. (2005). Why most published research findings are false. PLoS Medicine, 2(8), e124.",
+      "citation_context": "Cited for the argument that many published findings do not replicate.",
+      "ground_truth": {"doi": "10.1371/journal.pmed.0020124", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-06",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Christensen, S. H., & Erno-Kjolhede, E. (2011). Academic drift in Danish professional engineering education. Myth or reality? Opportunity or threat? European Journal of Engineering Education, 36(3), 285-299.",
+      "citation_context": "Cited as evidence on academic drift in professional higher education.",
+      "ground_truth": {"doi": "10.1080/03043797.2011.585225", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-07",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Hochreiter, S., & Schmidhuber, J. (1997). Long short-term memory. Neural Computation, 9(8), 1735-1780.",
+      "citation_context": "Cited as the source of the LSTM architecture.",
+      "ground_truth": {"doi": "10.1162/neco.1997.9.8.1735", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-08",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Awad, E., Dsouza, S., Kim, R., Schulz, J., Henrich, J., Shariff, A., Bonnefon, J.-F., & Rahwan, I. (2018). The Moral Machine experiment. Nature, 563(7729), 59-64.",
+      "citation_context": "Cited for cross-cultural preferences in machine ethics dilemmas.",
+      "ground_truth": {"doi": "10.1038/s41586-018-0637-6", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-09",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Harvey, L., & Green, D. (1993). Defining quality. Assessment & Evaluation in Higher Education, 18(1), 9-34.",
+      "citation_context": "Cited as the classic taxonomy of quality conceptions in higher education.",
+      "ground_truth": {"doi": "10.1080/0260293930180102", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-easy-10",
+      "label": "real",
+      "difficulty": "easy",
+      "reference_text": "Shmueli, G. (2010). To explain or to predict? Statistical Science, 25(3), 289-310.",
+      "citation_context": "Cited for the distinction between explanatory and predictive modeling.",
+      "ground_truth": {"doi": "10.1214/10-sts330", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-hard-01",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "Kingma, D. P., & Ba, J. (2015). Adam: A method for stochastic optimization. 3rd International Conference on Learning Representations (ICLR 2015). arXiv:1412.6980.",
+      "citation_context": "Cited as the optimizer used for model training.",
+      "ground_truth": {"arxiv": "1412.6980", "verified_via": "arxiv-api-2026-08-19"}
+    },
+    {
+      "id": "real-hard-02",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., et al. (2020). Language models are few-shot learners. Advances in Neural Information Processing Systems 33 (NeurIPS 2020). arXiv:2005.14165.",
+      "citation_context": "Cited as the GPT-3 paper establishing in-context learning.",
+      "ground_truth": {"arxiv": "2005.14165", "verified_via": "arxiv-api-2026-08-19"}
+    },
+    {
+      "id": "real-hard-03",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "Devlin, J., Chang, M.-W., Lee, K., & Toutanova, K. (2019). BERT: Pre-training of deep bidirectional transformers for language understanding. Proceedings of NAACL-HLT 2019. arXiv:1810.04805.",
+      "citation_context": "Cited as the source of the BERT pre-training objective.",
+      "ground_truth": {"arxiv": "1810.04805", "verified_via": "arxiv-api-2026-08-19"}
+    },
+    {
+      "id": "real-hard-04",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "Krizhevsky, A., Sutskever, I., & Hinton, G. E. (2012). ImageNet classification with deep convolutional neural networks. Advances in Neural Information Processing Systems 25 (NIPS 2012).",
+      "citation_context": "Cited as the AlexNet result on ImageNet; the NIPS 2012 proceedings version carries no DOI.",
+      "ground_truth": {"url": "https://papers.nips.cc/paper_files/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html", "verified_via": "papers.nips.cc-fetch-2026-08-19"}
+    },
+    {
+      "id": "real-hard-05",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "Mikolov, T., Sutskever, I., Chen, K., Corrado, G., & Dean, J. (2013). Distributed representations of words and phrases and their compositionality. Advances in Neural Information Processing Systems 26 (NIPS 2013).",
+      "citation_context": "Cited as the word2vec negative-sampling paper; the NIPS 2013 proceedings version carries no DOI.",
+      "ground_truth": {"url": "https://papers.nips.cc/paper_files/paper/2013/hash/9aa42b31882ec039965f3c4923ce901b-Abstract.html", "verified_via": "papers.nips.cc-fetch-2026-08-19"}
+    },
+    {
+      "id": "real-hard-06",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "周華琪、許羿梃（2023）。建構跨境高等教育之品質保證合作模式：臺灣經驗。教育研究月刊，353，4-19。",
+      "citation_context": "引用於跨境高等教育品保合作模式之臺灣個案討論。",
+      "ground_truth": {"doi": "10.53106/168063602023090353001", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-hard-07",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "葉玉賢、陳怡如（2023）。印尼伊斯蘭高等教育品質保證與評鑑制度之探討：衝擊與困境。比較教育，95。",
+      "citation_context": "引用於亞洲高等教育評鑑制度比較之討論。",
+      "ground_truth": {"doi": "10.53106/160957582023110095003", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-hard-08",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "侯永琪、林芳伃、蘇泓誠、陳瑩（2023）。高等教育微型證書的品質保證及資歷認可初探：全球趨勢與地方實踐。教育研究月刊，353，120-137。",
+      "citation_context": "引用於微型證書品保與資歷認可趨勢之討論。",
+      "ground_truth": {"doi": "10.53106/168063602023090353008", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-hard-09",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "Ulrich, M., & Hachfeld, A. (2024). Familien-Schul-Kooperation zu Beginn der Sekundarstufe I: zum Aufgabenverständnis von Müttern und zur Bedeutung ihrer Passungswahrnehmung. Zeitschrift für Erziehungswissenschaft, 27, 803-828.",
+      "citation_context": "Zitiert für die Aufgabenteilung zwischen Eltern und Lehrkräften in der Sekundarstufe.",
+      "ground_truth": {"doi": "10.1007/s11618-024-01230-x", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "real-hard-10",
+      "label": "real",
+      "difficulty": "hard",
+      "reference_text": "Bireaud, A. (1979). Attitudes d'enseignants à l'égard d'une innovation portant sur l'autonomie. Revue française de pédagogie.",
+      "citation_context": "Cité pour les attitudes enseignantes face à une innovation pédagogique.",
+      "ground_truth": {"doi": "10.3406/rfp.1979.1695", "verified_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-01",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Tanaka, K., & Bergström, L. (2021). Hierarchical consensus networks for multi-institutional peer review. Journal of Machine Learning Research, 22(148), 1-37.",
+      "citation_context": "Cited as evidence that consensus architectures improve review reliability.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-02",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Okonkwo, C., & Falkenberg, M. (2019). Quality assurance regimes and the myth of convergence: A six-country panel study. Higher Education Policy, 32(4), 511-534.",
+      "citation_context": "Cited for cross-national divergence of QA regimes.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-03",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Verhoeven, P., Salim, A., & Grunwald, T. (2023). Attention decay in long-context transformers: An empirical atlas. Advances in Neural Information Processing Systems 36 (NeurIPS 2023).",
+      "citation_context": "Cited for degradation of attention over long contexts.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-04",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Lim, S. H., & Watanabe, R. (2020). The Shanghai Protocol: Standardizing cross-border credit recognition in East Asian higher education. Comparative Education Review, 64(3), 401-425.",
+      "citation_context": "Cited as the origin of a regional credit-recognition standard.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-05",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Almeida, R. (2022). Reverse distillation of citation graphs for retraction prediction. Scientometrics, 127(9), 5231-5256.",
+      "citation_context": "Cited for graph-based prediction of retractions.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-06",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Kaufmann, D., & Öztürk, E. (2018). Cognitive cartography of supervisory feedback loops in doctoral committees. Studies in Higher Education, 43(11), 1987-2003.",
+      "citation_context": "Cited for feedback dynamics in doctoral supervision.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-07",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Petrov, I., & Nakagawa, H. (2021). GraphMend: Self-healing knowledge graphs for scholarly databases. Proceedings of the VLDB Endowment, 14(12), 3020-3033.",
+      "citation_context": "Cited for automated repair of bibliographic knowledge graphs.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-08",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "林建甫、張維倫（2021）。外部品質保證與大學自主性的再平衡：東亞四地比較。教育政策論壇，24(2)，1-32。",
+      "citation_context": "引用於外部品保與大學自主之張力討論。",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-09",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Delgado-Ruiz, M., & Chen, Y. (2020). Stochastic curriculum alignment for assurance of learning in business schools. Academy of Management Learning & Education, 19(4), 488-509.",
+      "citation_context": "Cited for probabilistic curriculum-alignment methods in AoL.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    },
+    {
+      "id": "fab-10",
+      "label": "fabricated",
+      "difficulty": "n/a",
+      "reference_text": "Brandmüller, S. (2017). Die unsichtbare Hochschule: Qualitätskultur als organisationale Fiktion. Zeitschrift für Hochschulentwicklung, 12(3), 45-63.",
+      "citation_context": "Zitiert für Qualitätskultur als organisationale Fiktion.",
+      "ground_truth": {"negative_checked_via": "crossref-api-2026-08-19"}
+    }
+  ]
+}

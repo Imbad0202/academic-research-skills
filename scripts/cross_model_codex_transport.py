@@ -171,7 +171,9 @@ NOT_FOUND means a reference-bound search completed but no matching work was foun
 NOT_SEARCHED means you could not complete a reference-bound live search.
 For VERIFIED or MISMATCH, sources must contain at least one exact HTTPS URL from the
 structured search results you actually received. Do not copy a URL merely because it
-appears in REFERENCE_DATA. Keep detail factual and under 2,048 characters."""
+appears in REFERENCE_DATA. For NOT_FOUND or NOT_SEARCHED, sources must be an empty
+array — describe any absence evidence in detail instead of listing URLs. Keep detail
+factual and under 2,048 characters."""
 
 
 class TransportError(RuntimeError):
@@ -1051,10 +1053,24 @@ def parse_app_server_messages(
         receipt["detail"] = model_output["detail"]
         return receipt
 
+    # codex-cli 0.147.0 also emits webSearch items for follow-up page opens
+    # (action.type == "other", no query string). Those are not standalone
+    # searches: they are excluded before the item cap and skipped for binding
+    # purposes — a URL seen only in an opened page can never become a bound
+    # source — but they are not stream-fatal (#787; previously every
+    # fabricated-reference run died as EVENT_STREAM_INVALID because absence
+    # checks legitimately open result pages). Search-typed items keep the
+    # exact strict validation below.
+    def _is_page_open(item: dict[str, Any]) -> bool:
+        action = item.get("action")
+        return isinstance(action, dict) and action.get("type") != "search"
+
     all_searches = [
         (index, item)
         for index, item in completed_items
-        if index < final_index and item["type"] == "webSearch"
+        if index < final_index
+        and item["type"] == "webSearch"
+        and not _is_page_open(item)
     ]
     if len(all_searches) > MAX_SEARCH_ITEMS:
         return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
