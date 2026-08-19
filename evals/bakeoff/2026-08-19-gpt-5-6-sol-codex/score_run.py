@@ -134,6 +134,13 @@ for model in MODELS:
                 f"UNDATED ROW: {model} {row.get('ref_id')} r{row.get('repeat')} has ts={row.get('ts')!r}"
             )
         fleet_days.add(day)
+        # Latency evidence must be a finite, non-boolean, non-negative number
+        # before it may feed the percentile gate (#788 round-17 P2).
+        ws = row.get("wall_seconds")
+        if isinstance(ws, bool) or not isinstance(ws, (int, float)) or not (0 <= ws < 10_000):
+            raise SystemExit(
+                f"BAD LATENCY: {model} {row.get('ref_id')} r{row.get('repeat')} wall_seconds={ws!r}"
+            )
     # Fleet completeness gate: exactly one row per (ref_id, repeat) across the
     # declared 30 x 3 design — a truncated, duplicated, or partial receipt
     # file must never certify a passing result.

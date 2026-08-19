@@ -2,10 +2,10 @@
 
 One implementation, imported by both consumers, so the runner's persisted
 cells and the scorer's metrics can never diverge on what counts as a valid
-receipt (#788 rounds 13-15). Mirrors
-`shared/contracts/cross_model/codex_citation_receipt.schema.json` semantics
-in stdlib form: exact key set, per-field types/formats, and per-verdict
-cross-field invariants.
+receipt (#788 rounds 13-17). A COMPLETE stdlib mirror of
+`shared/contracts/cross_model/codex_citation_receipt.schema.json`: exact key
+sets (additionalProperties: false at every level), per-field patterns and
+length bounds, array caps, and the per-verdict conditional constraints.
 """
 import re
 
@@ -32,6 +32,10 @@ EXPECTED_CONTAINMENT = {
     "standalone_search_results_required": True,
 }
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
+_IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+_MODEL_ID = re.compile(r"^gpt-[a-z0-9][a-z0-9._-]*$")
+_EVENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+_HTTPS_URL = re.compile(r"^https://[^\s\x00-\x1f\x7f]+$")
 
 
 def validate_receipt(rec: dict, where: str) -> None:
@@ -49,13 +53,16 @@ def validate_receipt(rec: dict, where: str) -> None:
         bail(f"bad schema_version {rec['schema_version']!r}")
     if rec["transport"] != "codex_subscription":
         bail(f"bad transport {rec['transport']!r}")
-    if rec["auth_mode"] not in ("chatgpt_subscription", None):
+    if rec["auth_mode"] != "chatgpt_subscription":
         bail(f"bad auth_mode {rec['auth_mode']!r}")
     if rec["containment"] != EXPECTED_CONTAINMENT:
         bail(f"containment flags {rec['containment']!r}")
-    for field in ("request_id", "model", "detail"):
-        if not isinstance(rec[field], str):
-            bail(f"{field} is not a string")
+    if not isinstance(rec["request_id"], str) or not (1 <= len(rec["request_id"]) <= 128) or not _IDENTIFIER.fullmatch(rec["request_id"]):
+        bail(f"bad request_id {rec['request_id']!r}")
+    if not isinstance(rec["model"], str) or len(rec["model"]) > 128 or not _MODEL_ID.fullmatch(rec["model"]):
+        bail(f"bad model {rec['model']!r}")
+    if not isinstance(rec["detail"], str) or len(rec["detail"]) > 2048:
+        bail("detail is not a string within 2048 chars")
     for field in ("request_digest", "event_stream_digest"):
         if not isinstance(rec[field], str) or not _HEX64.fullmatch(rec[field]):
             bail(f"{field} is not a sha256 hex digest")
@@ -63,48 +70,67 @@ def validate_receipt(rec: dict, where: str) -> None:
         bail(f"unknown verdict {rec['verdict']!r}")
     if not isinstance(rec["searched"], bool):
         bail("searched is not a bool")
-    if not isinstance(rec["search_queries"], list):
-        bail("search_queries is not a list")
-    for q in rec["search_queries"]:
-        if not isinstance(q, dict) or not isinstance(q.get("query"), str) or not isinstance(q.get("search_item_id"), str):
+    if rec["reason_code"] is not None and rec["reason_code"] not in (SHAPE_GUARD_CODES | BEHAVIOR_CODES):
+        bail(f"unknown reason_code {rec['reason_code']!r}")
+
+    queries = rec["search_queries"]
+    if not isinstance(queries, list) or len(queries) > 32:
+        bail("search_queries is not a list of at most 32 entries")
+    for q in queries:
+        if (
+            not isinstance(q, dict)
+            or set(q) != {"search_item_id", "query"}
+            or not isinstance(q["search_item_id"], str)
+            or not (1 <= len(q["search_item_id"]) <= 200)
+            or not _EVENT_ID.fullmatch(q["search_item_id"])
+            or not isinstance(q["query"], str)
+            or not (1 <= len(q["query"]) <= 2048)
+        ):
             bail(f"malformed search_queries entry {q!r}")
-    if not isinstance(rec["sources"], list):
-        bail("sources is not a list")
-    for s in rec["sources"]:
+
+    sources = rec["sources"]
+    if not isinstance(sources, list) or len(sources) > 16:
+        bail("sources is not a list of at most 16 entries")
+    for s in sources:
         if (
             not isinstance(s, dict)
             or set(s) != {"url", "search_item_id", "result_index", "search_result_digest"}
-            or not isinstance(s.get("url"), str)
-            or not s["url"].startswith("https://")
+            or not isinstance(s["url"], str)
+            or len(s["url"]) > 2048
+            or not _HTTPS_URL.fullmatch(s["url"])
             or len(s["url"]) <= len("https://")
-            or not isinstance(s.get("search_item_id"), str)
-            or not s["search_item_id"]
-            or not isinstance(s.get("result_index"), int)
-            or isinstance(s.get("result_index"), bool)
+            or not isinstance(s["search_item_id"], str)
+            or not (1 <= len(s["search_item_id"]) <= 200)
+            or not _EVENT_ID.fullmatch(s["search_item_id"])
+            or not isinstance(s["result_index"], int)
+            or isinstance(s["result_index"], bool)
             or not 0 <= s["result_index"] <= 127
-            or not isinstance(s.get("search_result_digest"), str)
+            or not isinstance(s["search_result_digest"], str)
             or not _HEX64.fullmatch(s["search_result_digest"])
         ):
             bail(f"unbound or malformed source {s!r}")
-    # Per-verdict cross-field invariants.
+
+    # Per-verdict cross-field invariants (schema allOf + transport semantics).
     if rec["verdict"] in {"VERIFIED", "MISMATCH"}:
-        if not rec["searched"] or not rec["sources"]:
+        if not rec["searched"] or not sources:
             bail(f"{rec['verdict']} without grounded bound sources")
         if rec["reason_code"] is not None:
             bail(f"{rec['verdict']} carries reason_code {rec['reason_code']!r}")
     elif rec["verdict"] == "NOT_FOUND":
         if not rec["searched"]:
             bail("NOT_FOUND without searched=true")
-        if rec["sources"]:
+        if sources:
             bail("NOT_FOUND carries sources")
         if rec["reason_code"] is not None:
             bail(f"NOT_FOUND carries reason_code {rec['reason_code']!r}")
     else:  # NOT_SEARCHED
         if rec["searched"]:
             bail("NOT_SEARCHED with searched=true")
-        if rec["sources"]:
+        if sources:
             bail("NOT_SEARCHED carries sources")
-        if rec["reason_code"] not in (SHAPE_GUARD_CODES | BEHAVIOR_CODES):
-            bail(f"unknown reason_code {rec['reason_code']!r}")
-    if rec["searched"] and not rec["search_queries"]:
+        if queries:
+            bail("NOT_SEARCHED carries search_queries")
+        if not isinstance(rec["reason_code"], str):
+            bail("NOT_SEARCHED without a reason_code")
+    if rec["searched"] and not queries:
         bail("searched without search_queries")
