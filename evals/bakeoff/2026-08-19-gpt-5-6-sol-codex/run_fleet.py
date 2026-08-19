@@ -108,6 +108,13 @@ for model in MODELS:
         stray = sorted(p.name for p in mdir.glob("*.json") if p.name not in expected_names)
         if stray:
             raise SystemExit(f"UNEXPECTED FILES in {mdir}: {stray[:5]} — archive the output dir and rerun.")
+        # An orphaned atomic-write temp file means a prior run died between
+        # write and rename: the paid call happened but left no destination
+        # cell, and silently rescheduling it would re-roll a completed trial
+        # (#788 round-31 P2). Refuse and let the operator inspect.
+        orphans = sorted(p.name for p in mdir.glob("*.tmp"))
+        if orphans:
+            raise SystemExit(f"ORPHANED TEMP CELLS in {mdir}: {orphans[:5]} — inspect/archive before resuming.")
 
 print(f"total pending calls: {len(jobs)}", flush=True)
 
@@ -158,10 +165,19 @@ def run_one(job):
             except Exception as e:
                 err = f"RECEIPT_PARSE: {e}; stdout head: {proc.stdout[:200]}"
             else:
-                # Parsed-but-malformed output must be a recorded failure, not
-                # a silent ERR row the exit code ignores (#788 round-14 P2).
+                # Parsed-but-malformed OR mis-identified output must be a
+                # recorded failure: fresh cells face the same validate_row
+                # identity binding as resumed cells and the scorer, so a
+                # receipt with the wrong model/request_id/digest can never be
+                # persisted as success (#788 rounds 14 + 31).
+                candidate_row = {
+                    "model": model, "ref_id": ref["id"], "repeat": r,
+                    "wall_seconds": round(wall, 2), "receipt": receipt,
+                    "error": None, "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                    "reasoning_effort": "provider-default (env unset)",
+                }
                 try:
-                    validate_receipt(receipt, f"{model} {ref['id']} r{r}")
+                    validate_row(candidate_row, model, ref)
                 except SystemExit as bad:
                     err = f"RECEIPT_INVALID: {bad}"
                     receipt = None
