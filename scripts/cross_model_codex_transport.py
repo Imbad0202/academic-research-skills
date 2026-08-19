@@ -1250,6 +1250,13 @@ def parse_app_server_messages(
     if not bound_searches:
         return _empty_receipt(request, model, event_digest, "NO_REFERENCE_BOUND_QUERY")
     if not url_bindings:
+        # Distinguish URL-binding SHAPE drift from a genuine zero-hit: bound
+        # searches that returned non-empty result entries from which no URL
+        # could be extracted mean the provider moved/renamed the URL key —
+        # response-shape drift that must hit measure 4, not hide in the
+        # behavior family (#788 round-26 P1).
+        if any(item["results"] for item in bound_searches):
+            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
         return _empty_receipt(request, model, event_digest, "NO_BOUND_SEARCH_RESULTS")
 
     verdict = model_output["verdict"]

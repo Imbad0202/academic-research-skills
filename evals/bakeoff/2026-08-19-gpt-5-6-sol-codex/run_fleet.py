@@ -37,11 +37,16 @@ TODAY = time.strftime("%Y-%m-%d")
 # see cells as missing, duplicate paid calls, and race on the same .tmp and
 # destination paths (#788 round-25 P2). flock is advisory but both writers
 # are this script.
-import fcntl
 OUT.mkdir(parents=True, exist_ok=True)
-_LOCK_FH = open(OUT / ".fleet.lock", "w")
+_LOCK_FH = open(OUT / ".fleet.lock", "a+")
 try:
-    fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    if os.name == "nt":  # Windows is a supported reproduction path (#788 round-26 P2)
+        import msvcrt
+        _LOCK_FH.seek(0)
+        msvcrt.locking(_LOCK_FH.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
 except OSError:
     raise SystemExit(f"FLEET LOCKED: another run_fleet.py holds {OUT / '.fleet.lock'}")
 

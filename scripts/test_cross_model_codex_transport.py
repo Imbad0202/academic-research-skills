@@ -433,6 +433,25 @@ def test_all_first_party_non_search_actions_are_skipped() -> None:
         assert receipt["searched"] is True, ok_action
 
 
+def test_url_key_drift_in_bound_results_is_stream_fatal() -> None:
+    # A bound search whose non-empty result entries yield no extractable URL
+    # means the provider moved/renamed the URL key — shape drift, not a
+    # zero-hit behavior outcome (#788 round-26 P1).
+    messages, raw = _fixture("grounded_verified.jsonl")
+    for m in messages:
+        item = m.get("params", {}).get("item", {})
+        if item.get("type") == "webSearch":
+            item["results"] = [{"type": "text_result", "canonical_url": "https://arxiv.org/abs/1706.03762"}]
+        elif item.get("type") == "agentMessage":
+            item["text"] = json.dumps(
+                {"verdict": "NOT_FOUND", "detail": "No matching work found.", "sources": []}
+            )
+    receipt = runtime.parse_app_server_messages(
+        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+    )
+    assert receipt["reason_code"] == "EVENT_STREAM_INVALID"
+
+
 def test_wrong_typed_action_payload_fields_are_stream_fatal() -> None:
     # A recognized discriminator with a wrong-typed payload field is
     # protocol drift, not a benign skip (#788 round-15 P2).
@@ -851,13 +870,17 @@ def test_duplicate_completed_item_ids_fail_closed() -> None:
 
 
 def test_wrong_result_url_key_does_not_count_as_grounding() -> None:
+    # Since #788 round-26 this is classified as SHAPE drift: the bound search
+    # returned non-empty entries from which no URL could be extracted, so the
+    # receipt is EVENT_STREAM_INVALID (measure-4 family), not the behavioral
+    # NO_BOUND_SEARCH_RESULTS this test pinned before.
     messages, raw = _fixture("grounded_verified.jsonl")
     result = messages[0]["params"]["item"]["results"][0]
     result["citation"] = result.pop("url")
     receipt = runtime.parse_app_server_messages(
         messages, raw_stream=raw, request=_request(), model="gpt-5.6"
     )
-    assert receipt["reason_code"] == "NO_BOUND_SEARCH_RESULTS"
+    assert receipt["reason_code"] == "EVENT_STREAM_INVALID"
 
 
 def test_multiple_turn_completions_and_failed_turn_fail_closed() -> None:
