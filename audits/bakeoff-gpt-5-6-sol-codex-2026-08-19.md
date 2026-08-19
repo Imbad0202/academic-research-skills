@@ -58,7 +58,7 @@ Per-reference verdict = majority of 3 repeats (no 1–1–1 split occurred). Con
 | 1. Grounded-search completion (per call) | 0.867 | **0.933** | ≥ base − 5 pp | PASS |
 | 2. Fabrication recall (10 fabs, majority) | 0.80 | **1.00** | ≥ base − 5 pp AND ≥ 0.80 | PASS |
 | 3. False disagreement (20 real, majority) | 0.00 | 0.00 | ≤ base + 5 pp | PASS |
-| 4. Receipt-guard misfires (shape families) | **0** | **0** | zero (candidate) | PASS |
+| 4. Receipt-guard misfires (shape families) | **0** | **0** | zero (both fleets) | PASS |
 | 5. p95 latency (nearest-rank) | 51.2 s | **28.1 s** | ≤ 2× base | PASS |
 
 Baseline misses on measure 2: `fab-01`, `fab-08` returned majority `NOT_SEARCHED` for `gpt-5.5` (scored as misses, conservatively). Median latency: 16.2 s (base) / 16.2 s (candidate); p95 is the nearest-rank order statistic (ceil(0.95·n)-th smallest), and the committed scorer refuses truncated, duplicated, or partial fleets before computing any measure. Zero misfires on BOTH models confirms the final instrument is clean — run 4 is also the parser's live validation.

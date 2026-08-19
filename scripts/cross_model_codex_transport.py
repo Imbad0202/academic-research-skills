@@ -1108,7 +1108,15 @@ def parse_app_server_messages(
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
         if any(ord(ch) < 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in query):
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
-        if not isinstance(results, list) or not results or len(results) > MAX_RESULTS_PER_SEARCH:
+        # A search item's `results` is array-or-null in the protocol schema.
+        # A non-null, non-list value is a SHAPE violation and must surface as
+        # EVENT_STREAM_INVALID — never silently skip into the ambiguous
+        # NO_BOUND_SEARCH_RESULTS, which would hide response-shape drift from
+        # bakeoff measure 4 (#788 round-6 P2). Absent/empty results (a
+        # legitimate zero-hit search) and the oversize cap remain skips.
+        if results is not None and not isinstance(results, list):
+            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        if not results or len(results) > MAX_RESULTS_PER_SEARCH:
             continue
         searches.append((index, item))
     if not searches:

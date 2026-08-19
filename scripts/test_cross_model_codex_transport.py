@@ -304,7 +304,10 @@ def test_runtime_rejects_duplicate_keys_nonfinite_and_surrogate() -> None:
     "fixture,reason",
     [
         ("missing_search.jsonl", "NO_BOUND_SEARCH_RESULTS"),
-        ("wrong_search_shape.jsonl", "NO_BOUND_SEARCH_RESULTS"),
+        # results as a dict is a protocol-shape violation, not a mere absence
+        # of bindable results — it must carry the unambiguous shape code so
+        # bakeoff measure 4 can attribute it (#788 round-6 P2).
+        ("wrong_search_shape.jsonl", "EVENT_STREAM_INVALID"),
         ("multiple_finals.jsonl", "FINAL_OUTPUT_INVALID"),
         ("unbound_source.jsonl", "SOURCE_NOT_IN_SEARCH_RESULTS"),
         ("forbidden_event.jsonl", "FORBIDDEN_TOOL_EVENT"),

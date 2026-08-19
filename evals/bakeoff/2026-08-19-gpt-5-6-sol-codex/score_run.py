@@ -29,9 +29,17 @@ def canonical_json(value) -> bytes:
 MODELS = ["gpt-5.5", "gpt-5.6-sol"]
 REPEATS = 3
 DISAGREE = {"NOT_FOUND", "MISMATCH"}
+# Measure-4 shape/protocol family — exactly the reason codes the transport
+# emits for stream/output SHAPE violations (a receipt-less row counts too).
+# Since the round-6 transport fix, a malformed search-results shape emits
+# EVENT_STREAM_INVALID directly, so shape drift can no longer hide inside
+# NO_BOUND_SEARCH_RESULTS. The behavior-family codes — MODEL_RETURNED_
+# NOT_SEARCHED, NO_BOUND_SEARCH_RESULTS, NO_REFERENCE_BOUND_QUERY,
+# MISSING_SOURCE_FOR_VERDICT, SOURCE_NOT_IN_SEARCH_RESULTS — are model
+# behavior: they count against measures 1-3, never against measure 4.
 SHAPE_GUARD_CODES = {
     "EVENT_STREAM_INVALID", "FINAL_OUTPUT_INVALID", "TURN_NOT_COMPLETED",
-    "FORBIDDEN_TOOL_EVENT", "MULTIPLE_FINAL_ANSWERS", "UNBOUND_SOURCE",
+    "FORBIDDEN_TOOL_EVENT",
 }
 
 refs = {r["id"]: r for r in json.loads((HERE / "probe_set.json").read_text())["references"]}
@@ -141,7 +149,9 @@ gate = {
     "1_grounded_completion (cand >= base - 5pp)": c["m1_grounded_completion"] >= b["m1_grounded_completion"] - 0.05,
     "2_recall (cand >= base - 5pp AND >= 0.80)": c["m2_fabrication_recall"] >= b["m2_fabrication_recall"] - 0.05 and c["m2_fabrication_recall"] >= 0.80,
     "3_false_disagreement (cand <= base + 5pp)": c["m3_false_disagreement"] <= b["m3_false_disagreement"] + 0.05,
-    "4_zero_shape_guard_misfires (cand)": len(c["m4_shape_guard_misfires"]) == 0,
+    # Hard-zero across ALL calls, BOTH fleets: a baseline suppressed by guard
+    # misfires cannot anchor a fair comparison (the run-3 lesson).
+    "4_zero_shape_guard_misfires (both fleets)": len(c["m4_shape_guard_misfires"]) == 0 and len(b["m4_shape_guard_misfires"]) == 0,
     "5_p95_latency (cand <= 2x base)": c["m5_p95_latency_s"] <= 2 * b["m5_p95_latency_s"],
 }
 print(json.dumps({"models": summary, "gate": gate, "all_pass": all(gate.values())}, ensure_ascii=False, indent=1))
