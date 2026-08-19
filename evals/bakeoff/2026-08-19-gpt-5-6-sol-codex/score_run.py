@@ -111,6 +111,24 @@ def check_receipt_contract(model: str, row: dict) -> None:
             raise SystemExit(f"RECEIPT CONTRACT: {rec['verdict']} carries sources at {where}")
     if rec["searched"] and not rec["search_queries"]:
         raise SystemExit(f"RECEIPT CONTRACT: searched without search_queries at {where}")
+    # Per-verdict invariants (#788 round-14 P2): a grounded verdict must rest
+    # on a completed search with no failure reason; NOT_SEARCHED must not
+    # claim a search and must carry a reason from the transport's closed set.
+    if rec["verdict"] in {"VERIFIED", "MISMATCH", "NOT_FOUND"}:
+        if not rec["searched"]:
+            raise SystemExit(f"RECEIPT CONTRACT: {rec['verdict']} without searched=true at {where}")
+        if rec["reason_code"] is not None:
+            raise SystemExit(f"RECEIPT CONTRACT: {rec['verdict']} carries reason_code {rec['reason_code']!r} at {where}")
+    else:  # NOT_SEARCHED
+        if rec["searched"]:
+            raise SystemExit(f"RECEIPT CONTRACT: NOT_SEARCHED with searched=true at {where}")
+        known_reasons = SHAPE_GUARD_CODES | {
+            "MODEL_RETURNED_NOT_SEARCHED", "NO_BOUND_SEARCH_RESULTS",
+            "NO_REFERENCE_BOUND_QUERY", "MISSING_SOURCE_FOR_VERDICT",
+            "SOURCE_NOT_IN_SEARCH_RESULTS",
+        }
+        if rec["reason_code"] not in known_reasons:
+            raise SystemExit(f"RECEIPT CONTRACT: unknown reason_code {rec['reason_code']!r} at {where}")
 
 
 def check_identity(model: str, row: dict) -> None:

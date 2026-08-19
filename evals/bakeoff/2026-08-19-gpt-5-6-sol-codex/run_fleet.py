@@ -102,6 +102,16 @@ def run_one(job):
                 receipt = json.loads(proc.stdout)
             except Exception as e:
                 err = f"RECEIPT_PARSE: {e}; stdout head: {proc.stdout[:200]}"
+            else:
+                # Parsed-but-malformed output must be a recorded failure, not
+                # a silent ERR row the exit code ignores (#788 round-14 P2).
+                if (
+                    not isinstance(receipt, dict)
+                    or receipt.get("schema_version") != "ars-codex-citation-receipt/1.0"
+                    or "verdict" not in receipt
+                ):
+                    err = f"RECEIPT_INVALID: not a citation receipt; head: {proc.stdout[:200]}"
+                    receipt = None
         else:
             err = f"EXIT {proc.returncode}: {proc.stderr[:300]}"
     except subprocess.TimeoutExpired:
@@ -156,7 +166,7 @@ try:
             try:
                 line = f.result()
                 print(f"[{done}/{len(jobs)}]", line, flush=True)
-                if "[CALL_TIMEOUT]" in line or "[EXIT " in line or "[RECEIPT_PARSE" in line:
+                if any(tag in line for tag in ("[CALL_TIMEOUT]", "[EXIT ", "[RECEIPT_PARSE", "[RECEIPT_INVALID")):
                     failures += 1
             except Exception as e:
                 failures += 1
