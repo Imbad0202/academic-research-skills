@@ -1075,19 +1075,27 @@ def parse_app_server_messages(
         action = item.get("action")
         return isinstance(action, dict) and action.get("type") in NON_SEARCH_WEB_ACTIONS
 
+    # The COMPLETE search-item strict validation runs here, BEFORE the
+    # MODEL_RETURNED_NOT_SEARCHED early return, over every completed
+    # webSearch item that is not a protocol page-open — including legacy
+    # items with no `action` field — so no model verdict can mask
+    # response-shape drift (#788 rounds 3/7/8: each narrower placement left
+    # a masking path).
     for _, item in completed_items:
-        if item["type"] != "webSearch":
+        if item["type"] != "webSearch" or _is_page_open(item):
             continue
         action = item.get("action")
-        if action is None or _is_page_open(item):
-            continue
-        if not isinstance(action, dict) or action.get("type") != "search":
+        if action is not None and (
+            not isinstance(action, dict) or action.get("type") != "search"
+        ):
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
-        # Search-item `results` is array-or-null in the protocol schema; a
-        # non-null non-list value is a shape violation and must fail here —
-        # BEFORE the MODEL_RETURNED_NOT_SEARCHED early return — so a model
-        # NOT_SEARCHED verdict can never mask it (#788 round-7 P2, the same
-        # ordering class as the action-shape check above).
+        query = item.get("query")
+        if not isinstance(query, str) or not query or len(query) > 2048:
+            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
+        if any(
+            ord(ch) < 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in query
+        ):
+            return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
         results_shape = item.get("results")
         if results_shape is not None and not isinstance(results_shape, list):
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")

@@ -77,8 +77,14 @@ def run_one(job):
         else:
             err = f"EXIT {proc.returncode}: {proc.stderr[:300]}"
     except subprocess.TimeoutExpired:
+        # The backstop kill reaps only the verifier; its detached codex
+        # app-server exits on stdin EOF, but the verifier's finally-block
+        # cleanup (the ephemeral CODEX_HOME holding the copied auth.json)
+        # never runs. Sweep any adapter temp dirs left behind (#788
+        # round-8 P2).
         wall = time.monotonic() - t0
         receipt, err = None, "CALL_TIMEOUT"
+        _sweep_orphan_tempdirs()
     row = {"model": model, "ref_id": ref["id"], "repeat": r, "wall_seconds": round(wall, 2),
            "receipt": receipt, "error": err, "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     tmp = out.with_suffix(".tmp")
@@ -88,13 +94,37 @@ def run_one(job):
     s = receipt.get("searched") if receipt else "-"
     return f"{model} {ref['id']} r{r}: {v} searched={s} {wall:.0f}s" + (f" [{err}]" if err else "")
 
+def _sweep_orphan_tempdirs() -> None:
+    import shutil
+    import tempfile
+    root = Path(os.environ.get("TMPDIR", tempfile.gettempdir()))
+    for d in root.glob("ars-codex-citation-*"):
+        try:
+            if d.is_dir() and d.stat().st_mtime >= FLEET_START - 5:
+                shutil.rmtree(d, ignore_errors=True)
+                print(f"[sweep] removed orphan temp dir {d}", flush=True)
+        except OSError:
+            pass
+
+
+FLEET_START = time.time()
 done = 0
+failures = 0
 with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
     futs = [ex.submit(run_one, j) for j in jobs]
     for f in as_completed(futs):
         done += 1
         try:
-            print(f"[{done}/{len(jobs)}]", f.result(), flush=True)
+            line = f.result()
+            print(f"[{done}/{len(jobs)}]", line, flush=True)
+            if "[CALL_TIMEOUT]" in line or "[EXIT " in line or "[RECEIPT_PARSE" in line:
+                failures += 1
         except Exception as e:
+            failures += 1
             print(f"[{done}/{len(jobs)}] WORKER-ERROR {e!r}", flush=True)
+if failures:
+    # An incomplete or error-bearing fleet must never look like success to
+    # automation (#788 round-8 P2); the scorer's completeness gate is the
+    # second line of defense, not the only one.
+    raise SystemExit(f"FLEET INCOMPLETE: {failures} of {len(jobs)} calls failed")
 print("ALL DONE", flush=True)
