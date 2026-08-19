@@ -55,6 +55,14 @@ for model, short in MODELS.items():
                 if cell.get("receipt") is None or cell.get("error"):
                     CARRIED_FAILURES.append(f"{model}/{out.name}: {cell.get('error')}")
                     print(f"[carried-failure] {out.name} ({cell.get('error')})", flush=True)
+                # A carried cell must come from the same pinned-effort
+                # configuration; mixing pre-pin or differently-configured
+                # cells into a fleet is not comparable (#788 round-13 P2).
+                elif cell.get("reasoning_effort") != "provider-default (env unset)":
+                    raise SystemExit(
+                        f"EFFORT UNPINNED CELL: {out} has reasoning_effort="
+                        f"{cell.get('reasoning_effort')!r}. Archive the output dir and rerun."
+                    )
                 continue
             jobs.append((model, short, ref, r, out))
 
@@ -140,20 +148,29 @@ FLEET_START = time.time()
 TIMEOUT_OCCURRED: list[str] = []
 done = 0
 failures = 0
-with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
-    futs = [ex.submit(run_one, j) for j in jobs]
-    for f in as_completed(futs):
-        done += 1
-        try:
-            line = f.result()
-            print(f"[{done}/{len(jobs)}]", line, flush=True)
-            if "[CALL_TIMEOUT]" in line or "[EXIT " in line or "[RECEIPT_PARSE" in line:
+try:
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
+        futs = [ex.submit(run_one, j) for j in jobs]
+        for f in as_completed(futs):
+            done += 1
+            try:
+                line = f.result()
+                print(f"[{done}/{len(jobs)}]", line, flush=True)
+                if "[CALL_TIMEOUT]" in line or "[EXIT " in line or "[RECEIPT_PARSE" in line:
+                    failures += 1
+            except Exception as e:
                 failures += 1
-        except Exception as e:
-            failures += 1
-            print(f"[{done}/{len(jobs)}] WORKER-ERROR {e!r}", flush=True)
-if TIMEOUT_OCCURRED:
+                print(f"[{done}/{len(jobs)}] WORKER-ERROR {e!r}", flush=True)
+finally:
+    # The fleet-private root is swept on EVERY outcome once workers have
+    # drained — a verifier killed by a signal/OOM leaves its ephemeral
+    # CODEX_HOME (with the copied auth.json) behind without raising
+    # TimeoutExpired, so timeout-only sweeping is not enough (#788
+    # round-13 P2). The root is private to this fleet, so removing it
+    # whole is safe here.
+    import shutil as _shutil
     _sweep_orphan_tempdirs()
+    _shutil.rmtree(FLEET_TMP, ignore_errors=True)
 failures += len(CARRIED_FAILURES)
 if failures:
     # An incomplete or error-bearing fleet must never look like success to

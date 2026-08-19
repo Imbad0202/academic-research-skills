@@ -76,6 +76,43 @@ def load_rows(model: str) -> list[dict]:
     return [json.loads(line) for line in (HERE / f"run6_receipts_{model}.jsonl").read_text().splitlines() if line]
 
 
+RECEIPT_REQUIRED = {
+    "schema_version", "request_id", "transport", "auth_mode", "model",
+    "request_digest", "event_stream_digest", "verdict", "searched",
+    "reason_code", "detail", "search_queries", "sources", "containment",
+}
+VERDICTS = {"VERIFIED", "MISMATCH", "NOT_FOUND", "NOT_SEARCHED"}
+
+
+def check_receipt_contract(model: str, row: dict) -> None:
+    """Closed-contract sanity for every non-null receipt: metrics must never
+    trust `searched`/`verdict`/`reason_code` from a malformed row (#788
+    round-13 P2)."""
+    rec = row["receipt"]
+    if rec is None:
+        return
+    where = f"{model} {row.get('ref_id')} r{row.get('repeat')}"
+    if not RECEIPT_REQUIRED.issubset(rec):
+        raise SystemExit(f"RECEIPT CONTRACT: missing keys {sorted(RECEIPT_REQUIRED - set(rec))} at {where}")
+    if rec["schema_version"] != "ars-codex-citation-receipt/1.0":
+        raise SystemExit(f"RECEIPT CONTRACT: bad schema_version at {where}")
+    if rec["verdict"] not in VERDICTS or not isinstance(rec["searched"], bool):
+        raise SystemExit(f"RECEIPT CONTRACT: bad verdict/searched at {where}")
+    if not isinstance(rec["sources"], list) or not isinstance(rec["search_queries"], list):
+        raise SystemExit(f"RECEIPT CONTRACT: bad sources/search_queries shape at {where}")
+    if rec["verdict"] in {"VERIFIED", "MISMATCH"}:
+        if not rec["searched"] or not rec["sources"]:
+            raise SystemExit(f"RECEIPT CONTRACT: positive verdict without grounding at {where}")
+        for srec in rec["sources"]:
+            if not isinstance(srec, dict) or not {"url", "search_item_id", "result_index", "search_result_digest"}.issubset(srec):
+                raise SystemExit(f"RECEIPT CONTRACT: unbound source at {where}")
+    else:
+        if rec["sources"]:
+            raise SystemExit(f"RECEIPT CONTRACT: {rec['verdict']} carries sources at {where}")
+    if rec["searched"] and not rec["search_queries"]:
+        raise SystemExit(f"RECEIPT CONTRACT: searched without search_queries at {where}")
+
+
 def check_identity(model: str, row: dict) -> None:
     ref = refs.get(row["ref_id"])
     if ref is None:
@@ -109,6 +146,16 @@ for model in MODELS:
     rows = load_rows(model)
     for row in rows:
         check_identity(model, row)
+        check_receipt_contract(model, row)
+        # Reproduced fleets (results-dir mode) must be single-effort: every
+        # row carries the runner's pinned-effort marker (#788 round-13 P2).
+        # The committed gate-run rows predate the marker; the audit report
+        # attests their unset-effort configuration.
+        if RESULTS_DIR is not None and row.get("reasoning_effort") != "provider-default (env unset)":
+            raise SystemExit(
+                f"EFFORT UNPINNED: {model} {row.get('ref_id')} r{row.get('repeat')} "
+                f"reasoning_effort={row.get('reasoning_effort')!r} — mixed- or unpinned-effort fleets are not scorable."
+            )
         # Every row must carry a real ISO date — an undated fleet must not
         # slip through the same-day gate on a set of empty strings (#788
         # round-9 P2).
