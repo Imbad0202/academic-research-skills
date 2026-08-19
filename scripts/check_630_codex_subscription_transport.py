@@ -367,8 +367,12 @@ def check_docs_and_wiring() -> list[str]:
     ):
         if token not in protocol:
             errors.append(f"protocol availability routing dropped {token!r}")
-    if "**GPT-5.5 remains the recommended default**" not in protocol:
-        errors.append("#630 must not promote the default model")
+    if "**Recommendation policy (2026-08-19):**" not in protocol:
+        errors.append(
+            "#630 recommendation-policy witness dropped — the default-model "
+            "recommendation must stay an explicit, dated policy note (#783), "
+            "never a silent promotion"
+        )
     if "**provisional pending ARS validation**" not in protocol:
         errors.append("#630 must not promote GPT-5.6 from provisional")
     bash_marker = 'export ARS_CROSS_MODEL_TRANSPORT="codex"'

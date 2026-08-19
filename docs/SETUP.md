@@ -184,13 +184,13 @@ ARS works with the inherited Claude session model alone. For higher confidence, 
 
 ```bash
 # Step 1: Set your API key (choose one or both)
-export OPENAI_API_KEY="sk-your-key-here"        # For GPT-5.5 / GPT-5.5 Pro
+export OPENAI_API_KEY="sk-your-key-here"        # For GPT-5.6 Sol / GPT-5.5
 export GOOGLE_AI_API_KEY="AIza-your-key-here"    # For Gemini 3.1 Pro
 
 # Step 2: Choose your cross-verification model
-export ARS_CROSS_MODEL="gpt-5.5"                # Recommended pair (gpt-5.5-pro = strongest reasoning, ~6x cost)
-# or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"  # Strong at factual verification
-# or: export ARS_CROSS_MODEL="gpt-5.6-sol"      # Frontier, provisional pending ARS validation (same rates as gpt-5.5)
+export ARS_CROSS_MODEL="gpt-5.6-sol"            # Current OpenAI flagship — provisional pending ARS validation (run scripts/cross_model_smoke_test.sh)
+# or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"  # Current Google flagship — validated, strong at factual verification
+# or: export ARS_CROSS_MODEL="gpt-5.5"          # Previous generation — validated (measured bakeoff baseline)
 
 # Optional: reasoning effort for OpenAI verifier calls (unset = provider default)
 # export ARS_CROSS_MODEL_REASONING_EFFORT="medium"
