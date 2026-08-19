@@ -2,7 +2,7 @@
 """Deterministic scorer for the 2026-08-19 codex-transport Promotion Bakeoff (#787).
 
 Replays the five § Promotion Bakeoff measures from `probe_set.json` plus either
-the committed `run4_receipts_<model>.jsonl` files (default) or a fleet-runner
+the committed `run5_receipts_<model>.jsonl` files (default) or a fleet-runner
 output directory (`python3 score_run.py <results_dir>`, i.e. the runner's
 `results/` or `$ARS_BAKEOFF_OUT`, holding `<model>/<ref>-r<k>.json` cells).
 Every scored row must pass an identity binding — outer model/ref/repeat,
@@ -73,7 +73,7 @@ RESULTS_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 def load_rows(model: str) -> list[dict]:
     if RESULTS_DIR is not None:
         return [json.loads(p.read_text()) for p in sorted((RESULTS_DIR / model).glob("*.json"))]
-    return [json.loads(line) for line in (HERE / f"run4_receipts_{model}.jsonl").read_text().splitlines() if line]
+    return [json.loads(line) for line in (HERE / f"run5_receipts_{model}.jsonl").read_text().splitlines() if line]
 
 
 def check_identity(model: str, row: dict) -> None:
