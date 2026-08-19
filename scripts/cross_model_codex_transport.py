@@ -88,7 +88,13 @@ DISABLED_FEATURES = (
     "image_generation",
     "artifact",
     "code_mode",
-    "code_mode_host",
+    # "code_mode_host" is deliberately NOT disabled: on codex-cli 0.147.0 the
+    # standalone web-search tool executes through the code-mode host, so
+    # disabling the host silently removes the search tool and every call
+    # fails closed as MODEL_RETURNED_NOT_SEARCHED (#785, isolated by live
+    # bisection 2026-08-19). "code_mode" itself stays disabled, and the
+    # forbidden-event scan still fails the receipt on any item type outside
+    # the {userMessage, reasoning, agentMessage, webSearch} allowlist.
     "hooks",
     "goals",
     "workspace_dependencies",
@@ -139,10 +145,13 @@ MODEL_OUTPUT_SCHEMA: dict[str, Any] = {
     "properties": {
         "verdict": {"type": "string", "enum": sorted(VERDICTS)},
         "detail": {"type": "string", "maxLength": MAX_DETAIL_CHARS},
+        # No "uniqueItems": the provider's structured-output schema subset
+        # rejects it (invalid_json_schema, observed live 2026-08-19, #785);
+        # duplicate-source refusal is enforced locally in
+        # _validate_model_output, which fails closed on any duplicated URL.
         "sources": {
             "type": "array",
             "maxItems": MAX_SOURCES,
-            "uniqueItems": True,
             "items": {"type": "string", "maxLength": 2048, "pattern": "^https://"},
         },
     },
@@ -443,7 +452,16 @@ def detect_transport(environ: dict[str, str] | None = None) -> tuple[int, dict[s
     if auth_run.returncode != 0:
         base["reason_code"] = "AUTH_STATUS_UNAVAILABLE"
         return 3, base
-    if auth_run.stdout.strip() != "Logged in using ChatGPT":
+    # codex-cli emits the attestation line on stdout on some versions and on
+    # stderr on others (0.147.0 non-TTY uses stderr, #785). Accept an exact
+    # line on either stream — same idiom as the #684 harness; anything else
+    # stays fail-closed.
+    status_lines = {
+        line.strip()
+        for line in (auth_run.stdout + "\n" + auth_run.stderr).splitlines()
+        if line.strip()
+    }
+    if "Logged in using ChatGPT" not in status_lines:
         base["reason_code"] = "AUTH_NOT_CHATGPT_SUBSCRIPTION"
         return 3, base
     base.update(

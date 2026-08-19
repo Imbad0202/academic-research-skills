@@ -93,6 +93,7 @@ def _make_fake_codex(
     late_raw_after_eof: bytes = b"",
     version: str = "codex-cli 0.147.0",
     status: str = "Logged in using ChatGPT",
+    status_to_stderr: bool = False,
     fail_app_server: bool = False,
     silent_app_server: bool = False,
     hang_after_eof: bool = False,
@@ -114,6 +115,7 @@ import threading
 
 VERSION = {version!r}
 STATUS = {status!r}
+STATUS_TO_STDERR = {status_to_stderr!r}
 EVENTS = {event_rows!r}
 LATE_EVENTS_AFTER_EOF = {late_event_rows!r}
 LATE_RAW_AFTER_EOF = {late_raw_after_eof!r}
@@ -128,7 +130,7 @@ if sys.argv[1:] == ["--version"]:
     print(VERSION)
     raise SystemExit(0)
 if sys.argv[1:] == ["login", "status"]:
-    print(STATUS)
+    print(STATUS, file=sys.stderr if STATUS_TO_STDERR else sys.stdout)
     raise SystemExit(0)
 if not sys.argv[1:] or sys.argv[1] != "app-server":
     raise SystemExit(9)
@@ -706,6 +708,28 @@ def test_detection_requires_model_auth_version_and_exact_subscription_status(tmp
     api_tmp.mkdir()
     api_bin, _ = _make_fake_codex(api_tmp, status="Logged in using an API key")
     env = _base_env(api_bin, home)
+    assert runtime.detect_transport(env)[1]["reason_code"] == "AUTH_NOT_CHATGPT_SUBSCRIPTION"
+
+
+def test_detection_accepts_attestation_on_stderr(tmp_path: Path) -> None:
+    # codex-cli 0.147.0 emits "Logged in using ChatGPT" on stderr in non-TTY
+    # invocation (#785); the exact line must be accepted from either stream,
+    # and a wrong line stays refused on both.
+    home = tmp_path / "custom-codex-home"
+    _make_auth(home)
+    fake_bin, _ = _make_fake_codex(tmp_path, status_to_stderr=True)
+    env = _base_env(fake_bin, home)
+    code, detection = runtime.detect_transport(env)
+    assert code == 0
+    assert detection["available"] is True
+    assert detection["auth_mode"] == "chatgpt_subscription"
+
+    wrong_tmp = tmp_path / "wrong-stderr"
+    wrong_tmp.mkdir()
+    wrong_bin, _ = _make_fake_codex(
+        wrong_tmp, status="Logged in using an API key", status_to_stderr=True
+    )
+    env = _base_env(wrong_bin, home)
     assert runtime.detect_transport(env)[1]["reason_code"] == "AUTH_NOT_CHATGPT_SUBSCRIPTION"
 
 
