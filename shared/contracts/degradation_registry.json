@@ -382,8 +382,8 @@
     },
     {
       "mechanism": "write_scope_guard_subprocess_misbehaves",
-      "failure_class": "Guard subprocess misbehaves under a healthy launcher — non-zero exit, wall-clock overrun, or output failing the launcher's validity check (anything that is not a JSON object carrying a top-level hookSpecificOutput key; the check is deliberately this shallow and does not validate the full hook schema) — or a missing guard script, or the launcher itself fails internally: mktemp failure, SELF_DIR self-resolution failure, or a POSIX shell capping the held payload variable on a multi-megabyte Write (a documented accepted edge)",
-      "degraded_state": "The launcher emits the canonical pass-through hook JSON and exits 0; the guard's stderr is dropped on this path (relayed only on the healthy path) so a broken guard cannot spam the hot path, and a mktemp failure degrades to pass-through rather than falling back to a predictable (symlink-attackable) temp path. The multi-megabyte payload edge is documented as accepted-and-unfixed with no enforced or separately tested outcome — recorded here for inventory completeness, not as a pinned behavior",
+      "failure_class": "Guard subprocess misbehaves under a healthy launcher — non-zero exit, wall-clock overrun, or output failing the launcher's validity check (anything that is not a JSON object carrying a top-level hookSpecificOutput key; the check is deliberately this shallow and does not validate the full hook schema) — or a missing guard script, or the launcher itself fails internally (mktemp failure, SELF_DIR self-resolution failure)",
+      "degraded_state": "The launcher emits the canonical pass-through hook JSON and exits 0; the guard's stderr is dropped on this path (relayed only on the healthy path) so a broken guard cannot spam the hot path, and a mktemp failure degrades to pass-through rather than falling back to a predictable (symlink-attackable) temp path",
       "diagnostic_marker": "Canonical pass-through JSON in place of a guard decision; the guard's own stderr advisories are absent",
       "downstream_consumer": "Claude Code PreToolUse permission flow (the pass-through output carries no permissionDecision, so the session's normal permission rules decide)",
       "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; this failure path resolves to pass-through, never block",
@@ -399,15 +399,30 @@
         {
           "file": "hooks/run_guard.sh",
           "anchor": "SELF_DIR=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd) || emit_passthrough_and_exit"
-        },
-        {
-          "file": "hooks/run_guard.sh",
-          "anchor": "documented degradation rather than fixed speculatively"
         }
       ],
       "pinned_by": [
         "scripts/test_run_guard_launcher.py"
       ]
+    },
+    {
+      "mechanism": "write_scope_guard_payload_capacity_edge",
+      "failure_class": "A POSIX shell caps the payload variable the launcher holds and replays on a multi-megabyte Write payload (the launcher buffers stdin in a shell variable by design)",
+      "degraded_state": "No pinned outcome — the launcher documents this as an accepted, unfixed narrow case and neither enforces nor tests a specific behavior for it. The row exists for inventory completeness; no pass-through or other deterministic resolution is claimed",
+      "diagnostic_marker": "None defined for this edge (no code path detects a capped payload)",
+      "downstream_consumer": "Claude Code PreToolUse permission flow (whatever the launcher emits in this case is consumed there; no specific emission is claimed)",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; the launcher's design intent is non-blocking, but for this edge no enforced outcome is claimed",
+      "authority": [
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "documented degradation rather than fixed speculatively"
+        },
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "A multi-megabyte Write payload on a POSIX shell that caps variable"
+        }
+      ],
+      "pinned_by": []
     }
   ]
 }

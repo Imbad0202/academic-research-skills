@@ -105,19 +105,20 @@ runtime graceful-degradation mechanisms is
 
 ## Environment degradations within a channel
 
-Independent of install channel, the write-scope guard has documented degraded states,
-none of which ever blocks — launcher failure paths resolve to **pass-through**, and the
-no-`timeout` fallback still forwards the guard's real decision (only an overrun
-passes through). The guard is an optional
+Independent of install channel, the write-scope guard has documented degraded states.
+None of them *introduces* a block: launcher failure paths resolve to **pass-through**,
+and a missing `timeout` binary is a bounding-mechanism swap under which the guard keeps
+operating normally — its real decisions (including deny) still apply, with only an
+overrun resolving to pass-through. The guard is an optional
 hardening layer, and a broken guard must not lock a user out of their own files
 (maintainer decision recorded in `hooks/run_guard.sh`; user-facing summary in the
 README Requirements bullet). This table is a convenience summary, not a second
 authority: the indexed rows are the `write_scope_guard_*` mechanisms in
 [`shared/contracts/degradation_registry.json`](../shared/contracts/degradation_registry.json)
-(#769), whose anchors into `hooks/run_guard.sh` are lint-pinned, and which also cover a
-fourth row (guard subprocess misbehaves or the launcher itself fails internally →
-pass-through; the documented multi-megabyte payload edge is recorded there as an
-accepted, untested case):
+(#769), whose anchors into `hooks/run_guard.sh` are lint-pinned, and which also cover
+two states this table omits — guard subprocess misbehaves or the launcher fails
+internally (→ pass-through), and the documented multi-megabyte payload edge (an
+accepted, untested case with no pinned outcome):
 
 | Condition | Behavior |
 |---|---|

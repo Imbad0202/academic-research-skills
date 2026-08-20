@@ -90,6 +90,7 @@ _EXPECTED_MECHANISMS = frozenset({
     "write_scope_guard_no_git_bash",
     "write_scope_guard_no_timeout_binary",
     "write_scope_guard_subprocess_misbehaves",
+    "write_scope_guard_payload_capacity_edge",
 })
 
 
