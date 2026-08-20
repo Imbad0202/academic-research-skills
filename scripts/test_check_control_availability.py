@@ -331,3 +331,16 @@ def test_slug_matches_github_for_punctuated_heading() -> None:
         "method-0-claude-code-plugin-v370-recommended-for-"
         "claude-code-cli--ide-users"
     )
+
+
+def test_image_form_of_inbound_link_does_not_satisfy_ca3(repo: Path) -> None:
+    # #771 shared-grammar alignment: an image pointing at the doc renders no
+    # anchor, so it must not satisfy the README discoverability invariant.
+    _mutate(
+        repo,
+        "README.md",
+        "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)",
+        "![docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)",
+    )
+    errors = run_all_checks(repo)
+    assert any("CA-3" in e and "README.md" in e for e in errors)

@@ -1,6 +1,6 @@
 {
   "$comment": "Degradation registry (#511 Part A). Machine-readable INDEX of every graceful-degradation mechanism in ARS: what fails, what degraded state is emitted, where the degradation is visible, who consumes it, and how the terminal-policy layer treats it. The registry INDEXES — it never re-authors: each row's `authority` points at the per-mechanism source of truth (a content anchor that must appear verbatim in the cited file), so semantics live in exactly one place and this file cannot drift into a second authority. Rows use each mechanism's NATIVE semantics (unresolvable / not_checked / PASS WITH NOTES / omit-field / warn-and-continue); there is deliberately NO universal score-cap column — ARS's gate model is tri-state outcomes + advisory suffixes + opt-in terminal policies, not a shared scalar score (#511 'Explicitly rejected: score capping'). Numeric/severity caps appear only where a scale already exists (see compliance_non_sr_warn_cap). Adding a row: fill every required field, cite the authority file with a short verbatim anchor (never a line number — anchors survive drift, line numbers do not), list the tests/lints/schemas that pin the behavior under `pinned_by` (path, or path::test_function), then run scripts/check_degradation_registry.py.",
-  "registry_version": "1.2.0",
+  "registry_version": "1.3.0",
   "mechanisms": [
     {
       "mechanism": "citation_resolver_outage",
@@ -310,6 +310,119 @@
         "scripts/test_check_re_review_synthesis.py::test_no_reports_is_not_run_no_reports_witness",
         "scripts/test_check_re_review_synthesis.py::test_recorded_witness_must_match_recomputed"
       ]
+    },
+    {
+      "mechanism": "write_scope_guard_no_python",
+      "failure_class": "No real Python interpreter found by the write-scope guard launcher (candidate list exhausted, or only non-functional stubs present, e.g. the 0-byte Microsoft Store `python3` App Execution Alias)",
+      "degraded_state": "The launcher emits the canonical pass-through hook JSON and exits 0, silent on stderr; the guard is inactive and core skills are unaffected (the guard is optional hardening and ARS core needs no Python). It deliberately emits no permissionDecision — never 'allow' — so the session's normal permission rules still decide, and it never exits non-zero",
+      "diagnostic_marker": "Silent per call BY DESIGN (per-call stderr on a hot path is exactly the #454 spam the launcher exists to stop); the observable state is hook output equal to the canonical pass-through JSON {\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\"}} with no permissionDecision",
+      "downstream_consumer": "Claude Code PreToolUse permission flow (the pass-through output carries no permissionDecision, so the session's normal permission rules decide)",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; this failure path resolves to pass-through, never block",
+      "authority": [
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "if no real Python is found, OR the guard subprocess misbehaves, the"
+        },
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "no permissionDecision => falls back to the normal permission"
+        },
+        {
+          "file": "README.md",
+          "anchor": "if no real Python is found it cleanly no-ops and the guard is simply inactive"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_run_guard_launcher.py"
+      ]
+    },
+    {
+      "mechanism": "write_scope_guard_no_git_bash",
+      "failure_class": "Windows host without Git Bash: `hooks.json` invokes the launcher through `bash`, and no POSIX shell is available to run the `.sh` at all",
+      "degraded_state": "Guard inactive — Claude Code falls back to PowerShell, which cannot run the launcher; this ARS hook never blocks a write (the session's normal permission rules still apply), but the PreToolUse hook logs an error per call (noisy, accepted degradation) until Git Bash is installed",
+      "diagnostic_marker": "Per-call PreToolUse hook error logged by Claude Code (the launcher never executes on this path, so no ARS-side marker can be emitted)",
+      "downstream_consumer": "Claude Code PreToolUse permission flow (the hook failure is non-blocking; the session's normal permission rules decide)",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; on this path the hook simply does not run, so it can block nothing",
+      "authority": [
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "with no Git Bash, CC falls back to PowerShell which can't"
+        },
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "the guard is then inactive (accepted degradation"
+        },
+        {
+          "file": "README.md",
+          "anchor": "the guard is inactive and the `PreToolUse` hook will log an error per call rather than no-op quietly"
+        }
+      ],
+      "pinned_by": []
+    },
+    {
+      "mechanism": "write_scope_guard_no_timeout_binary",
+      "failure_class": "No `timeout` binary on PATH when the launcher wall-clock-bounds its interpreter probes and the guard subprocess",
+      "degraded_state": "run_bounded switches to the portable background-and-watchdog fallback: same wall-clock bound (ARS_PROBE_BOUND, integer seconds, default 3) and same pass-through-on-overrun posture — a bounding-mechanism swap, never a change to the security decision",
+      "diagnostic_marker": "None when healthy (the two bounding paths are decision-equivalent); an overrun on either path surfaces only as the canonical pass-through output in place of a guard decision",
+      "downstream_consumer": "Claude Code PreToolUse permission flow (the pass-through output carries no permissionDecision, so the session's normal permission rules decide)",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; the healthy fallback still forwards the guard's real decision (including deny) — only an overrun resolves to pass-through, never block",
+      "authority": [
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "No `timeout` binary: a portable background-and-watchdog fallback"
+        },
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "never the security decision"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_run_guard_launcher.py"
+      ]
+    },
+    {
+      "mechanism": "write_scope_guard_subprocess_misbehaves",
+      "failure_class": "Guard subprocess misbehaves under a healthy launcher — non-zero exit, wall-clock overrun, or output failing the launcher's validity check (anything that is not a JSON object carrying a top-level hookSpecificOutput key; the check is deliberately this shallow and does not validate the full hook schema) — or a missing guard script, or the launcher itself fails internally (mktemp failure, SELF_DIR self-resolution failure)",
+      "degraded_state": "The launcher emits the canonical pass-through hook JSON and exits 0; the guard's stderr is dropped on this path (relayed only on the healthy path) so a broken guard cannot spam the hot path, and a mktemp failure degrades to pass-through rather than falling back to a predictable (symlink-attackable) temp path",
+      "diagnostic_marker": "Canonical pass-through JSON in place of a guard decision; the guard's own stderr advisories are absent",
+      "downstream_consumer": "Claude Code PreToolUse permission flow (the pass-through output carries no permissionDecision, so the session's normal permission rules decide)",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; this failure path resolves to pass-through, never block",
+      "authority": [
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "Guard broke / timed out / produced invalid output. Degrade, don't block, don't spam."
+        },
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "degrade safely to pass-through instead of writing a guessable path"
+        },
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "SELF_DIR=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd) || emit_passthrough_and_exit"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_run_guard_launcher.py"
+      ]
+    },
+    {
+      "mechanism": "write_scope_guard_payload_capacity_edge",
+      "failure_class": "A POSIX shell caps the payload variable the launcher holds and replays on a multi-megabyte Write payload (the launcher buffers stdin in a shell variable by design)",
+      "degraded_state": "No pinned outcome — the launcher documents this as an accepted, unfixed narrow case and neither enforces nor tests a specific behavior for it. The row exists for inventory completeness; no pass-through or other deterministic resolution is claimed",
+      "diagnostic_marker": "None defined for this edge (no code path detects a capped payload)",
+      "downstream_consumer": "Claude Code PreToolUse permission flow (whatever the launcher emits in this case is consumed there; no specific emission is claimed)",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; the launcher's design intent is non-blocking, but for this edge no enforced outcome is claimed",
+      "authority": [
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "documented degradation rather than fixed speculatively"
+        },
+        {
+          "file": "hooks/run_guard.sh",
+          "anchor": "A multi-megabyte Write payload on a POSIX shell that caps variable"
+        }
+      ],
+      "pinned_by": []
     }
   ]
 }

@@ -21,9 +21,8 @@ semantics (payload class, TTL, off switch) stay owned by code review:
         (CommonMark fence-length closing rule) and HTML comments (inline
         spans + line/blockquote-level type-2 blocks) are stripped first.
 
-The markdown-stripping semantics intentionally match
-scripts/check_control_availability.py (#757); consolidating the shared
-helpers into one module is follow-up work once both lints are on main.
+Rendered-link / non-rendering grammar: scripts/_markdown_lint_util.py
+(#771 consolidation).
 
 Exit 0 when all invariants hold; exit 1 with one line per violation.
 """
@@ -33,6 +32,8 @@ import ast
 import re
 import sys
 from pathlib import Path
+
+from _markdown_lint_util import links_to
 
 DOC_RELPATH = Path("docs/DATA_FLOWS.md")
 INBOUND_LINK_SURFACES = (
@@ -73,12 +74,6 @@ NETWORK_DOTTED = {
     "http.client",
 }
 
-# (?<!\!) — an image `![alt](target)` renders no anchor and must not
-# satisfy DF-3.
-_LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
-_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-_QUOTE_PREFIX_RE = re.compile(r"^(\s{0,3}>\s?)+")
-_CODE_SPAN_RE = re.compile(r"`([^`\n]+)`")
 _SHELL_QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
 _ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z_0-9]*=")
 # Shell control words that precede a command without consuming its command
@@ -119,60 +114,6 @@ def _invokes_curl(code: str) -> bool:
         if head is not None and head.rsplit("/", 1)[-1] == "curl":
             return True
     return False
-
-
-def _strip_fenced_code(md_text: str) -> str:
-    """Fenced code renders literally. CommonMark closing rule: a closer is a
-    same-character run at least as long as the opener with only trailing
-    whitespace."""
-    kept: list[str] = []
-    in_fence = False
-    fence_char = ""
-    fence_len = 0
-    for line in md_text.split("\n"):
-        content = _QUOTE_PREFIX_RE.sub("", line).lstrip(" ")
-        if not in_fence:
-            opener = re.match(r"(`{3,}|~{3,})", content)
-            if opener:
-                in_fence = True
-                fence_char = opener.group(1)[0]
-                fence_len = len(opener.group(1))
-                continue
-        else:
-            closer = re.match(
-                rf"({re.escape(fence_char)}{{{fence_len},}})\s*$", content
-            )
-            if closer:
-                in_fence = False
-            continue
-        kept.append(line)
-    return "\n".join(kept)
-
-
-def _strip_html_comments(md_text: str) -> str:
-    """A line beginning with `<!--` (looking through block-quote markers)
-    opens a GFM type-2 HTML block through the `-->` line or to EOF; inline
-    `<!-- -->` spans elsewhere are raw HTML."""
-    kept: list[str] = []
-    lines = md_text.split("\n")
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        content = _QUOTE_PREFIX_RE.sub("", line)
-        stripped = content.lstrip(" ")
-        indent = len(content) - len(stripped)
-        if indent <= 3 and stripped.startswith("<!--"):
-            while i < len(lines) and "-->" not in lines[i]:
-                i += 1
-            i += 1
-            continue
-        kept.append(line)
-        i += 1
-    return _HTML_COMMENT_RE.sub("", "\n".join(kept))
-
-
-def _strip_non_rendering(md_text: str) -> str:
-    return _strip_html_comments(_strip_fenced_code(md_text))
 
 
 def _imported_modules(py_source: str) -> set[str]:
@@ -277,21 +218,8 @@ def check_inbound_links(root: Path) -> list[str]:
     doc_abs = (root / DOC_RELPATH).resolve()
     for rel in INBOUND_LINK_SURFACES:
         surface = root / rel
-        found = False
-        # Inline code spans render literally — a link inside backticks is
-        # not a link, so strip them after the block-level passes.
-        text = _CODE_SPAN_RE.sub(
-            "", _strip_non_rendering(surface.read_text(encoding="utf-8"))
-        )
-        for match in _LINK_RE.finditer(text):
-            target = match.group(1)
-            if target.startswith(("http://", "https://", "mailto:", "#")):
-                continue
-            path_part = target.partition("#")[0]
-            if path_part and (surface.parent / path_part).resolve() == doc_abs:
-                found = True
-                break
-        if not found:
+        text = surface.read_text(encoding="utf-8")
+        if not links_to(text, surface.parent, doc_abs):
             errors.append(
                 f"DF-3: {rel} no longer links to {DOC_RELPATH.name} "
                 f"(#758 acceptance criterion)"

@@ -23,6 +23,10 @@ check_degradation_registry.py's index-not-author posture:
         least one link to docs/CONTROL_AVAILABILITY.md (the #757 acceptance
         criterion, pinned so a refactor cannot orphan the page).
 
+Rendered-link / non-rendering / slug grammar: scripts/_markdown_lint_util.py
+(#771 consolidation; since then CA-1..CA-3 also apply its code-span and
+image-exclusion rules).
+
 Exit 0 when all invariants hold; exit 1 with one line per violation.
 """
 from __future__ import annotations
@@ -31,118 +35,20 @@ import re
 import sys
 from pathlib import Path
 
+from _markdown_lint_util import (
+    NON_RELATIVE_LINK_PREFIXES,
+    extract_link_targets,
+    github_slug,
+    heading_slugs,
+    links_to,
+    strip_non_rendering,
+)
+
 DOC_RELPATH = Path("docs/CONTROL_AVAILABILITY.md")
 SETUP_RELPATH = Path("docs/SETUP.md")
 INBOUND_LINK_SURFACES = (Path("README.md"), SETUP_RELPATH)
 
-# [text](target) and [text](target "title") — code fences in the doc carry no
-# links, so no fence-stripping pass is needed. The target is captured before
-# an optional quoted title; a titled link must not silently fall out of CA-1.
-_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)")
-_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$", re.MULTILINE)
 _METHOD_HEADING_RE = re.compile(r"^###\s+Method\b.*$", re.MULTILINE)
-_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-_QUOTE_PREFIX_RE = re.compile(r"^(\s{0,3}>\s?)+")
-
-
-def _strip_fenced_code(md_text: str) -> str:
-    """Fenced code blocks render literally: a link or heading inside a
-    ``` / ~~~ fence counts for nothing. Runs BEFORE the comment pass, so a
-    `<!--` inside a fence stays literal text and cannot open a comment
-    block."""
-    kept: list[str] = []
-    in_fence = False
-    fence_char = ""
-    fence_len = 0
-    for line in md_text.split("\n"):
-        content = _QUOTE_PREFIX_RE.sub("", line).lstrip(" ")
-        if not in_fence:
-            opener = re.match(r"(`{3,}|~{3,})", content)
-            if opener:
-                in_fence = True
-                fence_char = opener.group(1)[0]
-                fence_len = len(opener.group(1))
-                continue
-        else:
-            # CommonMark: the closer is a run of the SAME character at least
-            # as long as the opener, with nothing but whitespace after it —
-            # so a ```` fence is not closed by a literal ``` example line.
-            closer = re.match(
-                rf"({re.escape(fence_char)}{{{fence_len},}})\s*$", content
-            )
-            if closer:
-                in_fence = False
-            continue
-        kept.append(line)
-    return "\n".join(kept)
-
-
-def _strip_html_comments(md_text: str) -> str:
-    """Non-rendering markdown counts for nothing (neither satisfying
-    CA-2/CA-3 nor firing CA-1).
-
-    Two GFM behaviors matter here:
-    - A line beginning with `<!--` (up to 3 leading spaces) opens a type-2
-      HTML block that runs through the line containing `-->` — or to EOF if
-      unclosed — and NOTHING on those lines renders as markdown, including
-      text after the terminator on the closing line.
-    - Elsewhere, an inline `<!-- ... -->` span is raw HTML; the surrounding
-      text still renders.
-
-    The line-start test looks through leading block-quote markers (`> `),
-    since the same type-2 rule applies to block-quote content. Deeper
-    CommonMark laminations (blocks terminated by the enclosing quote or
-    list, comments opened inside list items, …) are deliberately not
-    modeled — the surfaces this lint reads do not use them, and a full
-    markdown parser is out of proportion for a maintainer-slip guard.
-    """
-    kept: list[str] = []
-    lines = md_text.split("\n")
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        content = _QUOTE_PREFIX_RE.sub("", line)
-        stripped = content.lstrip(" ")
-        indent = len(content) - len(stripped)
-        if indent <= 3 and stripped.startswith("<!--"):
-            while i < len(lines) and "-->" not in lines[i]:
-                i += 1
-            i += 1  # skip the closing line entirely (or run off EOF)
-            continue
-        kept.append(line)
-        i += 1
-    return _HTML_COMMENT_RE.sub("", "\n".join(kept))
-
-
-def github_slug(heading: str) -> str:
-    """GitHub's markdown heading -> anchor slug, for the ASCII headings used
-    in docs/SETUP.md: lowercase, drop punctuation, spaces become hyphens
-    (consecutive spaces produce consecutive hyphens, e.g. "CLI / IDE" ->
-    "cli--ide")."""
-    text = heading.strip().lower()
-    # Strip markdown emphasis/backticks before slugging.
-    text = re.sub(r"[*_`]", "", text)
-    text = re.sub(r"[^\w\- ]", "", text)
-    return text.replace(" ", "-")
-
-
-def _strip_non_rendering(md_text: str) -> str:
-    """Fenced code first (its contents are literal), then HTML comments."""
-    return _strip_html_comments(_strip_fenced_code(md_text))
-
-
-def _heading_slugs(md_text: str) -> set[str]:
-    slugs: set[str] = set()
-    for match in _HEADING_RE.finditer(_strip_non_rendering(md_text)):
-        slugs.add(github_slug(match.group(2)))
-    return slugs
-
-
-def _doc_links(md_text: str) -> list[str]:
-    return [
-        m.group(1)
-        for m in _LINK_RE.finditer(_strip_non_rendering(md_text))
-    ]
 
 
 def check_links_resolve(root: Path) -> list[str]:
@@ -150,8 +56,8 @@ def check_links_resolve(root: Path) -> list[str]:
     errors: list[str] = []
     doc_path = root / DOC_RELPATH
     text = doc_path.read_text(encoding="utf-8")
-    self_slugs = _heading_slugs(text)
-    for target in _doc_links(text):
+    self_slugs = heading_slugs(text)
+    for target in extract_link_targets(text):
         if target.startswith(("http://", "https://", "mailto:")):
             continue
         if target.startswith("#"):
@@ -183,7 +89,7 @@ def check_links_resolve(root: Path) -> list[str]:
                     f"CA-1: anchor on non-markdown target '{target}'"
                 )
                 continue
-            target_slugs = _heading_slugs(linked.read_text(encoding="utf-8"))
+            target_slugs = heading_slugs(linked.read_text(encoding="utf-8"))
             if fragment not in target_slugs:
                 errors.append(
                     f"CA-1: anchor '#{fragment}' not found in "
@@ -202,15 +108,15 @@ def check_method_coverage(root: Path) -> list[str]:
     # Only fragments on links whose destination file IS docs/SETUP.md count:
     # a same-slug anchor into a copied/renamed file must not satisfy coverage.
     linked_fragments = set()
-    for target in _doc_links(doc_text):
-        if target.startswith(("http://", "https://", "mailto:", "#")):
+    for target in extract_link_targets(doc_text):
+        if target.startswith(NON_RELATIVE_LINK_PREFIXES):
             continue
         path_part, _, fragment = target.partition("#")
         if not fragment:
             continue
         if (doc_path.parent / path_part).resolve() == setup_path:
             linked_fragments.add(fragment)
-    for match in _METHOD_HEADING_RE.finditer(_strip_non_rendering(setup_text)):
+    for match in _METHOD_HEADING_RE.finditer(strip_non_rendering(setup_text)):
         heading = match.group(0).lstrip("#").strip()
         slug = github_slug(heading)
         if slug not in linked_fragments:
@@ -233,15 +139,8 @@ def check_inbound_links(root: Path) -> list[str]:
     doc_abs = (root / DOC_RELPATH).resolve()
     for rel in INBOUND_LINK_SURFACES:
         surface = root / rel
-        found = False
-        for target in _doc_links(surface.read_text(encoding="utf-8")):
-            if target.startswith(("http://", "https://", "mailto:", "#")):
-                continue
-            path_part = target.partition("#")[0]
-            if path_part and (surface.parent / path_part).resolve() == doc_abs:
-                found = True
-                break
-        if not found:
+        text = surface.read_text(encoding="utf-8")
+        if not links_to(text, surface.parent, doc_abs):
             errors.append(
                 f"CA-3: {rel} no longer links to {DOC_RELPATH.name} "
                 f"(#757 acceptance criterion)"
