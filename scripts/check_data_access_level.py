@@ -19,15 +19,20 @@ derivation-backed under the dirtiest-input rule:
   user drafts and third-party reviewer comments, and
   literature_strategist_agent's search-fills-gap flow ingests
   external-index search results inside the skill — Layer-1 inputs both.
-  The prior `redacted` described only the post-Gate-2.5 pipeline path.
+  The prior `redacted` described the orchestrated pipeline path, where
+  Stage 2 inputs arrive as Stage-1 sanitized artifacts (Gate 2.5 runs
+  AFTER Stage 2, so "post-gate" would overstate even that path).
 - `academic-paper-reviewer: raw` — #773-derived. The standalone
   `/ars-reviewer` entry (Routing Discipline Step 1 routes "review my
   paper" directly) legitimately consumes an ungated pasted manuscript;
-  `verified_only` was true only on the pipeline path, and the rule
-  quantifies over ALL entry paths.
-- `deep-research: raw` — carried over, discharged by a ceiling argument
-  (#773): `raw` is the dirtiest value in the vocabulary, so no
-  re-derivation could move it.
+  `verified_only` was at best true for the pipeline's initial Stage 3
+  dispatch (post-Gate-2.5) — Stage 3' re-review consumes a freshly
+  revised manuscript before Stage 4.5 — and the rule quantifies over
+  ALL entry paths.
+- `deep-research: raw` — #773 re-affirmed on its inputs: raw user
+  queries and unverified web/database search results are its core
+  intake. A ceiling argument additionally applies (`raw` is the
+  dirtiest value, so no re-derivation could move it further).
 
 Changing any pin must be a deliberate, reviewed re-application of the rule,
 and a new top-level skill must be registered here before it passes.

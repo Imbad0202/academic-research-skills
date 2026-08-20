@@ -151,12 +151,14 @@ Rules (per `shared/ground_truth_isolation_pattern.md`):
 - `academic-paper` is `raw` (#773) because its standalone modes ingest ungated
   user drafts and third-party reviewer comments, and
   `literature_strategist_agent`'s search-fills-gap flow ingests external-index
-  search results inside the skill. The former `redacted` described only the
-  post-Gate-2.5 pipeline path.
+  search results inside the skill. The former `redacted` described the
+  orchestrated pipeline path, where Stage 2 inputs arrive as Stage-1 sanitized
+  artifacts (Gate 2.5 runs after Stage 2, not before it).
 - `academic-paper-reviewer` is `raw` (#773) because the standalone
   `/ars-reviewer` entry legitimately consumes an ungated pasted manuscript —
-  the former `verified_only` was true only on the pipeline path (post-Gate 2.5),
-  and inside the pipeline that positioning is unchanged.
+  the former `verified_only` was at best true for the pipeline's initial
+  Stage 3 dispatch (post-Gate-2.5; Stage 3' re-review consumes a freshly
+  revised manuscript before Stage 4.5). That Stage 3 sequencing is unchanged.
 - The reviewer side **may hold a rubric privately** — the key guarantee is that rubric / gold-label content must not be present in the candidate-generating agent's context. Calibration gold sets are runtime-supplied by the human researcher, not bundled into the repository.
 - Stage 2.5 and Stage 4.5 (plus the user's review at each gate) are the actual enforcement points. This pattern document explains the data-flow structure that makes those gates meaningful; it is not itself a runtime lock.
 
