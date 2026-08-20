@@ -47,15 +47,17 @@ _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
-# Reuse the shared markdown machinery (#771) and the sibling lints' slug /
-# matrix helpers so the lints cannot drift apart.
+# Shared markdown machinery (#771); the matrix vocabulary comes from the
+# matrix lint, a genuinely data-owning dependency.
 from _markdown_lint_util import (  # noqa: E402
-    CODE_SPAN_RE,
-    LINK_RE,
-    extract_link_targets,
+    NON_RELATIVE_LINK_PREFIXES,
+    code_spans,
+    github_slug,
+    heading_slugs,
+    link_targets,
+    links_to,
     strip_non_rendering,
 )
-from check_control_availability import _heading_slugs, github_slug  # noqa: E402
 from check_stage_capability_matrix import (  # noqa: E402
     _BEHAVIORAL_STATUSES,
     _load,
@@ -118,13 +120,13 @@ def referenced_paths(doc_text: str) -> tuple[list[str], list[str]]:
     """(relative link targets, backtick repo paths) named by the doc.
     Link targets keep their #fragment; callers split as needed."""
     links = []
-    for target in LINK_RE.findall(doc_text):
-        if target.startswith(("http://", "https://", "mailto:", "#")):
+    for target in link_targets(doc_text):
+        if target.startswith(NON_RELATIVE_LINK_PREFIXES):
             continue
         links.append(target)
     spans = [
         token
-        for token in CODE_SPAN_RE.findall(doc_text)
+        for token in code_spans(doc_text)
         if _looks_like_repo_path(token)
     ]
     return links, spans
@@ -155,7 +157,7 @@ def check_pointer_integrity(root: Path) -> list[str]:
                     "on a non-markdown target"
                 )
                 continue
-            slugs = _heading_slugs(resolved.read_text(encoding="utf-8"))
+            slugs = heading_slugs(resolved.read_text(encoding="utf-8"))
             if github_slug(fragment) not in slugs:
                 errors.append(
                     f"RR-1: {DOC_RELPATH} links to {target!r}, but no "
@@ -245,12 +247,8 @@ def check_inbound_link(root: Path) -> list[str]:
     stripped so a backticked pseudo-link cannot satisfy the invariant."""
     doc_abs = (root / DOC_RELPATH).resolve()
     surface = root / README_RELPATH
-    for target in extract_link_targets(surface.read_text(encoding="utf-8")):
-        if target.startswith(("http://", "https://", "mailto:", "#")):
-            continue
-        path_part = target.partition("#")[0]
-        if path_part and (surface.parent / path_part).resolve() == doc_abs:
-            return []
+    if links_to(surface.read_text(encoding="utf-8"), surface.parent, doc_abs):
+        return []
     return [
         f"RR-3: {README_RELPATH} carries no rendered link to {DOC_RELPATH}"
     ]

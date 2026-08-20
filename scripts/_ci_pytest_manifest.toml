@@ -193,6 +193,10 @@ id = "758-data-flows-map"
 path = "scripts/test_check_data_flows.py"
 
 [[pytest]]
+id = "771-markdown-lint-util"
+path = "scripts/test__markdown_lint_util.py"
+
+[[pytest]]
 id = "759-risk-register"
 path = "scripts/test_check_risk_register.py"
 

@@ -21,10 +21,8 @@ semantics (payload class, TTL, off switch) stay owned by code review:
         (CommonMark fence-length closing rule) and HTML comments (inline
         spans + line/blockquote-level type-2 blocks) are stripped first.
 
-The markdown non-rendering / link grammar lives in
-scripts/_markdown_lint_util.py, shared with check_control_availability.py
-and check_risk_register.py (#771 consolidation; the rules here — inline
-code-span stripping + image exclusion — were the superset and won).
+Rendered-link / non-rendering grammar: scripts/_markdown_lint_util.py
+(#771 consolidation).
 
 Exit 0 when all invariants hold; exit 1 with one line per violation.
 """
@@ -35,7 +33,7 @@ import re
 import sys
 from pathlib import Path
 
-from _markdown_lint_util import extract_link_targets
+from _markdown_lint_util import links_to
 
 DOC_RELPATH = Path("docs/DATA_FLOWS.md")
 INBOUND_LINK_SURFACES = (
@@ -220,17 +218,8 @@ def check_inbound_links(root: Path) -> list[str]:
     doc_abs = (root / DOC_RELPATH).resolve()
     for rel in INBOUND_LINK_SURFACES:
         surface = root / rel
-        found = False
-        for target in extract_link_targets(
-            surface.read_text(encoding="utf-8")
-        ):
-            if target.startswith(("http://", "https://", "mailto:", "#")):
-                continue
-            path_part = target.partition("#")[0]
-            if path_part and (surface.parent / path_part).resolve() == doc_abs:
-                found = True
-                break
-        if not found:
+        text = surface.read_text(encoding="utf-8")
+        if not links_to(text, surface.parent, doc_abs):
             errors.append(
                 f"DF-3: {rel} no longer links to {DOC_RELPATH.name} "
                 f"(#758 acceptance criterion)"

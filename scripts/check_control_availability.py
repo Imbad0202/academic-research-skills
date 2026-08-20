@@ -23,11 +23,9 @@ check_degradation_registry.py's index-not-author posture:
         least one link to docs/CONTROL_AVAILABILITY.md (the #757 acceptance
         criterion, pinned so a refactor cannot orphan the page).
 
-The markdown non-rendering / link grammar lives in
-scripts/_markdown_lint_util.py, shared with check_data_flows.py and
-check_risk_register.py (#771). Since that consolidation CA-1..CA-3 also
-inherit the #770 superset rules: inline code spans render literally and an
-image `![alt](target)` never satisfies or fires a link invariant.
+Rendered-link / non-rendering / slug grammar: scripts/_markdown_lint_util.py
+(#771 consolidation; since then CA-1..CA-3 also apply its code-span and
+image-exclusion rules).
 
 Exit 0 when all invariants hold; exit 1 with one line per violation.
 """
@@ -37,33 +35,20 @@ import re
 import sys
 from pathlib import Path
 
-from _markdown_lint_util import extract_link_targets, strip_non_rendering
+from _markdown_lint_util import (
+    NON_RELATIVE_LINK_PREFIXES,
+    extract_link_targets,
+    github_slug,
+    heading_slugs,
+    links_to,
+    strip_non_rendering,
+)
 
 DOC_RELPATH = Path("docs/CONTROL_AVAILABILITY.md")
 SETUP_RELPATH = Path("docs/SETUP.md")
 INBOUND_LINK_SURFACES = (Path("README.md"), SETUP_RELPATH)
 
-_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$", re.MULTILINE)
 _METHOD_HEADING_RE = re.compile(r"^###\s+Method\b.*$", re.MULTILINE)
-
-
-def github_slug(heading: str) -> str:
-    """GitHub's markdown heading -> anchor slug, for the ASCII headings used
-    in docs/SETUP.md: lowercase, drop punctuation, spaces become hyphens
-    (consecutive spaces produce consecutive hyphens, e.g. "CLI / IDE" ->
-    "cli--ide")."""
-    text = heading.strip().lower()
-    # Strip markdown emphasis/backticks before slugging.
-    text = re.sub(r"[*_`]", "", text)
-    text = re.sub(r"[^\w\- ]", "", text)
-    return text.replace(" ", "-")
-
-
-def _heading_slugs(md_text: str) -> set[str]:
-    slugs: set[str] = set()
-    for match in _HEADING_RE.finditer(strip_non_rendering(md_text)):
-        slugs.add(github_slug(match.group(2)))
-    return slugs
 
 
 def check_links_resolve(root: Path) -> list[str]:
@@ -71,7 +56,7 @@ def check_links_resolve(root: Path) -> list[str]:
     errors: list[str] = []
     doc_path = root / DOC_RELPATH
     text = doc_path.read_text(encoding="utf-8")
-    self_slugs = _heading_slugs(text)
+    self_slugs = heading_slugs(text)
     for target in extract_link_targets(text):
         if target.startswith(("http://", "https://", "mailto:")):
             continue
@@ -104,7 +89,7 @@ def check_links_resolve(root: Path) -> list[str]:
                     f"CA-1: anchor on non-markdown target '{target}'"
                 )
                 continue
-            target_slugs = _heading_slugs(linked.read_text(encoding="utf-8"))
+            target_slugs = heading_slugs(linked.read_text(encoding="utf-8"))
             if fragment not in target_slugs:
                 errors.append(
                     f"CA-1: anchor '#{fragment}' not found in "
@@ -124,7 +109,7 @@ def check_method_coverage(root: Path) -> list[str]:
     # a same-slug anchor into a copied/renamed file must not satisfy coverage.
     linked_fragments = set()
     for target in extract_link_targets(doc_text):
-        if target.startswith(("http://", "https://", "mailto:", "#")):
+        if target.startswith(NON_RELATIVE_LINK_PREFIXES):
             continue
         path_part, _, fragment = target.partition("#")
         if not fragment:
@@ -154,15 +139,8 @@ def check_inbound_links(root: Path) -> list[str]:
     doc_abs = (root / DOC_RELPATH).resolve()
     for rel in INBOUND_LINK_SURFACES:
         surface = root / rel
-        found = False
-        for target in extract_link_targets(surface.read_text(encoding="utf-8")):
-            if target.startswith(("http://", "https://", "mailto:", "#")):
-                continue
-            path_part = target.partition("#")[0]
-            if path_part and (surface.parent / path_part).resolve() == doc_abs:
-                found = True
-                break
-        if not found:
+        text = surface.read_text(encoding="utf-8")
+        if not links_to(text, surface.parent, doc_abs):
             errors.append(
                 f"CA-3: {rel} no longer links to {DOC_RELPATH.name} "
                 f"(#757 acceptance criterion)"
