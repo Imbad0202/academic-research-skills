@@ -317,7 +317,7 @@
       "degraded_state": "The launcher emits the canonical pass-through hook JSON and exits 0, silent on stderr; the guard is inactive and core skills are unaffected (the guard is optional hardening and ARS core needs no Python). It deliberately emits no permissionDecision — never 'allow' — so the session's normal permission rules still decide, and it never exits non-zero",
       "diagnostic_marker": "Silent per call BY DESIGN (per-call stderr on a hot path is exactly the #454 spam the launcher exists to stop); the observable state is hook output equal to the canonical pass-through JSON {\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\"}} with no permissionDecision",
       "downstream_consumer": "Claude Code PreToolUse permission flow (the pass-through output carries no permissionDecision, so the session's normal permission rules decide)",
-      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; it is optional subagent hardening and every degraded path resolves to pass-through, never block",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; this failure path resolves to pass-through, never block",
       "authority": [
         {
           "file": "hooks/run_guard.sh",
@@ -325,7 +325,7 @@
         },
         {
           "file": "hooks/run_guard.sh",
-          "anchor": "NEVER emit \"allow\" — that would skip every other permission rule"
+          "anchor": "no permissionDecision => falls back to the normal permission"
         },
         {
           "file": "README.md",
@@ -342,7 +342,7 @@
       "degraded_state": "Guard inactive — Claude Code falls back to PowerShell, which cannot run the launcher; this ARS hook never blocks a write (the session's normal permission rules still apply), but the PreToolUse hook logs an error per call (noisy, accepted degradation) until Git Bash is installed",
       "diagnostic_marker": "Per-call PreToolUse hook error logged by Claude Code (the launcher never executes on this path, so no ARS-side marker can be emitted)",
       "downstream_consumer": "Claude Code PreToolUse permission flow (the hook failure is non-blocking; the session's normal permission rules decide)",
-      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; it is optional subagent hardening and every degraded path resolves to pass-through, never block",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; on this path the hook simply does not run, so it can block nothing",
       "authority": [
         {
           "file": "hooks/run_guard.sh",
@@ -382,11 +382,11 @@
     },
     {
       "mechanism": "write_scope_guard_subprocess_misbehaves",
-      "failure_class": "Guard subprocess misbehaves under a healthy launcher — non-zero exit, wall-clock overrun, empty / invalid / key-missing hook JSON, missing guard script — or the launcher itself fails internally: cannot obtain a private temp file (mktemp failure), cannot resolve its own directory (SELF_DIR cd/dirname failure), or a POSIX shell caps the held payload variable on a multi-megabyte Write (documented degradation)",
-      "degraded_state": "The launcher emits the canonical pass-through hook JSON and exits 0; the guard's stderr is dropped on this path (relayed only on the healthy path) so a broken guard cannot spam the hot path, and a mktemp failure degrades to pass-through rather than falling back to a predictable (symlink-attackable) temp path. A capped payload reaches the guard malformed, and the guard's own JSON-parse fail-safe resolves it without blocking",
+      "failure_class": "Guard subprocess misbehaves under a healthy launcher — non-zero exit, wall-clock overrun, or output failing the launcher's validity check (anything that is not a JSON object carrying a top-level hookSpecificOutput key; the check is deliberately this shallow and does not validate the full hook schema) — or a missing guard script, or the launcher itself fails internally: mktemp failure, SELF_DIR self-resolution failure, or a POSIX shell capping the held payload variable on a multi-megabyte Write (a documented accepted edge)",
+      "degraded_state": "The launcher emits the canonical pass-through hook JSON and exits 0; the guard's stderr is dropped on this path (relayed only on the healthy path) so a broken guard cannot spam the hot path, and a mktemp failure degrades to pass-through rather than falling back to a predictable (symlink-attackable) temp path. The multi-megabyte payload edge is documented as accepted-and-unfixed with no enforced or separately tested outcome — recorded here for inventory completeness, not as a pinned behavior",
       "diagnostic_marker": "Canonical pass-through JSON in place of a guard decision; the guard's own stderr advisories are absent",
       "downstream_consumer": "Claude Code PreToolUse permission flow (the pass-through output carries no permissionDecision, so the session's normal permission rules decide)",
-      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; it is optional subagent hardening and every degraded path resolves to pass-through, never block",
+      "terminal_policy_effect": "none — the write-scope guard sits outside the Material Passport / terminal-policy layer; this failure path resolves to pass-through, never block",
       "authority": [
         {
           "file": "hooks/run_guard.sh",
