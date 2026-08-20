@@ -7,7 +7,7 @@ rounds and then shipped as two diverging copies. Consolidation rule from
 issue #771: the #770 versions are the superset and win — inline code spans
 render literally (a link inside backticks is not a link) and an image
 `![alt](target)` renders no anchor, so both are excluded from the rendered
-link grammar. check_risk_register.py (#760) imports the same machinery.
+link grammar. check_risk_register.py (#759) imports the same machinery.
 
 Pure text helpers: no filesystem access, no repo assumptions. Consumers own
 their invariant semantics; this module only answers "what does GitHub render
