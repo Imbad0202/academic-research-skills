@@ -5,7 +5,7 @@ metadata:
   version: "1.11.1"
   last_updated: "2026-08-15"
   status: active
-  data_access_level: verified_only
+  data_access_level: raw
   task_type: open-ended
   related_skills:
     - academic-paper

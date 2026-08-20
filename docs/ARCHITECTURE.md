@@ -115,37 +115,48 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    User[User input<br/>web / PDFs / queries]
+    User[User input<br/>web / PDFs / queries / pasted drafts]
     Raw[deep-research<br/>data_access_level: raw]
-    Red[academic-paper<br/>data_access_level: redacted]
-    Ver1[academic-paper-reviewer<br/>data_access_level: verified_only]
+    Red[academic-paper<br/>data_access_level: raw]
+    Ver1[academic-paper-reviewer<br/>data_access_level: raw]
     Orch[academic-pipeline<br/>data_access_level: raw]
 
     User --> Raw
+    User -- standalone modes: ungated drafts,<br/>reviewer comments, search-fills-gap --> Red
+    User -- standalone /ars-reviewer:<br/>ungated pasted manuscript --> Ver1
     User -- Stage 1 request / mid-entry paper --> Orch
-    Raw -- source_verification elevates --> Red
+    Raw -- source_verification elevates artifacts --> Red
     Red -- Gate 2.5: 7-mode integrity --> Ver1
     Orch -. orchestrates .-> Raw
     Orch -. orchestrates .-> Red
     Orch -. orchestrates .-> Ver1
 
     classDef raw fill:#fff1f0,stroke:#cf1322
-    classDef red fill:#fffbe6,stroke:#d48806
-    classDef ver fill:#f6ffed,stroke:#389e0d
-    class Raw,Orch raw
-    class Red red
-    class Ver1 ver
+    class Raw,Red,Ver1,Orch raw
 ```
 
 Rules (per `shared/ground_truth_isolation_pattern.md`):
 
 - `data_access_level` is a **declarative** annotation, not a runtime-enforced permission system. The CI lint `scripts/check_data_access_level.py` pins each skill's value and confirms the vocabulary; it does not inspect context windows at runtime.
 - `raw` skills consume layer-1 data (arbitrary, possibly adversarial).
-- `redacted` skills operate on sanitized material, no new raw ingestion.
-- `verified_only` skills run only after upstream integrity gates.
+- `redacted` (sanitized material, no new raw ingestion) and `verified_only`
+  (runs only after upstream integrity gates) remain in the legal vocabulary, but
+  since #773 no top-level skill qualifies for either: the annotation takes the
+  **dirtiest input across all modes and entry paths**, and every skill has at
+  least one legitimate Layer-1 entry. Artifact-level elevation is tracked per
+  stage *output* in the §3 Data-level column, not per skill.
 - `academic-pipeline` is `raw` (#756) because Stage 1 accepts raw user requests and
   mid-entry accepts raw existing papers — the integrity gates run *inside* the
   pipeline, downstream of its intake.
+- `academic-paper` is `raw` (#773) because its standalone modes ingest ungated
+  user drafts and third-party reviewer comments, and
+  `literature_strategist_agent`'s search-fills-gap flow ingests external-index
+  search results inside the skill. The former `redacted` described only the
+  post-Gate-2.5 pipeline path.
+- `academic-paper-reviewer` is `raw` (#773) because the standalone
+  `/ars-reviewer` entry legitimately consumes an ungated pasted manuscript —
+  the former `verified_only` was true only on the pipeline path (post-Gate 2.5),
+  and inside the pipeline that positioning is unchanged.
 - The reviewer side **may hold a rubric privately** — the key guarantee is that rubric / gold-label content must not be present in the candidate-generating agent's context. Calibration gold sets are runtime-supplied by the human researcher, not bundled into the repository.
 - Stage 2.5 and Stage 4.5 (plus the user's review at each gate) are the actual enforcement points. This pattern document explains the data-flow structure that makes those gates meaningful; it is not itself a runtime lock.
 
