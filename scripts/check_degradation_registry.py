@@ -83,8 +83,9 @@ _EXPECTED_MECHANISMS = frozenset({
     "re_review_legacy_no_contract",
     "re_review_apply_chain_witness_not_run",
     # #769: write-scope guard launcher degradations (hooks/run_guard.sh).
-    # Every path resolves to pass-through, never block — the guard is
-    # optional hardening outside the terminal-policy layer.
+    # No degraded path ever blocks: launcher failure paths resolve to
+    # pass-through, and the no-timeout fallback still forwards the guard's
+    # real decision. Optional hardening outside the terminal-policy layer.
     "write_scope_guard_no_python",
     "write_scope_guard_no_git_bash",
     "write_scope_guard_no_timeout_binary",
