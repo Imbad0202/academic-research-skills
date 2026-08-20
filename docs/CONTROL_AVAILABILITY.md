@@ -109,7 +109,11 @@ Independent of install channel, the write-scope guard has documented degraded st
 all of which resolve toward **pass-through, never block** — the guard is an optional
 hardening layer, and a broken guard must not lock a user out of their own files
 (maintainer decision recorded in `hooks/run_guard.sh`; user-facing summary in the
-README Requirements bullet):
+README Requirements bullet). This table is a convenience summary, not a second
+authority: the indexed rows are the `write_scope_guard_*` mechanisms in
+[`shared/contracts/degradation_registry.json`](../shared/contracts/degradation_registry.json)
+(#769), whose anchors into `hooks/run_guard.sh` are lint-pinned, and which also cover a
+fourth state (guard subprocess misbehaves under a healthy launcher → pass-through):
 
 | Condition | Behavior |
 |---|---|
