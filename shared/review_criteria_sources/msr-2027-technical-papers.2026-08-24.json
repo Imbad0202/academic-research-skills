@@ -1,0 +1,46 @@
+{
+  "receipt_version": "review-criteria-source-receipt/1.0",
+  "receipt_kind": "mutable_web_semantic_snapshot",
+  "source_uri": "https://2027.msrconf.org/track/msr-2027-technical-papers",
+  "publisher": "MSR 2027",
+  "retrieved_at": "2026-08-24T05:54:47Z",
+  "capture": {
+    "method": "HTTPS GET with curl 8.7.1; response body decoded as UTF-8",
+    "http_status": 200,
+    "content_type": "text/html;charset=UTF-8",
+    "etag": null,
+    "last_modified": null,
+    "raw_body_size_bytes": 45702,
+    "raw_body_sha256": "10221162dbd1907c46eb9104808243f0d49c9df5cc7e81c335c8aeb9f15b28a7"
+  },
+  "semantic_snapshot": {
+    "selection": "the first div whose id is exactly Call-for-Papers, including descendant text nodes through its matching closing tag",
+    "normalization": "HTMLParser(convert_charrefs=True), join data chunks with U+0020, then replace every Unicode whitespace run with one U+0020 and strip the ends",
+    "encoding": "UTF-8",
+    "size_bytes": 16601,
+    "word_count": 2535,
+    "sha256": "2546217a5f2b7dccb3b617b976e75cf7427c9a3881fda3092323c94a35231795"
+  },
+  "criterion_locators": [
+    {
+      "criterion_id": "official.msr2027.technical.full.scope",
+      "fragment": "Call-for-Papers",
+      "locator": "Call for Papers introduction and Evaluation Criteria > Full papers"
+    },
+    {
+      "criterion_id": "official.msr2027.technical.full.validity",
+      "fragment": "evaluation-criteria",
+      "locator": "Evaluation Criteria > Soundness and Replicability"
+    },
+    {
+      "criterion_id": "official.msr2027.technical.full.open-science",
+      "fragment": "open-science-policy",
+      "locator": "Open Science Policy"
+    }
+  ],
+  "retention": {
+    "full_body_committed": false,
+    "reason": "The publisher page exposes no redistribution license. This receipt preserves byte and normalized-semantic hashes without mirroring the page.",
+    "drift_rule": "A different normalized semantic hash requires curator review and a new criterion version; it must not silently replace this receipt."
+  }
+}

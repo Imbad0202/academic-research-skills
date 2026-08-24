@@ -1,12 +1,20 @@
 {
   "schema_version": "review-criteria-registry/1.0",
   "registry_id": "ars-field-general-review-criteria",
-  "registry_version": "2026.08",
-  "as_of": "2026-08-08",
+  "registry_version": "2026.08.24",
+  "as_of": "2026-08-24",
   "authority_classes": {
-    "official_venue_type": [],
-    "field_society_standard": [],
-    "reporting_design_overlay": [],
+    "official_venue_type": [
+      "official.msr2027.technical.full.scope",
+      "official.msr2027.technical.full.validity",
+      "official.msr2027.technical.full.open-science"
+    ],
+    "field_society_standard": [
+      "field.sigsoft.empirical.general-essential"
+    ],
+    "reporting_design_overlay": [
+      "overlay.sigsoft.repository-mining.essential"
+    ],
     "broad_field_fallback": [
       "broad.claim-evidence-alignment",
       "broad.method-evidence-alignment",
@@ -91,6 +99,106 @@
         "freshness": "current"
       },
       "applicability": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "advisory_only",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "official.msr2027.technical.full.scope",
+      "version": "2027-cfp.pane-sha256-2546217a5f2b7dccb3b617b976e75cf7427c9a3881fda3092323c94a35231795",
+      "authority_class": "official_venue_type",
+      "dimension": "venue_fit",
+      "title": "MSR 2027 full-paper scope and contribution",
+      "statement": "An MSR 2027 Technical Papers Full Paper should make software data central, present a significant research contribution, and describe a new technique or novel research result with high technical rigor and scientific evaluation.",
+      "source": {
+        "title": "MSR 2027 Technical Papers — Call for Papers",
+        "publisher": "MSR 2027",
+        "uri": "https://2027.msrconf.org/track/msr-2027-technical-papers#Call-for-Papers",
+        "effective_date": "2026-08-24",
+        "verified_at": "2026-08-24",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": [], "subfields": [], "venues": ["MSR 2027"], "tracks": ["Technical Papers"], "contribution_types": ["Full Paper"], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "official.msr2027.technical.full.validity",
+      "version": "2027-cfp.pane-sha256-2546217a5f2b7dccb3b617b976e75cf7427c9a3881fda3092323c94a35231795",
+      "authority_class": "official_venue_type",
+      "dimension": "scientific_validity",
+      "title": "MSR 2027 soundness and replicability",
+      "statement": "Assess whether the contribution addresses its research questions through relevant procedures and whether its claims can be independently checked through a replication package or enough information about data acquisition, analysis, interpretation, or technique operation.",
+      "source": {
+        "title": "MSR 2027 Technical Papers — Evaluation Criteria",
+        "publisher": "MSR 2027",
+        "uri": "https://2027.msrconf.org/track/msr-2027-technical-papers#evaluation-criteria",
+        "effective_date": "2026-08-24",
+        "verified_at": "2026-08-24",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": [], "subfields": [], "venues": ["MSR 2027"], "tracks": ["Technical Papers"], "contribution_types": ["Full Paper"], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "official.msr2027.technical.full.open-science",
+      "version": "2027-cfp.pane-sha256-2546217a5f2b7dccb3b617b976e75cf7427c9a3881fda3092323c94a35231795",
+      "authority_class": "official_venue_type",
+      "dimension": "submission_readiness",
+      "title": "MSR 2027 data-availability and artifact disclosure",
+      "statement": "Include a data-availability statement; disclose relevant source code, anonymized and curated study data, and reproduction or replication instructions when possible; identify and explain any ethical, legal, technical, economic, or other barrier to disclosure.",
+      "source": {
+        "title": "MSR 2027 Technical Papers — Open Science Policy",
+        "publisher": "MSR 2027",
+        "uri": "https://2027.msrconf.org/track/msr-2027-technical-papers#open-science-policy",
+        "effective_date": "2026-08-24",
+        "verified_at": "2026-08-24",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": [], "subfields": [], "venues": ["MSR 2027"], "tracks": ["Technical Papers"], "contribution_types": ["Full Paper"], "overlays": []},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "blocking_allowed",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "field.sigsoft.empirical.general-essential",
+      "version": "d131d7209f2fad7e8dfd30afbd2b8ea605ea3141",
+      "authority_class": "field_society_standard",
+      "dimension": "scientific_validity",
+      "title": "ACM SIGSOFT General Standard essential attributes",
+      "statement": "For a software-engineering study that collects and analyzes data, state and motivate its questions; name and justify the methodology; describe data collection and analysis; connect results and conclusions to the questions and evidence; disclose major limitations; and address applicable research risks and empirical standards.",
+      "source": {
+        "title": "ACM SIGSOFT Empirical Standards — General Standard",
+        "publisher": "ACM SIGSOFT",
+        "uri": "https://github.com/acmsigsoft/EmpiricalStandards/blob/d131d7209f2fad7e8dfd30afbd2b8ea605ea3141/docs/standards/GeneralStandard.md#L7-L75",
+        "effective_date": "2025-02-19",
+        "verified_at": "2026-08-24",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": ["Software Engineering"], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": ["ACM SIGSOFT Repository Mining Standard"]},
+      "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
+      "blocking_policy": "advisory_only",
+      "conflict_group": null
+    },
+    {
+      "criterion_id": "overlay.sigsoft.repository-mining.essential",
+      "version": "53c14e1a85aac1aeafb0788a622c5aaafec5c8b9",
+      "authority_class": "reporting_design_overlay",
+      "dimension": "scientific_validity",
+      "title": "ACM SIGSOFT Repository Mining Standard essential attributes",
+      "statement": "For quantitative studies that automatically extract software-repository data, justify method fit, sources, repository selection, acquisition, preprocessing, measures, and any sampling or annotation procedure; validate selection criteria and measures where applicable; and discuss external-validity threats and method-specific boundaries.",
+      "source": {
+        "title": "ACM SIGSOFT Empirical Standards — Repository Mining",
+        "publisher": "ACM SIGSOFT",
+        "uri": "https://github.com/acmsigsoft/EmpiricalStandards/blob/53c14e1a85aac1aeafb0788a622c5aaafec5c8b9/docs/standards/RepositoryMining.md#L6-L55",
+        "effective_date": "2025-05-26",
+        "verified_at": "2026-08-24",
+        "freshness": "current"
+      },
+      "applicability": {"disciplines": ["Software Engineering"], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": ["ACM SIGSOFT Repository Mining Standard"]},
       "exclusions": {"disciplines": [], "subfields": [], "venues": [], "tracks": [], "contribution_types": [], "overlays": []},
       "blocking_policy": "advisory_only",
       "conflict_group": null

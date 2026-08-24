@@ -15,6 +15,15 @@ from resolve_review_target_context import load_json, resolve
 REPO = Path(__file__).resolve().parents[1]
 FIXTURES = REPO / "scripts" / "fixtures" / "review_target_context"
 CONTRACTS = REPO / "shared" / "contracts" / "review_target"
+LIVE_REGISTRY = REPO / "shared" / "review_criteria_registry.json"
+LIVE_MSR_DECLARATION = FIXTURES / "msr-2027-technical-full-declaration.json"
+PROVING_SET_IDS = {
+    "official.msr2027.technical.full.scope",
+    "official.msr2027.technical.full.validity",
+    "official.msr2027.technical.full.open-science",
+    "field.sigsoft.empirical.general-essential",
+    "overlay.sigsoft.repository-mining.essential",
+}
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -249,6 +258,82 @@ def test_complete_requires_three_consumers_and_five_external_seats(tmp_path, res
         "validate", "--manifest", str(manifest_path), "--context", str(context_path),
         "--registry", str(registry_path), "--require-complete",
     ]) == 0
+
+
+def test_live_msr_proving_set_binds_all_three_consumers(tmp_path: Path) -> None:
+    declaration = load_json(LIVE_MSR_DECLARATION)
+    registry = load_json(LIVE_REGISTRY)
+    context = resolve(declaration, registry)
+    context_path = tmp_path / "msr-context.json"
+    registry_path = tmp_path / "live-registry.json"
+    _write_json(context_path, context)
+    _write_json(registry_path, registry)
+    inputs = (context_path, registry_path, context, registry)
+
+    manifest_path = _complete(tmp_path, inputs)
+    manifest = _manifest(manifest_path)
+
+    assert tuple(item["consumer_id"] for item in manifest["receipts"]) == binding.CONSUMERS
+    assert manifest["context_authority"]["resolved_digest"] == context["resolved_digest"]
+    assert binding.main(
+        [
+            "validate",
+            "--manifest",
+            str(manifest_path),
+            "--context",
+            str(context_path),
+            "--registry",
+            str(registry_path),
+            "--require-complete",
+        ]
+    ) == 0
+
+
+def test_predecessor_context_cannot_silently_bind_to_live_registry(
+    tmp_path: Path,
+) -> None:
+    live = load_json(LIVE_REGISTRY)
+    predecessor = copy.deepcopy(live)
+    predecessor["registry_version"] = "2026.08"
+    predecessor["as_of"] = "2026-08-08"
+    predecessor["criteria"] = [
+        item
+        for item in predecessor["criteria"]
+        if item["criterion_id"] not in PROVING_SET_IDS
+    ]
+    for authority_class in (
+        "official_venue_type",
+        "field_society_standard",
+        "reporting_design_overlay",
+    ):
+        predecessor["authority_classes"][authority_class] = []
+
+    declaration = load_json(FIXTURES / "field-general-declaration.json")
+    old_context = resolve(declaration, predecessor)
+    context_path = tmp_path / "old-context.json"
+    registry_path = tmp_path / "live-registry.json"
+    output_path = tmp_path / "must-not-exist.binding.json"
+    _write_json(context_path, old_context)
+    _write_json(registry_path, live)
+
+    assert binding.main(
+        [
+            "init",
+            "--context",
+            str(context_path),
+            "--context-ref",
+            "phase0/old-context.json",
+            "--registry",
+            str(registry_path),
+            "--registry-ref",
+            "phase0/live-registry.json",
+            "--target-review-id",
+            "migration-must-rebind",
+            "--output",
+            str(output_path),
+        ]
+    ) == 2
+    assert not output_path.exists()
 
 
 def test_incomplete_manifest_fails_complete_gate(tmp_path, resolved_inputs) -> None:

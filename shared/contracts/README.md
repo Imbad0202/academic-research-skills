@@ -880,14 +880,27 @@ from deterministic criterion resolution:
   selection, precedence, and as-of input;
 - `criteria_registry.schema.json` — the versioned four-part authority registry with
   criterion provenance, applicability/exclusions, freshness, and blocking policy;
+- `review_criteria_source_receipt.schema.json` — the closed discriminated
+  receipts for mutable-web semantic snapshots and immutable Git repository-head
+  verification;
 - `review_target_context.schema.json` — the pointer-only resolved profile, three
   independent outcome dimensions, parallel conflicts, fallback state, and stable
   digests.
 
-`shared/review_criteria_registry.json` intentionally ships only a field-general
-baseline. It does not present remembered or synthetic journal rules as official
-venue guidance. Exact venue × track × contribution-type behavior is covered by
-synthetic fixtures.
+`shared/review_criteria_registry.json` ships a bounded source-backed proving set
+for MSR 2027 Technical Papers Full Papers and ACM SIGSOFT's General and
+Repository Mining standards, alongside the field-general fallbacks. This is not
+a coverage claim: targets without an exact official profile remain unresolved,
+and the SIGSOFT rows remain advisory unless venue adoption is separately
+sourced. The executable exact-target declaration and hermetic source/digest
+checks live under `scripts/fixtures/review_target_context/` and
+`scripts/test_resolve_review_target_context.py`; the dated source audit is
+`audits/575-source-backed-proving-set-2026-08-24.md`. Mutable-page and
+immutable-repository verification receipts live under
+`shared/review_criteria_sources/`. The fixture models a hypothetical
+author-confirmed declaration; it is not a real-manuscript attestation. The
+registry release preserves its id, increments its version, and visibly rotates
+V1 resolved digests so consumers must explicitly rebind.
 
 Resolve a declaration and optionally emit the Phase 0/1 Target Criteria Brief:
 

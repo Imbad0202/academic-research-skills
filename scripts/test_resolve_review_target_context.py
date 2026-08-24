@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +15,7 @@ from referencing import Registry, Resource
 
 from resolve_review_target_context import (
     ContractError,
+    digest,
     render_brief,
     resolve,
     validate_declaration,
@@ -27,6 +29,38 @@ CONTRACTS = REPO_ROOT / "shared" / "contracts" / "review_target"
 RESOLVER = REPO_ROOT / "scripts" / "resolve_review_target_context.py"
 LIVE_REGISTRY = REPO_ROOT / "shared" / "review_criteria_registry.json"
 SOURCE_PATH = REPO_ROOT / "academic-paper-reviewer" / "references" / "review_criteria_framework.md"
+MSR_DECLARATION = FIXTURES / "msr-2027-technical-full-declaration.json"
+MSR_SOURCE_RECEIPT = (
+    REPO_ROOT
+    / "shared"
+    / "review_criteria_sources"
+    / "msr-2027-technical-papers.2026-08-24.json"
+)
+SIGSOFT_SOURCE_RECEIPT = (
+    REPO_ROOT
+    / "shared"
+    / "review_criteria_sources"
+    / "sigsoft-empirical-standards.2026-08-24.json"
+)
+MSR_PANE_SHA256 = "2546217a5f2b7dccb3b617b976e75cf7427c9a3881fda3092323c94a35231795"
+MSR_CRITERION_VERSION = f"2027-cfp.pane-sha256-{MSR_PANE_SHA256}"
+MSR_OFFICIAL_IDS = {
+    "official.msr2027.technical.full.scope",
+    "official.msr2027.technical.full.validity",
+    "official.msr2027.technical.full.open-science",
+}
+SIGSOFT_IDS = {
+    "field.sigsoft.empirical.general-essential",
+    "overlay.sigsoft.repository-mining.essential",
+}
+PROVING_SET_IDS = MSR_OFFICIAL_IDS | SIGSOFT_IDS
+BROAD_IDS = {
+    "broad.claim-evidence-alignment",
+    "broad.method-evidence-alignment",
+    "broad.limitation-calibration",
+    "broad.submission-traceability",
+}
+BROAD_BLOCKING_IDS = BROAD_IDS - {"broad.submission-traceability"}
 
 
 def _json(path: Path) -> dict[str, object]:
@@ -73,11 +107,253 @@ def test_schemas_and_live_registry_are_valid(field_general_declaration: dict[str
     assert context["fallback_state"] == "field_general"
     assert context["outcomes"]["venue_fit"] == []  # type: ignore[index]
     assert SOURCE_PATH.is_file()
+    broad_rows = [
+        item
+        for item in live["criteria"]  # type: ignore[union-attr]
+        if item["authority_class"] == "broad_field_fallback"
+    ]
     assert all(
         item["source"]["uri"]  # type: ignore[index]
         == "repository://academic-paper-reviewer/references/review_criteria_framework.md"
-        for item in live["criteria"]  # type: ignore[union-attr]
+        for item in broad_rows
     )
+
+
+def test_live_msr2027_repository_mining_proving_set_resolves() -> None:
+    live = _json(LIVE_REGISTRY)
+    declaration = _json(MSR_DECLARATION)
+    context = resolve(declaration, live)
+    pointers = {
+        item["criterion_id"]: item
+        for item in context["selected_criteria"]  # type: ignore[union-attr]
+    }
+
+    assert context["fallback_state"] == "venue_exact"
+    assert context["resolution_state"] == "resolved"
+    assert set(context["selected_criterion_ids"]) == (  # type: ignore[arg-type]
+        MSR_OFFICIAL_IDS | SIGSOFT_IDS | BROAD_IDS
+    )
+    assert all(pointers[item]["blocking_eligible"] for item in MSR_OFFICIAL_IDS)
+    assert all(not pointers[item]["blocking_eligible"] for item in SIGSOFT_IDS)
+    assert all(pointers[item]["blocking_eligible"] for item in BROAD_BLOCKING_IDS)
+    assert pointers["broad.submission-traceability"]["blocking_eligible"] is False
+    assert all(
+        pointers[item]["advisory_reasons"] == ["registry_policy_advisory_only"]
+        for item in SIGSOFT_IDS | {"broad.submission-traceability"}
+    )
+    _validator("review_target_context.schema.json").validate(context)
+
+
+@pytest.mark.parametrize(
+    ("axis", "value"),
+    [
+        ("venue", "MSR 2026"),
+        ("track", "Data and Tool Showcase Track"),
+        ("contribution_type", "Short Work-in-Progress Paper"),
+    ],
+)
+def test_live_msr_profile_requires_exact_canonical_axes(axis: str, value: str) -> None:
+    live = _json(LIVE_REGISTRY)
+    declaration = _json(MSR_DECLARATION)
+    declaration["target"][axis] = value  # type: ignore[index]
+    context = resolve(declaration, live)
+
+    assert context["fallback_state"] == "declared_target_unresolved"
+    assert not (set(context["selected_criterion_ids"]) & MSR_OFFICIAL_IDS)  # type: ignore[arg-type]
+
+
+def test_live_msr_source_alias_does_not_silently_rebind_author_choice() -> None:
+    live = _json(LIVE_REGISTRY)
+    declaration = _json(MSR_DECLARATION)
+    declaration["target"]["track"] = "Research Track"  # type: ignore[index]
+
+    context = resolve(declaration, live)
+
+    assert context["fallback_state"] == "declared_target_unresolved"
+    assert not (set(context["selected_criterion_ids"]) & MSR_OFFICIAL_IDS)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["remove_overlay", "change_discipline"],
+)
+def test_live_sigsoft_rows_require_confirmed_scope(mutation: str) -> None:
+    live = _json(LIVE_REGISTRY)
+    declaration = _json(MSR_DECLARATION)
+    if mutation == "remove_overlay":
+        declaration["reporting_design_overlays"] = []
+    else:
+        declaration["discipline"]["primary"] = "Computer Science"  # type: ignore[index]
+    context = resolve(declaration, live)
+
+    assert not (set(context["selected_criterion_ids"]) & SIGSOFT_IDS)  # type: ignore[arg-type]
+    assert MSR_OFFICIAL_IDS <= set(context["selected_criterion_ids"])  # type: ignore[arg-type]
+
+
+def test_live_msr_rows_respect_first_verified_effective_date() -> None:
+    live = _json(LIVE_REGISTRY)
+    declaration = _json(MSR_DECLARATION)
+    declaration["criteria_as_of"] = "2026-08-23"
+    context = resolve(declaration, live)
+
+    assert context["fallback_state"] == "declared_target_unresolved"
+    assert not (set(context["selected_criterion_ids"]) & MSR_OFFICIAL_IDS)  # type: ignore[arg-type]
+
+
+def test_live_msr_noncurrent_sources_are_advisory() -> None:
+    live = _json(LIVE_REGISTRY)
+    declaration = _json(MSR_DECLARATION)
+    for criterion_id in MSR_OFFICIAL_IDS:
+        _row(live, criterion_id)["source"]["freshness"] = "stale"  # type: ignore[index]
+    context = resolve(declaration, live)
+    pointers = {
+        item["criterion_id"]: item
+        for item in context["selected_criteria"]  # type: ignore[union-attr]
+    }
+
+    assert context["fallback_state"] == "venue_exact_advisory"
+    assert context["resolution_state"] == "advisory_only"
+    assert all(not pointers[item]["blocking_eligible"] for item in MSR_OFFICIAL_IDS)
+
+
+def test_live_registry_provenance_by_partition() -> None:
+    live = _json(LIVE_REGISTRY)
+    expected_msr_uris = {
+        "official.msr2027.technical.full.scope": (
+            "https://2027.msrconf.org/track/msr-2027-technical-papers#Call-for-Papers"
+        ),
+        "official.msr2027.technical.full.validity": (
+            "https://2027.msrconf.org/track/msr-2027-technical-papers#evaluation-criteria"
+        ),
+        "official.msr2027.technical.full.open-science": (
+            "https://2027.msrconf.org/track/msr-2027-technical-papers#open-science-policy"
+        ),
+    }
+    for criterion_id, expected_uri in expected_msr_uris.items():
+        row = _row(live, criterion_id)
+        assert row["version"] == MSR_CRITERION_VERSION
+        assert row["source"]["uri"] == expected_uri  # type: ignore[index]
+    expected_sigsoft_versions = {
+        "field.sigsoft.empirical.general-essential": (
+            "d131d7209f2fad7e8dfd30afbd2b8ea605ea3141"
+        ),
+        "overlay.sigsoft.repository-mining.essential": (
+            "53c14e1a85aac1aeafb0788a622c5aaafec5c8b9"
+        ),
+    }
+    for criterion_id, expected_version in expected_sigsoft_versions.items():
+        row = _row(live, criterion_id)
+        version = row["version"]
+        assert version == expected_version
+        assert re.fullmatch(r"[0-9a-f]{40}", version)  # type: ignore[arg-type]
+        assert row["source"]["uri"].startswith(  # type: ignore[index,union-attr]
+            f"https://github.com/acmsigsoft/EmpiricalStandards/blob/{version}/"
+        )
+        assert row["blocking_policy"] == "advisory_only"
+
+
+def test_live_msr_rows_are_bound_to_committed_source_receipt() -> None:
+    receipt = _json(MSR_SOURCE_RECEIPT)
+    live = _json(LIVE_REGISTRY)
+
+    _validator("review_criteria_source_receipt.schema.json").validate(receipt)
+    assert set(receipt) == {
+        "receipt_version",
+        "receipt_kind",
+        "source_uri",
+        "publisher",
+        "retrieved_at",
+        "capture",
+        "semantic_snapshot",
+        "criterion_locators",
+        "retention",
+    }
+    assert receipt["receipt_version"] == "review-criteria-source-receipt/1.0"
+    assert receipt["receipt_kind"] == "mutable_web_semantic_snapshot"
+    assert receipt["source_uri"] == (
+        "https://2027.msrconf.org/track/msr-2027-technical-papers"
+    )
+    assert receipt["capture"] == {
+        "method": "HTTPS GET with curl 8.7.1; response body decoded as UTF-8",
+        "http_status": 200,
+        "content_type": "text/html;charset=UTF-8",
+        "etag": None,
+        "last_modified": None,
+        "raw_body_size_bytes": 45702,
+        "raw_body_sha256": (
+            "10221162dbd1907c46eb9104808243f0d49c9df5cc7e81c335c8aeb9f15b28a7"
+        ),
+    }
+    semantic = receipt["semantic_snapshot"]
+    assert semantic["selection"] == (  # type: ignore[index]
+        "the first div whose id is exactly Call-for-Papers, including descendant "
+        "text nodes through its matching closing tag"
+    )
+    assert semantic["normalization"] == (  # type: ignore[index]
+        "HTMLParser(convert_charrefs=True), join data chunks with U+0020, then "
+        "replace every Unicode whitespace run with one U+0020 and strip the ends"
+    )
+    assert semantic["encoding"] == "UTF-8"  # type: ignore[index]
+    assert semantic["size_bytes"] == 16601  # type: ignore[index]
+    assert semantic["word_count"] == 2535  # type: ignore[index]
+    assert semantic["sha256"] == MSR_PANE_SHA256  # type: ignore[index]
+    assert receipt["retention"]["full_body_committed"] is False  # type: ignore[index]
+
+    locators = {
+        item["criterion_id"]: item["fragment"]
+        for item in receipt["criterion_locators"]  # type: ignore[union-attr]
+    }
+    assert locators == {
+        "official.msr2027.technical.full.scope": "Call-for-Papers",
+        "official.msr2027.technical.full.validity": "evaluation-criteria",
+        "official.msr2027.technical.full.open-science": "open-science-policy",
+    }
+    for criterion_id, fragment in locators.items():
+        row = _row(live, criterion_id)
+        assert row["version"] == MSR_CRITERION_VERSION
+        assert row["source"]["uri"] == f"{receipt['source_uri']}#{fragment}"  # type: ignore[index]
+
+
+def test_live_sigsoft_rows_are_current_at_verified_repository_head() -> None:
+    receipt = _json(SIGSOFT_SOURCE_RECEIPT)
+    live = _json(LIVE_REGISTRY)
+
+    _validator("review_criteria_source_receipt.schema.json").validate(receipt)
+    assert set(receipt) == {
+        "receipt_version",
+        "receipt_kind",
+        "repository",
+        "verified_at",
+        "verified_head",
+        "documents",
+    }
+    assert receipt["receipt_version"] == "review-criteria-source-receipt/1.0"
+    assert receipt["receipt_kind"] == "git_repository_head_verification"
+    assert receipt["repository"] == "https://github.com/acmsigsoft/EmpiricalStandards"
+    assert receipt["verified_head"] == {
+        "ref": "HEAD",
+        "commit": "d7496100cda2e87beca508f9295f3f74e42dff20",
+        "committed_at": "2026-04-28T16:27:41Z",
+    }
+    documents = {
+        item["criterion_id"]: item
+        for item in receipt["documents"]  # type: ignore[union-attr]
+    }
+    assert set(documents) == SIGSOFT_IDS
+    for criterion_id, item in documents.items():
+        row = _row(live, criterion_id)
+        assert row["version"] == item["pinned_content_commit"]
+        assert row["source"]["uri"].startswith(  # type: ignore[index,union-attr]
+            f"{receipt['repository']}/blob/{item['pinned_content_commit']}/{item['path']}#"
+        )
+        assert item["head_blob_matches_pinned_content"] is True
+        assert item["verified_head_raw_sha256"] == item["pinned_raw_sha256"]
+        assert re.fullmatch(r"[0-9a-f]{64}", item["pinned_raw_sha256"])
+
+
+def test_live_registry_digest_is_curator_pinned() -> None:
+    live = _json(LIVE_REGISTRY)
+    assert digest(live) == "826e3212aef8aefbd56ca30af4a24e8c2936cfe3f6ed852a0a56b9440903ca84"
 
 
 def test_exact_target_selects_all_authority_classes_and_distinct_outcomes(
@@ -255,6 +531,30 @@ def test_partition_drift_and_official_nonexact_axes_are_rejected(
         validate_registry(registry)
 
 
+@pytest.mark.parametrize(
+    ("criterion_id", "axis", "message"),
+    [
+        (
+            "field.sigsoft.empirical.general-essential",
+            "disciplines",
+            "field/society rows require a discipline",
+        ),
+        (
+            "overlay.sigsoft.repository-mining.essential",
+            "overlays",
+            "overlay rows require an overlay",
+        ),
+    ],
+)
+def test_live_registry_field_and_overlay_rows_require_scoped_axes(
+    criterion_id: str, axis: str, message: str
+) -> None:
+    live = _json(LIVE_REGISTRY)
+    _row(live, criterion_id)["applicability"][axis] = []  # type: ignore[index]
+    with pytest.raises(ContractError, match=re.escape(message)):
+        validate_registry(live)
+
+
 def test_digest_is_stable_across_key_order_and_reconfirmation(
     declaration: dict[str, object], registry: dict[str, object]
 ) -> None:
@@ -302,6 +602,44 @@ def test_unrelated_registry_addition_changes_registry_digest_not_resolved_digest
     second = resolve(declaration, registry)
     assert second["resolved_digest"] == first["resolved_digest"]
     assert second["registry"]["registry_digest"] != first["registry"]["registry_digest"]  # type: ignore[index]
+
+
+def test_live_registry_release_rotates_existing_context_digest_visibly(
+    field_general_declaration: dict[str, object],
+) -> None:
+    live = _json(LIVE_REGISTRY)
+    predecessor = copy.deepcopy(live)
+    predecessor["registry_version"] = "2026.08"
+    predecessor["as_of"] = "2026-08-08"
+    predecessor["criteria"] = [
+        item
+        for item in predecessor["criteria"]  # type: ignore[union-attr]
+        if item["criterion_id"] not in PROVING_SET_IDS
+    ]
+    for authority_class in (
+        "official_venue_type",
+        "field_society_standard",
+        "reporting_design_overlay",
+    ):
+        predecessor["authority_classes"][authority_class] = []  # type: ignore[index]
+
+    before = resolve(field_general_declaration, predecessor)
+    after = resolve(field_general_declaration, live)
+
+    assert predecessor["registry_id"] == live["registry_id"] == (
+        "ars-field-general-review-criteria"
+    )
+    assert digest(predecessor) == (
+        "3209e681cc6dbc8ece2b0961ad3c516b7dd78aa32d045dacce76b54b5962f549"
+    )
+    assert before["resolved_digest"] == (
+        "204c4ef3c62b55886cfbfde8a0b60b3c451ece1aa118f4202fd6b002696ed6ce"
+    )
+    assert after["resolved_digest"] == (
+        "b404e4cd3c21d002dc3212249d52480c3034f5debb04b0b10a1c07c21a258ebe"
+    )
+    assert before["selected_criteria"] == after["selected_criteria"]
+    assert before["resolved_digest"] != after["resolved_digest"]
 
 
 def test_resolved_artifact_is_pointer_only(

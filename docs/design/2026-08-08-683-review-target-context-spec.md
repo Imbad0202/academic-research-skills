@@ -18,6 +18,12 @@ The author remains authoritative. `selection_mode=all_applicable` is itself an e
 - `shared/review_criteria_registry.json` — shipped field-general baseline only.
 - `scripts/resolve_review_target_context.py` — stdlib-only validator, resolver, digest calculator, and brief renderer.
 
+2026-08-24 addendum (#575): the preceding artifact description records the
+2026-08-08 freeze. The live registry now also contains one bounded
+source-backed proving set. See
+`audits/575-source-backed-proving-set-2026-08-24.md` for its current scope,
+source receipts, migration receipt, and no-coverage boundary.
+
 ## Axes and fallback
 
 The target axes are independent:
@@ -58,6 +64,14 @@ The resolved artifact carries a SHA-256 digest of each selected registry row. A 
 
 The shipped registry intentionally contains no real venue profile. Real venue/type rules require a separately reviewed, source-snapshotted registry update. Synthetic fixtures prove the exact-match mechanism without presenting fictional rules as authority.
 
+2026-08-24 addendum (#575): the preceding paragraph is the frozen historical
+state and rule. The separately reviewed proving-set update adds one real
+venue/track/type profile. Its mutable MSR page is bound to a committed raw-body
+receipt and a normalized semantic-pane SHA-256; the hash is carried in each
+official criterion version. Immutable SIGSOFT commits have a separate
+head-versus-pinned-blob receipt. The repository does not mirror source text
+whose redistribution terms are unknown.
+
 ## Digest contract
 
 `resolved_digest` is SHA-256 over canonical UTF-8 JSON (sorted keys, compact separators) containing:
@@ -69,6 +83,14 @@ The shipped registry intentionally contains no real venue profile. Real venue/ty
 - parallel conflicts, fallback state, resolution state, and unresolved rows.
 
 Confirmation timestamp is excluded because re-confirming the same profile should not change comparability. Any substantive target or selected-criterion change changes the digest. The whole-registry digest is recorded separately for provenance; unrelated registry additions do not change the resolved profile digest.
+
+2026-08-24 migration clarification (#575): the final sentence applies within a
+fixed registry id/version. A published registry release increments
+`registry_version`, which is itself a frozen digest input and therefore rotates
+`resolved_digest` even when the selected criterion pointers are unchanged. The
+#575 release preserves the registry id lineage, records predecessor and
+successor digests, and requires consumers to recompute and explicitly rebind;
+an old context never silently acquires the new registry version.
 
 ## Interdisciplinary conflict handling
 

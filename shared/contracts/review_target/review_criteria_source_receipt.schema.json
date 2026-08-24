@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/review_target/review_criteria_source_receipt.schema.json",
+  "title": "Review criteria source receipt",
+  "oneOf": [
+    {"$ref": "#/$defs/mutableWebReceipt"},
+    {"$ref": "#/$defs/repositoryHeadReceipt"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "gitCommit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "nonEmptyString": {"type": "string", "minLength": 1},
+    "mutableWebReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "receipt_version",
+        "receipt_kind",
+        "source_uri",
+        "publisher",
+        "retrieved_at",
+        "capture",
+        "semantic_snapshot",
+        "criterion_locators",
+        "retention"
+      ],
+      "properties": {
+        "receipt_version": {"const": "review-criteria-source-receipt/1.0"},
+        "receipt_kind": {"const": "mutable_web_semantic_snapshot"},
+        "source_uri": {"type": "string", "format": "uri"},
+        "publisher": {"$ref": "#/$defs/nonEmptyString"},
+        "retrieved_at": {"type": "string", "format": "date-time"},
+        "capture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "http_status",
+            "content_type",
+            "etag",
+            "last_modified",
+            "raw_body_size_bytes",
+            "raw_body_sha256"
+          ],
+          "properties": {
+            "method": {"$ref": "#/$defs/nonEmptyString"},
+            "http_status": {"type": "integer", "minimum": 100, "maximum": 599},
+            "content_type": {"$ref": "#/$defs/nonEmptyString"},
+            "etag": {"type": ["string", "null"], "minLength": 1},
+            "last_modified": {"type": ["string", "null"], "minLength": 1},
+            "raw_body_size_bytes": {"type": "integer", "minimum": 1},
+            "raw_body_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "semantic_snapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "selection",
+            "normalization",
+            "encoding",
+            "size_bytes",
+            "word_count",
+            "sha256"
+          ],
+          "properties": {
+            "selection": {"$ref": "#/$defs/nonEmptyString"},
+            "normalization": {"$ref": "#/$defs/nonEmptyString"},
+            "encoding": {"const": "UTF-8"},
+            "size_bytes": {"type": "integer", "minimum": 1},
+            "word_count": {"type": "integer", "minimum": 1},
+            "sha256": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "criterion_locators": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["criterion_id", "fragment", "locator"],
+            "properties": {
+              "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+              "fragment": {"$ref": "#/$defs/nonEmptyString"},
+              "locator": {"$ref": "#/$defs/nonEmptyString"}
+            }
+          }
+        },
+        "retention": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["full_body_committed", "reason", "drift_rule"],
+          "properties": {
+            "full_body_committed": {"type": "boolean"},
+            "reason": {"$ref": "#/$defs/nonEmptyString"},
+            "drift_rule": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        }
+      }
+    },
+    "repositoryHeadReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "receipt_version",
+        "receipt_kind",
+        "repository",
+        "verified_at",
+        "verified_head",
+        "documents"
+      ],
+      "properties": {
+        "receipt_version": {"const": "review-criteria-source-receipt/1.0"},
+        "receipt_kind": {"const": "git_repository_head_verification"},
+        "repository": {"type": "string", "format": "uri"},
+        "verified_at": {"type": "string", "format": "date"},
+        "verified_head": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ref", "commit", "committed_at"],
+          "properties": {
+            "ref": {"const": "HEAD"},
+            "commit": {"$ref": "#/$defs/gitCommit"},
+            "committed_at": {"type": "string", "format": "date-time"}
+          }
+        },
+        "documents": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "criterion_id",
+              "path",
+              "pinned_content_commit",
+              "pinned_commit_date",
+              "pinned_raw_sha256",
+              "verified_head_raw_sha256",
+              "head_blob_matches_pinned_content"
+            ],
+            "properties": {
+              "criterion_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+              "path": {"type": "string", "pattern": "^[^/].*[^/]$"},
+              "pinned_content_commit": {"$ref": "#/$defs/gitCommit"},
+              "pinned_commit_date": {"type": "string", "format": "date-time"},
+              "pinned_raw_sha256": {"$ref": "#/$defs/sha256"},
+              "verified_head_raw_sha256": {"$ref": "#/$defs/sha256"},
+              "head_blob_matches_pinned_content": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  }
+}

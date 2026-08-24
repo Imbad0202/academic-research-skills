@@ -1,0 +1,31 @@
+{
+  "receipt_version": "review-criteria-source-receipt/1.0",
+  "receipt_kind": "git_repository_head_verification",
+  "repository": "https://github.com/acmsigsoft/EmpiricalStandards",
+  "verified_at": "2026-08-24",
+  "verified_head": {
+    "ref": "HEAD",
+    "commit": "d7496100cda2e87beca508f9295f3f74e42dff20",
+    "committed_at": "2026-04-28T16:27:41Z"
+  },
+  "documents": [
+    {
+      "criterion_id": "field.sigsoft.empirical.general-essential",
+      "path": "docs/standards/GeneralStandard.md",
+      "pinned_content_commit": "d131d7209f2fad7e8dfd30afbd2b8ea605ea3141",
+      "pinned_commit_date": "2025-02-19T22:48:23Z",
+      "pinned_raw_sha256": "f36d203118e22524ddee8a21e427c1191a017fd8f2cb470d3ecc3b4fc613a71f",
+      "verified_head_raw_sha256": "f36d203118e22524ddee8a21e427c1191a017fd8f2cb470d3ecc3b4fc613a71f",
+      "head_blob_matches_pinned_content": true
+    },
+    {
+      "criterion_id": "overlay.sigsoft.repository-mining.essential",
+      "path": "docs/standards/RepositoryMining.md",
+      "pinned_content_commit": "53c14e1a85aac1aeafb0788a622c5aaafec5c8b9",
+      "pinned_commit_date": "2025-05-26T17:40:23Z",
+      "pinned_raw_sha256": "882cbfe912cc48e83f9193a447bdc1085f5c97058b3bd1bb8249714ba72e1f6d",
+      "verified_head_raw_sha256": "882cbfe912cc48e83f9193a447bdc1085f5c97058b3bd1bb8249714ba72e1f6d",
+      "head_blob_matches_pinned_content": true
+    }
+  ]
+}
