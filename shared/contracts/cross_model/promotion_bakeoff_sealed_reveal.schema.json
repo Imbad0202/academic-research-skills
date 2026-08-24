@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/cross_model/promotion_bakeoff_sealed_reveal.schema.json",
+  "title": "Promotion Bakeoff sealed probe-set reveal",
+  "description": "Post-fleet binding from an immutable sealed commitment to the revealed probe fixture. Git-history verification supplies the commitment-before-reveal witness; the run report supplies the public-push and fleet-time witness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "commitment_path",
+    "commitment_sha256",
+    "probe_set_path",
+    "probe_set_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ars-promotion-bakeoff-sealed-reveal/1.0"
+    },
+    "campaign_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "commitment_path": {
+      "type": "string",
+      "pattern": "^evals/bakeoff/[a-z0-9][a-z0-9._-]*/sealed_commitment\\.json$"
+    },
+    "commitment_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "probe_set_path": {
+      "type": "string",
+      "pattern": "^evals/bakeoff/[a-z0-9][a-z0-9._-]*/probe_set\\.json$"
+    },
+    "probe_set_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

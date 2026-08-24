@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/research_workflow/research_workflow_profile_selection_receipt.schema.json",
+  "title": "Research Workflow Profile Selection Receipt",
+  "description": "Append-only profile selection/correction chain plus visible, non-destructive stale marks for outputs produced under a superseded profile context.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "selection_chain", "artifact_stale_marks"],
+  "properties": {
+    "schema_version": {"const": "research-workflow-profile-selection-receipt/1.0"},
+    "selection_chain": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/selection"}
+    },
+    "artifact_stale_marks": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/artifact_stale_mark"}
+    }
+  },
+  "$defs": {
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "profile_binding",
+        "selected_by",
+        "ars_suite_version",
+        "selected_at",
+        "supersedes_sequence"
+      ],
+      "properties": {
+        "sequence": {"$ref": "#/$defs/positive_safe_integer"},
+        "profile_binding": {
+          "$ref": "research_workflow_profile.schema.json#/$defs/profile_binding"
+        },
+        "selected_by": {
+          "enum": ["user_explicit", "user_confirmed_proposal", "fallback_automatic"]
+        },
+        "ars_suite_version": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "selected_at": {"$ref": "#/$defs/rfc3339_datetime"},
+        "supersedes_sequence": {
+          "oneOf": [
+            {"$ref": "#/$defs/positive_safe_integer"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "artifact_stale_mark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_ref",
+        "task_family",
+        "produced_under_selection_sequence",
+        "caused_by_selection_sequence",
+        "state",
+        "reason",
+        "marked_at",
+        "authority_requirements_introduced",
+        "authority_sensitive_reuse_gate"
+      ],
+      "properties": {
+        "artifact_ref": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "task_family": {
+          "$ref": "research_workflow_profile.schema.json#/$defs/task_family"
+        },
+        "produced_under_selection_sequence": {"$ref": "#/$defs/positive_safe_integer"},
+        "caused_by_selection_sequence": {
+          "allOf": [
+            {"$ref": "#/$defs/positive_safe_integer"},
+            {"minimum": 2}
+          ]
+        },
+        "state": {"const": "stale"},
+        "reason": {"const": "profile_context_changed"},
+        "marked_at": {"$ref": "#/$defs/rfc3339_datetime"},
+        "authority_requirements_introduced": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "research_workflow_profile.schema.json#/$defs/authority_point"
+          }
+        },
+        "authority_sensitive_reuse_gate": {"enum": ["unmet", "not_introduced"]}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"authority_requirements_introduced": {"minItems": 1}},
+            "required": ["authority_requirements_introduced"]
+          },
+          "then": {"properties": {"authority_sensitive_reuse_gate": {"const": "unmet"}}},
+          "else": {"properties": {"authority_sensitive_reuse_gate": {"const": "not_introduced"}}}
+        }
+      ]
+    },
+    "positive_safe_integer": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "rfc3339_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt](?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?(?:[Zz]|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+    }
+  }
+}

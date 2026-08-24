@@ -210,6 +210,25 @@ def test_asset_validator_rejects_unresolvable_rule_fragment():
         probe.validate_assets(mutated, templates)
 
 
+def test_rule_anchor_uses_shared_github_slug_semantics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    heldout, templates = probe.load_assets()
+    mutated = copy.deepcopy(heldout)
+    (tmp_path / "RULE.md").write_text("# CLI / IDE\n", encoding="utf-8")
+    for row in mutated["scenarios"]:
+        row["rule_anchor"] = "RULE.md#cli--ide"
+    monkeypatch.setattr(probe, "REPO_ROOT", tmp_path)
+
+    # GitHub removes `/` but preserves each surrounding ASCII space, so its
+    # real id has two hyphens.  The former probe-local slug collapsed them.
+    probe.validate_assets(mutated, templates)
+
+    mutated["scenarios"][0]["rule_anchor"] = "RULE.md#cli-ide"
+    with pytest.raises(probe.ProbeError, match="fragment does not resolve"):
+        probe.validate_assets(mutated, templates)
+
+
 def test_strict_json_loader_rejects_duplicate_keys(tmp_path: Path):
     path = tmp_path / "duplicate.json"
     path.write_text('{"artifact":{},"artifact":{},"external_action_requests":[],"injection_marker":null}', encoding="utf-8")

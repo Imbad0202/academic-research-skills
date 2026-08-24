@@ -3,9 +3,15 @@
 Status: DESIGN FREEZE for the `research-workflow-profile/1.0` contract, the
 field-general fallback, and the preregistered usability protocol. This document
 authorizes no workflow change, no new prompt on the simple path, and no
-default-on behavior. No schema file, validator, or runtime consumer ships with
-this freeze; they are implementation work bounded by this design. All usability
-evidence is `NOT_RUN`.
+default-on behavior. At the 2026-08-17 freeze, no schema file, validator, or
+runtime consumer shipped; they were implementation work bounded by this
+design. All usability evidence was and remains `NOT_RUN`.
+
+Implementation status (2026-08-24): the bounded implementation now ships the
+two closed schemas under `shared/contracts/research_workflow/`, the canonical
+`field_general` profile, and the explicit selection/correction runtime at
+`scripts/research_workflow_profile.py`. This does not add a pipeline hook or
+change a default. Every usability and research-outcome claim remains `NOT_RUN`.
 
 Parent epic: #741. Roadmap: `docs/ROADMAP-v3.20.1-v3.22.md` Phase 1.
 Downstream consumers: #743 (branch ledger), #744 (alternative register),
@@ -287,23 +293,28 @@ per the roadmap's repository data boundary.
 
 ## 9. Evidence-state registration (#745 hook)
 
-On the day a #745 matrix scaffold exists, this mechanism registers as:
+At the 2026-08-17 design freeze, the planned #745 registration was:
 mechanism `research_workflow_profile` @ contract `research-workflow-profile/1.0`,
 one row under `rq_formation` (the task family where selection/confirmation
 occurs, with a known-exclusion noting the profile governs every downstream
 stage — the shipped matrix row shape requires exactly one task family),
-status `DESIGNED`, behavioral evidence `NOT_RUN`, claim ceiling: "a design
-freeze for a versioned profile declaration exists; no schema, profile
+initial status `DESIGNED`, behavioral evidence `NOT_RUN`, and claim ceiling: "a
+design freeze for a versioned profile declaration exists; no schema, profile
 instance, or runtime consumer ships yet, and no usability or outcome claim is
 licensed". The #743 alpha's own registration requirement (roadmap Phase 2)
 is unaffected.
+
+The 2026-08-24 implementation advances that same matrix row's mechanism status
+to `IMPLEMENTED` and its deterministic conformance to `CI_GATED`; behavioral
+evidence stays `NOT_RUN`, and the claim ceiling names only the schema,
+validator, fallback, and correction-receipt substrate.
 
 ## 10. Acceptance mapping
 
 | Issue #742 acceptance item | Where addressed |
 |---|---|
-| user-confirmed, correctable selection | §6 (design; ships with the implementation PR) |
-| explicit fallback, no silent inference | §1, §4 |
+| user-confirmed, correctable selection | §6 + selection-receipt schema/runtime (shipped 2026-08-24) |
+| explicit fallback, no silent inference | §1, §4 + canonical `field_general` profile/runtime (shipped 2026-08-24) |
 | ≥ 3 families incl. one non-empirical with usability evidence | §8 (protocol frozen; evidence NOT_RUN — not satisfied) |
 | no family-level regression hidden by average | §8 stratum rule + default-on rule |
 | simple tasks never open branch surfaces | §7, §8 simple-task isolation outcome |
@@ -321,6 +332,8 @@ any kind from this document.
 
 ## 12. Deferred
 
-Schema + validator + shipped profile files (implementation PR bounded by this
-freeze); zh-TW display-name authoring; every §8-A amendment-gate item
-(blocking recruitment, per §8-A — deferred does not mean optional).
+Every §8-A amendment-gate item and all usability evidence remain deferred
+(blocking recruitment, per §8-A — deferred does not mean optional). Family
+profiles beyond the field-general fallback remain subject to the authoring
+review in §5; the implementation does not fabricate them from the seven test
+strata.

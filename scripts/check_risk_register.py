@@ -51,11 +51,11 @@ if str(_SCRIPTS_DIR) not in sys.path:
 # matrix lint, a genuinely data-owning dependency.
 from _markdown_lint_util import (  # noqa: E402
     NON_RELATIVE_LINK_PREFIXES,
+    RelativeLinkFailure,
     code_spans,
-    github_slug,
-    heading_slugs,
     link_targets,
     links_to,
+    relative_link_failure,
     strip_non_rendering,
 )
 from check_stage_capability_matrix import (  # noqa: E402
@@ -139,30 +139,27 @@ def check_pointer_integrity(root: Path) -> list[str]:
     links, spans = referenced_paths(_doc_text(root))
     for target in links:
         path_part, _, fragment = target.partition("#")
-        resolved = (doc_dir / path_part).resolve()
-        if not resolved.is_relative_to(root_abs):
+        failure = relative_link_failure(root, root / DOC_RELPATH, target)
+        if failure is RelativeLinkFailure.ESCAPES_REPOSITORY:
             errors.append(
                 f"RR-1: {DOC_RELPATH} links to {target!r}, which escapes "
                 "the repository root"
             )
-        elif not resolved.exists():
+        elif failure is RelativeLinkFailure.DOES_NOT_EXIST:
             errors.append(
                 f"RR-1: {DOC_RELPATH} links to {target!r}, which does not "
                 f"exist relative to {doc_dir.name}/"
             )
-        elif fragment:
-            if resolved.suffix.lower() != ".md":
-                errors.append(
-                    f"RR-1: {DOC_RELPATH} links to {target!r}, an anchor "
-                    "on a non-markdown target"
-                )
-                continue
-            slugs = heading_slugs(resolved.read_text(encoding="utf-8"))
-            if github_slug(fragment) not in slugs:
-                errors.append(
-                    f"RR-1: {DOC_RELPATH} links to {target!r}, but no "
-                    f"heading in {path_part!r} slugs to {fragment!r}"
-                )
+        elif failure is RelativeLinkFailure.ANCHOR_ON_NON_MARKDOWN:
+            errors.append(
+                f"RR-1: {DOC_RELPATH} links to {target!r}, an anchor "
+                "on a non-markdown target"
+            )
+        elif failure is RelativeLinkFailure.ANCHOR_NOT_FOUND:
+            errors.append(
+                f"RR-1: {DOC_RELPATH} links to {target!r}, but no "
+                f"heading in {path_part!r} has id {fragment!r}"
+            )
     for token in spans:
         resolved = (root / token).resolve()
         if not resolved.is_relative_to(root_abs) or not resolved.exists():

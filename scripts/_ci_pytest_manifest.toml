@@ -647,3 +647,11 @@ path = "scripts/test_check_distribution_surface_claims.py"
 [[pytest]]
 id = "757-control-availability-map"
 path = "scripts/test_check_control_availability.py"
+
+[[pytest]]
+id = "742-research-workflow-profile"
+path = "scripts/test_research_workflow_profile.py"
+
+[[pytest]]
+id = "789-sealed-promotion-bakeoff"
+path = "scripts/test_check_promotion_bakeoff_preregistration.py"

@@ -34,6 +34,17 @@ and no consumer may state more than the row's recorded claim ceiling.
 - **Maximum licensed claim**: A frozen measurement design and offline validation assets exist; no breadth or diversity claim is computable.
 - **Next required evaluation**: dispatch the frozen Phase-2 envelope with two blinded human judges and an arm-blind adjudicator (#659)
 
+### rq_formation.research_workflow_profile
+
+- **Mechanism**: research_workflow_profile @ research-workflow-profile/1.0 (#742): explicit user selection or visible field-general fallback, canonical-content binding, and append-only correction receipts with non-destructive stale marks
+- **Mechanism status**: IMPLEMENTED / deterministic conformance: CI_GATED (pinned by scripts/research_workflow_profile.py::validate_profile; scripts/test_research_workflow_profile.py)
+- **Behavioral evidence**: NOT_RUN
+- **External/human outcome evidence**: none
+- **Known exclusions**: registered under rq_formation only because selection or confirmation occurs there; the profile governs every downstream stage and this single row is not a stage-coverage claim; profiles declare applicability and vocabulary only; they do not judge manuscript quality, venue fit, acceptance likelihood, or evidence rank
+- **Transport limits**: explicit-selection offline runtime only; no default workflow integration or manuscript-based profile inference ships; the preregistered usability protocol has not run with human participants
+- **Maximum licensed claim**: Closed schemas, canonical-content validation, a field-general fallback, and append-only correction receipts exist; no usability or research-outcome claim.
+- **Next required evaluation**: complete the section 8-A pre-recruitment amendment, then run the frozen paired human-participant protocol separately by family and experience stratum (#742)
+
 ## `retrieval`
 
 ### retrieval.citation_existence_gate

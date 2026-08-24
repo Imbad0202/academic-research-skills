@@ -74,6 +74,31 @@
       ]
     },
     {
+      "row_id": "rq_formation.research_workflow_profile",
+      "task_family": "rq_formation",
+      "mechanism": "research_workflow_profile @ research-workflow-profile/1.0 (#742): explicit user selection or visible field-general fallback, canonical-content binding, and append-only correction receipts with non-destructive stale marks",
+      "mechanism_status": "IMPLEMENTED",
+      "deterministic_conformance": "CI_GATED",
+      "behavioral_evidence": {
+        "status": "NOT_RUN"
+      },
+      "external_outcome_evidence": "none",
+      "known_exclusions": [
+        "registered under rq_formation only because selection or confirmation occurs there; the profile governs every downstream stage and this single row is not a stage-coverage claim",
+        "profiles declare applicability and vocabulary only; they do not judge manuscript quality, venue fit, acceptance likelihood, or evidence rank"
+      ],
+      "transport_limits": [
+        "explicit-selection offline runtime only; no default workflow integration or manuscript-based profile inference ships",
+        "the preregistered usability protocol has not run with human participants"
+      ],
+      "max_licensed_claim": "Closed schemas, canonical-content validation, a field-general fallback, and append-only correction receipts exist; no usability or research-outcome claim.",
+      "next_required_evaluation": "complete the section 8-A pre-recruitment amendment, then run the frozen paired human-participant protocol separately by family and experience stratum (#742)",
+      "conformance_pinned_by": [
+        "scripts/research_workflow_profile.py::validate_profile",
+        "scripts/test_research_workflow_profile.py"
+      ]
+    },
+    {
       "row_id": "retrieval.citation_existence_gate",
       "task_family": "retrieval",
       "mechanism": "Deterministic four-index citation-existence verification gate (v3.11, #182): Semantic Scholar + OpenAlex + Crossref + arXiv, per-citation lookup_verified status, opt-in terminal policy",

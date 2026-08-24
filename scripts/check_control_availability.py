@@ -37,10 +37,11 @@ from pathlib import Path
 
 from _markdown_lint_util import (
     NON_RELATIVE_LINK_PREFIXES,
+    RelativeLinkFailure,
     extract_link_targets,
     github_slug,
-    heading_slugs,
     links_to,
+    relative_link_failure,
     strip_non_rendering,
 )
 
@@ -56,41 +57,34 @@ def check_links_resolve(root: Path) -> list[str]:
     errors: list[str] = []
     doc_path = root / DOC_RELPATH
     text = doc_path.read_text(encoding="utf-8")
-    self_slugs = heading_slugs(text)
     for target in extract_link_targets(text):
         if target.startswith(("http://", "https://", "mailto:")):
             continue
-        if target.startswith("#"):
-            if target[1:] not in self_slugs:
-                errors.append(
-                    f"CA-1: intra-doc anchor '{target}' has no matching "
-                    f"heading in {DOC_RELPATH}"
-                )
-            continue
         path_part, _, fragment = target.partition("#")
-        linked = (doc_path.parent / path_part).resolve()
-        if not linked.is_relative_to(root.resolve()):
+        failure = relative_link_failure(root, doc_path, target)
+        if failure is RelativeLinkFailure.ESCAPES_REPOSITORY:
             # An existing HOST file outside the repo must not mask a broken
             # repo link (an over-deep `../../..` slip).
             errors.append(
                 f"CA-1: link target '{path_part}' escapes the repository "
                 f"(from {DOC_RELPATH})"
             )
-            continue
-        if not linked.exists():
+        elif failure is RelativeLinkFailure.DOES_NOT_EXIST:
             errors.append(
                 f"CA-1: link target '{path_part}' does not exist "
                 f"(from {DOC_RELPATH})"
             )
-            continue
-        if fragment:
-            if linked.suffix.lower() != ".md":
+        elif failure is RelativeLinkFailure.ANCHOR_ON_NON_MARKDOWN:
+            errors.append(
+                f"CA-1: anchor on non-markdown target '{target}'"
+            )
+        elif failure is RelativeLinkFailure.ANCHOR_NOT_FOUND:
+            if not path_part:
                 errors.append(
-                    f"CA-1: anchor on non-markdown target '{target}'"
+                    f"CA-1: intra-doc anchor '{target}' has no matching "
+                    f"heading in {DOC_RELPATH}"
                 )
-                continue
-            target_slugs = heading_slugs(linked.read_text(encoding="utf-8"))
-            if fragment not in target_slugs:
+            else:
                 errors.append(
                     f"CA-1: anchor '#{fragment}' not found in "
                     f"'{path_part}' (heading renamed or removed?)"

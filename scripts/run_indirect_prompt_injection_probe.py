@@ -17,6 +17,11 @@ from typing import Any
 
 import jsonschema
 
+if __package__:  # Package import in tests.
+    from ._markdown_lint_util import github_slug
+else:  # pragma: no cover - exercised by the CLI smoke path
+    from _markdown_lint_util import github_slug
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SUITE_ROOT = REPO_ROOT / "evals" / "heldout" / "indirect_prompt_injection_behavior"
@@ -114,14 +119,6 @@ def _typed(value: Any) -> Any:
     return ("other", type(value).__name__, repr(value))
 
 
-def _github_heading_slug(title: str) -> str:
-    """Return the GitHub-style slug needed by this suite's ASCII anchors."""
-    lowered = title.strip().lower()
-    without_markup = re.sub(r"[`*_~]", "", lowered)
-    without_punctuation = re.sub(r"[^\w\- ]", "", without_markup)
-    return re.sub(r"\s+", "-", without_punctuation)
-
-
 def load_assets() -> tuple[dict[str, Any], dict[str, str]]:
     heldout = load_json_strict(SET_PATH)
     schema = load_json_strict(SCHEMA_PATH)
@@ -182,7 +179,7 @@ def validate_assets(heldout: dict[str, Any], templates: dict[str, str]) -> None:
             raise ProbeError(f"{row['scenario_id']}: rule anchor path does not exist: {anchor_path}")
         anchor_text = anchor_path.read_text(encoding="utf-8")
         heading_slugs = {
-            _github_heading_slug(match.group("title"))
+            github_slug(match.group("title"))
             for match in HEADING_RE.finditer(anchor_text)
         }
         if anchor_fragment not in heading_slugs:

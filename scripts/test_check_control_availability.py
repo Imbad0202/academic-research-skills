@@ -100,6 +100,21 @@ def test_ca1_broken_intra_doc_anchor_fires(repo: Path) -> None:
     assert any("CA-1" in e and "intra-doc" in e for e in errors)
 
 
+def test_ca1_case_wrong_fragment_is_not_re_slugified(repo: Path) -> None:
+    target = repo / "docs/CASE_TARGET.md"
+    target.write_text("# Mixed Case\n", encoding="utf-8")
+    doc = repo / DOC_RELPATH
+    doc.write_text(
+        doc.read_text(encoding="utf-8")
+        + "\n[case-wrong](CASE_TARGET.md#Mixed-Case)\n",
+        encoding="utf-8",
+    )
+
+    errors = run_all_checks(repo)
+
+    assert any("CA-1" in e and "Mixed-Case" in e for e in errors)
+
+
 def test_ca2_new_setup_method_fires(repo: Path) -> None:
     setup = repo / SETUP_RELPATH
     setup.write_text(

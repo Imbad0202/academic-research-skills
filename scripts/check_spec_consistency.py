@@ -8,10 +8,20 @@ import re
 import sys
 from pathlib import Path
 
+if __package__:  # Package import in tests.
+    from ._markdown_lint_util import (
+        NON_RELATIVE_LINK_PREFIXES,
+        extract_link_targets,
+    )
+else:  # pragma: no cover - exercised by the CLI smoke path
+    from _markdown_lint_util import (
+        NON_RELATIVE_LINK_PREFIXES,
+        extract_link_targets,
+    )
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
-MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 
 
 def read(rel_path: str) -> str:
@@ -49,10 +59,10 @@ def extract_section(text: str, start: str, end: str) -> str:
 def check_relative_markdown_links(rel_path: str) -> None:
     text = read(rel_path)
     doc_path = ROOT / rel_path
-    for raw_target in MARKDOWN_LINK_RE.findall(text):
-        if raw_target.startswith(("http://", "https://", "mailto:", "#")):
+    for raw_target in extract_link_targets(text):
+        if raw_target.startswith(NON_RELATIVE_LINK_PREFIXES):
             continue
-        target = raw_target.split("#", 1)[0]
+        target = raw_target.partition("#")[0]
         if not target:
             continue
         resolved = (doc_path.parent / target).resolve()

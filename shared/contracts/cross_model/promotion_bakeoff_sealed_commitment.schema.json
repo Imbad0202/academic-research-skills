@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/cross_model/promotion_bakeoff_sealed_commitment.schema.json",
+  "title": "Promotion Bakeoff sealed probe-set commitment",
+  "description": "Public, pre-fleet commitment for one Promotion Bakeoff. The closed carrier deliberately contains no probe rows, labels, ground-truth identifiers, fixture path, or free-text field in which they could be smuggled.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "probe_set_sha256",
+    "hash_normalization",
+    "row_count",
+    "composition"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ars-promotion-bakeoff-sealed-commitment/1.0"
+    },
+    "campaign_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "probe_set_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "hash_normalization": {
+      "const": "crlf_to_lf"
+    },
+    "row_count": {
+      "const": 30
+    },
+    "composition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["real_easy_doi", "real_hard", "fabricated"],
+      "properties": {
+        "real_easy_doi": {"const": 10},
+        "real_hard": {"const": 10},
+        "fabricated": {"const": 10}
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

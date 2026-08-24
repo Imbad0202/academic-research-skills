@@ -139,6 +139,21 @@ def test_unresolvable_anchor_fragment_fires(repo: Path) -> None:
     assert any("RR-1" in e and "no-such-heading" in e for e in errors)
 
 
+def test_case_wrong_fragment_is_not_re_slugified(repo: Path) -> None:
+    target = repo / DOC_RELPATH.parent / _WITNESS_LINK
+    target.write_text("# Mixed Case\n", encoding="utf-8")
+    _mutate(
+        repo,
+        str(DOC_RELPATH),
+        f"({_WITNESS_LINK})",
+        f"({_WITNESS_LINK}#Mixed-Case)",
+    )
+
+    errors = run_all_checks(repo)
+
+    assert any("RR-1" in e and "Mixed-Case" in e for e in errors)
+
+
 def test_anchor_on_non_markdown_target_fires(repo: Path) -> None:
     _mutate(
         repo,

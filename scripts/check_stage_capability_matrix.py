@@ -151,6 +151,7 @@ _REPORT_NAME_RE = re.compile(r"^measurement-.+\.json$")
 _EXPECTED_ROW_IDS = frozenset({
     "rq_formation.wording_advisory",
     "rq_formation.ideation_diversity",
+    "rq_formation.research_workflow_profile",
     "retrieval.citation_existence_gate",
     "retrieval.claim_standing_probe",
     "methodology.blueprint",

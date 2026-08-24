@@ -23,6 +23,59 @@ ports, and (v3.6.7+) cross-model audit artifact pipelines.
   same lint. The matrix indexes evidence, it does not create it: a row licenses
   at most its recorded `max_licensed_claim`, never more.
 
+## Sealed Promotion Bakeoff preregistration (#789)
+
+- `cross_model/promotion_bakeoff_sealed_commitment.schema.json` is the closed
+  public pre-fleet carrier: campaign id, LF-normalized probe-set SHA-256, and
+  the fixed 30-row aggregate composition only. It has no row, label, path, or
+  free-text field in which the answer key can be exposed.
+- `cross_model/promotion_bakeoff_sealed_reveal.schema.json` binds that immutable
+  commitment to the post-fleet `probe_set.json` reveal. The standard-library
+  checker `scripts/check_promotion_bakeoff_preregistration.py` validates the
+  closed probe shape, strict Git introduction order, immutable history,
+  canonical paths, worktree/index state, and detectable reuse across all local
+  refs and every historical probe version. It rejects shallow history and
+  unreadable historical objects; the sole 2026-08-19 unsealed grandfather is
+  pinned to its canonical path, normalized digest, blob history, and file mode.
+  Verification receipts enumerate every bound squash/cherry-pick reveal copy
+  whose remote publication time must be witnessed after the fleet.
+
+The checker proves repository evidence only. Remote publication time and fleet
+start/end time cannot be derived from local Git, so its receipt explicitly
+requires the public permalink, passing CI witness, and fleet-time bounds in the
+run report before a result is gate-eligible. The full operator lifecycle and
+claims boundary live in `../cross_model_verification.md` § Promotion Bakeoff.
+
+## Research-family workflow profiles (#742)
+
+- `research_workflow/research_workflow_profile.schema.json`
+  (`research-workflow-profile/1.0`) is the closed, manuscript-blind declaration
+  of stage applicability and vocabulary. Omitted task families resolve to
+  `unresolved_fit`, never to applicable. The profile embeds a SHA-256 over its
+  JSON Canonical Form with `content_sha256` replaced by 64 zeroes; persisted
+  profile files must themselves be exact canonical bytes.
+- `research_workflow/research_workflow_profile_selection_receipt.schema.json`
+  (`research-workflow-profile-selection-receipt/1.0`) records an append-only
+  user selection/confirmation/fallback chain. A correction appends a new
+  binding and one visible `profile_context_changed` stale mark per supplied
+  prior-profile stage output. It never rewrites or removes an artifact. Newly
+  introduced authority requirements remain attached to each mark with an
+  explicit `authority_sensitive_reuse_gate: unmet`, so a later consumer can
+  block that reuse until the applicable check passes.
+- `../research_workflow_profiles/field_general.json` is the mandatory shipped
+  fallback: every task family is unresolved except the field-general integrity
+  gates, alternatives are unresolved, the live-branch budget is 3, and an empty
+  authority list means “unknown; ask the user,” never “not required.” It ships
+  with explicit English and zh-TW display names.
+
+The standard-library runtime is `scripts/research_workflow_profile.py`. Its
+`select` command treats an omitted `--profile` as a visibly recorded automatic
+fallback; an explicit profile requires `--selected-by`. `correct` consumes an
+explicit prior-profile binding and stage-output inventory, then emits the new
+receipt to stdout only. No command reads manuscript content, infers a family,
+changes the default workflow, or writes scholar-owned artifacts. The human
+usability protocol and every outcome claim remain `NOT_RUN`.
+
 ## PDF read-integrity and optional content advisory (#512 follow-up)
 
 - `pdf/pdf_read_preflight.schema.json` accepts the unchanged legacy structural sidecar

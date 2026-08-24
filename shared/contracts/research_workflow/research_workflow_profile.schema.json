@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/research_workflow/research_workflow_profile.schema.json",
+  "title": "Research Workflow Profile",
+  "description": "Closed, manuscript-blind stage-applicability and vocabulary declaration. It supplies no quality verdict, venue-fit judgment, acceptance prediction, or evidence hierarchy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "profile_version",
+    "research_family",
+    "display_name",
+    "stage_map",
+    "alternative_categories",
+    "branch_budget",
+    "overflow_behavior",
+    "authority_points",
+    "known_exclusions",
+    "unresolved_fit_note",
+    "provenance",
+    "content_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "research-workflow-profile/1.0"},
+    "profile_id": {"$ref": "#/$defs/slug"},
+    "profile_version": {"$ref": "#/$defs/semver"},
+    "research_family": {"$ref": "#/$defs/research_family"},
+    "declared_family_label": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "display_name": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en", "zh_TW"],
+      "properties": {
+        "en": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "zh_TW": {"type": "string", "minLength": 1, "pattern": "\\S"}
+      }
+    },
+    "stage_map": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rq_formation": {"$ref": "#/$defs/stage_state"},
+        "retrieval": {"$ref": "#/$defs/stage_state"},
+        "methodology": {"$ref": "#/$defs/stage_state"},
+        "synthesis": {"$ref": "#/$defs/stage_state"},
+        "drafting": {"$ref": "#/$defs/stage_state"},
+        "integrity_check": {"$ref": "#/$defs/stage_state"},
+        "review": {"$ref": "#/$defs/stage_state"},
+        "revision": {"$ref": "#/$defs/stage_state"},
+        "finalization": {"$ref": "#/$defs/stage_state"}
+      }
+    },
+    "alternative_categories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "categories"],
+      "properties": {
+        "state": {"enum": ["declared", "unresolved"]},
+        "categories": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/alternative_category"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "unresolved"}}, "required": ["state"]},
+          "then": {"properties": {"categories": {"maxItems": 0}}}
+        }
+      ]
+    },
+    "branch_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "overflow_behavior": {"const": "ask_merge_park_archive"},
+    "evidence_overlays": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "pointer"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "pointer": {"type": "string", "minLength": 1, "pattern": "\\S"}
+        }
+      }
+    },
+    "authority_points": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/authority_point"}
+    },
+    "known_exclusions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "pattern": "\\S"}
+    },
+    "unresolved_fit_note": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "source_pointer", "last_reviewed_at", "freshness_state"],
+      "properties": {
+        "source": {"enum": ["shipped_default", "user_authored", "user_modified"]},
+        "source_pointer": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "last_reviewed_at": {"type": "string", "format": "date"},
+        "freshness_state": {"enum": ["current", "stale", "unverified"]}
+      }
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"research_family": {"const": "field_general"}}, "required": ["research_family"]},
+      "then": {"properties": {"authority_points": {"maxItems": 0}}},
+      "else": {"properties": {"authority_points": {"minItems": 1}}}
+    },
+    {
+      "if": {"required": ["declared_family_label"]},
+      "then": {
+        "properties": {
+          "provenance": {
+            "properties": {"source": {"const": "user_authored"}},
+            "required": ["source"]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "slug": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "research_family": {
+      "enum": [
+        "quantitative_empirical",
+        "qualitative",
+        "theoretical_conceptual",
+        "interpretive_humanities",
+        "evidence_synthesis",
+        "computational",
+        "clinical_human_subjects",
+        "field_general"
+      ]
+    },
+    "task_family": {
+      "enum": [
+        "rq_formation",
+        "retrieval",
+        "methodology",
+        "synthesis",
+        "drafting",
+        "integrity_check",
+        "review",
+        "revision",
+        "finalization"
+      ]
+    },
+    "stage_state": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state"],
+          "properties": {"state": {"const": "applicable"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "reason"],
+          "properties": {
+            "state": {"const": "intentionally_absent"},
+            "reason": {"type": "string", "minLength": 1, "pattern": "\\S"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state"],
+          "properties": {"state": {"const": "unresolved_fit"}}
+        }
+      ]
+    },
+    "alternative_category": {
+      "enum": [
+        "rival_theory",
+        "alternative_design",
+        "alternative_measurement",
+        "alternative_model",
+        "disconfirming_query",
+        "boundary_condition"
+      ]
+    },
+    "authority_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_family", "authority", "requirement"],
+      "properties": {
+        "task_family": {"$ref": "#/$defs/task_family"},
+        "authority": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "requirement": {"type": "string", "minLength": 1, "pattern": "\\S"}
+      }
+    },
+    "profile_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "profile_version", "content_sha256"],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/slug"},
+        "profile_version": {"$ref": "#/$defs/semver"},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}
