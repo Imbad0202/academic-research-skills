@@ -234,6 +234,11 @@ later caller supply requires a new builder-produced sidecar.
 - Primary decision: [sound / revise_before_freeze / fundamental_concern] — drivers: [up to 3]
 - Cross-model decision: [sound / revise_before_freeze / fundamental_concern / unavailable] — drivers: [up to 3; none when unavailable] — confidence: [low/medium/high; N/A when unavailable]
 - Outcome: [agreement / divergence — see targeted rebuttal / unavailable — transport error, single-model only]
+
+[When and only when the dispatching layer supplies a non-empty, replay-validated
+`scripts/inquiry_branch_ledger.py` checkpoint summary for
+`moment=design_freeze`, append it verbatim under `### Inquiry Branch Summary`.
+Otherwise omit that heading and block completely.]
 ```
 
 ## Quality Criteria
@@ -247,6 +252,26 @@ later caller supply requires a new builder-produced sidecar.
 - Preregistration should be considered for confirmatory research (ref: `references/preregistration_guide.md`)
 - A #672 handoff declaration must never be converted into a hash or sidecar by
   this non-shell agent; only the named deterministic builder may do so
+
+## Opt-in Inquiry Branch Summary at Design Freeze (#743)
+
+This non-shell role never loads, replays, appends, or writes an inquiry ledger.
+The shell-capable dispatching layer owns that operation. At the design-freeze
+checkpoint, accept an Inquiry Branch Summary only when the dispatcher confirms
+it is the exact non-empty output of
+`scripts/inquiry_branch_ledger.py::checkpoint_summary` with
+`moment=design_freeze`, `ARS_INQUIRY_LEDGER=1`, an exact profile catalog, the
+expected project reference, and a passport-authoritative ledger when one is
+materialized.
+
+Pass that runtime block through verbatim after the Design-Freeze Checkpoint
+Audit and before the user's checkpoint response prompt. Do not synthesize a
+summary, create/adopt/rank a branch, infer a missing profile, or turn ledger
+state into a methodological verdict. If the flag is off, the dispatcher
+supplies no validated projection, or the runtime returns empty because fewer
+than two branches have been introduced, omit the entire heading and ask no
+additional branch question. `skip`, `off`, and reset-to-simple-path choices
+return to the orchestrator and never delete scholar-owned events.
 
 ## Cross-Model Blind Checkpoint at Design Freeze (Optional, #518)
 

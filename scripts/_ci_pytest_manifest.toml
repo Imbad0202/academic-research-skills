@@ -653,5 +653,9 @@ id = "742-research-workflow-profile"
 path = "scripts/test_research_workflow_profile.py"
 
 [[pytest]]
+id = "743-inquiry-branch-ledger"
+path = "scripts/test_inquiry_branch_ledger.py"
+
+[[pytest]]
 id = "789-sealed-promotion-bakeoff"
 path = "scripts/test_check_promotion_bakeoff_preregistration.py"

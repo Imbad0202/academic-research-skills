@@ -1,0 +1,449 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://shared/contracts/research_workflow/inquiry_branch_ledger.schema.json",
+  "title": "ARS inquiry branch ledger 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_ref",
+    "initial_profile_binding",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "inquiry-branch-ledger/1.0"
+    },
+    "project_ref": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "initial_profile_binding": {
+      "$ref": "#/$defs/profileBinding"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/branchCreated"},
+          {"$ref": "#/$defs/facetSurfaced"},
+          {"$ref": "#/$defs/branchAdopted"},
+          {"$ref": "#/$defs/branchAnnotated"},
+          {"$ref": "#/$defs/branchParked"},
+          {"$ref": "#/$defs/branchRejected"},
+          {"$ref": "#/$defs/branchReopened"},
+          {"$ref": "#/$defs/branchMerged"},
+          {"$ref": "#/$defs/branchArchived"},
+          {"$ref": "#/$defs/reopenConditionSignal"},
+          {"$ref": "#/$defs/profileRebound"},
+          {"$ref": "#/$defs/artifactMarkedStale"},
+          {"$ref": "#/$defs/artifactReconfirmed"},
+          {"$ref": "#/$defs/artifactSuperseded"}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": ".*\\S.*"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
+    },
+    "profileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "profile_version", "content_sha256"],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/slug"},
+        "profile_version": {"$ref": "#/$defs/semver"},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "reopenCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["condition_id", "statement"],
+      "properties": {
+        "condition_id": {"$ref": "#/$defs/nonEmptyString"},
+        "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "evidence_pointer": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "textArray": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "uniqueTextArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "reopenConditionArray": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/reopenCondition"}
+    },
+    "eventBaseProperties": {
+      "event_id": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 9007199254740991
+      },
+      "recorded_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "actor": {
+        "enum": ["author", "ai", "system"]
+      },
+      "kind": {
+        "enum": [
+          "branch_created",
+          "facet_surfaced",
+          "branch_adopted",
+          "branch_annotated",
+          "branch_parked",
+          "branch_rejected",
+          "branch_reopened",
+          "branch_merged",
+          "branch_archived",
+          "reopen_condition_signal",
+          "profile_rebound",
+          "artifact_marked_stale",
+          "artifact_reconfirmed",
+          "artifact_superseded"
+        ]
+      },
+      "branch_id": {
+        "oneOf": [
+          {"$ref": "#/$defs/slug"},
+          {"type": "null"}
+        ]
+      },
+      "payload": {"type": "object"},
+      "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+    },
+    "branchCreated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "branch_created"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["parent_id", "statement", "assumptions", "evidence_sought", "reopen_conditions", "downstream_refs"],
+          "properties": {
+            "parent_id": {"oneOf": [{"$ref": "#/$defs/slug"}, {"type": "null"}]},
+            "statement": {"$ref": "#/$defs/nonEmptyString"},
+            "assumptions": {"$ref": "#/$defs/textArray"},
+            "evidence_sought": {"$ref": "#/$defs/textArray"},
+            "reopen_conditions": {"$ref": "#/$defs/reopenConditionArray"},
+            "downstream_refs": {"$ref": "#/$defs/uniqueTextArray"}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "facetSurfaced": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "ai"},
+        "kind": {"const": "facet_surfaced"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["parent_id", "surfaced_text"],
+          "properties": {
+            "parent_id": {"oneOf": [{"$ref": "#/$defs/slug"}, {"type": "null"}]},
+            "surfaced_text": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "branchAdopted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "branch_adopted"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_event_id", "surfaced_text", "author_formulation"],
+          "properties": {
+            "source_event_id": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+            "surfaced_text": {"$ref": "#/$defs/nonEmptyString"},
+            "author_formulation": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "branchAnnotated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "branch_annotated"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["field", "value"],
+              "properties": {"field": {"enum": ["assumptions", "evidence_sought"]}, "value": {"$ref": "#/$defs/textArray"}}
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["field", "value"],
+              "properties": {"field": {"const": "downstream_refs"}, "value": {"$ref": "#/$defs/uniqueTextArray"}}
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["field", "value"],
+              "properties": {"field": {"const": "reopen_conditions"}, "value": {"$ref": "#/$defs/reopenConditionArray"}}
+            }
+          ]
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "dispositionPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {"reason": {"$ref": "#/$defs/nonEmptyString"}}
+    },
+    "branchParked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "branch_parked"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {"$ref": "#/$defs/dispositionPayload"},
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "branchRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "branch_rejected"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {"$ref": "#/$defs/dispositionPayload"},
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "branchReopened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "branch_reopened"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason"],
+          "properties": {
+            "reason": {"$ref": "#/$defs/nonEmptyString"},
+            "condition_id": {"$ref": "#/$defs/nonEmptyString"},
+            "evidence_pointer": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "branchMerged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "branch_merged"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["merged_into", "reason"],
+          "properties": {"merged_into": {"$ref": "#/$defs/slug"}, "reason": {"$ref": "#/$defs/nonEmptyString"}}
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "branchArchived": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "branch_archived"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {"$ref": "#/$defs/dispositionPayload"},
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "reopenConditionSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "ai"},
+        "kind": {"const": "reopen_condition_signal"},
+        "branch_id": {"$ref": "#/$defs/slug"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["branch_id_ref", "condition_id", "evidence_pointer"],
+          "properties": {
+            "branch_id_ref": {"$ref": "#/$defs/slug"},
+            "condition_id": {"$ref": "#/$defs/nonEmptyString"},
+            "evidence_pointer": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "profileRebound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "profile_rebound"},
+        "branch_id": {"type": "null"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["profile_id", "profile_version", "content_sha256", "selection_receipt_ref"],
+          "properties": {
+            "profile_id": {"$ref": "#/$defs/slug"},
+            "profile_version": {"$ref": "#/$defs/semver"},
+            "content_sha256": {"$ref": "#/$defs/sha256"},
+            "selection_receipt_ref": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifactMarkedStale": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "system"},
+        "kind": {"const": "artifact_marked_stale"},
+        "branch_id": {"type": "null"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact_ref", "reopening_event_id"],
+          "properties": {
+            "artifact_ref": {"$ref": "#/$defs/nonEmptyString"},
+            "reopening_event_id": {"type": "integer", "minimum": 1, "maximum": 9007199254740991}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifactReconfirmed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "artifact_reconfirmed"},
+        "branch_id": {"type": "null"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact_ref", "resolves_stale_event_id", "note"],
+          "properties": {
+            "artifact_ref": {"$ref": "#/$defs/nonEmptyString"},
+            "resolves_stale_event_id": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+            "note": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifactSuperseded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "recorded_at", "actor", "kind", "branch_id", "payload", "prev_event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventBaseProperties/event_id"},
+        "recorded_at": {"$ref": "#/$defs/eventBaseProperties/recorded_at"},
+        "actor": {"const": "author"},
+        "kind": {"const": "artifact_superseded"},
+        "branch_id": {"type": "null"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact_ref", "resolves_stale_event_id", "note", "replaced_by"],
+          "properties": {
+            "artifact_ref": {"$ref": "#/$defs/nonEmptyString"},
+            "resolves_stale_event_id": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+            "note": {"$ref": "#/$defs/nonEmptyString"},
+            "replaced_by": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        },
+        "prev_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

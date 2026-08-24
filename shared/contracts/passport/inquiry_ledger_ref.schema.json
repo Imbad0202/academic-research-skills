@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://shared/contracts/passport/inquiry_ledger_ref.schema.json",
+  "title": "Material Passport inquiry-ledger pointer 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ledger_path", "ledger_version", "content_sha256"],
+  "properties": {
+    "ledger_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!\\.{1,2}(?:/|$))(?!.*?/\\.{1,2}(?:/|$))(?!.*//)(?!.*[\\u0000-\\u001f\\u007f-\\u009f\\u00ad\\u0600-\\u0605\\u061c\\u06dd\\u070f\\u0890-\\u0891\\u08e2\\u180e\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u206f\\ufeff\\ufff9-\\ufffb])(?!.*[/]$).+$"
+    },
+    "ledger_version": {
+      "const": "inquiry-branch-ledger/1.0"
+    },
+    "content_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

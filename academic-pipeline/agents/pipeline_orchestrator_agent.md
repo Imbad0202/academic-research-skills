@@ -51,7 +51,7 @@ derive or refresh it from a clock, path, artifact contents, or transcript.
 **Contract:** full spec in [`../references/passport_as_reset_boundary.md`](../references/passport_as_reset_boundary.md) §"`resume_from_passport` mode contract".
 
 **Orchestrator obligations:**
-1. **Acquire passport lock.** Before reading the ledger or checking for a prior consuming entry, acquire an exclusive advisory lock on the passport file (see `references/passport_as_reset_boundary.md` §"Concurrency model"). Hold the lock across the read, the no-prior-resume check, and the append. Release after the append is durable on disk. Do NOT release between steps.
+1. **Acquire passport lock.** Before reading the ledger or checking for a prior consuming entry, acquire an exclusive advisory lock on the adjacent stable `.<passport-basename>.lock` sidecar (see `references/passport_as_reset_boundary.md` §"Concurrency model"). Every passport writer uses this same sidecar; never lock the replaceable passport inode. Hold the lock across the read, the no-prior-resume check, and the append. Release after the append is durable on disk. Do NOT release between steps.
 2. Parse `<hash>` from user input. Validate `^[0-9a-f]{12}$`.
 3. Locate passport file: prefer explicit path in user input; else look in `./passports/` or `./material_passport*.yaml` relative to CWD; else ask the user for the path.
 4. Load `reset_boundary[]`. Find the entry with `kind: boundary` and matching `hash`. No match → hard error: "Passport hash `<hash>` not found in `<path>`. Cannot resume."
@@ -209,9 +209,63 @@ SLIM checkpoints never reset. MANDATORY checkpoints co-occur with reset when app
 6. A `boundary` is consumed only by appending a `kind: resume` entry with matching `consumes_hash`. Double-resume (second resume of an already-consumed boundary) is a hard error.
 7. MANDATORY checkpoints (Stage 2.5 / 4.5, review decisions, the Stage 5 entry gate) remain MANDATORY even when reset co-occurs. Integrity gates are never diluted. If the boundary carries `pending_decision`, resume must re-prompt the user; `next` is advisory. Actual routing comes from the matched option's `next_stage`/`next_mode`, not from the boundary `next` field.
 8. `collaboration_depth_agent` observer fires on FULL checkpoints as before; its output is included in the checkpoint notification regardless of reset state. Observer state does NOT cross reset boundaries.
-9. Resume consumption MUST hold an exclusive advisory lock on the passport file for the entire read-check-append sequence (acquire the lock on the "Acquire passport lock" obligation, hold across the read-ledger, no-prior-resume check, and resume-entry append steps, release only after the append is durable). Releasing the lock between the no-prior-resume check and the resume-entry append reopens the double-resume race this rule exists to prevent. Non-POSIX implementations that cannot provide OS-level exclusion MUST refuse to resume rather than degrade silently (fail with an explicit error surfaced to the user). See §"Concurrency model" in the protocol doc.
+9. Resume consumption MUST hold an exclusive advisory lock on the adjacent
+   stable `.<passport-basename>.lock` sidecar for the entire
+   read-check-append sequence. Acquire it at the "Acquire passport lock"
+   obligation, hold it across the read-ledger, no-prior-resume check, and
+   resume-entry append, and release only after the append is durable. Every
+   other passport read-modify-write uses the same sidecar; locking the
+   replaceable passport inode is non-conforming. Releasing the sidecar lock
+   between the check and append reopens the double-resume race. A non-POSIX
+   implementation without OS-level exclusion MUST refuse to resume and
+   surface an explicit error. See §"Concurrency model" in the protocol doc.
 
 Full protocol: [`../references/passport_as_reset_boundary.md`](../references/passport_as_reset_boundary.md).
+
+#### Inquiry Branch Ledger (#743, opt-in alpha)
+
+**Flag:** `ARS_INQUIRY_LEDGER=1`. Unset or `0` means the entire sequence below
+is omitted: no ledger read/write, no pointer, no summary, and no user-facing
+branch interaction. With the flag on, an in-memory first branch still follows
+the linear path; do not publish a ledger or `inquiry_ledger_ref` until a second
+branch has been explicitly recorded.
+
+**Authority and replay:** use `scripts/inquiry_branch_ledger.py` for every
+load, append, replay, summary, and ledger/passport commit. Supply the explicit
+workspace root, expected `project_ref`, and the exact canonical profile files
+matching the initial binding and every `profile_rebound`. An unresolved profile
+binding, invalid event chain, over-budget post-state, missing stale event, or
+broken pointer is a visible hard error. Never infer a profile or repair ledger
+bytes in the model context. The runtime's stable sidecar lock (the same
+`.<passport-basename>.lock` required by the reset-boundary protocol) and
+recovery journal are the only authorized two-file publication path.
+
+**Author/AI boundary:** an AI-surfaced facet is appended with actor `ai`, enters
+`parked`, and is never rendered as the author's position. Activation requires
+an explicit author adoption receipt retaining its source event and original
+text. Park, reject, reopen, merge, archive, profile correction, and stale-cause
+resolution are likewise explicit author actions. A reopen-condition signal
+records only that evidence may match a stored condition; it never reopens a
+branch without the author.
+
+**Summary moments:** ask the runtime for a compact summary at exactly:
+
+1. the Stage 1 design-freeze checkpoint;
+2. the Stage 2.5 MANDATORY checkpoint;
+3. the Stage 4.5 MANDATORY checkpoint; or
+4. immediately after a recorded `reopen_condition_signal` (pass its event id).
+
+If the runtime emits an empty string (flag off or no more than one introduced
+branch), insert nothing and ask nothing. Otherwise place its complete
+`### Inquiry Branch Summary` block after ordinary checkpoint state and before
+the checkpoint response prompt. Do not add a graph, ranking, recommendation,
+or extra branch question. The block's `skip`, `off`, and reset-to-simple-path
+choices affect future display only and never delete scholar-owned events.
+
+The ledger is a memory surface, not a gate: it cannot change an integrity
+PASS/FAIL, satisfy a mandatory checkpoint, establish novelty/correctness/value,
+or silently regenerate a stale artifact. Author-recorded first-degree stale
+causes remain visible until individually reconfirmed or superseded.
 
 #### FULL Checkpoint Template (with Decision Dashboard)
 

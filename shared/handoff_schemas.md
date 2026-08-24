@@ -720,6 +720,7 @@ conformance, not a manuscript verdict or integrity/checkpoint input. See
 | `repro_lock` | object \| null | configuration lockfile for artifact reproducibility. See [`artifact_reproducibility_pattern.md`](artifact_reproducibility_pattern.md). `null` = honest opt-out. Required from v3.3.5+ — omitted key fails lint. |
 | `compliance_history` | list[object] | Append-only audit trail of `compliance_report` entries (Schema 12). Added v3.4.0+. See [Schema 12](#schema-12--compliance-report-v340) and [`shared/compliance_report.schema.json`](compliance_report.schema.json). |
 | `reset_boundary` | list[object] | Append-only ledger. Two entry kinds: `boundary` (recorded at FULL checkpoints when `ARS_PASSPORT_RESET=1`) and `resume` (recorded when `resume_from_passport` consumes a boundary). Added v3.6.3+. Entry shape: [`shared/contracts/passport/reset_ledger_entry.schema.json`](contracts/passport/reset_ledger_entry.schema.json). See [`academic-pipeline/references/passport_as_reset_boundary.md`](../academic-pipeline/references/passport_as_reset_boundary.md). |
+| `inquiry_ledger_ref` | object | Optional pointer to the separate opt-in `inquiry-branch-ledger/1.0` user-project artifact. Closed shape: `{ledger_path, ledger_version, content_sha256}` per [`shared/contracts/passport/inquiry_ledger_ref.schema.json`](contracts/passport/inquiry_ledger_ref.schema.json). It carries no branch copy. A missing or digest-mismatched target is `LEDGER-BINDING-BROKEN`; a file without this pointer is ignored with a visible notice. Added #743. |
 | `literature_corpus` | list[object] | Optional append-friendly literature corpus. Each entry conforms to [`shared/contracts/passport/literature_corpus_entry.schema.json`](contracts/passport/literature_corpus_entry.schema.json). Produced by user-written adapters (see [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md)); ARS does not produce these entries itself. Added v3.6.4+. |
 | `audit_artifact` | list[object] | Optional append-only ledger of cross-model audit runs for v3.6.7 downstream-agent deliverables. Each entry conforms to [`shared/contracts/passport/audit_artifact_entry.schema.json`](contracts/passport/audit_artifact_entry.schema.json). Produced by the pipeline orchestrator after Layer 2 + Layer 3 verification of wrapper-emitted proposal entries; only `persisted` entries are stored here. Added v3.6.7+. |
 | `slr_lineage` | boolean | Run-level provenance flag set by `pipeline_orchestrator_agent` at the Stage 1 → Stage 2 handoff. `true` iff any stage in this run history was produced by `deep-research` in systematic-review mode. Consumed by `disclosure` mode renderer (`--policy-anchor=prisma-trAIce` track gate per `policy_anchor_disclosure_protocol.md` §3.1). Absence = `false` = cold-start path (renderer requires explicit `mode=` per §4.3 G2 invariant fallback rule). Added v3.7.4+. See [Run-level lineage signal (v3.7.4)](#run-level-lineage-signal-v374) below. |
@@ -741,6 +742,23 @@ conformance, not a manuscript verdict or integrity/checkpoint input. See
 - Content Hash: a3f2b7c9...
 - Upstream Dependencies: [research_v1, bibliography_v1, synthesis_v1]
 ```
+
+### Inquiry Branch Ledger Pointer Extension (#743)
+
+When `ARS_INQUIRY_LEDGER=1` and a second branch is recorded, Schema 9 may gain
+one `inquiry_ledger_ref`. The ledger itself stays beside the passport as a
+canonical JSON user-project artifact; the passport carries only its
+workspace-relative path, exact contract version, and SHA-256 over the complete
+canonical ledger bytes. Profile documents named by the ledger's bindings are
+separate exact inputs and must be supplied to replay—this pointer does not
+silently select a current profile.
+
+The runtime in `scripts/inquiry_branch_ledger.py` holds a stable sidecar lock
+and uses a durable recovery journal when publishing ledger and passport bytes.
+Cooperating loads recover a valid pending transaction before checking the
+pointer. Without a valid journal, pointer/file mismatch fails visibly and an
+unpointed candidate is ignored. Neither the pointer nor the ledger changes an
+integrity verdict, authenticates an author, or licenses a quality claim.
 
 ### Reset Boundary Extension (v3.6.3)
 

@@ -3,10 +3,18 @@
 Status: DESIGN FREEZE for the `inquiry-branch-ledger/1.0` contract: schema
 shape, state transitions, invalidation rules, and migration are frozen here,
 satisfying the issue's design-frozen-before-implementation acceptance gate.
-This document authorizes no implementation, no evaluation run, no new prompt
-on the simple path, and no default-on behavior. The alpha, when it ships, is
-opt-in behind `ARS_INQUIRY_LEDGER=1` (default OFF = byte-equivalent current
-behavior).
+At the 2026-08-17 freeze this document authorized no implementation or
+evaluation run, and it still authorizes no simple-path prompt or default-on
+behavior. The shipped alpha is opt-in behind `ARS_INQUIRY_LEDGER=1` (default
+OFF = byte-equivalent current behavior).
+
+Implementation status (2026-08-24): the bounded alpha now ships the closed
+ledger and passport-pointer schemas, a strict canonical loader and pure replay
+runtime, profile-bound budget enforcement, deterministic append/invalidation
+helpers, compact checkpoint views, and a crash-recoverable two-file
+ledger/passport transaction. The flag remains OFF by default, state is not
+materialized before a second branch exists, and all behavioral evidence stays
+`NOT_RUN`.
 
 Parent epic: #741. Roadmap: `docs/ROADMAP-v3.20.1-v3.22.md` Phase 2.
 Companion freezes: #742 profile contract
@@ -181,7 +189,14 @@ never be reused on that branch, so a recorded signal always denotes exactly
 one historical condition text. The AI may record a
 `reopen_condition_signal` naming exactly one `condition_id` when session
 evidence claims to satisfy it; **judging the claim and reopening are always
-author actions**.
+author actions**. A signal remains historical evidence, not a perpetual UI
+trigger: the signal-moment surface is lawful only while that exact condition
+is still in the branch's current `reopen_conditions[]` and the branch is
+presently eligible for `branch_reopened` (`parked` or `rejected`, with
+`author_originated` or `author_adopted` provenance). The action line prefixes
+the signal with that trusted current status/provenance pair. Removing the
+condition, reopening/archiving/merging the branch, or leaving it as an
+unadopted AI facet closes the surface without rewriting the event history.
 
 Applying `branch_reopened` mechanically emits one `artifact_marked_stale`
 event per identifier in the reopened branch's own `downstream_refs[]` (actor
@@ -217,7 +232,12 @@ discipline the #742 §6 profile correction uses.
   exactly two moments: a consequential freeze (the Stage 1 design-freeze
   checkpoint and the Stage 2.5 / 4.5 MANDATORY checkpoints) and when a
   `reopen_condition_signal` names a stored `condition_id` (the author judges
-  the claimed satisfaction). Nowhere else.
+  the claimed satisfaction), subject to the current-condition/current-reopen
+  eligibility rule in §5. Nowhere else. All event-carried display strings use
+  the same deterministic one-line control/Markdown escaping and 160-character
+  display bound. Stale artifacts are never count-folded: every stale
+  `artifact_ref` receives its own bounded line and every outstanding cause
+  event id receives its own line until individually resolved.
 - Budget: the #742 §7 semantics verbatim, enforced as the §3 replay
   invariant — the ledger can never record more live branches than the
   effective profile's budget, and the only overflow behavior is
@@ -251,6 +271,47 @@ boundary). The passport references it through one optional aggregate:
   file = `LEDGER-BINDING-BROKEN`, a visible load error, never a silent
   continue; a file without a pointer is ignored with a visible notice (the
   passport is the authority).
+
+**Implementation clarification — cross-file crash consistency.** “The same
+passport transaction" is a logical transaction, not a claim that two pathname
+replacements are one filesystem primitive. The runtime uses the stable adjacent
+`.<passport-basename>.lock` sidecar shared with the reset-boundary protocol,
+plus a durable recovery journal that binds both staged byte images and their
+destination hashes. Cooperating readers finish an intact
+journal idempotently before loading either file. A crash after one rename can
+therefore complete without minting a second event or silently accepting a
+mismatch. If no valid recoverable journal exists, the §7 absence rules remain
+authoritative: a digest mismatch is `LEDGER-BINDING-BROKEN`, and an explicitly
+named candidate file without a pointer is ignored with a visible orphan
+notice. The workspace root is always caller-supplied; `ledger_path` is resolved
+relative to that root, must remain contained, and the ledger must be beside
+the passport rather than inferred from the current working directory.
+
+Replay also requires the exact profile documents named by the initial binding
+and every `profile_rebound`. A binding alone does not carry `branch_budget`, so
+an unresolved `{profile_id, profile_version, content_sha256}` fails closed;
+the runtime never substitutes the currently shipped fallback for missing
+historical profile bytes.
+
+The 2026-08-24 reset-boundary concurrency amendment makes this stable sidecar
+the lock domain for every current ARS passport writer. A pre-amendment writer
+that locks the replaceable passport inode is not concurrency-compatible and
+must not run alongside the alpha; acquiring both locks cannot bridge an inode
+rename. This is an explicit mixed-version exclusion, not a safety claim about
+non-cooperating writers.
+
+Absolute and relative ledger arguments share one lexical policy: the runtime
+does not resolve away a symlink before validation, and rejects a symlinked
+ledger target (including a dangling final-component alias) in either form.
+The NFD+casefolded reserved namespace also includes the future companion
+`.<passport-basename>.inquiry-ledger.register.tmp` pathname before #744 is
+implemented, so an earlier #743 ledger cannot occupy that deterministic temp.
+Transaction lock timeouts must be finite numbers in the closed interval
+0–60 seconds; NaN and either infinity fail before a lock sidecar is opened.
+Authoritative CLI `append` and user-facing `summary` calls require an explicit
+expected `project_ref`, just like bound load/commit. The optional
+`--project-ref` compatibility on standalone `validate`/`replay` is diagnostic
+only and does not authorize mutation or display in a project workflow.
 
 This is purely additive: existing passports need no migration. Cross-session
 resume (`ARS_PASSPORT_RESET`, per the reset-boundary protocol in
@@ -299,6 +360,6 @@ alternatives improve research.
 
 ## 11. Deferred
 
-Schema file + replay validator + passport pointer aggregate + checkpoint
-summary surfaces (implementation PR bounded by this freeze, carrying its
-#745 row per §8); evaluation items per §8.
+Only the evaluation items in §8 remain deferred. Promotion beyond the opt-in
+alpha remains prohibited until those human-participant results satisfy the
+#742 gates.

@@ -192,6 +192,13 @@ LINE_BUDGET_673_ADJUDICATION_ACTIVITY = 57
 # lines; budget 44 leaves five lines of review headroom.
 LINE_BUDGET_684_REVIEW_CRITERIA_BINDING = 44
 
+# #743 adds one bounded H4 checkpoint lifecycle plus the stable-sidecar
+# expansion of the pre-existing passport-reset rule 9. Both are independent
+# of the historical v3.6.7 audit gate, so only the rule-9 growth over its
+# one-line baseline is charged here. Measured at landing: 54 lines; budget 60
+# leaves six lines of review headroom.
+LINE_BUDGET_743_INQUIRY_LEDGER = 60
+
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as
 # cross-references to spec §5.6 (NOT inline procedural definitions —
@@ -744,6 +751,34 @@ def _measure_684_review_criteria_binding_lines(text: str) -> int:
     return len(text[match.start():end].splitlines())
 
 
+def _measure_743_inquiry_ledger_lines(text: str) -> int:
+    """Return #743's H4 block plus reset-rule-9 growth over its baseline line."""
+    import re as _re
+
+    anchor = _re.compile(
+        r"(?m)^[ \t]*####[ \t]+Inquiry Branch Ledger "
+        r"\(#743, opt-in alpha\)[ \t]*$"
+    )
+    match = anchor.search(text)
+    if match is None:
+        return 0
+    heading_end = text.find("\n", match.end())
+    search_start = heading_end + 1 if heading_end >= 0 else len(text)
+    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
+    end = search_start + next_heading.start() if next_heading else len(text)
+    inquiry_lines = len(text[match.start():end].splitlines())
+
+    rule_marker = "9. Resume consumption MUST hold an exclusive advisory lock"
+    rule_start = text.find(rule_marker)
+    if rule_start < 0:
+        return 0
+    rule_end = text.find("\n\n", rule_start)
+    if rule_end < 0:
+        return 0
+    current_rule_lines = len(text[rule_start:rule_end].splitlines())
+    return inquiry_lines + max(0, current_rule_lines - 1)
+
+
 class Advisory660LineBudgetTest(unittest.TestCase):
     """#660 tortured-phrase dispatch block stays independently bounded."""
 
@@ -816,6 +851,21 @@ class ReviewCriteria684LineBudgetTest(unittest.TestCase):
             LINE_BUDGET_684_REVIEW_CRITERIA_BINDING,
             f"#684 criteria-binding block is {block_lines} lines, over its "
             f"{LINE_BUDGET_684_REVIEW_CRITERIA_BINDING}-line budget",
+        )
+
+
+class InquiryLedger743LineBudgetTest(unittest.TestCase):
+    """#743 inquiry-ledger orchestration stays independently bounded."""
+
+    def test_743_inquiry_ledger_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_743_inquiry_ledger_lines(text)
+        self.assertGreater(block_lines, 0, "#743 inquiry-ledger block is missing")
+        self.assertLessEqual(
+            block_lines,
+            LINE_BUDGET_743_INQUIRY_LEDGER,
+            f"#743 inquiry-ledger wiring is {block_lines} lines, over its "
+            f"{LINE_BUDGET_743_INQUIRY_LEDGER}-line budget",
         )
 
 
@@ -903,6 +953,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
         advisory_672_lines = _measure_672_advisory_dispatch_block_lines(text)
         advisory_673_lines = _measure_673_adjudication_activity_lines(text)
         criteria_684_lines = _measure_684_review_criteria_binding_lines(text)
+        inquiry_743_lines = _measure_743_inquiry_ledger_lines(text)
         # v3.6.7-only line count: total minus v3.7.1 Step 3b, v3.7.3
         # finalizer extension, v3.8 §3.6 audit-gate, v3.9.0 triangulation
         # extension, v3.10 terminal-policy extension, the #394 slice-4
@@ -911,14 +962,15 @@ class Phase66LineBudgetTest(unittest.TestCase):
         # Stage 3' contract-dispatch, AND the #656 Phase E evidence-row
         # checkpoint-rendering, the #660 tortured-phrase advisory dispatch,
         # the #672 cross-document advisory dispatch, AND the #673
-        # adjudication-activity wiring, AND the #684 review-criteria binding
-        # lifecycle (each has its own dedicated budget test).
+        # adjudication-activity wiring, the #684 review-criteria binding
+        # lifecycle, AND the #743 inquiry-ledger/sidecar extension (each has
+        # its own dedicated budget test).
         v367_line_count = (
             total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
             - v3_9_0_lines - v3_10_lines - gate_394_lines - seq_390_lines
             - authority_670_lines - dispatch_576_lines - evidence_656_lines
             - advisory_660_lines - advisory_672_lines - advisory_673_lines
-            - criteria_684_lines
+            - criteria_684_lines - inquiry_743_lines
         )
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(
@@ -941,7 +993,8 @@ class Phase66LineBudgetTest(unittest.TestCase):
             f"are in the #672 advisory-dispatch subsection, and "
             f"{advisory_673_lines} are in the #673 adjudication-activity "
             f"wiring, and {criteria_684_lines} are in the #684 criteria-"
-            f"binding lifecycle; "
+            f"binding lifecycle, and {inquiry_743_lines} are in the #743 "
+            f"inquiry-ledger/sidecar extension; "
             f"v3.6.7-attributed lines = "
             f"{v367_line_count} exceeds {ceiling} (baseline "
             f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "

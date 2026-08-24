@@ -99,6 +99,31 @@
       ]
     },
     {
+      "row_id": "rq_formation.inquiry_branch_ledger",
+      "task_family": "rq_formation",
+      "mechanism": "opt-in inquiry_branch_ledger @ inquiry-branch-ledger/1.0 (#743): event-sourced branch origin labels, author disposition, profile-bound live-budget replay, and a compact Stage 1 design-freeze summary",
+      "mechanism_status": "IMPLEMENTED",
+      "deterministic_conformance": "CI_GATED",
+      "behavioral_evidence": {
+        "status": "NOT_RUN"
+      },
+      "external_outcome_evidence": "none",
+      "known_exclusions": [
+        "the ledger preserves recorded alternatives and recovery state; it does not establish novelty, correctness, usefulness, or research value",
+        "the simple path remains unchanged: the feature is opt-in and does not materialize state or show a summary with fewer than two recorded branches"
+      ],
+      "transport_limits": [
+        "opt-in alpha behind ARS_INQUIRY_LEDGER=1; author events are within-session attestations, not authenticated identity",
+        "no paired usability or research-family evaluation has run"
+      ],
+      "max_licensed_claim": "An opt-in, profile-bound ledger can preserve and replay recorded alternatives and their disposition history; no novelty, correctness, value, or usability claim.",
+      "next_required_evaluation": "run the #742 section 8 paired protocol for breadth, wrong-turn recovery, burden, time, and abandonment, stratified by family and experience (#743/#659)",
+      "conformance_pinned_by": [
+        "scripts/inquiry_branch_ledger.py::replay_ledger",
+        "scripts/test_inquiry_branch_ledger.py"
+      ]
+    },
+    {
       "row_id": "retrieval.citation_existence_gate",
       "task_family": "retrieval",
       "mechanism": "Deterministic four-index citation-existence verification gate (v3.11, #182): Semantic Scholar + OpenAlex + Crossref + arXiv, per-citation lookup_verified status, opt-in terminal policy",
@@ -269,6 +294,31 @@
       "next_required_evaluation": "real-corpus FP/FN measurement against independently labeled tortured-phrase instances",
       "conformance_pinned_by": [
         "scripts/check_tortured_phrase_screening_integration.py"
+      ]
+    },
+    {
+      "row_id": "integrity_check.inquiry_branch_ledger",
+      "task_family": "integrity_check",
+      "mechanism": "opt-in inquiry_branch_ledger @ inquiry-branch-ledger/1.0 (#743): first-degree stale-cause replay and compact summaries at the Stage 2.5 and Stage 4.5 mandatory checkpoints",
+      "mechanism_status": "IMPLEMENTED",
+      "deterministic_conformance": "CI_GATED",
+      "behavioral_evidence": {
+        "status": "NOT_RUN"
+      },
+      "external_outcome_evidence": "none",
+      "known_exclusions": [
+        "invalidation is first-degree over author-recorded downstream references; no transitive artifact-dependency claim",
+        "a stale mark never rewrites, deletes, regenerates, or judges an artifact"
+      ],
+      "transport_limits": [
+        "opt-in alpha behind ARS_INQUIRY_LEDGER=1; checkpoint summaries are deterministic views over caller-supplied, digest-bound state",
+        "no paired usability or research-family evaluation has run"
+      ],
+      "max_licensed_claim": "Recorded first-degree dependencies can be marked visibly stale and resolved without silent mutation; no completeness, correctness, or usability claim.",
+      "next_required_evaluation": "run the #742 section 8 paired protocol for recovery, burden, time, abandonment, and family fit before any promotion beyond opt-in (#743)",
+      "conformance_pinned_by": [
+        "scripts/inquiry_branch_ledger.py::replay_ledger",
+        "scripts/test_inquiry_branch_ledger.py"
       ]
     },
     {

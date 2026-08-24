@@ -76,6 +76,30 @@ receipt to stdout only. No command reads manuscript content, infers a family,
 changes the default workflow, or writes scholar-owned artifacts. The human
 usability protocol and every outcome claim remain `NOT_RUN`.
 
+## Opt-in inquiry branch ledger (#743)
+
+- `research_workflow/inquiry_branch_ledger.schema.json`
+  (`inquiry-branch-ledger/1.0`) is the closed event-source contract for
+  author-originated branches, parked AI-surfaced facets, explicit adoption,
+  disposition, reopen signals, profile rebound, and first-degree artifact
+  staleness. Dense event ids plus a canonical previous-event hash chain detect
+  interior rewrite/reorder; the separate passport digest is the required
+  trusted head for truncation detection.
+- `passport/inquiry_ledger_ref.schema.json` closes the optional Material
+  Passport pointer to `{ledger_path, ledger_version, content_sha256}`. It never
+  embeds a branch or profile and never widens a filesystem path outside the
+  caller-supplied workspace root.
+
+The deterministic offline runtime is `scripts/inquiry_branch_ledger.py`. Replay
+requires every exact profile bound by the ledger so the live-branch budget is
+never inferred from a current default. Reopen appends contiguous deterministic
+stale-cause events; clearing one cause cannot clear another. Ledger/passport
+publication uses a stable sidecar lock and durable recovery journal. The
+feature is OFF unless `ARS_INQUIRY_LEDGER=1`, does not materialize before a
+second branch, and shows compact summaries only at the frozen Stage 1, 2.5,
+4.5, or still-actionable recorded-signal moments. Behavioral and usability evidence is
+`NOT_RUN`.
+
 ## PDF read-integrity and optional content advisory (#512 follow-up)
 
 - `pdf/pdf_read_preflight.schema.json` accepts the unchanged legacy structural sidecar
@@ -248,6 +272,9 @@ Schemas for Material Passport input ports.
   entries that could not be included in the corpus.
 - `passport/reset_ledger_entry.schema.json` (v3.6.3) — `reset_boundary[]` ledger entries
   for the opt-in passport reset boundary protocol.
+- `passport/inquiry_ledger_ref.schema.json` (#743) — optional digest-bound
+  pointer to the separate canonical inquiry branch ledger; missing or
+  mismatched targets fail visibly and unpointed candidates are ignored.
 - `passport/audit_artifact_entry.schema.json` (v3.6.7 Step 6) — `audit_artifact[]` entries
   recording one cross-model audit run per downstream-agent deliverable. Two lifecycle
   states (proposal / persisted) share the schema via `oneOf`. Cross-artifact invariants

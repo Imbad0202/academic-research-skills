@@ -335,6 +335,34 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 
 ---
 
+## Opt-in Inquiry Branch Ledger (#743 alpha)
+
+`ARS_INQUIRY_LEDGER=1` enables the bounded
+`inquiry-branch-ledger/1.0` memory surface. Unset or `0` emits no ledger
+artifact, pointer, prompt, or summary. Even when enabled, one linear branch
+does not materialize a ledger; the second recorded branch is the first lawful
+publication point.
+
+The orchestrator owns the interaction surface and the deterministic runtime
+`scripts/inquiry_branch_ledger.py` owns validation, replay, append,
+profile-budget checks, pointer binding, and crash recovery. Replay receives the
+exact profile file for every ledger binding; it never substitutes a current
+fallback for missing historical bytes. AI facets enter `parked` and can become
+author-owned only through an explicit origin-bound adoption receipt. Reopening
+marks only author-recorded first-degree artifacts stale and never rewrites
+them.
+
+Render the runtime's compact summary only at the Stage 1 design-freeze
+checkpoint, the Stage 2.5 and 4.5 MANDATORY checkpoints, or immediately after
+a recorded reopen-condition signal. With the flag off or at most one branch,
+omit the block completely. Every shown interaction offers `skip`, `off`, and
+reset-to-simple-path; these hide future surfaces without deleting the ledger.
+The summary is advisory state memory and never changes an integrity verdict or
+checkpoint requirement. Full protocol and crash semantics:
+`docs/design/2026-08-17-743-inquiry-branch-ledger-design.md`.
+
+---
+
 ## Integrity Review Protocol
 
 Stage 2.5 (pre-review) and Stage 4.5 (post-revision) verification. 5-phase protocol: references → citation context → statistical data → originality → claims.
