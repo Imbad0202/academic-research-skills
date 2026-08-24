@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.21.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.0)
+[![Version](https://img.shields.io/badge/version-v3.21.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.1)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -269,7 +269,7 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 
 7-agent multi-perspective review with **criterion-bound narrative judgements**. Modes: full, re-review, quick, methodology-focus, guided, calibration. Current live reviews and Schema 6 packages remain `NOT_CALIBRATED`; full calibration can produce a bounded candidate profile, but application to a live review is not wired. No numerical total is mapped to Accept, Minor Revision, Major Revision, or Reject. First-round review panel vs. contract-governed re-review dispatch boundary: see ARCHITECTURE.md §3 Stage 3 / Stage 3'.
 
-### Academic Pipeline (v3.21.0)
+### Academic Pipeline (v3.21.1)
 
 10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline guarantees: every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) is MANDATORY with no unrecorded bypass (every override requires user reasoning recorded for Stage 6); R&R Traceability Matrix (Schema 11) independently verifies author revision claims. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
 
@@ -357,6 +357,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.21.1 (2026-08-24) — Bounded workflow substrates, sealed bakeoffs, and transport hardening
+
+> **Measured where stated; otherwise bounded:** v3.21.1 repairs the contained ChatGPT-subscription citation transport for codex-cli 0.147.0 and records the first Promotion Bakeoff: `gpt-5.6-sol` is validated only for that subscription transport, while it remains provisional on the first-party API route. Future bakeoffs now require sealed preregistration. The release also adds a default-off research-workflow profile substrate (offline deterministic conformance only; no pipeline hook or family-specific shipped profile), an opt-in inquiry-ledger alpha (`ARS_INQUIRY_LEDGER=1`), and a design-only alternative register that is not implemented. Their behavioral evidence remains `NOT_RUN`; no usability, recovery, novelty, correctness, or research-outcome benefit is claimed. The review-criteria registry gains one source-backed illustrative MSR 2027 exact-profile proving set—not venue/discipline coverage, a real-author attestation, or constructive-review evidence—and its required independent-human evaluation remains open. Additional changes align `data_access_level`, consolidate markdown lint grammar, register guard-launcher degradations, and list OrcaRouter as a community integration without endorsement. Suite/pipeline → v3.21.1; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.
 
 ### v3.21.0 (2026-08-18) — ISO/IEC 42001-spirit transparency, verifiability, and feasibility track
 

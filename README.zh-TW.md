@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.21.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.0)
+[![Version](https://img.shields.io/badge/version-v3.21.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.1)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -254,7 +254,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 7 個 Agent 的多視角審查，採 **逐準則、證據錨定的敘事判斷**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 與 Schema 6 package 一律為 `NOT_CALIBRATED`；完整 calibration 可產生有界候選 profile，但尚未接上 live review。不得以固定總分對照接受、小修、大修或退稿。第一輪審查面板 vs. 契約治理再審派送的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.21.0)
+### Academic Pipeline (v3.21.1)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）為 MANDATORY 且沒有不留紀錄的繞過路徑（所有覆寫都須記錄使用者理由、供 Stage 6 使用）；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -319,6 +319,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新紀錄
+
+### v3.21.1（2026-08-24）— 有界工作流程基礎、封存式 bakeoff 與傳輸強化
+
+> **有明示量測才視為量測，其餘維持有界：**v3.21.1 修復 codex-cli 0.147.0 下受限的 ChatGPT 訂閱引用傳輸，並記錄第一次 Promotion Bakeoff：`gpt-5.6-sol` 僅在該訂閱傳輸上取得 validated，first-party API 路徑仍為 provisional；往後的 bakeoff 則必須採用封存式預註冊。本版也新增 default-off 的研究工作流程 profile 基礎（只有離線、確定性的 conformance；沒有 pipeline hook，也未提供特定研究家族的成品 profile）、opt-in 的 inquiry-ledger alpha（`ARS_INQUIRY_LEDGER=1`），以及尚未實作、僅凍結設計的 alternative register。其行為證據維持 `NOT_RUN`，不宣稱可用性、復原、創新性、正確性或研究成果效益。審查準則 registry 新增一組有來源支持、僅供示範的 MSR 2027 exact-profile proving set；這不代表投稿期刊／會議與學科覆蓋、真實作者 attest，亦非 constructive-review 證據，所需的獨立人類評估仍未完成。其他變更包含對齊 `data_access_level`、整併 markdown lint 文法、登錄 guard launcher 的降級路徑，以及在不背書的前提下把 OrcaRouter 列為社群整合。套件／pipeline → v3.21.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
 
 ### v3.21.0（2026-08-18）— ISO/IEC 42001 精神軌：透明、可驗證、可行
 

@@ -9,7 +9,14 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.21.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.21.1 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.21.1 Key Additions (bounded workflow substrates + transport-qualified verification)
+
+- **The ChatGPT-subscription citation transport is measured and transport-qualified.** The contained Codex subscription citation transport is repaired for codex-cli 0.147.0, and the first Promotion Bakeoff validates `gpt-5.6-sol` on that transport with counterbalanced paired evidence. The first-party API route remains provisional, and only the measured recall and latency advantages are claimed. Future bakeoffs must use the sealed commitment/reveal lifecycle.
+- **Research structure expands behind explicit opt-in boundaries.** A default-off research-workflow profile runtime records explicit selection, fallback, correction, and stale prior outputs; the `ARS_INQUIRY_LEDGER=1` alpha adds an append-only inquiry branch ledger with bounded summaries and durable two-file recovery. Neither feature changes the default pipeline, and behavioral/usability evidence remains `NOT_RUN`.
+- **Review criteria gain one bounded source-backed proving set.** An exact Software Engineering × MSR 2027 Technical Papers × Full Paper profile demonstrates venue/type, field/overlay, freshness, digest migration, and three-consumer binding. It is one architecture proving set, not discipline coverage or constructive-review evidence; the independent-human-expert and blind-adjudication work remains open.
+- **Contract honesty and defrift coverage tighten.** The alternative-explanation register is design-frozen but not implemented; write-scope launcher degradations enter the canonical registry; `data_access_level` is re-derived under the dirtiest-input rule; and shared rendered-Markdown grammar removes divergent lint behavior. The OrcaRouter community listing adds no bundled or endorsed provider claim.
 
 ## v3.21.0 Key Additions (ISO/IEC 42001-spirit transparency / verifiability / feasibility track)
 
@@ -358,7 +365,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.21.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-08-18
+- **Suite version**: 3.21.1 (per CHANGELOG.md)
+- **Last Updated**: 2026-08-24
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

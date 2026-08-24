@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.21.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.0)
+[![Version](https://img.shields.io/badge/version-v3.21.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.1)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -252,7 +252,7 @@ You: "status"
 
 基準ごとの証拠に紐づく **ナラティブ判断** を行う 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。現在の live review と Schema 6 package は常に `NOT_CALIBRATED` で、full calibration は有界な候補 profile のみを生成し、live review への適用は未実装です。固定総得点を Accept / Minor Revision / Major Revision / Reject に対応させません。初回レビューパネル vs. 契約管理された再レビューディスパッチの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.21.0）
+### Academic Pipeline（v3.21.1）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）は MANDATORY であり、記録されないバイパス経路は存在しない（すべてのオーバーライドは Stage 6 のためにユーザーの理由の記録を要する）。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -334,6 +334,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.21.1 (2026-08-24) — 境界付きワークフロー基盤、封印済み bakeoff、トランスポート強化
+
+> **明記された箇所のみ測定済み、それ以外は境界付き:** v3.21.1 は codex-cli 0.147.0 向けの隔離された ChatGPT サブスクリプション引用 transport を修復し、最初の Promotion Bakeoff を記録します。`gpt-5.6-sol` が validated なのはこのサブスクリプション transport に限られ、first-party API 経路では provisional のままです。今後の bakeoff には封印済みの事前登録が必須となります。また、default-off の研究ワークフロー profile 基盤（オフラインの決定論的 conformance のみ。pipeline hook も、研究ファミリー固有の出荷済み profile もなし）、opt-in の inquiry-ledger alpha（`ARS_INQUIRY_LEDGER=1`）、および未実装の design-only alternative register を追加します。これらの行動的証拠は `NOT_RUN` のままであり、ユーザビリティ、回復、novelty、正確性、研究成果の改善を主張しません。レビュー基準 registry には、出典に裏付けられた例示用の MSR 2027 exact-profile proving set を 1 件追加しますが、投稿先（会議・ジャーナル）／分野の網羅性、実在著者による attest、constructive-review の証拠を意味せず、必要な独立した人間による評価も未完了です。その他、`data_access_level` の整合、markdown lint 文法の統合、guard launcher の degradation 登録、非推奨・非保証のコミュニティ統合としての OrcaRouter 掲載を含みます。スイート／pipeline → v3.21.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
 
 ### v3.21.0 (2026-08-18) — ISO/IEC 42001 スピリット・トラック: 透明性・検証可能性・実行可能性
 

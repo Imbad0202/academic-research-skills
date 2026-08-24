@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.21.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.0)
+[![Version](https://img.shields.io/badge/version-v3.21.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.1)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -259,7 +259,7 @@ You: "status"
 
 기준별 증거에 연결된 **서술형 판단**을 수행하는 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. 현재 live review와 Schema 6 package는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다. 고정 총점을 Accept / Minor Revision / Major Revision / Reject에 매핑하지 않습니다. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.21.0)
+### Academic Pipeline (v3.21.1)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 MANDATORY이며 기록 없는 우회 경로가 없고(모든 오버라이드는 Stage 6를 위해 사용자 사유 기록을 요구), R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -347,6 +347,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 변경 이력
+
+### v3.21.1 (2026-08-24) — 범위가 제한된 워크플로 기반, 봉인된 bakeoff, 전송 강화
+
+> **명시된 항목만 측정되었으며 나머지는 범위가 제한됨:** v3.21.1은 codex-cli 0.147.0용으로 격리된 ChatGPT 구독 인용 transport를 복구하고 첫 Promotion Bakeoff를 기록합니다. `gpt-5.6-sol`은 이 구독 transport에서만 validated이며 first-party API 경로에서는 여전히 provisional입니다. 향후 bakeoff에는 봉인된 사전등록이 필요합니다. 또한 default-off 연구 워크플로 profile 기반(오프라인 결정론적 conformance만 제공하며 pipeline hook과 연구 계열별 출시 profile은 없음), opt-in inquiry-ledger alpha(`ARS_INQUIRY_LEDGER=1`), 아직 구현되지 않은 design-only alternative register를 추가합니다. 이들의 행동 증거는 `NOT_RUN`이며 사용성, 복구, novelty, 정확성 또는 연구 성과 개선을 주장하지 않습니다. 리뷰 기준 registry에는 출처에 근거한 예시용 MSR 2027 exact-profile proving set 하나가 추가되지만, 투고 대상(학술지·학회) 및 학문 분야 범위, 실제 저자 attest 또는 constructive-review 증거를 뜻하지 않으며 필요한 독립적 인간 평가도 아직 완료되지 않았습니다. 그 밖에 `data_access_level` 정렬, markdown lint 문법 통합, guard launcher degradation 등록, 비보증·비추천 커뮤니티 통합으로 OrcaRouter 등재가 포함됩니다. 스위트／pipeline → v3.21.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1.
 
 ### v3.21.0 (2026-08-18) — ISO/IEC 42001 정신 트랙: 투명성·검증 가능성·실행 가능성
 
