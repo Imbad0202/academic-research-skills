@@ -176,9 +176,13 @@ run (protocol requirement, §8).
 
 ## 7. Complexity budget (consumed by #743/#744)
 
-The profile is the single carrier of branch-budget policy so that no surface
-invents its own: `branch_budget` + `overflow_behavior` bind every #743/#744
-surface.
+The profile is the single carrier of **branch-budget** policy:
+`branch_budget` binds every #743 branch surface. Its
+`overflow_behavior: ask_merge_park_archive` also freezes the shared
+author-disposition vocabulary consumed by #744. It does not prohibit #744's
+separately versioned companion map from declaring an independent per-stage
+`alternative_budget`; that number bounds alternative rows, is never derived
+from `branch_budget`, and does not alter #743 replay.
 
 **Counting semantics (frozen).** The budget bounds **live** branches — status
 `active` or `reopened` in the #743 lifecycle — visible on one surface at one
