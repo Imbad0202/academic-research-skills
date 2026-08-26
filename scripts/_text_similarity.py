@@ -112,8 +112,14 @@ def normalize_cn_title(title: str | None) -> str:
     proper nouns, and a wrong fold would manufacture a false match. The pair is
     surfaced to the human instead.
 
-    Kept byte-identical to the implementation this was promoted from in
-    `chinese_literature_client.py`, which re-imports it from here.
+    Behaviorally equivalent to the implementation this was promoted from in
+    `chinese_literature_client.py`, which re-imports it from here rather than
+    keeping a second copy (#128 anti-drift). Not byte-identical: the promotion
+    hoists the wrapper/terminal-mark sets to module constants, precompiles the
+    Han-adjacent-space regex, and rewrites the comments. Equivalence of
+    *behavior* is what the tests pin, on both the CJK path and — through the
+    pre-fix oracles in `test_text_similarity.py` — every non-CJK verdict and
+    ratio.
     """
     # Fold only the fullwidth ASCII compatibility block that was observed in the
     # motivating metadata. Whole-string NFKC/casefold is too broad for an exact

@@ -165,6 +165,22 @@ def _pre_fix_exact_normalized_title(a: str, b: str) -> bool:
     )
 
 
+def _pre_fix_similarity(a: str, b: str) -> float:
+    """`_similarity` exactly as it stood before the CJK repair.
+
+    The companion oracle to `_pre_fix_exact_normalized_title`, and written out
+    in full for the same reason: captured from the module it checks, it would
+    drift with it. Includes the dotted-acronym branch, so this is the whole
+    pre-fix formula rather than the base ratio alone — off the CJK path the
+    repair must reproduce it exactly, in BOTH directions."""
+    a_base, b_base = ts._normalize_title(a), ts._normalize_title(b)
+    base = SequenceMatcher(None, a_base, b_base).ratio()
+    a_acr, b_acr = ts._normalize_title_acronym(a), ts._normalize_title_acronym(b)
+    if a_acr == a_base and b_acr == b_base:  # no dotted run in either title
+        return base
+    return max(base, SequenceMatcher(None, a_acr, b_acr).ratio())
+
+
 #: Non-CJK pairs spanning every branch of the pre-fix formula: case, ASCII
 #: punctuation, dotted acronyms, the `D. H.` base-form carve-out, distinct
 #: related works, and the empty/whitespace degenerate cases.
@@ -200,15 +216,22 @@ class CjkNonDestructiveTest(unittest.TestCase):
                     "repair changed a verdict outside the both-sides-CJK path",
                 )
 
-    def test_ratio_never_lowered_off_the_cjk_path(self) -> None:
-        """`_similarity` folds the CJK form in via `max`, so it can only ever
-        raise a score — and off the CJK path it must not move at all."""
+    def test_ratio_unchanged_off_the_cjk_path(self) -> None:
+        """Off the CJK path `_similarity` must not move AT ALL — asserted as
+        exact equality against the full pre-fix formula, not as a lower bound.
+
+        A `>=` assertion against the base ratio would pass a regression that
+        *raised* a non-CJK score (0.6 → 1.0 is still `>= base`), and would also
+        miss the dotted-acronym branch entirely. Both directions are pinned:
+        the repair may neither lower nor raise a score outside the
+        both-sides-CJK gate."""
         for left, right in _NON_CJK_PAIRS:
             with self.subTest(pair=(left, right)):
-                base = SequenceMatcher(
-                    None, ts._normalize_title(left), ts._normalize_title(right)
-                ).ratio()
-                self.assertGreaterEqual(ts._similarity(left, right), base)
+                self.assertEqual(
+                    ts._similarity(left, right),
+                    _pre_fix_similarity(left, right),
+                    "repair moved a ratio outside the both-sides-CJK path",
+                )
 
     def test_mixed_script_pair_is_not_a_match(self) -> None:
         """A Latin-only shadow title is not comparable to a Chinese title: there

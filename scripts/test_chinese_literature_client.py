@@ -178,7 +178,34 @@ def test_fuzzy_similarity_alone_never_promotes_a_different_paper():
     assert _cn_titles_match(b, a) is False
 
 
-def test_legitimate_variants_match_despite_a_sub_threshold_fuzzy_ratio():
+def _forbid_similarity(patcher):
+    """Install a detonator over `_similarity` so any read of the fuzzy ratio
+    raises instead of quietly returning a passing verdict.
+
+    Patched on BOTH binding paths, because they fail differently: the
+    `_text_similarity` module attribute catches a qualified `ts._similarity(...)`
+    call or a lazy in-function import, while `chinese_literature_client`'s own
+    namespace catches a module-level `from _text_similarity import _similarity`
+    — already bound at import time, so it would never see the first patch.
+    Both styles are verified to trip this.
+    """
+    import _text_similarity
+    import chinese_literature_client
+
+    def _detonate(*args, **kwargs):
+        raise AssertionError(
+            "_cn_titles_match consulted the fuzzy ratio; #431 excludes it in "
+            "both directions (not sufficient, and not safe as a necessary "
+            "condition either)"
+        )
+
+    patcher.setattr(_text_similarity, "_similarity", _detonate)
+    patcher.setattr(
+        chinese_literature_client, "_similarity", _detonate, raising=False
+    )
+
+
+def test_legitimate_variants_match_despite_a_sub_threshold_fuzzy_ratio(monkeypatch):
     """Regression for a live-smoke near-miss: the shared 0.70 ratio scores a
     legitimate FULLWIDTH spelling of the identical title at 0.577, so ANDing it
     in as an extra necessary condition would veto a correct match and file a
@@ -207,19 +234,56 @@ def test_legitimate_variants_match_despite_a_sub_threshold_fuzzy_ratio():
     assert base_ratio(canonical, fullwidth) < _TITLE_SIMILARITY_THRESHOLD
     assert base_ratio(canonical, fullwidth) - base_ratio(canonical, unrelated) < 0.10
 
-    # ...and the Chinese-aware rule still matches it. `_cn_titles_match` never
-    # consults the ratio in either direction; that is the invariant here.
-    assert _cn_titles_match(fullwidth, canonical) is True
-    assert _cn_titles_match(canonical, fullwidth) is True
-
     # Since the CJK repair, the shared helper no longer CONTRADICTS that rule:
     # the Chinese-aware normalization is folded into `_similarity` as a third
     # form, so an identical title reaches 1.0 while the unrelated pair stays at
-    # its 0.510 baseline. The ratio is still not consulted by `_cn_titles_match`
-    # — it simply stopped being a landmine for the four index resolvers, whose
-    # DOI cross-check gates on it alone.
+    # its 0.510 baseline. It simply stopped being a landmine for the four index
+    # resolvers, whose DOI cross-check gates on it alone.
     assert _similarity(canonical, fullwidth) == 1.0
     assert _similarity(canonical, unrelated) < _TITLE_SIMILARITY_THRESHOLD
+
+    # ...and the Chinese-aware rule still matches the pair — proven with the
+    # ratio FORCED to fail, not merely observed while it happened to agree.
+    # That distinction is the whole point here: the repair lifts this pair to
+    # 1.0, so a regression that ANDed the ratio back in as a necessary
+    # condition would sail past an assertion that just called
+    # `_cn_titles_match` and looked at the answer. Scoped to a context so the
+    # measurements above still see the real `_similarity`.
+    with monkeypatch.context() as patcher:
+        _forbid_similarity(patcher)
+        assert _cn_titles_match(fullwidth, canonical) is True
+        assert _cn_titles_match(canonical, fullwidth) is True
+
+
+def test_cn_titles_match_never_consults_the_fuzzy_ratio(monkeypatch):
+    """The ratio-independence invariant in both directions, on one helper.
+
+    The sibling test above proves the POSITIVE half on the pair that motivated
+    the rule. This one adds the negative half under the same forced conditions,
+    so the invariant cannot be satisfied by a helper that has simply stopped
+    discriminating — `_cn_titles_match` must still reject a genuinely different
+    paper without the ratio existing at all.
+
+    #431 excludes the ratio in both directions: it is not sufficient (two
+    unrelated Chinese papers measure 0.510 on Han overlap alone) and not safe
+    as an extra necessary condition either (a legitimate fullwidth spelling of
+    an identical title measures below the 0.70 floor, so ANDing it in would
+    veto a correct match and file a real paper at P0 next to the word
+    "fabricated")."""
+    from chinese_literature_client import _cn_titles_match
+
+    _forbid_similarity(monkeypatch)
+
+    canonical = "宫颈腺癌中ProEXC和PRMT5的表达及其临床意义"
+    fullwidth = "宫颈腺癌中ＰｒｏＥＸＣ和ＰＲＭＴ５的表达及其临床意义。"
+    unrelated = "宫颈癌及癌前病变组织hTERC基因表达及其临床意义"
+
+    # The positive verdict must survive without the ratio existing at all...
+    assert _cn_titles_match(fullwidth, canonical) is True
+    assert _cn_titles_match(canonical, fullwidth) is True
+    # ...and so must the negative one, so this cannot be satisfied by a helper
+    # that has stopped discriminating.
+    assert _cn_titles_match(unrelated, canonical) is False
 
 
 def test_doi_keyed_exact_generic_title_can_match():
