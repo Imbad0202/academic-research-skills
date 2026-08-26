@@ -199,6 +199,13 @@ _NON_CJK_PAIRS = [
     ("　", ""),
     ("。", "《》"),
     ("ＰｒｏＥＸＣ assay", "ProEXC assay"),
+    # #800: wrapper marks present but no Han ideograph — the pairedness check
+    # must not leak through the has_cjk gate and accidentally strip wrappers
+    # on non-CJK titles. (If normalize_cn_title were called on these, the
+    # outer marks would strip and the pairs would match — exactly the
+    # regression this entry is pinned against.)
+    ("《Attention Is All You Need》", "Attention Is All You Need"),
+    ("《A Study of Foo》", "A Study of Foo"),
 ]
 
 
@@ -287,6 +294,55 @@ class NormalizeCnTitleTest(unittest.TestCase):
         for wrapped in ("《研究》", "「研究」", "『研究』", "【研究】"):
             with self.subTest(wrapped=wrapped):
                 self.assertEqual(ts.normalize_cn_title(wrapped), "研究")
+
+    def test_strips_outer_quotation_wrappers(self) -> None:
+        for wrapped in ("“围城”", "‘围城’"):
+            with self.subTest(wrapped=wrapped):
+                self.assertEqual(ts.normalize_cn_title(wrapped), "围城")
+
+    def test_keeps_marks_when_outer_marks_belong_to_two_different_pairs(self) -> None:
+        """#800: the first/last marks of `《红楼梦》与《金瓶梅》` match as pair
+        TYPES (`《`/`》`) but belong to two different brackets — one opening
+        each title. Positional stripping left an orphaned `》` mid-string; the
+        pairedness check keeps the title intact instead."""
+        for title in ("《红楼梦》与《金瓶梅》", "“研究”与“实践”"):
+            with self.subTest(title=title):
+                self.assertEqual(ts.normalize_cn_title(title), title)
+
+    def test_nested_interior_wrapper_survives_outer_strip(self) -> None:
+        """A genuine outer pair enclosing a balanced interior still strips, and
+        the balanced interior marks survive as content."""
+        self.assertEqual(
+            ts.normalize_cn_title("《基于「ProEXC」的研究》"),
+            "基于「ProEXC」的研究",
+        )
+
+    def test_unclosed_opener_in_interior_keeps_marks(self) -> None:
+        """An opener inside the interior that never closes proves the outer
+        marks are not one unit — a distinct failure mode from the stray-closer
+        case above (stack non-empty at the end vs. pop from empty), and also
+        verified to fail against the pre-fix positional strip."""
+        self.assertEqual(ts.normalize_cn_title("“研究与“实践”"), "“研究与“实践”")
+
+    def test_mangled_key_still_matches_its_identically_mangled_counterpart(self) -> None:
+        """Matching correctness was never broken by the positional strip (both
+        sides mangled identically), and the pairedness fix must not change that
+        either way: equal normalizations still match on both paths."""
+        a = "《红楼梦》与《金瓶梅》"
+        self.assertTrue(ts.exact_normalized_title(a, a))
+        # The paired form now keeps its marks while an old-style bare variant
+        # differs — conservative non-matching is acceptable per #800.
+        self.assertFalse(ts.exact_normalized_title(a, "红楼梦》与《金瓶梅"))
+
+    def test_pairedness_behavior_is_shared_by_the_cjk_client(self) -> None:
+        """#800 acceptance: both consumers change together. The client
+        re-imports the shared function (#799), so identity covers it — pinned
+        behaviorally here so a future private copy cannot hide the drift."""
+        import chinese_literature_client as cn
+
+        title = "《红楼梦》与《金瓶梅》"
+        self.assertEqual(cn.normalize_cn_title(title), ts.normalize_cn_title(title))
+        self.assertEqual(cn.normalize_cn_title(title), title)
 
     def test_removes_whitespace_touching_han(self) -> None:
         self.assertEqual(ts.normalize_cn_title("基于 ProEXC 的研究"), "基于ProEXC的研究")

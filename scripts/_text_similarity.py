@@ -80,6 +80,32 @@ _CN_WRAPPERS = {
     ("《", "》"), ("「", "」"), ("『", "』"), ("【", "】"),
     ("“", "”"), ("‘", "’"),
 }
+_CN_OPENER_TO_CLOSER = {opener: closer for opener, closer in _CN_WRAPPERS}
+_CN_CLOSER_TO_OPENER = {closer: opener for opener, closer in _CN_WRAPPERS}
+
+
+def _outer_pair_encloses(text: str) -> bool:
+    """#800: True iff `text` starts and ends with marks that form ONE matching
+    wrapper pair AND everything between them is itself balanced — i.e. the outer
+    pair encloses the whole title as a single unit.
+
+    A first/last-character pair check alone is not enough: in
+    `《红楼梦》与《金瓶梅》` the leading `《` and trailing `》` match as
+    *character types* but belong to two different bracket pairs, and stripping
+    them positionally leaves an orphaned `》` mid-string. Scanning the interior
+    for an unbalanced closer (`红楼梦》与《金瓶梅`) catches exactly that case,
+    so such titles keep their marks. An empty interior counts as balanced,
+    preserving the `《》` → "" normalization."""
+    if len(text) < 2 or (text[0], text[-1]) not in _CN_WRAPPERS:
+        return False
+    stack: list[str] = []
+    for ch in text[1:-1]:
+        if ch in _CN_OPENER_TO_CLOSER:
+            stack.append(ch)
+        elif ch in _CN_CLOSER_TO_OPENER:
+            if not stack or stack.pop() != _CN_CLOSER_TO_OPENER[ch]:
+                return False
+    return not stack
 # The fullwidth-ASCII fold maps `．` to `.` first. `?`/`？` are kept: they can
 # distinguish an interrogative title from an otherwise identical one.
 _CN_TERMINAL_MARKS = "。."
@@ -112,6 +138,12 @@ def normalize_cn_title(title: str | None) -> str:
     proper nouns, and a wrong fold would manufacture a false match. The pair is
     surfaced to the human instead.
 
+    Outer wrappers are stripped only when they enclose the whole title as one
+    balanced unit (#800): `《围城》` loses its marks, but
+    `《红楼梦》与《金瓶梅》` keeps them, because its first and last marks belong
+    to two different bracket pairs and stripping them positionally would leave
+    an orphaned `》` mid-string.
+
     Behaviorally equivalent to the implementation this was promoted from in
     `chinese_literature_client.py`, which re-imports it from here rather than
     keeping a second copy (#128 anti-drift). Not byte-identical: the promotion
@@ -137,7 +169,10 @@ def normalize_cn_title(title: str | None) -> str:
     while text:
         previous = text
         text = text.rstrip(_CN_TERMINAL_MARKS).strip()
-        if len(text) >= 2 and (text[0], text[-1]) in _CN_WRAPPERS:
+        # #800: strip the outer wrapper only when it genuinely encloses the
+        # whole title as one balanced unit — not merely when the first and last
+        # characters happen to match as pair types.
+        if _outer_pair_encloses(text):
             text = text[1:-1].strip()
         if text == previous:
             break
