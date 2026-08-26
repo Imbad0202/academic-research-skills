@@ -184,17 +184,42 @@ def test_legitimate_variants_match_despite_a_sub_threshold_fuzzy_ratio():
     in as an extra necessary condition would veto a correct match and file a
     real paper at P0 next to the word 'fabricated'. On CJK the ratio separates
     almost nothing (0.510 unrelated vs 0.577 identical), so it is excluded."""
-    from _text_similarity import _TITLE_SIMILARITY_THRESHOLD, _similarity
+    from difflib import SequenceMatcher
+
+    from _text_similarity import (
+        _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
+        _similarity,
+    )
     from chinese_literature_client import _cn_titles_match
 
     canonical = "宫颈腺癌中ProEXC和PRMT5的表达及其临床意义"
     fullwidth = "宫颈腺癌中ＰｒｏＥＸＣ和ＰＲＭＴ５的表达及其临床意义。"
+    unrelated = "宫颈癌及癌前病变组织hTERC基因表达及其临床意义"
 
-    # The premise: the shared ratio really is below the floor for this pair.
-    assert _similarity(canonical, fullwidth) < _TITLE_SIMILARITY_THRESHOLD
-    # ...and the Chinese-aware rule still matches it.
+    # The premise, measured on the ASCII-centric BASE normalization that
+    # motivated excluding the ratio: an identical title scores 0.566 while an
+    # unrelated paper scores 0.510 — the floor separates almost nothing, and
+    # ANDing it in would veto a correct match.
+    base_ratio = lambda x, y: SequenceMatcher(  # noqa: E731
+        None, _normalize_title(x), _normalize_title(y)
+    ).ratio()
+    assert base_ratio(canonical, fullwidth) < _TITLE_SIMILARITY_THRESHOLD
+    assert base_ratio(canonical, fullwidth) - base_ratio(canonical, unrelated) < 0.10
+
+    # ...and the Chinese-aware rule still matches it. `_cn_titles_match` never
+    # consults the ratio in either direction; that is the invariant here.
     assert _cn_titles_match(fullwidth, canonical) is True
     assert _cn_titles_match(canonical, fullwidth) is True
+
+    # Since the CJK repair, the shared helper no longer CONTRADICTS that rule:
+    # the Chinese-aware normalization is folded into `_similarity` as a third
+    # form, so an identical title reaches 1.0 while the unrelated pair stays at
+    # its 0.510 baseline. The ratio is still not consulted by `_cn_titles_match`
+    # — it simply stopped being a landmine for the four index resolvers, whose
+    # DOI cross-check gates on it alone.
+    assert _similarity(canonical, fullwidth) == 1.0
+    assert _similarity(canonical, unrelated) < _TITLE_SIMILARITY_THRESHOLD
 
 
 def test_doi_keyed_exact_generic_title_can_match():

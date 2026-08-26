@@ -156,7 +156,7 @@ Pacing is per-instance and uses `time.monotonic` (NTP/manual clock adjustments c
 
 ## Chinese title matching
 
-The shared `_text_similarity.exact_normalized_title` (#431 exact-title-or-bust) is ASCII-centric. Measured 2026-07-27 against the real ISTIC title above, it **rejects three legitimate spellings of the identical title**:
+The shared `_text_similarity.exact_normalized_title` (#431 exact-title-or-bust) **was** ASCII-centric. Measured 2026-07-27 against the real ISTIC title above, it **rejected three legitimate spellings of the identical title**:
 
 | variant | shared `_similarity` | shared `exact_normalized_title` |
 |---|---|---|
@@ -165,6 +165,8 @@ The shared `_text_similarity.exact_normalized_title` (#431 exact-title-or-bust) 
 | trailing CJK punctuation (`。`) | 0.981 | ❌ false |
 | interior spaces around latin runs | 0.929 | ❌ false |
 | a genuinely **different** paper on a related topic | **0.510** | ❌ false |
+
+> **Repaired.** `normalize_cn_title` / `has_cjk` were promoted from this client into `scripts/_text_similarity.py`, so the four index resolvers (Semantic Scholar / OpenAlex / Crossref / arXiv) now apply the same Chinese-aware rule. `exact_normalized_title` gains the CJK form as an additive third branch, and `_similarity` folds it in through the existing `max`. Both changes are gated on **both** sides carrying a Han ideograph, so behaviour off that path is unchanged; a cross-script or romanized pair still cannot match. Two resolver paths were affected: the DOI-keyed cross-check (which gates on the ratio *alone*, so a legitimate fullwidth variant at 0.625 became `DOI_MISMATCH`) and the title-fallback search (which requires ratio **and** exact equality, so the same variant fell to `unresolvable`). Under the Chinese-aware form the ratio also regains its discriminative power on this pair — 1.000 for the identical title against an unchanged 0.510 for the unrelated one. The exclusion of the fuzzy ratio from `_cn_titles_match` itself (conclusion 2 below) is unchanged.
 
 Two conclusions drive `normalize_cn_title` / `_cn_titles_match`:
 

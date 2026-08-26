@@ -72,10 +72,13 @@ from enum import Enum
 from typing import Any
 
 # Dual-path import: see openalex_client.py comment.
+# `has_cjk` / `normalize_cn_title` were promoted into the shared module so the
+# four index resolvers can apply the same Chinese-aware rule; they are re-
+# imported here so the two call sites cannot drift (the #128 extraction goal).
 try:
-    from _text_similarity import _MAX_RETRIES
+    from _text_similarity import _MAX_RETRIES, has_cjk, normalize_cn_title
 except ImportError:  # pragma: no cover - exercised by the package-import path
-    from scripts._text_similarity import _MAX_RETRIES
+    from scripts._text_similarity import _MAX_RETRIES, has_cjk, normalize_cn_title
 
 
 _DOI_RA_BASE = "https://doi.org/doiRA/"
@@ -106,12 +109,6 @@ _EUTILS_MIN_INTERVAL = 0.34
 # Neither doi.org nor the Handle proxy publishes a rate floor; 0.2s mirrors the
 # anonymous pacing the sibling index clients use.
 _DOI_MIN_INTERVAL = 0.2
-
-# CJK Unified Ideographs (U+4E00-U+9FFF). Extension blocks are deliberately not
-# scanned: the base block is sufficient for the applicability gate, and a
-# narrower gate errs toward `skipped`, which is the safe direction.
-_CJK_LO = "一"
-_CJK_HI = "鿿"
 
 # Registration agencies whose DOIs this resolver claims. A Crossref-registered
 # Chinese DOI is left to the existing crossref resolver: re-querying it here
@@ -453,76 +450,6 @@ class DoiTitleLookupOutcome:
 
     state: DoiTitleState
     record: dict[str, Any] | None = None
-
-
-def has_cjk(text: str | None) -> bool:
-    """True iff the string contains a CJK Unified Ideograph."""
-    return any(_CJK_LO <= ch <= _CJK_HI for ch in text or "")
-
-
-def normalize_cn_title(title: str | None) -> str:
-    """Chinese-aware title normalization.
-
-    The shared `_text_similarity.exact_normalized_title` (#431) is ASCII-centric
-    and, measured on real ISTIC metadata 2026-07-27, rejects three legitimate
-    variants of one identical Chinese title:
-
-      - fullwidth latin/digits (ＰｒｏＥＸＣ vs ProEXC): an explicit fullwidth-
-        ASCII fold handles these; the shared normalizer does not (measured
-        similarity 0.577, exact=False)
-      - a trailing CJK full stop (。) and outer title wrappers (《》): not in
-        `string.punctuation`, so the shared normalizer keeps them (0.981, False)
-      - spaces touching Han characters: Chinese carries no word breaks, so
-        these are typesetting noise; whitespace between non-CJK tokens remains
-        significant (the measured Chinese/Latin variant scored 0.929, False)
-
-    Simplified/Traditional folding is deliberately NOT done: it is lossy for
-    proper nouns, and a wrong fold would manufacture a false match. The pair is
-    surfaced to the human instead.
-    """
-    # Fold only the fullwidth ASCII compatibility block that was observed in
-    # the motivating metadata. Whole-string NFKC/casefold is too broad for an
-    # exact scientific-title key: it collapses e.g. 2² with 22 and Straße with
-    # Strasse. U+3000 is the fullwidth/ideographic space and is removed below.
-    text = "".join(
-        chr(ord(ch) - 0xFEE0) if "！" <= ch <= "～" else " " if ch == "　" else ch
-        for ch in (title or "")
-    ).strip()
-
-    # Only remove wrappers and terminal marks that are demonstrated typesetting
-    # noise. Scientific operators and measurements remain byte-significant:
-    # ER+ != ER-, CD4+ != CD4−, and 4.5% != 45%. In particular, do not return to
-    # a Unicode-category-wide P*/S* deletion rule.
-    wrappers = {
-        ("《", "》"), ("「", "」"), ("『", "』"), ("【", "】"),
-        ("“", "”"), ("‘", "’"),
-    }
-    # The fullwidth-ASCII fold above has already mapped `．` to `.`. A final
-    # full stop is ordinary title punctuation; keep `?`/`？` because it can
-    # distinguish an interrogative title from an otherwise identical one.
-    terminal_marks = "。."
-    while text:
-        previous = text
-        text = text.rstrip(terminal_marks).strip()
-        if len(text) >= 2 and (text[0], text[-1]) in wrappers:
-            text = text[1:-1].strip()
-        if text == previous:
-            break
-
-    # Whitespace touching a Han character is ordinary Chinese typesetting
-    # noise, including spaces around an embedded Latin abbreviation. Preserve
-    # whitespace *between* non-CJK tokens, where deleting it can collapse
-    # scientifically distinct names (for example `PD L1` versus `PDL 1`).
-    # Case is likewise retained: gene/protein symbols can be case-sensitive,
-    # and the measured fullwidth variant already folds to the same case without
-    # requiring a broad lowercase transform.
-    text = re.sub(r"\s+", " ", text).strip()
-    text = re.sub(
-        rf"(?<=[{_CJK_LO}-{_CJK_HI}]) +| +(?=[{_CJK_LO}-{_CJK_HI}])",
-        "",
-        text,
-    )
-    return text
 
 
 def _cn_titles_match(candidate: str | None, expected: str | None) -> bool:

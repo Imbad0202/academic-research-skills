@@ -67,6 +67,106 @@ def _normalize_title_acronym(s: str) -> str:
     return _normalize_title(collapsed)
 
 
+# CJK Unified Ideographs (U+4E00-U+9FFF). Extension blocks are deliberately not
+# scanned: the base block is sufficient for the applicability gate, and a
+# narrower gate errs toward the pre-repair behavior, which is the safe
+# direction. Fullwidth Latin (U+FF01-U+FF5E) is deliberately NOT in this range
+# either: a title of only fullwidth Latin is not a Chinese title and must not
+# enter the CJK comparison path.
+_CJK_LO = "一"
+_CJK_HI = "鿿"
+
+_CN_WRAPPERS = {
+    ("《", "》"), ("「", "」"), ("『", "』"), ("【", "】"),
+    ("“", "”"), ("‘", "’"),
+}
+# The fullwidth-ASCII fold maps `．` to `.` first. `?`/`？` are kept: they can
+# distinguish an interrogative title from an otherwise identical one.
+_CN_TERMINAL_MARKS = "。."
+_CN_HAN_ADJACENT_SPACE = re.compile(rf"(?<=[{_CJK_LO}-{_CJK_HI}]) +| +(?=[{_CJK_LO}-{_CJK_HI}])")
+
+
+def has_cjk(text: str | None) -> bool:
+    """True iff the string contains a CJK Unified Ideograph."""
+    return any(_CJK_LO <= ch <= _CJK_HI for ch in text or "")
+
+
+def normalize_cn_title(title: str | None) -> str:
+    """Chinese-aware title normalization (#431 CJK repair).
+
+    The base `_normalize_title` is ASCII-centric and, measured on real ISTIC
+    metadata 2026-07-27, rejects four legitimate variants of one identical
+    Chinese title:
+
+      - fullwidth latin/digits (ＰｒｏＥＸＣ vs ProEXC): `.lower()` folds case
+        but never width, so U+FF30 never reaches U+0050 (measured similarity
+        0.625, exact=False)
+      - a trailing CJK full stop (。) and outer wrappers (《》): not members of
+        `string.punctuation`, so the base form keeps them (0.970, False)
+      - spaces touching Han characters: Chinese carries no word breaks, so these
+        are typesetting noise; whitespace between non-CJK tokens stays
+        significant (0.941, False)
+      - the ideographic space U+3000, likewise absent from `string.punctuation`
+
+    Simplified/Traditional folding is deliberately NOT done: it is lossy for
+    proper nouns, and a wrong fold would manufacture a false match. The pair is
+    surfaced to the human instead.
+
+    Kept byte-identical to the implementation this was promoted from in
+    `chinese_literature_client.py`, which re-imports it from here.
+    """
+    # Fold only the fullwidth ASCII compatibility block that was observed in the
+    # motivating metadata. Whole-string NFKC/casefold is too broad for an exact
+    # scientific-title key: it collapses e.g. 2² with 22 and Straße with
+    # Strasse. U+3000 is the fullwidth/ideographic space and is removed below.
+    text = "".join(
+        chr(ord(ch) - 0xFEE0) if "！" <= ch <= "～" else " " if ch == "　" else ch
+        for ch in (title or "")
+    ).strip()
+
+    # Only remove wrappers and terminal marks that are demonstrated typesetting
+    # noise. Scientific operators and measurements remain byte-significant:
+    # ER+ != ER-, CD4+ != CD4−, and 4.5% != 45%. In particular, do not return to
+    # a Unicode-category-wide P*/S* deletion rule.
+    while text:
+        previous = text
+        text = text.rstrip(_CN_TERMINAL_MARKS).strip()
+        if len(text) >= 2 and (text[0], text[-1]) in _CN_WRAPPERS:
+            text = text[1:-1].strip()
+        if text == previous:
+            break
+
+    # Whitespace touching a Han character is ordinary Chinese typesetting noise,
+    # including spaces around an embedded Latin abbreviation. Preserve
+    # whitespace *between* non-CJK tokens, where deleting it can collapse
+    # scientifically distinct names (for example `PD L1` versus `PDL 1`). Case is
+    # likewise retained: gene/protein symbols can be case-sensitive.
+    text = re.sub(r"\s+", " ", text).strip()
+    return _CN_HAN_ADJACENT_SPACE.sub("", text)
+
+
+def _cjk_titles_match(a: str, b: str) -> bool:
+    """Exact equality after Chinese-aware normalization, for two titles that
+    BOTH carry a Han ideograph.
+
+    The fuzzy ratio is excluded from this rule in both directions. It is not
+    *sufficient*: Han characters give unrelated papers a high baseline overlap
+    (two genuinely different cervical-cancer papers measured 0.510). And it is
+    not safe as an extra *necessary* condition either — the fullwidth spelling
+    of an identical title measured 0.625, below the 0.70 floor, so ANDing the
+    ratio in would veto a match exact normalization had correctly established
+    and file a real paper at P0 next to the word "fabricated".
+
+    An empty normalized key never matches, mirroring `_cn_titles_match`'s
+    non-empty guard: `《》` and `「」` both normalize to "" and are not the
+    same work.
+    """
+    if not (has_cjk(a) and has_cjk(b)):
+        return False
+    left, right = normalize_cn_title(a), normalize_cn_title(b)
+    return bool(left) and left == right
+
+
 def _similarity(a: str, b: str) -> float:
     """`max` over the base and dotted-acronym normalizations (#431 §0.1,
     F4 non-destructive): the acronym pre-pass can only ever *raise* the score,
@@ -75,6 +175,13 @@ def _similarity(a: str, b: str) -> float:
     the second pass is skipped and the result is the pre-#431 single-form ratio."""
     a_base, b_base = _normalize_title(a), _normalize_title(b)
     base = SequenceMatcher(None, a_base, b_base).ratio()
+    # CJK repair: the DOI-keyed cross-check in every resolver gates on this
+    # ratio ALONE, and a legitimate fullwidth spelling of an identical Chinese
+    # title measures 0.625 — under the 0.70 floor — turning a correct DOI into
+    # DOI_MISMATCH. Folded in via `max` (same F4 non-destructive shape as the
+    # acronym pre-pass), so this can only ever raise a score, never lower one.
+    if _cjk_titles_match(a, b):
+        return 1.0
     a_acr, b_acr = _normalize_title_acronym(a), _normalize_title_acronym(b)
     if a_acr == a_base and b_acr == b_base:  # no dotted run in either title
         return base
@@ -98,6 +205,11 @@ def exact_normalized_title(a: str, b: str) -> bool:
     return (
         _normalize_title(a) == _normalize_title(b)
         or _normalize_title_acronym(a) == _normalize_title_acronym(b)
+        # CJK repair: additive third form, gated on BOTH sides carrying a Han
+        # ideograph. A Latin-only or romanized shadow title is never comparable
+        # this way — there is no translation oracle here, so a cross-script
+        # difference must stay a non-match rather than become evidence.
+        or _cjk_titles_match(a, b)
     )
 
 

@@ -391,3 +391,95 @@ def test_refusal_message_never_carries_mailto(monkeypatch):
             client.title_search("anything")
 
     assert "secret@example.com" not in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# CJK title matching (#431 repair) — integration through the real client.
+#
+# The shared helpers were ASCII-centric, so a Chinese title that an index serves
+# in a different-but-legitimate typesetting reduced to DOI_MISMATCH (DOI path)
+# or unresolvable (title path) — the same state a fabricated citation produces.
+# ---------------------------------------------------------------------------
+
+_CN_CITED = "基于ProEXC的宫颈癌筛查研究"
+_CN_AS_INDEXED = "基于ＰｒｏＥＸＣ的宫颈癌筛查研究。"  # fullwidth latin + terminal 。
+_CN_UNRELATED = "基于液基细胞学的宫颈癌筛查研究"
+
+
+def _crossref_response(payload):
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps(payload).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+    return mock_response
+
+
+def test_doi_lookup_accepts_legitimate_cjk_typesetting_variant():
+    """A correct DOI whose indexed title uses fullwidth Latin must NOT reduce to
+    DOI_MISMATCH. This path gates on the ratio alone, which measured 0.625 for
+    this pair before the repair."""
+    from crossref_client import CrossrefClient
+
+    response = _crossref_response({"message": {"title": [_CN_AS_INDEXED], "DOI": "10.1000/cn.1"}})
+    with patch("urllib.request.urlopen", return_value=response):
+        result = CrossrefClient().doi_lookup_with_title_check("10.1000/cn.1", _CN_CITED)
+
+    assert result is not None, "correct DOI for a real Chinese paper reported as DOI_MISMATCH"
+    assert result["DOI"] == "10.1000/cn.1"
+
+
+def test_doi_lookup_still_rejects_a_different_cjk_paper():
+    """The guard: Han overlap alone (0.510 measured) must never promote a
+    genuinely different paper."""
+    from crossref_client import CrossrefClient
+
+    response = _crossref_response({"message": {"title": [_CN_UNRELATED], "DOI": "10.1000/cn.2"}})
+    with patch("urllib.request.urlopen", return_value=response):
+        result = CrossrefClient().doi_lookup_with_title_check("10.1000/cn.2", _CN_CITED)
+
+    assert result is None
+
+
+def test_title_search_matches_legitimate_cjk_typesetting_variant():
+    """The title-fallback path requires ratio AND exact-normalized equality;
+    before the repair a legitimate variant failed both and fell to
+    `unresolvable`."""
+    from crossref_client import CrossrefClient
+
+    response = _crossref_response(
+        {"message": {"items": [{"title": [_CN_AS_INDEXED], "DOI": "10.1000/cn.1"}]}}
+    )
+    with patch("urllib.request.urlopen", return_value=response):
+        result = CrossrefClient().title_search(_CN_CITED)
+
+    assert result is not None, "legitimate CJK variant fell through to unresolvable"
+    assert result["DOI"] == "10.1000/cn.1"
+
+
+def test_title_search_still_rejects_a_different_cjk_paper():
+    from crossref_client import CrossrefClient
+
+    response = _crossref_response(
+        {"message": {"items": [{"title": [_CN_UNRELATED], "DOI": "10.1000/cn.2"}]}}
+    )
+    with patch("urllib.request.urlopen", return_value=response):
+        result = CrossrefClient().title_search(_CN_CITED)
+
+    assert result is None
+
+
+def test_title_search_does_not_match_a_cross_script_shadow_title():
+    """An English shadow title is not chimeric-citation evidence and is not a
+    match either: there is no translation oracle in this client."""
+    from crossref_client import CrossrefClient
+
+    response = _crossref_response(
+        {"message": {"items": [{
+            "title": ["ProEXC-based cervical cancer screening"],
+            "DOI": "10.1000/cn.3",
+        }]}}
+    )
+    with patch("urllib.request.urlopen", return_value=response):
+        result = CrossrefClient().title_search(_CN_CITED)
+
+    assert result is None
