@@ -2418,9 +2418,12 @@ def test_renderer_neutralizes_markdown_active_inventory_path(
 
     markdown_it = pytest.importorskip("markdown_it")
     tokens = markdown_it.MarkdownIt().parse(rendered)
+    # link_open / image / html_inline nest under inline tokens' children;
+    # only html_block appears at the top level.
+    flattened = [child for token in tokens for child in (token.children or [])]
     assert not any(
         token.type in {"link_open", "image", "html_inline", "html_block"}
-        for token in tokens
+        for token in [*tokens, *flattened]
     )
 
 
