@@ -80,32 +80,48 @@ _CN_WRAPPERS = {
     ("《", "》"), ("「", "」"), ("『", "』"), ("【", "】"),
     ("“", "”"), ("‘", "’"),
 }
-_CN_OPENER_TO_CLOSER = {opener: closer for opener, closer in _CN_WRAPPERS}
-_CN_CLOSER_TO_OPENER = {closer: opener for opener, closer in _CN_WRAPPERS}
 
 
 def _outer_pair_encloses(text: str) -> bool:
     """#800: True iff `text` starts and ends with marks that form ONE matching
-    wrapper pair AND everything between them is itself balanced — i.e. the outer
-    pair encloses the whole title as a single unit.
+    wrapper pair AND the interior is balanced *within that pair's own family* —
+    i.e. the outer pair encloses the whole title as a single unit.
 
     A first/last-character pair check alone is not enough: in
     `《红楼梦》与《金瓶梅》` the leading `《` and trailing `》` match as
     *character types* but belong to two different bracket pairs, and stripping
     them positionally leaves an orphaned `》` mid-string. Scanning the interior
-    for an unbalanced closer (`红楼梦》与《金瓶梅`) catches exactly that case,
-    so such titles keep their marks. An empty interior counts as balanced,
-    preserving the `《》` → "" normalization."""
+    for an unbalanced `》` catches exactly that case, so such titles keep their
+    marks. An empty interior counts as balanced, preserving the `《》` → ""
+    normalization.
+
+    The scan is deliberately scoped to the outer pair's OWN family (#804 review
+    P1). A family-blind scan is unsound because two of these marks are not
+    exclusively wrappers: `’` is also the English apostrophe and `”` also
+    appears unpaired in mixed typesetting. Reading the lone `’` in
+    `《Alzheimer’s病中ＰｒｏＥＸＣ表达》` as an unbalanced quote refused to strip
+    a genuine `《…》` wrap, dropping a pair that matched on main to exact=False
+    and ratio 0.6818 — below the 0.70 floor, so both resolver paths failed at
+    once and a correct DOI could be reported as a mismatch. That is the failure
+    class #798 repaired, so the apostrophe must be invisible to a `《》` scan.
+
+    Scoping costs nothing the check was buying: every mark that can orphan the
+    OUTER pair is by definition a mark of that pair's own family. Interior marks
+    of other families are content and survive the strip — `《「研究』》` →
+    `「研究』` keeps the mismatched inner quotes, which is right, since they are
+    what distinguishes it from `《研究》`."""
     if len(text) < 2 or (text[0], text[-1]) not in _CN_WRAPPERS:
         return False
-    stack: list[str] = []
+    opener, closer = text[0], text[-1]
+    depth = 0
     for ch in text[1:-1]:
-        if ch in _CN_OPENER_TO_CLOSER:
-            stack.append(ch)
-        elif ch in _CN_CLOSER_TO_OPENER:
-            if not stack or stack.pop() != _CN_CLOSER_TO_OPENER[ch]:
+        if ch == opener:
+            depth += 1
+        elif ch == closer:
+            if depth == 0:  # closes the OUTER opener: not one unit
                 return False
-    return not stack
+            depth -= 1
+    return depth == 0
 # The fullwidth-ASCII fold maps `．` to `.` first. `?`/`？` are kept: they can
 # distinguish an interrogative title from an otherwise identical one.
 _CN_TERMINAL_MARKS = "。."
@@ -144,14 +160,15 @@ def normalize_cn_title(title: str | None) -> str:
     to two different bracket pairs and stripping them positionally would leave
     an orphaned `》` mid-string.
 
-    Behaviorally equivalent to the implementation this was promoted from in
-    `chinese_literature_client.py`, which re-imports it from here rather than
-    keeping a second copy (#128 anti-drift). Not byte-identical: the promotion
-    hoists the wrapper/terminal-mark sets to module constants, precompiles the
-    Han-adjacent-space regex, and rewrites the comments. Equivalence of
-    *behavior* is what the tests pin, on both the CJK path and — through the
-    pre-fix oracles in `test_text_similarity.py` — every non-CJK verdict and
-    ratio.
+    Promoted here from `chinese_literature_client.py`, which re-imports it
+    rather than keeping a second copy (#128 anti-drift). The promotion itself
+    (#798/#799) was behaviorally equivalent — it only hoisted the wrapper and
+    terminal-mark sets to module constants, precompiled the Han-adjacent-space
+    regex, and rewrote the comments. That equivalence is now **historical**:
+    #800 deliberately changed the wrapper-strip behavior described above, so
+    this function no longer matches the pre-#800 implementation. What the tests
+    pin today is the #800 behavior on the CJK path plus — through the pre-fix
+    oracles in `test_text_similarity.py` — every non-CJK verdict and ratio.
     """
     # Fold only the fullwidth ASCII compatibility block that was observed in the
     # motivating metadata. Whole-string NFKC/casefold is too broad for an exact

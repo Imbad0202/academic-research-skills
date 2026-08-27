@@ -324,6 +324,71 @@ class NormalizeCnTitleTest(unittest.TestCase):
         verified to fail against the pre-fix positional strip."""
         self.assertEqual(ts.normalize_cn_title("“研究与“实践”"), "“研究与“实践”")
 
+    def test_apostrophe_in_embedded_english_does_not_veto_the_outer_strip(self) -> None:
+        """#804 review P1: `’` is the closer of `‘`, but it is ALSO the
+        apostrophe in embedded English — the same codepoint in a non-wrapper
+        role. A family-blind interior scan read the lone `’` in
+        `《Alzheimer’s病中…》` as an unbalanced quote and refused to strip a
+        genuine `《…》` wrap, so a title that matched on main stopped matching:
+        exact False and ratio 0.6818, below the 0.70 floor. That takes out the
+        DOI-keyed ratio gate and the title-fallback exact gate at once, which
+        is the exact failure class #798 repaired — not something #800's
+        conservative-direction blessing covers, since here the outer pair DOES
+        enclose the title.
+
+        Scoping the balance scan to the outer pair's own family fixes it: a
+        `《…》` wrap tracks only `《`/`》` and is blind to quote marks."""
+        for wrapped, bare in (
+            ("《Alzheimer’s病中ＰｒｏＥＸＣ表达》", "Alzheimer’s病中ProEXC表达"),
+            ("《’98年香港回归研究》", "’98年香港回归研究"),
+        ):
+            with self.subTest(wrapped=wrapped):
+                self.assertEqual(ts.normalize_cn_title(wrapped), ts.normalize_cn_title(bare))
+                self.assertTrue(ts.exact_normalized_title(wrapped, bare))
+                self.assertEqual(ts._similarity(wrapped, bare), 1.0)
+
+    def test_interior_scan_ignores_other_families_but_not_its_own(self) -> None:
+        """The family scoping is a narrowing, not a blanket weakening: a stray
+        closer of the OUTER pair's own family still blocks the strip, while a
+        stray mark of any other family is content.
+
+        `《「研究』》` is the interaction the review flagged: the interior
+        `「研究』` is mismatched, but not in the `《》` family, so the outer pair
+        still encloses one unit and strips. The mismatched interior marks
+        survive as content — which is correct, since they are exactly what
+        distinguishes this title from `《研究》`."""
+        self.assertEqual(ts.normalize_cn_title("《「研究』》"), "「研究』")
+        # Same-family stray closer still blocks, at any interior depth.
+        self.assertEqual(ts.normalize_cn_title("《红楼梦》与《金瓶梅》"), "《红楼梦》与《金瓶梅》")
+
+    def test_unclosed_interior_opener_blocks_the_strip(self) -> None:
+        """The trailing `depth == 0` check, pinned on its own: `《基于《研究」的分析》`
+        has an interior `《` that nothing closes, so the outer `》` is closing the
+        INNER opener and the outer pair is not one unit."""
+        self.assertEqual(
+            ts.normalize_cn_title("《基于《研究」的分析》"), "《基于《研究」的分析》"
+        )
+
+    def test_stray_interior_closer_blocks_the_strip_independently(self) -> None:
+        """#804 review advisory: the depth-0 stray-closer branch had no
+        discriminating test — a mutant clamping it (`depth = max(0, depth - 1)`)
+        instead of refusing passed the whole suite, including the two natural
+        titles above.
+
+        The reason is arithmetic, and worth recording so this test is not
+        "simplified" back later: clamping absorbs one closer, so a title whose
+        opener/closer counts are equal — every natural case here, including
+        `《红楼梦》与《金瓶梅》` — ends at depth 1 under the mutant and is refused
+        anyway, by the OTHER branch. Discriminating requires interior closers to
+        outnumber openers by exactly the clamp count, which no natural title
+        shape produces. Hence a deliberately synthetic string, asserted against
+        the helper directly: `《》研究《实践》》` opens at depth 0 with a `》`,
+        which is precisely what the branch exists to refuse."""
+        self.assertFalse(ts._outer_pair_encloses("《》研究《实践》》"))
+        # The natural stray-closer title stays refused too — belt and braces,
+        # since this is the branch that keeps `《红楼梦》与《金瓶梅》` intact.
+        self.assertFalse(ts._outer_pair_encloses("《红楼梦》与《金瓶梅》"))
+
     def test_mangled_key_still_matches_its_identically_mangled_counterpart(self) -> None:
         """Matching correctness was never broken by the positional strip (both
         sides mangled identically), and the pairedness fix must not change that
@@ -333,6 +398,34 @@ class NormalizeCnTitleTest(unittest.TestCase):
         # The paired form now keeps its marks while an old-style bare variant
         # differs — conservative non-matching is acceptable per #800.
         self.assertFalse(ts.exact_normalized_title(a, "红楼梦》与《金瓶梅"))
+
+    def test_ungated_client_path_narrowing_is_explicit(self) -> None:
+        """#804 review advisory: the invariance claim must not be stated more
+        broadly than the code supports.
+
+        `exact_normalized_title` and `_similarity` reach the CJK form only
+        behind `has_cjk`, so a Han-free title is untouched there. The client's
+        `_cn_titles_match` has NO such gate — it calls `normalize_cn_title`
+        directly — so a mark-carrying Han-free title can change verdict on that
+        path. Pinned here as a known, accepted narrowing rather than left to be
+        rediscovered: the path is DOI-keyed and Chinese-corpus-only in
+        practice."""
+        from chinese_literature_client import _cn_titles_match
+
+        wrapped, mangled = "《Hamlet》and《Macbeth》", "Hamlet》and《Macbeth"
+        self.assertFalse(_cn_titles_match(wrapped, mangled))
+        # The gated shared helpers never saw this pair as CJK, before or after.
+        self.assertFalse(ts.exact_normalized_title(wrapped, mangled))
+
+    def test_empty_wrapper_guard_is_a_cjk_branch_property(self) -> None:
+        """The "`《》` never matches" guarantee belongs to `_cjk_titles_match`,
+        which requires a non-empty normalized key. `exact_normalized_title`
+        still returns True for `《》` vs itself through the ungated BASE
+        normalization branch — unchanged by #800, and pinned so the changelog's
+        narrowed wording stays honest."""
+        self.assertEqual(ts.normalize_cn_title("《》"), "")
+        self.assertFalse(ts._cjk_titles_match("《》", "「」"))
+        self.assertTrue(ts.exact_normalized_title("《》", "《》"))
 
     def test_pairedness_behavior_is_shared_by_the_cjk_client(self) -> None:
         """#800 acceptance: both consumers change together. The client
