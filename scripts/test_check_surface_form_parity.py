@@ -335,6 +335,29 @@ class TestMainGuards(unittest.TestCase):
             Path(path).unlink(missing_ok=True)
         self.assertEqual(rc, 1)
 
+    def test_missing_pyyaml_fails_naming_the_environment_not_the_manifest(self) -> None:
+        """#801 follow-up: with the manifest PRESENT but pyyaml unimportable, the lint must
+        fail (rc 1) naming the broken environment — the old None return made main() report
+        the manifest as "empty / null / non-mapping", sending the reader to the wrong file."""
+        import contextlib
+        import io
+        import sys as _sys
+        _missing = object()
+        saved = _sys.modules.get("yaml", _missing)
+        _sys.modules["yaml"] = None  # type: ignore[assignment]  # forces `import yaml` to raise
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr):
+                rc = csp.main([str(csp.DEFAULT_GOLD_SET)])
+        finally:
+            if saved is _missing:
+                _sys.modules.pop("yaml", None)
+            else:
+                _sys.modules["yaml"] = saved  # type: ignore[assignment]
+        self.assertEqual(rc, 1)
+        self.assertIn("pyyaml is not installed", stderr.getvalue())
+        self.assertNotIn("non-mapping", stderr.getvalue())
+
     def test_shipped_main_passes(self) -> None:
         self.assertEqual(csp.main([str(csp.DEFAULT_GOLD_SET)]), 0)
 

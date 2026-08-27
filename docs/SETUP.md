@@ -97,7 +97,7 @@ If you maintain a curated literature corpus (Zotero, Obsidian, a folder of PDFs,
 Three reference Python adapters ship with v3.6.4 at `scripts/adapters/`:
 
 ```bash
-# 1. Install adapter dependencies (PyYAML + jsonschema, already in requirements-dev.txt)
+# 1. Install the dev dependencies (the adapter requirements are declared in requirements-dev.txt)
 pip install -r requirements-dev.txt
 
 # 2. Run a reference adapter (pick one that matches your corpus source).

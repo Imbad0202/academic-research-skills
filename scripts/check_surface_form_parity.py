@@ -391,13 +391,25 @@ def render_judge_view(item: dict[str, Any], index: int) -> dict[str, Any]:
     return {"handle": f"item-{index}", JUDGE_VISIBLE_CONTENT_KEY: item[JUDGE_VISIBLE_CONTENT_KEY]}
 
 
+class _YamlUnavailableError(RuntimeError):
+    """pyyaml is missing, so a present manifest cannot be parsed at all."""
+
+
 def _load_manifest(path: Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
     try:
         import yaml  # type: ignore
-    except ImportError:
-        return None
+    except ImportError as exc:
+        # Do NOT fold this into the None (missing-file) path: the manifest is
+        # present but the environment cannot parse it. Returning None here made
+        # main() report the manifest as "empty / null / non-mapping", sending the
+        # reader to the wrong file. pyyaml is declared in requirements-dev.txt.
+        raise _YamlUnavailableError(
+            f"manifest at {path} exists but pyyaml is not installed, so it cannot "
+            f"be parsed — install the dev dependencies (pip install -r "
+            f"requirements-dev.txt) and re-run"
+        ) from exc
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
@@ -408,7 +420,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     data = json.loads(args.gold_set.read_text(encoding="utf-8"))
-    manifest = _load_manifest(args.manifest)
+    try:
+        manifest = _load_manifest(args.manifest)
+    except _YamlUnavailableError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
 
     # Guard the manifest shape BEFORE validate() (codex P3 round 9): a YAML scalar/list makes
     # _load_manifest return a non-dict, and passing it to validate() would call manifest.get and

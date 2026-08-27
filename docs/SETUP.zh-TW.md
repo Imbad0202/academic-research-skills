@@ -97,7 +97,7 @@ curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh
 v3.6.4 附三個 reference Python adapter，位於 `scripts/adapters/`：
 
 ```bash
-# 1. Install adapter dependencies (PyYAML + jsonschema, already in requirements-dev.txt)
+# 1. Install the dev dependencies (the adapter requirements are declared in requirements-dev.txt)
 pip install -r requirements-dev.txt
 
 # 2. Run a reference adapter (pick one that matches your corpus source).
