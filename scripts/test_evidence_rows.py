@@ -1460,21 +1460,25 @@ def test_source_replay_checks_hidden_off_page_rows(
         assert "EVR-PAGE-0025" in rendered or r"EVR\-PAGE\-0025" in rendered
 
 
+def _hostile_row(input_fixture: dict[str, Any], text: str) -> dict[str, Any]:
+    return er.build(
+        _raw_row(
+            input_fixture,
+            anchor_value="missing",
+            claim__text=text,
+            detail=text,
+            source__display_label=text,
+        ),
+        None,
+    )
+
+
 def test_line_separators_newlines_tabs_and_bidi_are_visible_data_not_structure(
     input_fixture: dict[str, Any]
 ) -> None:
     _runtime_required()
     hostile = "first\n## forged\tcell\u202eRTL\u2028line\u2029paragraph"
-    row = er.build(
-        _raw_row(
-            input_fixture,
-            anchor_value="missing",
-            claim__text=hostile,
-            detail=hostile,
-            source__display_label=hostile,
-        ),
-        None,
-    )
+    row = _hostile_row(input_fixture, hostile)
     markdown = er.render_markdown([row])
     html_output = er.render_html([row])
     for rendered in (markdown, html_output):
@@ -1497,40 +1501,23 @@ def test_c1_nel_csi_and_osc_are_visible_ascii_not_raw_controls(
     input_fixture: dict[str, Any],
 ) -> None:
     _runtime_required()
-    hostile = f"before{codepoint}after"
-    row = er.build(
-        _raw_row(
-            input_fixture,
-            anchor_value="missing",
-            claim__text=hostile,
-            detail=hostile,
-            source__display_label=hostile,
-        ),
-        None,
-    )
+    row = _hostile_row(input_fixture, f"before{codepoint}after")
     for rendered in (er.render_markdown([row]), er.render_html([row])):
         assert codepoint not in rendered
         assert escape in rendered
+
+
+_AUTOLINK_PROBE_PAYLOAD = (
+    "https://evil.example/path user@example.com ftp://evil.example/file "
+    "javascript:alert(1)"
+)
 
 
 def test_gfm_bare_urls_emails_and_schemes_cannot_autolink(
     input_fixture: dict[str, Any]
 ) -> None:
     _runtime_required()
-    payload = (
-        "https://evil.example/path user@example.com ftp://evil.example/file "
-        "javascript:alert(1)"
-    )
-    row = er.build(
-        _raw_row(
-            input_fixture,
-            anchor_value="missing",
-            claim__text=payload,
-            detail=payload,
-            source__display_label=payload,
-        ),
-        None,
-    )
+    row = _hostile_row(input_fixture, _AUTOLINK_PROBE_PAYLOAD)
     markdown = er.render_markdown([row])
     html_output = er.render_html([row])
     assert r"https\:\/\/evil\.example\/path" in markdown
@@ -1540,14 +1527,17 @@ def test_gfm_bare_urls_emails_and_schemes_cannot_autolink(
     assert "<a" not in html_output.lower()
     assert "href=" not in html_output.lower()
 
-    try:
-        from markdown_it import MarkdownIt
-    except ImportError:
-        return
-    try:
-        tokens = MarkdownIt("commonmark", {"linkify": True}).enable("linkify").parse(markdown)
-    except ModuleNotFoundError:  # markdown-it can be installed without linkify-it-py.
-        return
+
+def test_escaped_markdown_yields_no_linkify_tokens_on_round_trip(
+    input_fixture: dict[str, Any]
+) -> None:
+    _runtime_required()
+    # markdown-it-py < 3 linkifies these escaped forms; the floors are declared in
+    # requirements-dev.txt so CI always exercises this round-trip (#801).
+    markdown_it = pytest.importorskip("markdown_it", minversion="3.0.0")
+    pytest.importorskip("linkify_it", minversion="2.0.3")
+    markdown = er.render_markdown([_hostile_row(input_fixture, _AUTOLINK_PROBE_PAYLOAD)])
+    tokens = markdown_it.MarkdownIt("commonmark", {"linkify": True}).enable("linkify").parse(markdown)
     flattened = [child for token in tokens for child in (token.children or [])]
     assert all(token.type != "link_open" for token in [*tokens, *flattened])
 

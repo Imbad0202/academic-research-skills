@@ -2416,11 +2416,8 @@ def test_renderer_neutralizes_markdown_active_inventory_path(
         for line in observation_lines.splitlines()
     ) == 1
 
-    try:
-        from markdown_it import MarkdownIt
-    except ImportError:
-        return
-    tokens = MarkdownIt().parse(rendered)
+    markdown_it = pytest.importorskip("markdown_it")
+    tokens = markdown_it.MarkdownIt().parse(rendered)
     assert not any(
         token.type in {"link_open", "image", "html_inline", "html_block"}
         for token in tokens
