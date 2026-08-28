@@ -97,7 +97,7 @@ Smith, John A., and Betty C. Jones. "Article Title in Title Case."
     Journal Title, vol. 45, no. 2, 2024, pp. 123-45.
 ```
 
-**Key rules**: No year in in-text, page numbers always, containers model, no DOI in basic format (include if online), title case for all titles.
+**Key rules**: No year in-text, page numbers always, containers model, no DOI in basic format (include if online), title case for all titles.
 
 ---
 
