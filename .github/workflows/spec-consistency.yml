@@ -90,6 +90,16 @@ jobs:
           PYTHONPATH: scripts
         run: python3 scripts/check_data_access_level.py
 
+      - name: Check skill-inventory parity (#809)
+        # Top-level <name>/SKILL.md dirs == skills/ symlinks == CLAUDE.md
+        # Skills Overview rows == marketplace.json plugins[].skills, plus the
+        # "N skills" count claims in plugin/marketplace descriptions. The pytest
+        # companion `test_check_skill_inventory_parity.py` runs via the unified
+        # manifest.
+        env:
+          PYTHONPATH: scripts
+        run: python3 scripts/check_skill_inventory_parity.py
+
       - name: Check instruction-vs-data boundary (#272 guidance layer)
         # Drift guard for the retrieved-content instruction/data principle:
         # authoritative canonical block in ground_truth_isolation_pattern.md +

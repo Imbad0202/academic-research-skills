@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Skill-inventory parity lint (#809).** New `scripts/check_skill_inventory_parity.py` takes the top-level `<name>/SKILL.md` directories as the authority and requires set-equality against the three surfaces that package or advertise the inventory: `skills/<name>` symlinks (each must resolve to `../<name>`), the `.claude/CLAUDE.md` Skills Overview table rows, and `.claude-plugin/marketplace.json` `plugins[].skills[]` (`./<name>` form). It also checks that any "N skills" count claim in the plugin / marketplace descriptions equals the number of skills on disk. Motivation: triage of an external draft PR that added a fifth top-level skill directory showed the existing lints are anchored to the four skills they already know (`check_spec_consistency.py` hardcodes the paths; `check_version_consistency.py` iterates the CLAUDE.md table), so an unpackaged, unlisted skill passed every inventory lint. Wired into `spec-consistency.yml`; 28 mutation tests cover each surface in both directions, dangling / mis-targeted / non-symlink `skills/` entries, malformed manifest entries, and stale count claims.
+
 ### Fixed
+
+- **MLA key-rules line in `citation_format_switcher.md` no longer reads "No year in in-text" (#805, by @LeslieLi46).** Docs-only; the line now matches the in-text format documented above it.
 
 - **`check_surface_form_parity` names the broken environment instead of blaming the manifest (#801 follow-up).** With the manifest file present but pyyaml unimportable, `_load_manifest` returned `None`, so the lint failed with "manifest … is present but empty / null / non-mapping" — a misdiagnosis pointing the reader at the wrong file (pyyaml is declared in `requirements-dev.txt`, so only a broken local environment can hit this). The missing-import case is now a distinct `_YamlUnavailableError` and the lint fails naming pyyaml and the `pip install -r requirements-dev.txt` remedy; regression test pins that the message names the environment, not the manifest shape. Also de-enumerated the hand-maintained dependency parenthetical in `docs/SETUP.md` / `docs/SETUP.zh-TW.md` Method line ("PyYAML + jsonschema" was already stale against the manifest it mirrors two lines above); both language files move together.
 
