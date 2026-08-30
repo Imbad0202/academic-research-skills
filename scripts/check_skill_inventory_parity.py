@@ -42,6 +42,7 @@ from pathlib import Path
 from _skill_lint import (
     SKILLS_TABLE_ROW_FULL,
     SKILLS_TABLE_ROW_PREFIX,
+    heading_section,
     iter_skill_files,
 )
 
@@ -52,10 +53,10 @@ PLUGIN_JSON = Path(".claude-plugin") / "plugin.json"
 MODE_REGISTRY_MD = Path("MODE_REGISTRY.md")
 
 SKILLS_OVERVIEW_HEADING = "## Skills Overview"
-# Row grammar shared with check_version_consistency.py. PREFIX finds every row
-# that names a skill; FULL is what the version lint iterates, so any PREFIX row
-# that is not FULL is reported here (the version lint would silently skip it).
-TABLE_ROW_RE = re.compile(SKILLS_TABLE_ROW_PREFIX, re.MULTILINE)
+# Row grammar shared with check_version_consistency.py. FULL is what the version
+# lint iterates; a row that names a skill but is not FULL is reported here (the
+# version lint would silently skip it). PREFIX is kept imported so the shared
+# grammar has a visible second consumer.
 TABLE_ROW_FULL_RE = re.compile(SKILLS_TABLE_ROW_FULL)
 # Any backticked first cell at all, so a row with a non-canonical name (e.g.
 # `Ghost-Skill`) is reported instead of being invisible to both lints.
@@ -98,23 +99,41 @@ def _skills_dir_entries(root: Path, violations: list[str]) -> set[str]:
     return names
 
 
+def _overview_table_lines(section: str) -> list[str]:
+    """The ONE table that immediately follows the heading: skip leading blank
+    lines, then take the contiguous run of `|`-prefixed lines. A later table,
+    prose mention, or fenced Markdown sample in the same section is not the
+    inventory and must not satisfy the parity check."""
+    lines = iter(section.splitlines())
+    table: list[str] = []
+    for line in lines:
+        if line.strip() == "":
+            if table:
+                break
+            continue
+        if not line.lstrip().startswith("|"):
+            break
+        table.append(line)
+    return table
+
+
 def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
     claude_md = root / CLAUDE_MD
     if not claude_md.is_file():
         violations.append(f"{claude_md}: file is missing")
         return set()
     text = claude_md.read_text(encoding="utf-8")
-    start = text.find(SKILLS_OVERVIEW_HEADING)
-    if start < 0:
+    # Exact H2 line at column 0, outside code fences (shared helper): a
+    # demoted `### Skills Overview` or a copy inside a fenced example is not
+    # the section.
+    section = heading_section(text, SKILLS_OVERVIEW_HEADING)
+    if section is None:
         violations.append(
-            f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' section is missing"
+            f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' H2 is missing"
         )
         return set()
-    body = text[start + len(SKILLS_OVERVIEW_HEADING):]
-    next_heading = re.search(r"^## ", body, re.MULTILINE)
-    section = body[: next_heading.start()] if next_heading else body
     rows: set[str] = set()
-    for line in section.splitlines():
+    for line in _overview_table_lines(section):
         any_row = TABLE_ROW_ANY_RE.match(line)
         if any_row is None:
             continue

@@ -240,7 +240,49 @@ def test_missing_section_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
     (tmp_path / ".claude" / "CLAUDE.md").write_text("# nothing\n", encoding="utf-8")
     v = _violations(tmp_path)
-    assert any("section is missing" in line for line in v)
+    assert any("H2 is missing" in line for line in v)
+
+
+def test_demoted_heading_is_not_the_section(tmp_path: Path) -> None:
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    md.write_text(md.read_text(encoding="utf-8").replace("## Skills Overview", "### Skills Overview"), encoding="utf-8")
+    v = _violations(tmp_path)
+    assert any("H2 is missing" in line for line in v), v
+
+
+def test_fenced_heading_copy_does_not_bind(tmp_path: Path) -> None:
+    """A fenced example carrying the heading + a ghost row sits BEFORE the real
+    section; parity must bind to the real H2 and ignore the ghost."""
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    fenced = "```markdown\n## Skills Overview\n\n| `ghost` v9.9.9 | x | y |\n```\n\n"
+    md.write_text(md.read_text(encoding="utf-8").replace("## Skills Overview", fenced + "## Skills Overview", 1), encoding="utf-8")
+    assert _violations(tmp_path) == []
+
+
+@pytest.mark.parametrize("trailer", [
+    "\n| Other | Table |\n|---|---|\n| `ghost` v1.0.0 | second table |\n",
+    "\n```\n| `ghost` v1.0.0 | fenced sample |\n```\n",
+    "\nProse mentioning `ghost` v1.0.0 | in a pipe-free line.\n",
+])
+def test_only_the_first_table_after_the_heading_counts(tmp_path: Path, trailer: str) -> None:
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    text = md.read_text(encoding="utf-8").replace("| `beta-skill` v1.0.0 | purpose | full |\n",
+                                                   "| `beta-skill` v1.0.0 | purpose | full |\n" + trailer, 1)
+    md.write_text(text, encoding="utf-8")
+    assert _violations(tmp_path) == []
+
+
+def test_skill_only_in_a_second_table_is_not_listed(tmp_path: Path) -> None:
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    text = md.read_text(encoding="utf-8").replace(
+        "| `beta-skill` v1.0.0 | purpose | full |\n",
+        "\n| Other | Table |\n|---|---|\n| `beta-skill` v1.0.0 | moved here |\n", 1)
+    md.write_text(text, encoding="utf-8")
+    _assert_single(_violations(tmp_path), "'beta-skill' exists on disk")
 
 
 def test_missing_claude_md_fails(tmp_path: Path) -> None:
