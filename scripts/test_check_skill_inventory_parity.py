@@ -263,6 +263,22 @@ def test_table_without_separator_is_not_a_table(tmp_path: Path, mutation: str) -
     assert any("is not followed by a GFM table" in line for line in v), v
 
 
+@pytest.mark.parametrize("separator", ["|---|", "|---|---|", "|---|---|---|---|"])
+def test_separator_width_must_match_header(tmp_path: Path, separator: str) -> None:
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    md.write_text(md.read_text(encoding="utf-8").replace("|-------|---------|-----------|", separator), encoding="utf-8")
+    v = _violations(tmp_path)
+    assert any("GFM requires them equal" in line for line in v), v
+
+
+def test_escaped_pipe_in_header_is_one_cell(tmp_path: Path) -> None:
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    md.write_text(md.read_text(encoding="utf-8").replace("| Skill | Purpose | Key Modes |", "| Skill | Purpose \\| Role | Key Modes |"), encoding="utf-8")
+    assert _violations(tmp_path) == []
+
+
 def test_non_semver_version_token_is_left_to_the_version_lint(tmp_path: Path) -> None:
     """`vNOPE` satisfies the shared FULL grammar; check_version_consistency.py
     rejects it as non-semver, so parity stays silent by design."""

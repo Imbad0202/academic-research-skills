@@ -120,6 +120,15 @@ def _overview_table_lines(section: str) -> list[str]:
     return table
 
 
+def _cell_count(row: str) -> int:
+    """Cells in a GFM table row: strip one leading and one trailing pipe,
+    then split on unescaped pipes."""
+    inner = row.strip()
+    inner = inner[1:] if inner.startswith("|") else inner
+    inner = inner[:-1] if inner.endswith("|") else inner
+    return len(re.split(r"(?<!\\)\|", inner))
+
+
 def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
     claude_md = root / CLAUDE_MD
     if not claude_md.is_file():
@@ -146,6 +155,17 @@ def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
         violations.append(
             f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' is not followed by a GFM "
             f"table (header row then a |---| separator row)"
+        )
+        return set()
+    header_cells, separator_cells = _cell_count(table[0]), _cell_count(table[1])
+    if header_cells != separator_cells:
+        # GFM: header and delimiter rows must have the same cell count or
+        # GitHub does not render a table at all. Data-row width is NOT
+        # checked: GFM pads/truncates data rows, and this lint reads only
+        # the first cell, as check_version_consistency.py does.
+        violations.append(
+            f"{claude_md}: Skills Overview header has {header_cells} cells but "
+            f"its separator row has {separator_cells}; GFM requires them equal"
         )
         return set()
     data_rows = table[2:]
