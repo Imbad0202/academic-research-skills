@@ -31,7 +31,7 @@ def _run(root: Path) -> subprocess.CompletedProcess:
 
 
 def _write_registered_fleet(root: Path) -> None:
-    """All four registered skills at their pinned levels."""
+    """All registered skills at their pinned levels."""
     for name, level in EXPECTED_LEVELS.items():
         _write_skill(
             root,
@@ -174,6 +174,26 @@ def fixture_repo(tmp_path: Path) -> Path:
 
 def test_real_tree_passes() -> None:
     assert run_all_checks(REPO_ROOT) == []
+
+
+def test_systematic_search_is_pinned_to_raw() -> None:
+    assert EXPECTED_LEVELS.get("systematic-search") == "raw"
+
+
+@pytest.mark.parametrize("level", ["redacted", "verified_only"])
+def test_systematic_search_cannot_understate_input_access(
+    fixture_repo: Path, level: str
+) -> None:
+    _write_skill(
+        fixture_repo,
+        "systematic-search",
+        "name: systematic-search\nmetadata:\n"
+        f"  data_access_level: {level}\n  status: proposed\n",
+    )
+    errors = run_all_checks(fixture_repo)
+    assert len(errors) == 1
+    assert "systematic-search" in errors[0]
+    assert "pinned value is 'raw'" in errors[0]
 
 
 def test_pipeline_reverting_to_verified_only_fires(fixture_repo: Path) -> None:
