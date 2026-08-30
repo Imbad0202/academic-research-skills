@@ -1,0 +1,24 @@
+{
+  "schema_version": "org.searchright.agent-handoff.v1",
+  "review_id": "ars-searchright-synthetic-review",
+  "handoff_id": "ars-searchright-question-to-strategy",
+  "from_role": "question-framer",
+  "to_role": "information-specialist",
+  "context_policy": "minimum_necessary",
+  "execution_mode": null,
+  "artifacts": [
+    {
+      "path": "synthetic/review-plan.json",
+      "media_type": "application/json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "approval_references": [
+    {
+      "receipt_id": "synthetic-review-plan-approval",
+      "purpose": "review_plan",
+      "review_id": "ars-searchright-synthetic-review",
+      "scope_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ]
+}
