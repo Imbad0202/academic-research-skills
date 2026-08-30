@@ -29,11 +29,18 @@ from pathlib import Path
 
 import yaml
 
-# One row of the `.claude/CLAUDE.md` § "Skills Overview" table: first cell is the
-# backticked skill directory name. Shared by check_version_consistency.py (which
-# extends it with the version token) and check_skill_inventory_parity.py (which
-# wants the name regardless of version), so the two lints agree on what a row is.
+# One row of the `.claude/CLAUDE.md` § "Skills Overview" table. The first cell is
+# the backticked skill directory name followed by its `vX.Y.Z` token. Two forms
+# are shared so the lints agree on what a row is:
+#   PREFIX — name only. check_skill_inventory_parity.py uses it to find every
+#            row that names a skill, so a row can never hide from the parity
+#            check by omitting its version.
+#   FULL   — name + version. check_version_consistency.py parses versions with
+#            it; the parity lint reports any PREFIX row that is not also a FULL
+#            row, closing the gap where a version-less row is invisible to the
+#            version lint (it only iterates FULL matches).
 SKILLS_TABLE_ROW_PREFIX = r"^\|\s*`([a-z0-9-]+)`"
+SKILLS_TABLE_ROW_FULL = SKILLS_TABLE_ROW_PREFIX + r"\s+v([A-Za-z0-9.\-_+]+)\s*\|"
 
 SKIP_DIRS = frozenset(
     {"shared", "scripts", "docs", ".git", ".github", "examples", ".local-plans", ".claude"}

@@ -8,18 +8,18 @@ import re
 import sys
 from pathlib import Path
 
-from _skill_lint import iter_skill_files
-
 if __package__:  # Package import in tests.
     from ._markdown_lint_util import (
         NON_RELATIVE_LINK_PREFIXES,
         extract_link_targets,
     )
+    from ._skill_lint import iter_skill_files
 else:  # pragma: no cover - exercised by the CLI smoke path
     from _markdown_lint_util import (
         NON_RELATIVE_LINK_PREFIXES,
         extract_link_targets,
     )
+    from _skill_lint import iter_skill_files
 
 
 ROOT = Path(__file__).resolve().parents[1]

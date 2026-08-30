@@ -39,7 +39,11 @@ import re
 import sys
 from pathlib import Path
 
-from _skill_lint import SKILLS_TABLE_ROW_PREFIX, iter_skill_files
+from _skill_lint import (
+    SKILLS_TABLE_ROW_FULL,
+    SKILLS_TABLE_ROW_PREFIX,
+    iter_skill_files,
+)
 
 SKILLS_DIR = "skills"
 CLAUDE_MD = Path(".claude") / "CLAUDE.md"
@@ -48,8 +52,11 @@ PLUGIN_JSON = Path(".claude-plugin") / "plugin.json"
 MODE_REGISTRY_MD = Path("MODE_REGISTRY.md")
 
 SKILLS_OVERVIEW_HEADING = "## Skills Overview"
-# Row grammar shared with check_version_consistency.py; name only, any version.
+# Row grammar shared with check_version_consistency.py. PREFIX finds every row
+# that names a skill; FULL is what the version lint iterates, so any PREFIX row
+# that is not FULL is reported here (the version lint would silently skip it).
 TABLE_ROW_RE = re.compile(SKILLS_TABLE_ROW_PREFIX, re.MULTILINE)
+TABLE_ROW_FULL_RE = re.compile(SKILLS_TABLE_ROW_FULL)
 # Marketplace skill paths are relative, `./<name>`, one segment.
 MANIFEST_SKILL_RE = re.compile(r"^\./([a-z0-9-]+)$")
 # A count claim such as "4 skills" (word-bounded so "40 skillsets" is not one).
@@ -102,7 +109,19 @@ def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
     body = text[start + len(SKILLS_OVERVIEW_HEADING):]
     next_heading = re.search(r"^## ", body, re.MULTILINE)
     section = body[: next_heading.start()] if next_heading else body
-    rows = set(TABLE_ROW_RE.findall(section))
+    rows: set[str] = set()
+    for line in section.splitlines():
+        prefix = TABLE_ROW_RE.match(line)
+        if prefix is None:
+            continue
+        name = prefix.group(1)
+        rows.add(name)
+        if TABLE_ROW_FULL_RE.match(line) is None:
+            violations.append(
+                f"{claude_md}: Skills Overview row for '{name}' lacks a "
+                f"'vX.Y.Z' token after the name (check_version_consistency.py "
+                f"skips such rows, so the version would go unchecked)"
+            )
     if not rows:
         violations.append(
             f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' table has no "

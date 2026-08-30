@@ -59,7 +59,7 @@ from pathlib import Path
 
 import yaml
 
-from _skill_lint import SKILLS_TABLE_ROW_PREFIX, parse_frontmatter, FrontmatterError
+from _skill_lint import SKILLS_TABLE_ROW_FULL, parse_frontmatter, FrontmatterError
 
 
 # Broad token captures: anything that looks like an identifier inside the
@@ -67,9 +67,7 @@ from _skill_lint import SKILLS_TABLE_ROW_PREFIX, parse_frontmatter, FrontmatterE
 # token is a canonical semver. Using the regex as a filter (the pre-#169
 # pattern) silently dropped invalid tokens and hid the very drift this lint
 # is meant to surface; see dual-track review on PR for that class of bug.
-TABLE_TOKEN_RE = re.compile(
-    SKILLS_TABLE_ROW_PREFIX + r"\s+v([A-Za-z0-9.\-_+]+)\s*\|", re.MULTILINE
-)
+TABLE_TOKEN_RE = re.compile(SKILLS_TABLE_ROW_FULL, re.MULTILINE)
 SUITE_TOKEN_RE = re.compile(
     r"^\s*-\s*\*\*Suite version\*\*:\s*([A-Za-z0-9.\-_+]+)", re.MULTILINE
 )

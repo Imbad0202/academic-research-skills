@@ -196,6 +196,31 @@ def test_rows_outside_section_are_ignored(tmp_path: Path) -> None:
     assert _violations(tmp_path) == []
 
 
+def _replace_alpha_row(root: Path, row: str) -> None:
+    md = root / ".claude" / "CLAUDE.md"
+    text = md.read_text(encoding="utf-8")
+    md.write_text(text.replace("| `alpha-skill` v1.0.0 | purpose | full |", row), encoding="utf-8")
+
+
+@pytest.mark.parametrize("row", [
+    "| `alpha-skill` | no version at all | full |",
+    "| `alpha-skill` 1.0.0 | version without v | full |",
+])
+def test_row_without_version_token_fails(tmp_path: Path, row: str) -> None:
+    """A row the version lint would skip is still counted as listed AND reported."""
+    _build_root(tmp_path)
+    _replace_alpha_row(tmp_path, row)
+    _assert_single(_violations(tmp_path), "row for 'alpha-skill' lacks a 'vX.Y.Z' token")
+
+
+def test_non_semver_version_token_is_left_to_the_version_lint(tmp_path: Path) -> None:
+    """`vNOPE` satisfies the shared FULL grammar; check_version_consistency.py
+    rejects it as non-semver, so parity stays silent by design."""
+    _build_root(tmp_path)
+    _replace_alpha_row(tmp_path, "| `alpha-skill` vNOPE | placeholder | full |")
+    assert _violations(tmp_path) == []
+
+
 def test_missing_section_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
     (tmp_path / ".claude" / "CLAUDE.md").write_text("# nothing\n", encoding="utf-8")
