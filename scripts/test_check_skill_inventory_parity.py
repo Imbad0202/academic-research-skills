@@ -228,6 +228,29 @@ def test_non_canonical_row_name_is_reported(tmp_path: Path, name: str) -> None:
     _assert_single(_violations(tmp_path), f"row names {name!r}, which is not a canonical")
 
 
+@pytest.mark.parametrize("row", [
+    "| ghost-skill v1.0.0 | no backticks | x |",
+    "| **ghost-skill** v1.0.0 | bold instead | x |",
+    "| | empty first cell | x |",
+])
+def test_data_row_without_backticked_name_is_reported(tmp_path: Path, row: str) -> None:
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    text = md.read_text(encoding="utf-8").replace(
+        "| `beta-skill` v1.0.0 | purpose | full |\n",
+        f"| `beta-skill` v1.0.0 | purpose | full |\n{row}\n", 1)
+    md.write_text(text, encoding="utf-8")
+    _assert_single(_violations(tmp_path), "has no backticked skill name in its first cell")
+
+
+@pytest.mark.parametrize("separator", ["|-------|---------|-----------|", "|:--|:-:|--:|", "| --- | --- | --- |"])
+def test_header_and_separator_rows_are_not_data_rows(tmp_path: Path, separator: str) -> None:
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    md.write_text(md.read_text(encoding="utf-8").replace("|-------|---------|-----------|", separator), encoding="utf-8")
+    assert _violations(tmp_path) == []
+
+
 def test_non_semver_version_token_is_left_to_the_version_lint(tmp_path: Path) -> None:
     """`vNOPE` satisfies the shared FULL grammar; check_version_consistency.py
     rejects it as non-semver, so parity stays silent by design."""
@@ -348,6 +371,13 @@ def test_stale_plugin_count_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
     _write_manifests(tmp_path, NAMES, plugin_desc="4 skills, 27 modes")
     _assert_single(_violations(tmp_path), "plugin.json description: claims '4 skills'")
+
+
+@pytest.mark.parametrize("desc", ["4 Skills + 27 modes", "4 SKILLS"])
+def test_count_claim_is_case_insensitive(tmp_path: Path, desc: str) -> None:
+    _build_root(tmp_path)
+    _write_manifests(tmp_path, NAMES, plugin_desc=desc)
+    _assert_single(_violations(tmp_path), "plugin.json description: claims")
 
 
 def test_description_without_count_makes_no_claim(tmp_path: Path) -> None:

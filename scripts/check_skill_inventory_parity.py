@@ -62,10 +62,13 @@ TABLE_ROW_FULL_RE = re.compile(SKILLS_TABLE_ROW_FULL)
 # `Ghost-Skill`) is reported instead of being invisible to both lints.
 TABLE_ROW_ANY_RE = re.compile(r"^\|\s*`([^`]+)`")
 CANONICAL_NAME_RE = re.compile(r"[a-z0-9-]+")
+# Markdown table separator row: `|---|:---:|` etc.
+TABLE_SEPARATOR_RE = re.compile(r"^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
 # Marketplace skill paths are relative, `./<name>`, one segment.
 MANIFEST_SKILL_RE = re.compile(r"^\./([a-z0-9-]+)$")
-# A count claim such as "4 skills" (word-bounded so "40 skillsets" is not one).
-COUNT_CLAIM_RE = re.compile(r"\b(\d+) skills\b")
+# A count claim such as "4 skills" / "4 Skills" (word-bounded so "40 skillsets"
+# is not one; case-insensitive because these are prose surfaces).
+COUNT_CLAIM_RE = re.compile(r"\b(\d+) skills\b", re.IGNORECASE)
 
 
 def _skills_on_disk(root: Path) -> set[str]:
@@ -133,9 +136,21 @@ def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
         )
         return set()
     rows: set[str] = set()
-    for line in _overview_table_lines(section):
+    table = _overview_table_lines(section)
+    # Header row, then the separator; everything after is a data row and
+    # must carry a backticked skill name in its first cell. A data row that
+    # does not (e.g. `| ghost-skill v1.0.0 |`) is reported rather than
+    # dropped, since neither lint would otherwise see it.
+    data_rows = table[1:]
+    if data_rows and TABLE_SEPARATOR_RE.match(data_rows[0]):
+        data_rows = data_rows[1:]
+    for line in data_rows:
         any_row = TABLE_ROW_ANY_RE.match(line)
         if any_row is None:
+            violations.append(
+                f"{claude_md}: Skills Overview data row {line.strip()!r} has no "
+                f"backticked skill name in its first cell"
+            )
             continue
         name = any_row.group(1)
         if CANONICAL_NAME_RE.fullmatch(name) is None:
