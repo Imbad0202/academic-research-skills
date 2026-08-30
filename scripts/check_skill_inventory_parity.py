@@ -62,8 +62,8 @@ TABLE_ROW_FULL_RE = re.compile(SKILLS_TABLE_ROW_FULL)
 # `Ghost-Skill`) is reported instead of being invisible to both lints.
 TABLE_ROW_ANY_RE = re.compile(r"^\|\s*`([^`]+)`")
 CANONICAL_NAME_RE = re.compile(r"[a-z0-9-]+")
-# Markdown table separator row: `|---|:---:|` etc.
-TABLE_SEPARATOR_RE = re.compile(r"^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
+# Markdown table separator row: `|---|:---:|`, `|:-|` etc. (GFM: one or more dashes).
+TABLE_SEPARATOR_RE = re.compile(r"^\|\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")
 # Marketplace skill paths are relative, `./<name>`, one segment.
 MANIFEST_SKILL_RE = re.compile(r"^\./([a-z0-9-]+)$")
 # A count claim such as "4 skills" / "4 Skills" (word-bounded so "40 skillsets"
