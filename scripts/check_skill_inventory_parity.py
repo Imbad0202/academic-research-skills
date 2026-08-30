@@ -20,9 +20,13 @@ surfaces that advertise or package the inventory:
   D. `.claude-plugin/marketplace.json` `plugins[].skills[]` as `./<name>`
      (what symlink-blind importers read).
 
-It also checks that any "<N> skills" count claim in the plugin / marketplace
-descriptions equals the number of skills on disk. A description that carries
-no count makes no claim and is not checked.
+It also checks that any "<N> skills" count claim equals the number of skills
+on disk, on the three CURRENT-STATE metadata surfaces that carry one:
+`.claude-plugin/plugin.json` and `marketplace.json` descriptions, and
+`MODE_REGISTRY.md`. README and CHANGELOG are deliberately out of scope: they
+carry historical release notes whose counts are legitimately frozen at the
+time of writing, so a prose-wide grep would flag correct history. A surface
+that carries no count makes no claim and is not checked.
 
 Every asymmetric difference is reported in both directions, so a stale row
 and an unpackaged directory are both single, named violations.
@@ -35,16 +39,17 @@ import re
 import sys
 from pathlib import Path
 
-from _skill_lint import iter_skill_files
+from _skill_lint import SKILLS_TABLE_ROW_PREFIX, iter_skill_files
 
 SKILLS_DIR = "skills"
 CLAUDE_MD = Path(".claude") / "CLAUDE.md"
 MARKETPLACE_JSON = Path(".claude-plugin") / "marketplace.json"
 PLUGIN_JSON = Path(".claude-plugin") / "plugin.json"
+MODE_REGISTRY_MD = Path("MODE_REGISTRY.md")
 
 SKILLS_OVERVIEW_HEADING = "## Skills Overview"
-# A table row whose first cell is a backticked skill name. Anchored per line.
-TABLE_ROW_RE = re.compile(r"^\|\s*`([a-z0-9-]+)`", re.MULTILINE)
+# Row grammar shared with check_version_consistency.py; name only, any version.
+TABLE_ROW_RE = re.compile(SKILLS_TABLE_ROW_PREFIX, re.MULTILINE)
 # Marketplace skill paths are relative, `./<name>`, one segment.
 MANIFEST_SKILL_RE = re.compile(r"^\./([a-z0-9-]+)$")
 # A count claim such as "4 skills" (word-bounded so "40 skillsets" is not one).
@@ -161,16 +166,15 @@ def _marketplace_skills(
     return names, descriptions
 
 
-def _check_count_claims(
-    label: str, descriptions: list[str], expected: int, violations: list[str]
+def _check_count_claim(
+    label: str, text: str, expected: int, violations: list[str]
 ) -> None:
-    for description in descriptions:
-        for claimed in COUNT_CLAIM_RE.findall(description):
-            if int(claimed) != expected:
-                violations.append(
-                    f"{label}: description claims '{claimed} skills' but "
-                    f"{expected} top-level skill directories exist"
-                )
+    for claimed in COUNT_CLAIM_RE.findall(text):
+        if int(claimed) != expected:
+            violations.append(
+                f"{label}: claims '{claimed} skills' but {expected} "
+                f"top-level skill directories exist"
+            )
 
 
 def _report_set_diff(
@@ -209,17 +213,29 @@ def run_all_checks(root: Path) -> list[str]:
     _report_set_diff(
         on_disk, manifest, f"{MARKETPLACE_JSON} plugins[].skills", violations
     )
-    _check_count_claims(
-        str(MARKETPLACE_JSON), market_descriptions, len(on_disk), violations
-    )
+    for description in market_descriptions:
+        _check_count_claim(
+            f"{MARKETPLACE_JSON} description", description, len(on_disk), violations
+        )
 
     plugin = _load_json(root / PLUGIN_JSON, violations)
     if plugin is not None:
         description = plugin.get("description")
         if isinstance(description, str):
-            _check_count_claims(
-                str(PLUGIN_JSON), [description], len(on_disk), violations
+            _check_count_claim(
+                f"{PLUGIN_JSON} description", description, len(on_disk), violations
             )
+
+    registry = root / MODE_REGISTRY_MD
+    if registry.is_file():
+        _check_count_claim(
+            str(MODE_REGISTRY_MD),
+            registry.read_text(encoding="utf-8"),
+            len(on_disk),
+            violations,
+        )
+    else:
+        violations.append(f"{registry}: file is missing")
     return violations
 
 

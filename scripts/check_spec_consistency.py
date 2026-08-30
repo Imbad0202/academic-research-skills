@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+from _skill_lint import iter_skill_files
+
 if __package__:  # Package import in tests.
     from ._markdown_lint_util import (
         NON_RELATIVE_LINK_PREFIXES,
@@ -95,13 +97,13 @@ def check_claude_md() -> None:
         expect_absent(rel_path, forbidden)
 
 
-# All four skills carry the same frontmatter (`version` / `last_updated`) + Version-Info-table
-# (`| Skill Version |` / `| Last Updated |`) pair. Pre-#377 only the reviewer was policed.
-_SKILL_VERSION_PATHS = (
-    "academic-pipeline/SKILL.md",
-    "academic-paper/SKILL.md",
-    "academic-paper-reviewer/SKILL.md",
-    "deep-research/SKILL.md",
+# Every top-level skill carries the same frontmatter (`version` / `last_updated`) +
+# Version-Info-table (`| Skill Version |` / `| Last Updated |`) pair. Pre-#377 only the
+# reviewer was policed. Derived from disk (#809) rather than hand-listed, so a new skill
+# directory is policed the moment it exists; check_skill_inventory_parity.py pins that
+# the on-disk set matches every surface that advertises it.
+_SKILL_VERSION_PATHS = tuple(
+    f"{skill_md.parent.name}/SKILL.md" for skill_md in iter_skill_files(ROOT)
 )
 
 # The single skill whose `version` tracks the suite version. The other three move independently,

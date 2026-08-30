@@ -29,6 +29,12 @@ from pathlib import Path
 
 import yaml
 
+# One row of the `.claude/CLAUDE.md` § "Skills Overview" table: first cell is the
+# backticked skill directory name. Shared by check_version_consistency.py (which
+# extends it with the version token) and check_skill_inventory_parity.py (which
+# wants the name regardless of version), so the two lints agree on what a row is.
+SKILLS_TABLE_ROW_PREFIX = r"^\|\s*`([a-z0-9-]+)`"
+
 SKIP_DIRS = frozenset(
     {"shared", "scripts", "docs", ".git", ".github", "examples", ".local-plans", ".claude"}
 )

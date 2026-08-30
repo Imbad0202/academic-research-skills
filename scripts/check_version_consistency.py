@@ -59,7 +59,7 @@ from pathlib import Path
 
 import yaml
 
-from _skill_lint import parse_frontmatter, FrontmatterError
+from _skill_lint import SKILLS_TABLE_ROW_PREFIX, parse_frontmatter, FrontmatterError
 
 
 # Broad token captures: anything that looks like an identifier inside the
@@ -68,7 +68,7 @@ from _skill_lint import parse_frontmatter, FrontmatterError
 # pattern) silently dropped invalid tokens and hid the very drift this lint
 # is meant to surface; see dual-track review on PR for that class of bug.
 TABLE_TOKEN_RE = re.compile(
-    r"^\|\s*`([a-z0-9-]+)`\s+v([A-Za-z0-9.\-_+]+)\s*\|", re.MULTILINE
+    SKILLS_TABLE_ROW_PREFIX + r"\s+v([A-Za-z0-9.\-_+]+)\s*\|", re.MULTILINE
 )
 SUITE_TOKEN_RE = re.compile(
     r"^\s*-\s*\*\*Suite version\*\*:\s*([A-Za-z0-9.\-_+]+)", re.MULTILINE

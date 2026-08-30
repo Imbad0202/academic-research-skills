@@ -72,12 +72,17 @@ def _write_symlinks(root: Path, names: tuple[str, ...]) -> None:
         os.symlink(f"../{n}", skills / n)
 
 
+def _write_registry(root: Path, text: str) -> None:
+    (root / "MODE_REGISTRY.md").write_text(text, encoding="utf-8")
+
+
 def _build_root(root: Path, names: tuple[str, ...] = NAMES) -> None:
     for n in names:
         write_skill(root, n, f"name: {n}\ndescription: t\nmetadata:\n  version: '1'\n")
     _write_symlinks(root, names)
     _write_table(root, names)
     _write_manifests(root, names)
+    _write_registry(root, f"# Modes\n\n**9 modes** across {len(names)} skills.\n")
 
 
 def _violations(root: Path) -> list[str]:
@@ -119,15 +124,15 @@ def test_unpackaged_skill_dir_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
     write_skill(tmp_path, "gamma-skill", "name: gamma-skill\n")
     v = _violations(tmp_path)
-    assert len(v) == 5, v
+    assert len(v) == 6, v
     missing = [line for line in v if "'gamma-skill' exists on disk" in line]
     assert len(missing) == 3, v
     assert any("skills/ symlinks" in line for line in missing)
     assert any("Skills Overview table" in line for line in missing)
     assert any("marketplace.json plugins[].skills" in line for line in missing)
-    # the "2 skills" descriptions are now stale claims on both manifests
+    # the "2 skills" claims are now stale on every count surface
     counts = [line for line in v if "claims '2 skills' but 3" in line]
-    assert len(counts) == 2, v
+    assert len(counts) == 3, v  # marketplace, plugin.json, MODE_REGISTRY.md
 
 
 def test_missing_symlink_fails(tmp_path: Path) -> None:
@@ -248,19 +253,31 @@ def test_missing_marketplace_fails(tmp_path: Path) -> None:
 def test_stale_marketplace_count_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
     _write_manifests(tmp_path, NAMES, market_desc="4 skills + 27 modes")
-    _assert_single(_violations(tmp_path), "marketplace.json: description claims '4 skills'")
+    _assert_single(_violations(tmp_path), "marketplace.json description: claims '4 skills'")
 
 
 def test_stale_plugin_count_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
     _write_manifests(tmp_path, NAMES, plugin_desc="4 skills, 27 modes")
-    _assert_single(_violations(tmp_path), "plugin.json: description claims '4 skills'")
+    _assert_single(_violations(tmp_path), "plugin.json description: claims '4 skills'")
 
 
 def test_description_without_count_makes_no_claim(tmp_path: Path) -> None:
     _build_root(tmp_path)
     _write_manifests(tmp_path, NAMES, market_desc="research skills for Claude Code", plugin_desc="40 skillsets")
     assert _violations(tmp_path) == []
+
+
+def test_stale_mode_registry_count_fails(tmp_path: Path) -> None:
+    _build_root(tmp_path)
+    _write_registry(tmp_path, "**27 modes** across 4 skills.\n")
+    _assert_single(_violations(tmp_path), "MODE_REGISTRY.md: claims '4 skills'")
+
+
+def test_missing_mode_registry_fails(tmp_path: Path) -> None:
+    _build_root(tmp_path)
+    (tmp_path / "MODE_REGISTRY.md").unlink()
+    _assert_single(_violations(tmp_path), "MODE_REGISTRY.md: file is missing")
 
 
 def test_missing_plugin_json_fails(tmp_path: Path) -> None:
