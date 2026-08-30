@@ -39,12 +39,14 @@ def _write_manifests(
     *,
     market_entries: list[str] | None = None,
     market_desc: str | None = None,
+    market_top_desc: str | None = None,
     plugin_desc: str | None = None,
 ) -> None:
     (root / ".claude-plugin").mkdir(exist_ok=True)
     entries = market_entries if market_entries is not None else [f"./{n}" for n in names]
     market = {
         "name": "test",
+        "description": market_top_desc if market_top_desc is not None else "test marketplace",
         "plugins": [
             {
                 "name": "test",
@@ -213,6 +215,19 @@ def test_row_without_version_token_fails(tmp_path: Path, row: str) -> None:
     _assert_single(_violations(tmp_path), "row for 'alpha-skill' lacks a 'vX.Y.Z' token")
 
 
+@pytest.mark.parametrize("name", ["Ghost-Skill", "ghost_skill", "ghost skill", "ghost.skill"])
+def test_non_canonical_row_name_is_reported(tmp_path: Path, name: str) -> None:
+    """A stale advertised row with a non-canonical name must not be invisible."""
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    text = md.read_text(encoding="utf-8").replace(
+        "| `beta-skill` v1.0.0 | purpose | full |",
+        f"| `beta-skill` v1.0.0 | purpose | full |\n| `{name}` v1.0.0 | stale | x |",
+    )
+    md.write_text(text, encoding="utf-8")
+    _assert_single(_violations(tmp_path), f"row names {name!r}, which is not a canonical")
+
+
 def test_non_semver_version_token_is_left_to_the_version_lint(tmp_path: Path) -> None:
     """`vNOPE` satisfies the shared FULL grammar; check_version_consistency.py
     rejects it as non-semver, so parity stays silent by design."""
@@ -279,6 +294,12 @@ def test_stale_marketplace_count_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
     _write_manifests(tmp_path, NAMES, market_desc="4 skills + 27 modes")
     _assert_single(_violations(tmp_path), "marketplace.json description: claims '4 skills'")
+
+
+def test_stale_marketplace_top_level_count_fails(tmp_path: Path) -> None:
+    _build_root(tmp_path)
+    _write_manifests(tmp_path, NAMES, market_top_desc="A marketplace of 3 skills")
+    _assert_single(_violations(tmp_path), "marketplace.json description: claims '3 skills'")
 
 
 def test_stale_plugin_count_fails(tmp_path: Path) -> None:

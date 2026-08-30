@@ -22,8 +22,8 @@ surfaces that advertise or package the inventory:
 
 It also checks that any "<N> skills" count claim equals the number of skills
 on disk, on the three CURRENT-STATE metadata surfaces that carry one:
-`.claude-plugin/plugin.json` and `marketplace.json` descriptions, and
-`MODE_REGISTRY.md`. README and CHANGELOG are deliberately out of scope: they
+`.claude-plugin/plugin.json` description, `marketplace.json` top-level and
+per-plugin descriptions, and `MODE_REGISTRY.md`. README and CHANGELOG are deliberately out of scope: they
 carry historical release notes whose counts are legitimately frozen at the
 time of writing, so a prose-wide grep would flag correct history. A surface
 that carries no count makes no claim and is not checked.
@@ -57,6 +57,10 @@ SKILLS_OVERVIEW_HEADING = "## Skills Overview"
 # that is not FULL is reported here (the version lint would silently skip it).
 TABLE_ROW_RE = re.compile(SKILLS_TABLE_ROW_PREFIX, re.MULTILINE)
 TABLE_ROW_FULL_RE = re.compile(SKILLS_TABLE_ROW_FULL)
+# Any backticked first cell at all, so a row with a non-canonical name (e.g.
+# `Ghost-Skill`) is reported instead of being invisible to both lints.
+TABLE_ROW_ANY_RE = re.compile(r"^\|\s*`([^`]+)`")
+CANONICAL_NAME_RE = re.compile(r"[a-z0-9-]+")
 # Marketplace skill paths are relative, `./<name>`, one segment.
 MANIFEST_SKILL_RE = re.compile(r"^\./([a-z0-9-]+)$")
 # A count claim such as "4 skills" (word-bounded so "40 skillsets" is not one).
@@ -111,10 +115,17 @@ def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
     section = body[: next_heading.start()] if next_heading else body
     rows: set[str] = set()
     for line in section.splitlines():
-        prefix = TABLE_ROW_RE.match(line)
-        if prefix is None:
+        any_row = TABLE_ROW_ANY_RE.match(line)
+        if any_row is None:
             continue
-        name = prefix.group(1)
+        name = any_row.group(1)
+        if CANONICAL_NAME_RE.fullmatch(name) is None:
+            violations.append(
+                f"{claude_md}: Skills Overview row names {name!r}, which is not "
+                f"a canonical skill directory name ([a-z0-9-]+); both lints "
+                f"would otherwise ignore this row"
+            )
+            continue
         rows.add(name)
         if TABLE_ROW_FULL_RE.match(line) is None:
             violations.append(
@@ -159,6 +170,8 @@ def _marketplace_skills(
         return set(), []
     names: set[str] = set()
     descriptions: list[str] = []
+    if isinstance(data.get("description"), str):
+        descriptions.append(data["description"])  # marketplace-level claim
     for index, plugin in enumerate(plugins):
         if not isinstance(plugin, dict):
             violations.append(f"{path}: plugins[{index}] must be an object")
