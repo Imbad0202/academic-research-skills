@@ -787,6 +787,18 @@ class TestSkillVersionTableConsistency(unittest.TestCase):
         csc.ERRORS.clear()
         csc.ERRORS.extend(self._orig_errors)
 
+    def test_skill_paths_follow_the_active_root(self) -> None:
+        """#809: paths derive from ROOT at call time, so a fixture tree with a
+        different skill set is policed on ITS skills, never the checkout's."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            (root / "only-skill").mkdir()
+            (root / "only-skill" / "SKILL.md").write_text("---\nname: only-skill\n---\n", encoding="utf-8")
+            self.assertEqual(csc._skill_version_paths(), ("only-skill/SKILL.md",))
+            csc.check_skill_version_blocks()
+            self.assertTrue(all(e.startswith("only-skill/SKILL.md:") for e in csc.ERRORS), csc.ERRORS)
+
     def test_all_four_aligned_passes(self) -> None:
         """All four SKILL.md with frontmatter matching their table → no errors."""
         with TemporaryDirectory() as tmp:

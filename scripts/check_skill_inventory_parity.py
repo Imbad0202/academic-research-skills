@@ -65,7 +65,7 @@ CANONICAL_NAME_RE = re.compile(r"[a-z0-9-]+")
 # Markdown table separator row: `|---|:---:|`, `|:-|` etc. (GFM: one or more dashes).
 TABLE_SEPARATOR_RE = re.compile(r"^\|\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")
 # Marketplace skill paths are relative, `./<name>`, one segment.
-MANIFEST_SKILL_RE = re.compile(r"^\./([a-z0-9-]+)$")
+MANIFEST_SKILL_RE = re.compile(r"\./([a-z0-9-]+)")  # used with fullmatch: `$` would admit a trailing newline
 # A count claim such as "4 skills" / "4 Skills" (word-bounded so "40 skillsets"
 # is not one; case-insensitive because these are prose surfaces).
 COUNT_CLAIM_RE = re.compile(r"\b(\d+) skills\b", re.IGNORECASE)
@@ -137,13 +137,18 @@ def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
         return set()
     rows: set[str] = set()
     table = _overview_table_lines(section)
-    # Header row, then the separator; everything after is a data row and
-    # must carry a backticked skill name in its first cell. A data row that
-    # does not (e.g. `| ghost-skill v1.0.0 |`) is reported rather than
-    # dropped, since neither lint would otherwise see it.
-    data_rows = table[1:]
-    if data_rows and TABLE_SEPARATOR_RE.match(data_rows[0]):
-        data_rows = data_rows[1:]
+    # A GFM table is header row + separator row + data rows. Both leading
+    # rows are required (a table without its separator is not a table, and
+    # the version lint would still read its rows). Every data row must carry
+    # a backticked skill name in its first cell; one that does not (e.g.
+    # `| ghost-skill v1.0.0 |`) is reported rather than dropped.
+    if len(table) < 2 or not TABLE_SEPARATOR_RE.match(table[1]):
+        violations.append(
+            f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' is not followed by a GFM "
+            f"table (header row then a |---| separator row)"
+        )
+        return set()
+    data_rows = table[2:]
     for line in data_rows:
         any_row = TABLE_ROW_ANY_RE.match(line)
         if any_row is None:
@@ -221,7 +226,7 @@ def _marketplace_skills(
             )
             continue
         for raw in skills:
-            match = MANIFEST_SKILL_RE.match(raw) if isinstance(raw, str) else None
+            match = MANIFEST_SKILL_RE.fullmatch(raw) if isinstance(raw, str) else None
             if match is None:
                 violations.append(
                     f"{path}: plugins[{index}].skills entry {raw!r} must be "

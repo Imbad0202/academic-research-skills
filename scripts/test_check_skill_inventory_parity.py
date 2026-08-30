@@ -251,6 +251,18 @@ def test_header_and_separator_rows_are_not_data_rows(tmp_path: Path, separator: 
     assert _violations(tmp_path) == []
 
 
+@pytest.mark.parametrize("mutation", ["drop_separator", "drop_header_and_separator"])
+def test_table_without_separator_is_not_a_table(tmp_path: Path, mutation: str) -> None:
+    _build_root(tmp_path)
+    md = tmp_path / ".claude" / "CLAUDE.md"
+    text = md.read_text(encoding="utf-8").replace("|-------|---------|-----------|\n", "", 1)
+    if mutation == "drop_header_and_separator":
+        text = text.replace("| Skill | Purpose | Key Modes |\n", "", 1)
+    md.write_text(text, encoding="utf-8")
+    v = _violations(tmp_path)
+    assert any("is not followed by a GFM table" in line for line in v), v
+
+
 def test_non_semver_version_token_is_left_to_the_version_lint(tmp_path: Path) -> None:
     """`vNOPE` satisfies the shared FULL grammar; check_version_consistency.py
     rejects it as non-semver, so parity stays silent by design."""
@@ -329,7 +341,7 @@ def test_extra_manifest_entry_fails(tmp_path: Path) -> None:
     _assert_single(_violations(tmp_path), "lists skill 'stale' but no top-level")
 
 
-@pytest.mark.parametrize("bad", ["alpha-skill", "skills/alpha-skill", "./Alpha", "./a/b", 7])
+@pytest.mark.parametrize("bad", ["alpha-skill", "skills/alpha-skill", "./Alpha", "./a/b", 7, "./alpha-skill\n", "./alpha-skill "])
 def test_malformed_manifest_entry_fails(tmp_path: Path, bad) -> None:
     _build_root(tmp_path)
     _write_manifests(tmp_path, NAMES, market_entries=[bad, f"./{NAMES[1]}"])
