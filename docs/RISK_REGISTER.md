@@ -161,13 +161,14 @@ A user installs through a channel where documented enforcement never runs.
 
 - **Existing controls**: the per-channel availability matrix
   (`docs/CONTROL_AVAILABILITY.md`); the write-scope guard's disclosed degrade posture
-  (`hooks/run_guard.sh`); per-channel notes in `docs/SETUP.md`.
+  (`hooks/run_guard.sh`), indexed as five `write_scope_guard_*` rows in the
+  degradation registry (`shared/contracts/degradation_registry.json`,
+  [#769](https://github.com/Imbad0202/academic-research-skills/issues/769));
+  per-channel notes in `docs/SETUP.md`.
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) —
   availability is documented; loss-of-enforcement behavior is not separately
   measured.
-- **Residual gap**: guard-launcher degradations not yet indexed in the degradation
-  registry ([#769](https://github.com/Imbad0202/academic-research-skills/issues/769));
-  what each channel loses is per-mechanism (see the availability matrix): prompt-level
-  protocols survive in most non-plugin channels but are absent in claude.ai Projects,
-  and hook enforcement is absent outside the plugin channel unless the user wires the
-  hook into their own settings manually (matrix note 3).
+- **Residual gap**: what each channel loses is per-mechanism (see the availability
+  matrix): prompt-level protocols survive in most non-plugin channels but are absent
+  in claude.ai Projects, and hook enforcement is absent outside the plugin channel
+  unless the user wires the hook into their own settings manually (matrix note 3).
