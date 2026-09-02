@@ -159,9 +159,15 @@ def _retry_after_seconds(headers: Any) -> float | None:
 
 
 def _is_paper_record(record: Mapping[str, Any]) -> bool:
-    """False for the index's non-bibliographic records (`web:` namespace)."""
+    """False for the index's non-bibliographic records (`web:` namespace).
+
+    An id-less record is also False: without an id there is nothing to key a
+    bibliographic record on, so it must not be offered as one. Requiring the
+    id positively (rather than only excluding known-bad prefixes) also means a
+    future non-paper namespace fails closed instead of passing as a paper.
+    """
     primary = record.get("primaryId") or record.get("paperId") or ""
-    if not isinstance(primary, str):
+    if not isinstance(primary, str) or not primary:
         return False
     return not primary.startswith(_NON_PAPER_ID_PREFIXES)
 

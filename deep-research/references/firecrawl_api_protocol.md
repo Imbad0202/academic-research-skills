@@ -228,7 +228,7 @@ table above. The projected dict deliberately carries no `year` key (no venue
 publication year exists upstream). Pacing is per-instance — share one instance
 across a run.
 
-Tests: `scripts/test_firecrawl_client.py` (40 tests, fully synthetic inline
+Tests: `scripts/test_firecrawl_client.py` (41 tests, fully synthetic inline
 bodies, zero live network). The live examples in this document are the record
 of a manual verification.
 

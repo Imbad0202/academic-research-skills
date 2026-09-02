@@ -268,6 +268,17 @@ def test_title_search_prefers_paper_over_web_record():
     assert result["primaryId"] == "arxiv:1706.03762"
 
 
+def test_title_search_drops_id_less_record():
+    """Without an id there is nothing to key a bibliographic record on, so an
+    id-less row is not promoted even on an exact title match."""
+    from firecrawl_client import FirecrawlResearchClient
+
+    body = _search({"title": "Attention Is All You Need"})
+    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+        client = FirecrawlResearchClient()
+        assert client.title_search("Attention Is All You Need") is None
+
+
 def test_title_search_generic_title_not_promoted():
     """#431 §0.12.2: nothing on the title path can corroborate a bare generic
     title, so it is never promoted."""
