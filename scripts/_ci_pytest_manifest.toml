@@ -501,6 +501,10 @@ id = "595-chinese-literature-client"
 path = "scripts/test_chinese_literature_client.py"
 
 [[pytest]]
+id = "firecrawl-research-index-client"
+path = "scripts/test_firecrawl_client.py"
+
+[[pytest]]
 id = "617-harness-retirement-generator"
 path = "scripts/test_render_harness_retirement_issue.py"
 
