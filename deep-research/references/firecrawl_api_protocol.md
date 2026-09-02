@@ -180,9 +180,11 @@ are properties of the upstream, not scheduling:
 - **It is a third-party aggregator, not a registry of record.** Crossref is
   the DOI registry, arXiv is the preprint registry; this index is neither. Its
   disagreement with a registry is not evidence against the registry.
-- **`partial: true`** appears in the search response shape. Its exact
-  semantics are undocumented upstream; treat a `partial` answer as
-  possibly-incomplete rather than as coverage evidence.
+- **A `partial` flag exists whose semantics are undocumented.** The search
+  response carries `partial` (observed `false` on every 2026-09-02 call;
+  `true` was never seen, so its behavior is unverified here). Until upstream
+  documents it, a `partial` answer should be read as possibly-incomplete
+  rather than as coverage evidence.
 
 An integration would additionally have to decide the `resolver_outcomes`
 schema shape (the four-key lock), the `queried_by` vocabulary, and how a
