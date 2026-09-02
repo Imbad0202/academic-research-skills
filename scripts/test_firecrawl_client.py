@@ -22,6 +22,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
+# The client sends an Authorization header, so it routes through a
+# redirect-refusing opener rather than bare urllib.request.urlopen
+# (see _RefuseRedirects). Patch the opener the client actually uses.
+_OPEN_TARGET = "firecrawl_client._OPENER.open"
+
+
 def _mock_resp(payload: dict) -> MagicMock:
     mock_response = MagicMock()
     mock_response.read.return_value = json.dumps(payload).encode("utf-8")
@@ -72,7 +78,7 @@ def test_paper_id_lookup_with_matching_title():
     from firecrawl_client import FirecrawlResearchClient
 
     body = {"success": True, "paper": _paper("Attention Is All You Need")}
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         result = client.paper_id_lookup(
             "arxiv:1706.03762", "Attention Is All You Need",
@@ -89,7 +95,7 @@ def test_paper_id_lookup_id_mismatch_returns_none():
     from firecrawl_client import FirecrawlResearchClient
 
     body = {"success": True, "paper": _paper("Tenure and the University Reward Structure")}
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         result = client.paper_id_lookup(
             "arxiv:1706.03762", "Attention Is All You Need",
@@ -103,7 +109,7 @@ def test_paper_id_lookup_404_is_miss_not_unavailable():
     degradation."""
     from firecrawl_client import FirecrawlResearchClient
 
-    with patch("urllib.request.urlopen",
+    with patch(_OPEN_TARGET,
                side_effect=_http_error(404, "Not Found")):
         client = FirecrawlResearchClient()
         result = client.paper_id_lookup("arxiv:9999.99999", "Anything")
@@ -117,7 +123,7 @@ def test_404_html_body_is_still_a_miss():
     from firecrawl_client import FirecrawlResearchClient
 
     err = _http_error(404, "Not Found")
-    with patch("urllib.request.urlopen", side_effect=err):
+    with patch(_OPEN_TARGET, side_effect=err):
         client = FirecrawlResearchClient()
         # A numeric id is in-grammar; the 404 path is what is under test.
         assert client.paper_id_lookup("123456789", "Anything") is None
@@ -137,7 +143,7 @@ def test_unsupported_id_raises_never_misses(paper_id):
 
     client = FirecrawlResearchClient()
     # No urlopen patch: the guard must fire before any request is attempted.
-    with patch("urllib.request.urlopen",
+    with patch(_OPEN_TARGET,
                side_effect=AssertionError("must not request")):
         with pytest.raises(FirecrawlUnavailable):
             client.paper_id_lookup(paper_id, "Deep learning")
@@ -155,7 +161,7 @@ def test_supported_id_forms_accepted(paper_id):
     from firecrawl_client import FirecrawlResearchClient
 
     body = {"success": True, "paper": _paper("Attention Is All You Need")}
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         assert client.paper_id_lookup(paper_id, "Attention Is All You Need")
 
@@ -171,7 +177,7 @@ def test_paper_id_colon_is_not_percent_encoded():
         seen.append(req.full_url)
         return _mock_resp({"success": True, "paper": _paper("X")})
 
-    with patch("urllib.request.urlopen", side_effect=capture):
+    with patch(_OPEN_TARGET, side_effect=capture):
         client = FirecrawlResearchClient()
         client.paper_id_lookup("arxiv:1706.03762", "X")
 
@@ -188,7 +194,7 @@ def test_title_search_exact_match_accepted():
     from firecrawl_client import FirecrawlResearchClient
 
     body = _search(_paper("Attention Is All You Need"))
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         result = client.title_search("Attention is all you need")
 
@@ -207,7 +213,7 @@ def test_title_search_rejects_near_miss_nearest_neighbour():
         _paper("Tenure and the university reward structure.", primary_id="pmid:2928145"),
         _paper("Tenure and research trajectories.", primary_id="pmcid:PMC12318195"),
     )
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         result = client.title_search(
             "Quantum Entanglement Effects on Higher Education Faculty Tenure Decisions",
@@ -222,7 +228,7 @@ def test_title_search_rejects_high_ratio_non_exact_title():
     from firecrawl_client import FirecrawlResearchClient
 
     body = _search(_paper("Attention Is All You Need, Part II"))
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         result = client.title_search("Attention Is All You Need")
 
@@ -241,7 +247,7 @@ def test_title_search_drops_web_records():
         "ids": {"web": ["https://www.merriam-webster.com/dictionary/test"]},
         "title": "Attention Is All You Need",
     })
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         result = client.title_search("Attention Is All You Need")
 
@@ -260,7 +266,7 @@ def test_title_search_prefers_paper_over_web_record():
         },
         _paper("Attention Is All You Need"),
     )
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         result = client.title_search("Attention Is All You Need")
 
@@ -274,7 +280,7 @@ def test_title_search_drops_id_less_record():
     from firecrawl_client import FirecrawlResearchClient
 
     body = _search({"title": "Attention Is All You Need"})
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         assert client.title_search("Attention Is All You Need") is None
 
@@ -284,7 +290,7 @@ def test_title_search_generic_title_not_promoted():
     title, so it is never promoted."""
     from firecrawl_client import FirecrawlResearchClient
 
-    with patch("urllib.request.urlopen",
+    with patch(_OPEN_TARGET,
                side_effect=AssertionError("must not request")):
         client = FirecrawlResearchClient()
         assert client.title_search("Editorial") is None
@@ -293,7 +299,7 @@ def test_title_search_generic_title_not_promoted():
 def test_title_search_empty_results_returns_none():
     from firecrawl_client import FirecrawlResearchClient
 
-    with patch("urllib.request.urlopen", return_value=_mock_resp(_search())):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(_search())):
         client = FirecrawlResearchClient()
         assert client.title_search("Attention Is All You Need") is None
 
@@ -309,7 +315,7 @@ def test_title_search_sends_bounded_k():
         seen.append(req.full_url)
         return _mock_resp(_search())
 
-    with patch("urllib.request.urlopen", side_effect=capture):
+    with patch(_OPEN_TARGET, side_effect=capture):
         client = FirecrawlResearchClient()
         client.title_search("Attention Is All You Need")
 
@@ -332,7 +338,7 @@ def test_paper_passages_returns_passages():
             {"score": 0.011, "text": "We employ a residual connection ..."},
         ],
     }
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         passages = client.paper_passages("arxiv:1706.03762", "multi-head attention", k=2)
 
@@ -344,7 +350,7 @@ def test_paper_passages_missing_paper_returns_empty():
     """404 → [] (no passages), not a degradation."""
     from firecrawl_client import FirecrawlResearchClient
 
-    with patch("urllib.request.urlopen",
+    with patch(_OPEN_TARGET,
                side_effect=_http_error(404, "Not Found")):
         client = FirecrawlResearchClient()
         assert client.paper_passages("arxiv:9999.99999", "anything") == []
@@ -376,7 +382,7 @@ def test_429_honors_retry_after_header(monkeypatch):
     sleeps = []
     monkeypatch.setattr("firecrawl_client.time.sleep", lambda s: sleeps.append(s))
 
-    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+    with patch(_OPEN_TARGET, side_effect=mock_urlopen):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
             client.title_search("Attention Is All You Need")
@@ -396,7 +402,7 @@ def test_429_without_retry_after_falls_back_to_exponential(monkeypatch):
     sleeps = []
     monkeypatch.setattr("firecrawl_client.time.sleep", lambda s: sleeps.append(s))
 
-    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+    with patch(_OPEN_TARGET, side_effect=mock_urlopen):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
             client.title_search("Attention Is All You Need")
@@ -418,7 +424,7 @@ def test_429_unparseable_retry_after_falls_back(monkeypatch):
     sleeps = []
     monkeypatch.setattr("firecrawl_client.time.sleep", lambda s: sleeps.append(s))
 
-    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+    with patch(_OPEN_TARGET, side_effect=mock_urlopen):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
             client.title_search("Attention Is All You Need")
@@ -439,7 +445,7 @@ def test_5xx_raises_immediately(monkeypatch):
     sleeps = []
     monkeypatch.setattr("firecrawl_client.time.sleep", lambda s: sleeps.append(s))
 
-    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+    with patch(_OPEN_TARGET, side_effect=mock_urlopen):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
             client.title_search("Attention Is All You Need")
@@ -451,7 +457,7 @@ def test_5xx_raises_immediately(monkeypatch):
 def test_network_error_raises_unavailable():
     from firecrawl_client import FirecrawlResearchClient, FirecrawlUnavailable
 
-    with patch("urllib.request.urlopen",
+    with patch(_OPEN_TARGET,
                side_effect=urllib.error.URLError("timed out")):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
@@ -465,7 +471,7 @@ def test_success_false_200_body_is_degradation_not_miss():
     from firecrawl_client import FirecrawlResearchClient, FirecrawlUnavailable
 
     body = {"success": False, "code": "INTERNAL", "error": "boom"}
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
             client.title_search("Attention Is All You Need")
@@ -474,7 +480,7 @@ def test_success_false_200_body_is_degradation_not_miss():
 def test_html_error_page_served_with_200_raises_unavailable():
     from firecrawl_client import FirecrawlResearchClient, FirecrawlUnavailable
 
-    with patch("urllib.request.urlopen",
+    with patch(_OPEN_TARGET,
                return_value=_raw_resp(b"<html><body>Error</body></html>")):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
@@ -484,7 +490,7 @@ def test_html_error_page_served_with_200_raises_unavailable():
 def test_invalid_utf8_body_raises_unavailable():
     from firecrawl_client import FirecrawlResearchClient, FirecrawlUnavailable
 
-    with patch("urllib.request.urlopen", return_value=_raw_resp(b"\xff\xfe\x00")):
+    with patch(_OPEN_TARGET, return_value=_raw_resp(b"\xff\xfe\x00")):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
             client.title_search("Attention Is All You Need")
@@ -502,7 +508,7 @@ def test_truncated_read_raises_unavailable():
     mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=None)
 
-    with patch("urllib.request.urlopen", return_value=mock_response):
+    with patch(_OPEN_TARGET, return_value=mock_response):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):
             client.title_search("Attention Is All You Need")
@@ -524,7 +530,7 @@ def test_api_key_rides_authorization_header_not_query(monkeypatch):
         seen.append(req)
         return _mock_resp(_search())
 
-    with patch("urllib.request.urlopen", side_effect=capture):
+    with patch(_OPEN_TARGET, side_effect=capture):
         client = FirecrawlResearchClient()
         client.title_search("Attention Is All You Need")
 
@@ -545,7 +551,7 @@ def test_keyless_is_supported(monkeypatch):
         seen.append(req)
         return _mock_resp({"success": True, "paper": _paper("Attention Is All You Need")})
 
-    with patch("urllib.request.urlopen", side_effect=capture):
+    with patch(_OPEN_TARGET, side_effect=capture):
         client = FirecrawlResearchClient()
         result = client.paper_id_lookup("arxiv:1706.03762", "Attention Is All You Need")
 
@@ -574,7 +580,7 @@ def test_throttle_uses_monotonic_clock(monkeypatch):
     sleeps = []
     monkeypatch.setattr("firecrawl_client.time.sleep", lambda s: sleeps.append(s))
 
-    with patch("urllib.request.urlopen", return_value=_mock_resp(_search())):
+    with patch(_OPEN_TARGET, return_value=_mock_resp(_search())):
         client = FirecrawlResearchClient()
         client.title_search("Attention Is All You Need")
         client.title_search("Attention Is All You Need")
@@ -583,13 +589,105 @@ def test_throttle_uses_monotonic_clock(monkeypatch):
     assert sleeps and abs(sleeps[0] - 0.15) < 1e-9
 
 
+def test_redirect_is_refused_so_the_key_cannot_leave_the_host():
+    """CPython's redirect handler copies `Authorization` to the redirect
+    target (it strips only content-length/content-type), so a followed
+    cross-origin hop would hand the API key to another host. The opener
+    refuses redirects instead; `_require_api_url` cannot catch this because it
+    only ever sees the URL this client builds."""
+    import firecrawl_client
+    from firecrawl_client import FirecrawlUnavailable
+
+    handler = firecrawl_client._RefuseRedirects()
+    with pytest.raises(FirecrawlUnavailable):
+        handler.redirect_request(
+            req=None, fp=None, code=302, msg="Found", headers={},
+            newurl="https://evil.example.com/collect",
+        )
+
+
+def test_opener_is_built_with_the_redirect_refusing_handler():
+    """Pins the wiring: a future refactor back to bare `urllib.request.urlopen`
+    would silently restore the leak, so assert the handler is installed."""
+    import firecrawl_client
+
+    assert any(
+        isinstance(h, firecrawl_client._RefuseRedirects)
+        for h in firecrawl_client._OPENER.handlers
+    )
+
+
+@pytest.mark.parametrize("body", [
+    {"success": True},                        # `paper` absent entirely
+    {"success": True, "paper": None},
+    {"success": True, "paper": "not-a-dict"},
+    {"success": True, "paper": []},
+])
+def test_id_path_schema_drift_raises_instead_of_reading_as_a_miss(body):
+    """A 200 answer without a well-formed `paper` is drift, NOT a miss.
+
+    Collapsing it to None would manufacture ID-keyed non-existence evidence
+    out of a malformed upstream response — the exact `absent != false`
+    confusion this client refuses elsewhere.
+    """
+    from firecrawl_client import FirecrawlResearchClient, FirecrawlUnavailable
+
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
+        client = FirecrawlResearchClient()
+        with pytest.raises(FirecrawlUnavailable):
+            client.paper_id_lookup("arxiv:1706.03762", "Attention Is All You Need")
+
+
+@pytest.mark.parametrize("body", [
+    {"success": True, "partial": False},      # `results` absent entirely
+    {"success": True, "results": None},
+    {"success": True, "results": {}},
+])
+def test_search_schema_drift_raises(body):
+    from firecrawl_client import FirecrawlResearchClient, FirecrawlUnavailable
+
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
+        client = FirecrawlResearchClient()
+        with pytest.raises(FirecrawlUnavailable):
+            client.title_search("Attention Is All You Need")
+
+
+@pytest.mark.parametrize("body", [
+    {"success": True, "paperId": "1"},        # `passages` absent entirely
+    {"success": True, "passages": None},
+    {"success": True, "passages": "text"},
+])
+def test_passages_schema_drift_raises(body):
+    from firecrawl_client import FirecrawlResearchClient, FirecrawlUnavailable
+
+    with patch(_OPEN_TARGET, return_value=_mock_resp(body)):
+        client = FirecrawlResearchClient()
+        with pytest.raises(FirecrawlUnavailable):
+            client.paper_passages("arxiv:1706.03762", "anything")
+
+
+def test_legitimately_empty_answers_are_not_drift():
+    """The counterpart the drift guard must never fire on. Verified live: an
+    empty answer is present-but-empty, not omitted — `results: []` for a query
+    whose filters match nothing, `passages: []` for a paper with no indexed
+    full text."""
+    from firecrawl_client import FirecrawlResearchClient
+
+    with patch(_OPEN_TARGET, return_value=_mock_resp(_search())):
+        assert FirecrawlResearchClient().title_search("Attention Is All You Need") is None
+
+    empty_passages = {"success": True, "paperId": "1", "passages": []}
+    with patch(_OPEN_TARGET, return_value=_mock_resp(empty_passages)):
+        assert FirecrawlResearchClient().paper_passages("pmid:25646877", "q") == []
+
+
 def test_rejects_non_firecrawl_url_before_urlopen(monkeypatch):
     """Host guard mirrors openalex_client._require_api_url."""
     import firecrawl_client
     from firecrawl_client import FirecrawlResearchClient, FirecrawlUnavailable
 
     monkeypatch.setattr(firecrawl_client, "_API_BASE", "https://evil.example.com/v2")
-    with patch("urllib.request.urlopen",
+    with patch(_OPEN_TARGET,
                side_effect=AssertionError("must not request")):
         client = FirecrawlResearchClient()
         with pytest.raises(FirecrawlUnavailable):

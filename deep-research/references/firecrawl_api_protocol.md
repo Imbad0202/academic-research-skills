@@ -161,10 +161,14 @@ are properties of the upstream, not scheduling:
 
 - **It cannot supply a `*_unmatched` signal.** The triangulation matrix
   consumes a boolean whose `true` means "this index does not hold the work".
-  A ranked semantic index has no such state: the title path always returns
-  rows, so a `None` from `title_search` is a statement about the **exact-title
-  gate**, not about the index's coverage. Only the ID path (§1) has miss
-  semantics, and it is reachable solely for the three id namespaces above.
+  A ranked semantic index has no such state: on the client's unfiltered query
+  the title path always returned rows, so a `None` from `title_search` is a
+  statement about the **exact-title gate**, not about the index's coverage.
+  (A genuinely empty `results: []` is reachable, but only via the `authors` /
+  `from` / `to` filters, which the client does not set — and an empty
+  filtered answer would say nothing about existence either.) Only the ID path
+  (§1) has miss semantics, and it is reachable solely for the three id
+  namespaces above.
 - **Coverage is skewed to preprints and biomedicine.** The namespaces are
   arXiv / PubMed / PMC. A humanities monograph or a Chinese-language journal
   article has no key here (for the latter, see
@@ -203,6 +207,8 @@ key-free reproducibility choice — none of which this client presumes.
 | Network timeout (30s default) / URLError | Raise `FirecrawlUnavailable`. |
 | Malformed body (truncated mid-stream, invalid UTF-8, unparseable JSON) | Raise `FirecrawlUnavailable` (narrow read/parse except; `http.client.IncompleteRead` inherits `HTTPException`, not `OSError`). |
 | Parseable 200 body without `success: true` | Raise `FirecrawlUnavailable` (#331 non-expected-200-body guard). A complete HTML error page or a `success: false` served with 200 is NOT a result; reducing it to a miss would let an upstream outage persist as a false negative signal. |
+| `success: true` body missing a well-formed `paper` / `results` / `passages` | Raise `FirecrawlUnavailable`. Schema drift is a degradation, never a miss — collapsing it to `None` on the ID path would manufacture ID-keyed non-existence evidence from a malformed response. Verified safe against real empty answers: an empty result is present-but-empty, not omitted (`results: []` when filters match nothing, `passages: []` for a paper with no indexed full text). |
+| HTTP 3xx redirect | Raise `FirecrawlUnavailable` — the hop is refused, never followed. See "Credentials & privacy": following it would forward the API key off-host. |
 | `FirecrawlUnavailable` raised | Caller emits **no signal** for the entry. There is no `*_unmatched` boolean to omit — see "Where this stops". |
 
 ## Credentials & privacy
@@ -213,7 +219,20 @@ resolvers, whose key-optionality is a deliberate reproducibility choice
 (`docs/DATA_FLOWS.md`). `FIRECRAWL_API_KEY` only raises the rate limit.
 
 The key rides the **`Authorization: Bearer` header, never a query param**, so
-it cannot land in a URL, a log line, or a raised-exception message. What is
+it cannot land in a URL, a log line, or a raised-exception message.
+
+**Redirects are refused, not followed** — and this is a credential control,
+not hygiene. CPython's `HTTPRedirectHandler.redirect_request` rebuilds the
+request keeping every header except `content-length` / `content-type`, so
+`Authorization` is copied to whatever host a `Location` names, cross-origin
+included (verified: a `Bearer` key sent to a redirecting local server arrived
+at a third-party listener). The client's host check validates only the URL it
+builds and so cannot see a redirect target, so the client routes through an
+opener that refuses every hop. This is its one deliberate divergence from the
+sibling clients' bare `urllib.request.urlopen`: they send no `Authorization`
+header, so a followed redirect cannot leak a credential for them.
+
+What is
 transmitted is the payload class the sibling resolvers already send —
 identifiers and title query strings — plus, on the passages path, the
 **question text** the caller asks of a paper. That question can be derived
@@ -230,7 +249,7 @@ table above. The projected dict deliberately carries no `year` key (no venue
 publication year exists upstream). Pacing is per-instance — share one instance
 across a run.
 
-Tests: `scripts/test_firecrawl_client.py` (41 tests, fully synthetic inline
+Tests: `scripts/test_firecrawl_client.py` (54 tests, fully synthetic inline
 bodies, zero live network). The live examples in this document are the record
 of a manual verification.
 

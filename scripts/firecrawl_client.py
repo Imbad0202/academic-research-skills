@@ -125,6 +125,41 @@ def _require_api_url(url: str) -> None:
         raise FirecrawlUnavailable(f"Refusing non-Firecrawl URL: {url}")
 
 
+class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
+    """Refuse every redirect instead of following it.
+
+    Not defensive boilerplate — it closes a credential leak. CPython's default
+    `HTTPRedirectHandler.redirect_request` rebuilds the Request with
+    `{k: v for k, v in req.headers.items() if k.lower() not in
+    CONTENT_HEADERS}`, and `CONTENT_HEADERS` is only
+    `("content-length", "content-type")`. `Authorization` is therefore copied
+    verbatim to whatever host a `Location` names, cross-origin included
+    (verified: a `Bearer` key sent to a redirecting local server arrived at a
+    third-party listener). `_require_api_url` validates only the URL this
+    client builds, so it cannot see a redirect target — the host check would
+    pass and the key would still leave.
+
+    Refusing outright (rather than validating each hop) is the right shape
+    here: these endpoints do not redirect in normal operation, so a hop is
+    already an anomaly, and the sibling `chinese_literature_client.py` refuses
+    an off-allowlist hop for the same reason.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise FirecrawlUnavailable(
+            f"Refusing HTTP {code} redirect to {newurl!r}: the research-index "
+            f"endpoints do not redirect, and following a hop would forward the "
+            f"Authorization header off-host."
+        )
+
+
+# Module-level opener so redirect refusal cannot be bypassed by a caller.
+# This is the one deliberate divergence from the siblings' bare
+# `urllib.request.urlopen`: they send no Authorization header, so a followed
+# redirect cannot leak a credential for them.
+_OPENER = urllib.request.build_opener(_RefuseRedirects)
+
+
 def _require_supported_id(paper_id: str) -> None:
     """Guard the path-keyed endpoint's accepted id grammar.
 
@@ -156,6 +191,30 @@ def _retry_after_seconds(headers: Any) -> float | None:
     except (TypeError, ValueError):
         return None  # HTTP-date form is legal but not what this API sends
     return seconds if seconds >= 0 else None
+
+
+def _require_shape(data: Mapping[str, Any], key: str, expected: type) -> Any:
+    """Return `data[key]`, or raise if it is absent / the wrong type.
+
+    A `success: true` answer that omits the field the endpoint is defined to
+    return is schema drift or a mangled response, NOT a miss — and it must not
+    be reducible to one, because a `None` from the ID path is read as
+    ID-keyed non-existence evidence (`absent != false`, #331).
+
+    Raising is verified safe against legitimately empty answers: both fields
+    are present-but-empty rather than omitted when there is nothing to return
+    (measured 2026-09-02 — `passages: []` for a paper with no indexed full
+    text, `results: []` for a query whose author/date filters match nothing).
+    So this can only fire on a genuinely malformed body.
+    """
+    value = data.get(key)
+    if not isinstance(value, expected):
+        raise FirecrawlUnavailable(
+            f"Firecrawl 200 answer has no well-formed `{key}`: got "
+            f"{type(value).__name__}, expected {expected.__name__}. Schema "
+            f"drift is a degradation, never a miss."
+        )
+    return value
 
 
 def _is_paper_record(record: Mapping[str, Any]) -> bool:
@@ -230,9 +289,16 @@ class FirecrawlResearchClient:
         if elapsed < self._min_interval:
             time.sleep(self._min_interval - elapsed)
 
-    def _get(self, path: str, query: Mapping[str, str]) -> dict[str, Any]:
-        """GET a research-index path. Returns `{}` on 404 (the index's miss
-        shape) and raises `FirecrawlUnavailable` on every degradation."""
+    def _get(self, path: str, query: Mapping[str, str]) -> dict[str, Any] | None:
+        """GET a research-index path.
+
+        Returns **None** for a verified 404 (the index's miss shape) and a
+        parsed `success: true` body otherwise. The None-vs-dict split matters:
+        an empty dict would make "the index does not hold this id" and "the
+        answer arrived without the field we need" indistinguishable, and only
+        the first is a miss. Raises `FirecrawlUnavailable` on every
+        degradation.
+        """
         url = f"{_API_BASE}{path}"
         if query:
             url += "?" + urllib.parse.urlencode(query)
@@ -249,8 +315,9 @@ class FirecrawlResearchClient:
 
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                # URL is fixed-host HTTPS after _require_api_url().
-                with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
+                # URL is fixed-host HTTPS after _require_api_url(), and
+                # _OPENER refuses redirects so it stays that way.
+                with _OPENER.open(req, timeout=30) as resp:  # nosec B310
                     # Narrow except around read + decode + parse so a
                     # mid-stream socket drop, a truncated body, or an HTML
                     # error page served with 200 surfaces as a degradation
@@ -288,7 +355,7 @@ class FirecrawlResearchClient:
                     # observed — JSON (`code: NOT_FOUND`) for an unknown id in
                     # a supported namespace, and HTML for an id that leaves
                     # the route — so the body is deliberately not read.
-                    return {}
+                    return None
                 if e.code == 429 and attempt < _MAX_RETRIES:
                     # Honor the documented Retry-After when present; otherwise
                     # fall back to the shared exponential backoff
@@ -326,9 +393,10 @@ class FirecrawlResearchClient:
         """
         _require_supported_id(paper_id)
         data = self._get(f"/papers/{urllib.parse.quote(paper_id, safe=':')}", {})
-        paper = data.get("paper")
-        if not isinstance(paper, dict):
-            return None  # 404 miss (`{}`), or a 200 answer carrying no paper
+        if data is None:
+            return None  # verified 404 — the index does not hold this id
+        # A 200 without a well-formed `paper` is drift, not a miss: raises.
+        paper = _require_shape(data, "paper", dict)
         title = paper.get("title") or ""
         if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return _record_to_dict(paper)
@@ -356,9 +424,9 @@ class FirecrawlResearchClient:
         if generic_title(title):
             return None
         data = self._get("/papers", {"query": title, "k": str(_SEARCH_K)})
-        results = data.get("results")
-        if not isinstance(results, list):
+        if data is None:
             return None
+        results = _require_shape(data, "results", list)
         scored = []
         for cand in results:
             if not isinstance(cand, dict) or not _is_paper_record(cand):
@@ -400,7 +468,7 @@ class FirecrawlResearchClient:
             f"/papers/{urllib.parse.quote(paper_id, safe=':')}",
             {"query": query, "k": str(k)},
         )
-        passages = data.get("passages")
-        if not isinstance(passages, list):
-            return []
+        if data is None:
+            return []  # verified 404 — no such paper
+        passages = _require_shape(data, "passages", list)
         return [p for p in passages if isinstance(p, dict)]
