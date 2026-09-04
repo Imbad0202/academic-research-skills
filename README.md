@@ -76,6 +76,8 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 **Using Codex CLI?** Install the sibling distribution instead: [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) — same workflow content, Codex-native packaging as a single `$academic-research-suite` skill with `ars-*` aliases.
 
+**Using ZCode?** No separate port is needed: ZCode reads this repo's `.claude-plugin/` manifest directly. Add `Imbad0202/academic-research-skills` as a marketplace from ZCode's plugin **Discover** tab (**`+`** button), then install the plugin. The 4 skills, 16 `/ars-*` slash commands, 3 plugin agents, and the SessionStart announce hook all work; the skill inventory is declared on both surfaces (`plugin.json` `skills[]` and `marketplace.json` `plugins[].skills[]`).
+
 **Third-party platforms and integrations** that wrap or host ARS are listed in [THIRD_PARTY.md](THIRD_PARTY.md) — community-submitted and not reviewed or endorsed by the maintainer.
 
 **Governance:** who decides, what cross-model review does and does not provide, and the project's end-of-life posture are stated in [GOVERNANCE.md](GOVERNANCE.md); security reporting and triage in [SECURITY.md](SECURITY.md).

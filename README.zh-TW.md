@@ -73,6 +73,8 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 **用 Codex CLI？** 請改裝姊妹版：[`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex)。同一套 workflow 內容，Codex 原生包裝為單一 `$academic-research-suite` skill，提供 `ars-*` 別名。
 
+**使用 ZCode？** 無需另外移植：ZCode 直接讀取本 repo 的 `.claude-plugin/` 清單。在 ZCode 的外掛管理 **Discover** 頁用 **`+`** 按鈕新增 marketplace `Imbad0202/academic-research-skills`，然後安裝外掛即可。4 個 skill、16 個 `/ars-*` slash command、3 個 plugin agent 與 SessionStart announce hook 均可用；技能清單同時宣告於 `plugin.json` 的 `skills[]` 與 `marketplace.json` 的 `plugins[].skills[]`。
+
 ## 效能與費用
 
 **👉 [docs/PERFORMANCE.zh-TW.md](docs/PERFORMANCE.zh-TW.md)** — 各模式 token 預算、完整 pipeline 估算（一篇 15k 字論文約 ~$4–6），以及建議的 Claude Code 設定（Auto 模式；Agent Team 選用）。
