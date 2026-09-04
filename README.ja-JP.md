@@ -71,6 +71,8 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 **Codex CLI を使用していますか?** 代わりに姉妹ディストリビューションをインストールしてください: [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) — 同じワークフローコンテンツ、`ars-*` エイリアスを持つ単一の `$academic-research-suite` スキルとしての Codex ネイティブパッケージング。
 
+**ZCode を使用していますか？** 別個のポートは不要です。ZCode は本リポジトリの `.claude-plugin/` マニフェストを直接読み込みます。ZCode のプラグイン **Discover** タブで **`+`** ボタンから marketplace `Imbad0202/academic-research-skills` を追加し、プラグインをインストールしてください。4 つの skill、16 個の `/ars-*` スラッシュコマンド、3 つの plugin agent、SessionStart announce hook がすべてそのまま動作します。スキル一覧は `plugin.json` の `skills[]` と `marketplace.json` の `plugins[].skills[]` の両方に宣言されています。
+
 ## パフォーマンス＆コスト
 
 **👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — モードごとのトークン予算、フルパイプライン見積り（15k 語の論文で約 $4-6）、推奨 Claude Code 設定（Auto モード; Agent Team オプション）。
