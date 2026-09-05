@@ -237,3 +237,26 @@ def test_work_dir_inside_repo_refused(env, tmp_path, monkeypatch):
 def test_fence_collision_refused():
     with pytest.raises(mod.PreconditionFailure, match="closing delimiter"):
         mod._fence("paper_content", "text with </paper_content> inside")
+
+
+def test_untrusted_blocks_carry_boundary_sentences(env, tmp_path, monkeypatch):
+    """Mutation guard: the two whole-file calls (field analyst, synthesizer)
+    state Iron Rule #7 at the call boundary, ahead of the fenced block."""
+    seen = []
+    real_build = mod.build_transport
+
+    def capture(args):
+        transport = real_build(args)
+        seen.append(transport)
+        return transport
+
+    monkeypatch.setattr(mod, "build_transport", capture)
+    assert run_cards(env, tmp_path) == 0
+    assert mod.main(base_argv(env, "panel") + scripted(tmp_path, panel_responses())) == 0
+    calls = {call.label: call for transport in seen for call, _ in transport.calls}
+    analyst = calls["field_analyst"].user
+    assert mod.DATA_BOUNDARY in analyst
+    assert analyst.index(mod.DATA_BOUNDARY) < analyst.index(f"<{mod.MANUSCRIPT_TAG}>")
+    synthesis = calls["synthesis"].user
+    assert mod.REPORT_BOUNDARY in synthesis
+    assert synthesis.index(mod.REPORT_BOUNDARY) < synthesis.index(f"<{mod.REPORT_TAG}>")

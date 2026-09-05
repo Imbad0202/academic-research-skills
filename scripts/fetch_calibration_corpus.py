@@ -25,6 +25,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -32,6 +33,7 @@ from pathlib import Path
 import openreview
 
 VENUE_ID = "ICLR.cc/2026/Conference"
+PAPER_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")  # ids become file names below
 
 
 def utcnow() -> str:
@@ -107,6 +109,8 @@ def main() -> int:
     ids: list[tuple[str, str]] = []
     for cls in ("accepted", "rejected"):
         for pid in sel["candidates"][cls][: args.per_class]:
+            if not PAPER_ID_RE.match(pid):
+                raise SystemExit(f"malformed paper id in selection: {pid!r}")
             ids.append((cls, pid))
     if args.only:
         ids = [(c, p) for c, p in ids if p in set(args.only)]

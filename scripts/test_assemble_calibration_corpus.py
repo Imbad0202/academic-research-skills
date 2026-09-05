@@ -274,3 +274,9 @@ def test_manifest_records_normalization_rule_and_verify_pins_it(tmp_path):
     payload["extraction"]["text_normalization"] = "NFC"  # rule drift, not a version drift
     papers_path.write_text(json.dumps(payload), encoding="utf-8")
     assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 1
+
+
+def test_malformed_pool_id_refused(tmp_path):
+    path = make_pool(tmp_path, "bad", ["okID_1", "../escape"])
+    with pytest.raises(SystemExit, match="malformed id"):
+        mod.load_pool([path])

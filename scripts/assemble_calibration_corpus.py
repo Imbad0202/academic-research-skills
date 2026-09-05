@@ -80,6 +80,10 @@ EXCLUSION_REASONS = frozenset(
 
 ACCEPT_DECISION_RE = re.compile(r"^Accept \((Poster|Spotlight|Oral)\)$")
 
+# OpenReview forum ids are URL-safe base64-ish tokens; ids are later spliced
+# into file names (`<id>.pdf`, cards/<id>/), so anything else is refused here.
+PAPER_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
 # Decision vocabulary that must never appear in papers.json outside title text.
 # Guard is substring-based over a title-redacted serialization: keys, venue
 # strings, and decision strings are all structural, so any hit is a leak.
@@ -110,8 +114,8 @@ def load_pool(paths: list[Path]) -> dict[str, dict]:
             raise SystemExit(f"pool file is not a JSON array: {path}")
         for note in notes:
             paper_id = note.get("id")
-            if not isinstance(paper_id, str) or not paper_id:
-                raise SystemExit(f"pool note without id in {path}")
+            if not isinstance(paper_id, str) or not PAPER_ID_RE.match(paper_id):
+                raise SystemExit(f"pool note with missing or malformed id in {path}: {paper_id!r}")
             prior = pool.get(paper_id)
             if prior is not None and prior != note:
                 raise SystemExit(f"conflicting duplicate for {paper_id} in {path}")
