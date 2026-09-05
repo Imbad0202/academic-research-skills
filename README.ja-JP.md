@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.21.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.1)
+[![Version](https://img.shields.io/badge/version-v3.21.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.2)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -252,7 +252,7 @@ You: "status"
 
 基準ごとの証拠に紐づく **ナラティブ判断** を行う 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。現在の live review と Schema 6 package は常に `NOT_CALIBRATED` で、full calibration は有界な候補 profile のみを生成し、live review への適用は未実装です。固定総得点を Accept / Minor Revision / Major Revision / Reject に対応させません。初回レビューパネル vs. 契約管理された再レビューディスパッチの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.21.1）
+### Academic Pipeline（v3.21.2）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）は MANDATORY であり、記録されないバイパス経路は存在しない（すべてのオーバーライドは Stage 6 のためにユーザーの理由の記録を要する）。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -334,6 +334,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.21.2 (2026-09-06) — モデル現況の整合（Fable 5.1 / GPT-6 Astra）、チェックポイント決定の出所、CJK タイトル照合の修正
+
+> **新機能ではなく、現況整合と出所の明示：** v3.21.2 は 2026 年 9 月の 2 つのベンダー system card にスイートを整合させます。`gpt-6-astra` は両トランスポートで provisional としてクロスモデル表に入り、世代現況ポリシーに基づき推奨 OpenAI 検証モデルになります。`gpt-5.6-sol` は ChatGPT サブスクリプション引用トランスポートでの validated を維持し、新たな bakeoff 結果は主張しません。封じ込め型 Codex トランスポートの reasoning-effort 集合に `ultra` が加わります。2 つのガードレールを追加しますが、いずれもプロンプト層であり、ARS の測定ではなくベンダー文書に基づきます。チェックポイント決定の出所（ユーザーのターンのみが決定であり、決定はサブエージェントへ逐語的に再送される。リスク R11）と、プロバイダー側の監視・安全介入をトランスポート失敗として扱い、決して判定としない規定です。両カードに対する harness-retirement 監査は何も廃止しません（プロンプト文の廃止 0 件。keep-as-debt 8 件にカード引用を付与）。修正：CJK タイトルが 4 つのインデックスリゾルバの完全一致タイトルゲートで失敗しなくなり（#798）、外側の括弧は 1 つの均衡した単位を成す場合のみ除去します（#800）。autolink ラウンドトリップテストが依存関係を宣言し（#801）、`check_surface_form_parity` はマニフェストではなく壊れた環境を名指しし、skill 一覧の整合 lint を追加し（#809）、R10 の残存ギャップを最新化し（#813）、MLA 規則の 1 行を修正しました（#805）。スイート／pipeline → v3.21.2、deep-research → v2.12.1、academic-paper → v3.3.1、academic-paper-reviewer → v1.11.1。
 
 ### v3.21.1 (2026-08-24) — 境界付きワークフロー基盤、封印済み bakeoff、トランスポート強化
 

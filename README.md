@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.21.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.1)
+[![Version](https://img.shields.io/badge/version-v3.21.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.2)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -269,7 +269,7 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 
 7-agent multi-perspective review with **criterion-bound narrative judgements**. Modes: full, re-review, quick, methodology-focus, guided, calibration. Current live reviews and Schema 6 packages remain `NOT_CALIBRATED`; full calibration can produce a bounded candidate profile, but application to a live review is not wired. No numerical total is mapped to Accept, Minor Revision, Major Revision, or Reject. First-round review panel vs. contract-governed re-review dispatch boundary: see ARCHITECTURE.md §3 Stage 3 / Stage 3'.
 
-### Academic Pipeline (v3.21.1)
+### Academic Pipeline (v3.21.2)
 
 10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline guarantees: every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) is MANDATORY with no unrecorded bypass (every override requires user reasoning recorded for Stage 6); R&R Traceability Matrix (Schema 11) independently verifies author revision claims. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
 
@@ -357,6 +357,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## Changelog
+
+### v3.21.2 (2026-09-06) — Model currency for Claude Fable 5.1 and GPT-6 Astra, checkpoint decision provenance, and CJK title-matching repairs
+
+> **Currency and provenance, not new capability:** v3.21.2 aligns the suite to the two September 2026 vendor system cards. `gpt-6-astra` enters the cross-model table as provisional on both transports and becomes the recommended OpenAI verifier under the generation-currency policy; `gpt-5.6-sol` keeps its validated status on the ChatGPT-subscription citation transport, and no new bakeoff result is claimed. The contained Codex transport's reasoning-effort set gains `ultra`. Two guardrails are added, both prompt-level and vendor-motivated rather than ARS-measured: checkpoint decision provenance (only a user turn is a decision; decisions are re-transmitted to subagents verbatim; risk R11) and provider-side monitoring or safety interventions named as a transport failure that is never a verdict. A harness-retirement audit against both cards retires nothing (0 prompt-text retirements; 8 keep-as-debt items now carry a card citation). Fixes: CJK titles no longer fail the exact-title gate in the four index resolvers (#798) and wrapper marks are stripped only as one balanced unit (#800); the autolink round-trip test declares its dependency (#801); `check_surface_form_parity` names a broken environment instead of the manifest; a skill-inventory parity lint (#809); the R10 residual gap de-staled (#813); an MLA key-rules line corrected (#805). Suite/pipeline → v3.21.2; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.
 
 ### v3.21.1 (2026-08-24) — Bounded workflow substrates, sealed bakeoffs, and transport hardening
 

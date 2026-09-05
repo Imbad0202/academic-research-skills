@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.21.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.1)
+[![Version](https://img.shields.io/badge/version-v3.21.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.2)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -252,7 +252,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，采用 **逐准则、证据锚定的叙事判断**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 与 Schema 6 package 一律为 `NOT_CALIBRATED`；完整 calibration 可产生有界候选 profile，但尚未接入 live review。不得以固定总分映射接受、小修、大修或退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.21.1)
+### Academic Pipeline (v3.21.2)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -317,6 +317,10 @@ https://github.com/Imbad0202/academic-research-skills
 ---
 
 ## 更新纪录
+
+### v3.21.2（2026-09-06）— 模型现况对齐（Fable 5.1 / GPT-6 Astra）、检查点决策来源与 CJK 标题匹配修复
+
+> **对齐现况与决策来源，不是新能力：**v3.21.2 依据两份 2026 年 9 月的厂商 system card 对齐套件。`gpt-6-astra` 以 provisional 身份进入跨模型表（两条传输均如此），并依世代现况政策成为推荐的 OpenAI 验证模型；`gpt-5.6-sol` 保留其在 ChatGPT 订阅引用传输上的 validated 身份，本版不声称任何新的 bakeoff 结果。受限的 Codex 传输 reasoning-effort 集合新增 `ultra`。新增两道 guardrail，均为 prompt 层、由厂商文档而非 ARS 测量驱动：检查点决策来源（只有用户回合算决策；决策逐字转交子代理；风险 R11），以及供应商端监控或安全介入一律视为传输失败、永远不是判定。针对两份卡片的 harness 淘汰审计没有淘汰任何东西（0 条 prompt 文字淘汰；8 条 keep-as-debt 项目补上卡片引注）。修复：CJK 标题不再在四个索引解析器的精确标题门失败（#798），外层引号只在构成单一平衡单位时才剥除（#800）；autolink round-trip 测试明示其依赖（#801）；`check_surface_form_parity` 改为指名坏掉的环境而非 manifest；新增 skill 清单一致性 lint（#809）；R10 残余缺口去过时化（#813）；修正一行 MLA 规则（#805）。套件／pipeline → v3.21.2；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
 
 ### v3.21.1（2026-08-24）— 有界工作流基础、封存式 bakeoff 与传输强化
 
