@@ -53,20 +53,15 @@ is its own `claude -p` process with an empty sandbox directory as `--add-dir`
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import subprocess
 import sys
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _calibration_pdf_text import (  # noqa: E402
-    extract_manuscript_text,
-    extracted_text_sha256,
-)
+from _calibration_pdf_text import pdf_facts, pypdf, sha256_hex  # noqa: E402
+from _e4_evidence import EvidencePathError, assert_plain_file  # noqa: E402
 from dispatch_e4_panel import (  # noqa: E402
     AGENT_DIR,
     AGENT_FILES,
@@ -76,13 +71,10 @@ from dispatch_e4_panel import (  # noqa: E402
     PreconditionFailure,
     ScriptedTransport,
     TransportFailure,
+    _delimited,
+    _git_state,
     card_for,
 )
-
-try:
-    import pypdf
-except ImportError:  # pragma: no cover
-    pypdf = None
 
 REPO = Path(__file__).resolve().parent.parent
 SUITE_DIR = REPO / "evals" / "heldout" / "reviewer_calibration"
@@ -97,17 +89,8 @@ REPORT_TAG = "seat_report"
 
 
 def _fence(tag: str, text: str) -> str:
-    body = text.rstrip("\n")
-    if f"</{tag}>" in body.lower():
-        raise PreconditionFailure(
-            f"data-fence collision: payload contains </{tag}>; refusing (no "
-            "escaping or delimiter switching, per the transport preflight rule)"
-        )
-    return f"<{tag}>\n{body}\n</{tag}>"
-
-
-def sha256_hex(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+    """E4's closed data-fence grammar (`_delimited`), trailing newline trimmed."""
+    return _delimited(tag, text.rstrip("\n")).rstrip("\n")
 
 
 def load_corpus(corpus_dir: Path) -> dict:
@@ -121,32 +104,46 @@ def paper_entry(corpus: dict, paper_id: str) -> dict:
     raise PreconditionFailure(f"paper {paper_id} not in corpus manifest")
 
 
-def manuscript_text(entry: dict, pdf_cache: Path) -> str:
-    """Extract and hash-verify the manuscript from the local PDF cache."""
+def _plain_file(path: Path, root: Path, what: str) -> None:
+    """Refuse symlinks anywhere from `root` down to `path` (E4 evidence rule)."""
+    try:
+        assert_plain_file(path, root)
+    except EvidencePathError as exc:
+        raise PreconditionFailure(f"{what}: {exc}") from exc
+
+
+def manuscript_text(entry: dict, pdf_cache: Path, extraction: dict | None = None) -> str:
+    """Extract and hash-verify the manuscript from the local PDF cache.
+
+    `extraction` is the manifest's extraction block; when given, a text-hash
+    mismatch names its actual cause (extractor version drift vs. an altered
+    document) instead of guessing."""
     if pypdf is None:
         raise PreconditionFailure("pypdf is required to extract the manuscript")
     pdf_path = pdf_cache / f"{entry['paper_id']}.pdf"
-    if pdf_path.is_symlink():
-        raise PreconditionFailure(f"refusing symlinked PDF: {pdf_path}")
     if not pdf_path.is_file():
         raise PreconditionFailure(f"cached PDF missing: {pdf_path}")
-    data = pdf_path.read_bytes()
-    if sha256_hex(data) != entry["pdf_sha256"]:
+    _plain_file(pdf_path, pdf_cache, "cached PDF")
+    pdf_sha, text_sha, _, normalized = pdf_facts(pdf_path)
+    if pdf_sha != entry["pdf_sha256"]:
         raise PreconditionFailure(f"{entry['paper_id']}: pdf_sha256 mismatch against manifest")
-    reader = pypdf.PdfReader(pdf_path)
-    normalized = extract_manuscript_text(reader)
-    if extracted_text_sha256(normalized) != entry["extracted_text_sha256"]:
+    if text_sha != entry["extracted_text_sha256"]:
+        manifest_version = (extraction or {}).get("pypdf_version")
+        cause = (
+            f"pypdf version drift (installed {pypdf.__version__}, manifest {manifest_version})"
+            if manifest_version and manifest_version != pypdf.__version__
+            else "extractor/normalization drift on a byte-identical PDF"
+        )
         raise PreconditionFailure(
-            f"{entry['paper_id']}: extracted_text_sha256 mismatch (pypdf version "
-            "drift or altered PDF); re-freeze or align the extractor before dispatch"
+            f"{entry['paper_id']}: extracted_text_sha256 mismatch — {cause}; "
+            "re-freeze or align the extractor before dispatch"
         )
     return normalized
 
 
 def agent_file(role: str) -> str:
     path = AGENT_DIR / AGENT_FILES[role]
-    if path.is_symlink():
-        raise PreconditionFailure(f"refusing symlinked agent file: {path}")
+    _plain_file(path, AGENT_DIR, "agent file")
     return path.read_text(encoding="utf-8")
 
 
@@ -162,18 +159,6 @@ def guard_label_isolation(corpus_dir: Path, pdf_cache: Path) -> None:
     for path in pdf_cache.glob("**/*"):
         if path.is_symlink():
             raise PreconditionFailure(f"symlink inside PDF cache: {path}")
-
-
-def git_state() -> tuple[str, bool]:
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True, check=True
-    ).stdout.strip()
-    dirty = bool(
-        subprocess.run(
-            ["git", "status", "--porcelain"], cwd=REPO, capture_output=True, text=True, check=True
-        ).stdout.strip()
-    )
-    return head, dirty
 
 
 @dataclass
@@ -208,15 +193,20 @@ def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: P
     raise AssertionError("unreachable")
 
 
-def stage_cards(args, transport) -> int:
+def _prepare(args) -> tuple[dict, str, Path]:
+    """Shared stage preamble: manifest entry, hash-verified manuscript, work dir."""
     corpus = load_corpus(Path(args.corpus_dir))
     entry = paper_entry(corpus, args.paper)
     guard_label_isolation(Path(args.corpus_dir), Path(args.pdf_cache))
-    manuscript = manuscript_text(entry, Path(args.pdf_cache))
-
+    manuscript = manuscript_text(entry, Path(args.pdf_cache), corpus.get("extraction"))
     work = Path(args.work_dir)
     if _is_inside(work, REPO):
         raise PreconditionFailure("work dir must sit outside the repository")
+    return entry, manuscript, work
+
+
+def stage_cards(args, transport) -> int:
+    entry, manuscript, work = _prepare(args)
     cards_dir = work / "cards" / args.paper
     bundle = Bundle(cards_dir / "raw")
     sandbox = work / "sandbox" / f"cards-{args.paper}"
@@ -235,7 +225,6 @@ def stage_cards(args, transport) -> int:
     )
     analysis = _attempt_call(transport, bundle, call, sandbox, state)
 
-    cards = {}
     for seat, index in SEAT_CARD_INDEX.items():
         card = card_for(analysis, index)
         if card is None:
@@ -243,7 +232,6 @@ def stage_cards(args, transport) -> int:
                 f"field analysis for {args.paper} yields no Card #{index} ({seat}); "
                 "cards stage must be re-run before any panel dispatches"
             )
-        cards[seat] = card
         (cards_dir / f"card{index}.md").write_text(card + "\n", encoding="utf-8")
     (cards_dir / "frozen.json").write_text(
         json.dumps(
@@ -259,7 +247,7 @@ def stage_cards(args, transport) -> int:
         + "\n",
         encoding="utf-8",
     )
-    print(f"cards frozen for {args.paper}: {sorted(cards)}")
+    print(f"cards frozen for {args.paper}: {sorted(SEAT_CARD_INDEX)}")
     return 0
 
 
@@ -281,14 +269,7 @@ def load_frozen_card(work: Path, paper: str, seat: str) -> str:
 
 
 def stage_panel(args, transport) -> int:
-    corpus = load_corpus(Path(args.corpus_dir))
-    entry = paper_entry(corpus, args.paper)
-    guard_label_isolation(Path(args.corpus_dir), Path(args.pdf_cache))
-    manuscript = manuscript_text(entry, Path(args.pdf_cache))
-
-    work = Path(args.work_dir)
-    if _is_inside(work, REPO):
-        raise PreconditionFailure("work dir must sit outside the repository")
+    entry, manuscript, work = _prepare(args)
     stem = f"{args.date}-{args.paper}-r{args.replicate}"
     bundle = Bundle(work / "runs" / stem / "raw")
     if bundle.claimed_existing:
@@ -299,7 +280,7 @@ def stage_panel(args, transport) -> int:
     sandbox = work / "sandbox" / stem
     sandbox.mkdir(parents=True, exist_ok=True)
 
-    head, dirty = git_state()
+    head, dirty = _git_state()
     state = PanelState()
     record = {
         "suite": "reviewer_calibration",

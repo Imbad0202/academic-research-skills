@@ -79,6 +79,12 @@ dispatch are amendments logged in RUN_NOTES, never silent edits.
 - The Phase 4 Calibration Report (protocol template; Lu 2026 comparison
   table shown — all-binary accept/reject ML-venue gold set qualifies — with
   Lu values as descriptive context, never a benchmark target).
-- One `measurement-<date>.json` row under the `heldout-measurement/1.0`
+- One `measurement-<date>.json` row under the `heldout-measurement/1.1`
   contract (`suite: reviewer_calibration`, `suite_class: llm_judged`,
-  `decision_relevant: true`, `judge_plan.exception: "none"`).
+  `decision_relevant: true`, `judge_plan.exception: "none"`). 1.1 (the only
+  version accepted for new rows since #664) additionally requires a
+  `preregistration` record binding this file and `adjudication_rubric.md`
+  by SHA-256 to the frozen commit, and a suite-local write-once
+  `execution_manifest` with per-call ids, RFC-3339 start/complete
+  timestamps, and prompt/output hashes — the dispatcher emits the manifest;
+  the scorer builds the row. Both land with the scored run, never after.

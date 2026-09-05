@@ -83,7 +83,6 @@ def fetch_one(client, paper_id: str, pdf_dir: Path, dry: bool) -> dict:
         "decision_note_id": dec.id,
         "decision_raw": decision_raw,
         "pdf_url": pdf_url,
-        "pdf_bytes": pdf_path.stat().st_size if pdf_path.is_file() else None,
         "retrieved_at": utcnow(),
     }
 
@@ -130,9 +129,10 @@ def main() -> int:
             print(f"skip {cls} {pid} (cached)")
             continue
         rec = fetch_one(client, pid, pdf_dir, args.dry_run)
-        rec["class"] = cls
         papers[pid] = rec
-        print(f"ok   {cls} {pid} n={rec['number']} decision={rec['decision_raw']!r} pdf={rec['pdf_bytes']}")
+        pdf_path = pdf_dir / f"{pid}.pdf"
+        size = pdf_path.stat().st_size if pdf_path.is_file() else None
+        print(f"ok   {cls} {pid} n={rec['number']} decision={rec['decision_raw']!r} pdf_bytes={size}")
         out_path.write_text(
             json.dumps({"venue_id": VENUE_ID, "papers": list(papers.values())}, indent=2, ensure_ascii=False),
             encoding="utf-8",

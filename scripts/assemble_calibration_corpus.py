@@ -49,25 +49,19 @@ Stdlib + pypdf (existing repo dependency: pdf_read_preflight.py).
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _calibration_pdf_text import (  # noqa: E402
     TEXT_NORMALIZATION,
-    extract_manuscript_text,
-    extracted_text_sha256,
+    pdf_facts,
+    pypdf,
+    sha256_hex,
 )
-
-try:
-    import pypdf
-except ImportError:  # pragma: no cover - exercised only on broken envs
-    pypdf = None
 
 US = "\x1f"  # unit separator: unambiguous key joiner (ids are ASCII base64-ish)
 
@@ -102,10 +96,6 @@ LABEL_LEAK_TOKENS = (
 )
 
 
-def sha256_hex(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
 def order_key(seed: str, cls: str, paper_id: str) -> str:
     return sha256_hex(f"{seed}{US}{cls}{US}{paper_id}".encode("utf-8"))
 
@@ -133,26 +123,37 @@ def pool_ids_hash(ids: list[str]) -> str:
     return sha256_hex("\n".join(sorted(ids)).encode("utf-8"))
 
 
-@dataclass
-class Exclusion:
-    paper_id: str
-    reason: str
-    note: str
-
-
-def load_exclusions(path: Path | None) -> dict[str, Exclusion]:
+def load_exclusions(path: Path | None) -> dict[str, dict]:
+    """{paper_id: {"reason", "note"}} from the operator's exclusion ledger."""
     if path is None:
         return {}
     rows = json.loads(path.read_text(encoding="utf-8"))
-    out: dict[str, Exclusion] = {}
+    out: dict[str, dict] = {}
     for row in rows:
         reason = row["reason"]
         if reason not in EXCLUSION_REASONS:
             raise SystemExit(f"unknown exclusion reason {reason!r} for {row['paper_id']}")
         if reason == "other" and not row.get("note", "").strip():
             raise SystemExit(f"exclusion reason 'other' requires a note ({row['paper_id']})")
-        out[row["paper_id"]] = Exclusion(row["paper_id"], reason, row.get("note", ""))
+        out[row["paper_id"]] = {"reason": reason, "note": row.get("note", "")}
     return out
+
+
+def pool_list_mismatches(corpus_dir: Path, pools: dict[str, dict]) -> list[str]:
+    """Compare the committed `pool_<cls>_ids.txt` lists against a pools
+    snapshot ({cls: {count, ids_sha256}}); one message per mismatch."""
+    problems: list[str] = []
+    for cls, ref in pools.items():
+        ids_file = corpus_dir / f"pool_{cls}_ids.txt"
+        if not ids_file.is_file():
+            problems.append(f"missing pool id list: {ids_file}")
+            continue
+        ids = ids_file.read_text(encoding="utf-8").split()
+        if len(ids) != ref["count"]:
+            problems.append(f"pool {cls}: id list count {len(ids)} != snapshot {ref['count']}")
+        if pool_ids_hash(ids) != ref["ids_sha256"]:
+            problems.append(f"pool {cls}: ids_sha256 mismatch")
+    return problems
 
 
 def cmd_select(args: argparse.Namespace) -> int:
@@ -190,7 +191,7 @@ def cmd_select(args: argparse.Namespace) -> int:
             if paper_id in exclusions:
                 exc = exclusions[paper_id]
                 result["exclusions_applied"].append(
-                    {"paper_id": paper_id, "class": cls, "reason": exc.reason, "note": exc.note}
+                    {"paper_id": paper_id, "class": cls, "reason": exc["reason"], "note": exc["note"]}
                 )
                 continue
             if len(picked) < quotas[cls]:
@@ -213,16 +214,6 @@ def cmd_select(args: argparse.Namespace) -> int:
     for cls in CLASSES:
         print(f"  {cls}: {len(result['selected'][cls])}/{result['pools'][cls]['count']}")
     return 0
-
-
-def pdf_facts(pdf_path: Path) -> tuple[str, str, int]:
-    """(pdf_sha256, extracted_text_sha256, page_count) for a cached PDF."""
-    if pypdf is None:
-        raise SystemExit("pypdf is required for freeze/verify")
-    data = pdf_path.read_bytes()
-    reader = pypdf.PdfReader(pdf_path)
-    normalized = extract_manuscript_text(reader)
-    return sha256_hex(data), extracted_text_sha256(normalized), len(reader.pages)
 
 
 def leak_scan(papers_payload: dict) -> list[str]:
@@ -249,6 +240,9 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     pdf_dir = Path(args.pdf_dir)
     out_dir = Path(args.out_dir)
 
+    if pypdf is None:
+        raise SystemExit("pypdf is required for freeze/verify")
+    excluded = {e["paper_id"] for e in selection["exclusions_applied"]}
     papers: list[dict] = []
     labels: list[dict] = []
     freeze_exclusions: list[dict] = []
@@ -258,7 +252,7 @@ def cmd_freeze(args: argparse.Namespace) -> int:
         for paper_id in selection["candidates"][cls]:
             if taken >= quota:
                 break
-            if any(e["paper_id"] == paper_id for e in selection["exclusions_applied"]):
+            if paper_id in excluded:
                 continue
             meta = meta_by_id.get(paper_id)
             if meta is None:
@@ -269,7 +263,7 @@ def cmd_freeze(args: argparse.Namespace) -> int:
             pdf_path = pdf_dir / f"{paper_id}.pdf"
             if not pdf_path.is_file():
                 raise SystemExit(f"missing cached PDF for {paper_id}: {pdf_path}")
-            pdf_sha, text_sha, pages = pdf_facts(pdf_path)
+            pdf_sha, text_sha, pages, _ = pdf_facts(pdf_path)
             if pages > args.page_cap:
                 freeze_exclusions.append(
                     {
@@ -363,16 +357,12 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     (manifests_dir / "gold_labels.json").write_text(
         json.dumps(labels_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    for cls in CLASSES:
-        ids_file = corpus_dir / f"pool_{cls}_ids.txt"
-        if not ids_file.is_file():
-            raise SystemExit(
-                f"missing {ids_file}; run `select --ids-out-dir {corpus_dir}` first"
-            )
-        ids = ids_file.read_text(encoding="utf-8").split()
-        ref = selection["pools"][cls]
-        if len(ids) != ref["count"] or pool_ids_hash(ids) != ref["ids_sha256"]:
-            raise SystemExit(f"pool id list for {cls} does not match selection snapshot")
+    problems = pool_list_mismatches(corpus_dir, selection["pools"])
+    if problems:
+        raise SystemExit(
+            "pool id lists do not match the selection snapshot (run `select "
+            f"--ids-out-dir {corpus_dir}` first): " + "; ".join(problems)
+        )
     print(f"frozen: {corpus_dir / 'papers.json'} ({len(papers)} papers)")
     print(f"frozen: {manifests_dir / 'gold_labels.json'}")
     return 0
@@ -416,7 +406,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
         if not pdf_path.is_file():
             warnings.append(f"{paper['paper_id']}: PDF not in local cache; hash not recomputed")
             continue
-        pdf_sha, text_sha, pages = pdf_facts(pdf_path)
+        pdf_sha, text_sha, pages, _ = pdf_facts(pdf_path, extract_text=version_match)
         if pdf_sha != paper["pdf_sha256"]:
             failures.append(f"{paper['paper_id']}: pdf_sha256 mismatch")
         if pages != paper["page_count"]:
@@ -424,16 +414,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
         if version_match and text_sha != paper["extracted_text_sha256"]:
             failures.append(f"{paper['paper_id']}: extracted_text_sha256 mismatch")
 
-    for cls, ref in papers_payload["source"]["pools"].items():
-        ids_file = out_dir / "corpus" / f"pool_{cls}_ids.txt"
-        if not ids_file.is_file():
-            failures.append(f"missing pool id list: {ids_file}")
-            continue
-        ids = ids_file.read_text(encoding="utf-8").split()
-        if len(ids) != ref["count"]:
-            failures.append(f"pool {cls}: id list count {len(ids)} != manifest {ref['count']}")
-        if pool_ids_hash(ids) != ref["ids_sha256"]:
-            failures.append(f"pool {cls}: ids_sha256 mismatch")
+    failures.extend(pool_list_mismatches(out_dir / "corpus", papers_payload["source"]["pools"]))
 
     hits = leak_scan(papers_payload)
     if hits:

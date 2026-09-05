@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+from collections import Counter
 import re
 import statistics
 import sys
@@ -96,7 +97,6 @@ def load_panels(runs_dir: Path) -> tuple[list[dict], list[str]]:
         record = json.loads(path.read_text(encoding="utf-8"))
         if record.get("suite") != "reviewer_calibration" or record.get("stage") != "panel":
             continue
-        record["_path"] = str(path)
         records.append(record)
     return records, blocked
 
@@ -164,11 +164,8 @@ def aggregate_papers(panels: dict[str, dict], expected_replicates: int) -> dict[
             )
         sides = [binarize(r["decision"]) for r in rows]
         majority = "positive" if sides.count("positive") > sides.count("negative") else "negative"
-        exact_counts: dict[str, int] = {}
-        for r in rows:
-            exact_counts[r["decision"]] = exact_counts.get(r["decision"], 0) + 1
-        best = max(exact_counts.values())
-        modes = [d for d, c in exact_counts.items() if c == best]
+        ranked = Counter(r["decision"] for r in rows).most_common()
+        modes = [d for d, c in ranked if c == ranked[0][1]]
         scores = [r["panel_score"] for r in rows if r["panel_score"] is not None]
         out[paper_id] = {
             "replicate_decisions": [r["decision"] for r in sorted(rows, key=lambda x: x["replicate"])],
@@ -180,11 +177,14 @@ def aggregate_papers(panels: dict[str, dict], expected_replicates: int) -> dict[
     return out
 
 
-def confusion(papers: dict[str, dict], gold: dict[str, str]) -> dict:
+def outcome_pairs(papers: dict[str, dict], gold: dict[str, str]) -> list[tuple[str, str]]:
+    """(predicted_side, gold_label) per paper, in sorted paper-id order."""
+    return [(papers[i]["majority_side"], gold[i]) for i in sorted(papers)]
+
+
+def confusion(pairs: list[tuple[str, str]]) -> dict:
     tp = fn = tn = fp = 0
-    for paper_id, row in papers.items():
-        actual = gold[paper_id]
-        predicted = row["majority_side"]
+    for predicted, actual in pairs:
         if actual == "accept":
             if predicted == "positive":
                 tp += 1
@@ -208,17 +208,12 @@ def metrics_from_confusion(c: dict) -> dict:
     }
 
 
-def bootstrap_ci(papers: dict[str, dict], gold: dict[str, str]) -> dict:
+def bootstrap_ci(pairs: list[tuple[str, str]]) -> dict:
     rng = random.Random(BOOTSTRAP_SEED)
-    ids = sorted(papers)
     samples: dict[str, list[float]] = {"balanced_accuracy": [], "FNR_over_harsh": [], "FPR_lenient": []}
     for _ in range(BOOTSTRAP_RESAMPLES):
-        resample = [rng.choice(ids) for _ in ids]
-        # Suffix duplicates so a paper drawn twice counts twice.
-        resampled_papers = {f"{i}#{n}": papers[i] for n, i in enumerate(resample)}
-        resampled_gold = {f"{i}#{n}": gold[i] for n, i in enumerate(resample)}
-        c = confusion(resampled_papers, resampled_gold)
-        m = metrics_from_confusion(c)
+        resample = [pairs[rng.randrange(len(pairs))] for _ in pairs]  # with replacement
+        m = metrics_from_confusion(confusion(resample))
         for key, value in m.items():
             if value is not None:
                 samples[key].append(value)
@@ -289,7 +284,8 @@ def main(argv: list[str] | None = None) -> int:
     if missing_gold:
         raise SystemExit(f"papers without gold labels: {missing_gold}")
 
-    c = confusion(papers, gold)
+    pairs = outcome_pairs(papers, gold)
+    c = confusion(pairs)
     stds = [r["score_std"] for r in papers.values() if r["score_std"] is not None]
     result = {
         "suite": "reviewer_calibration",
@@ -302,7 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         "runs_per_paper": args.replicates,
         "confusion_matrix": c,
         "metrics": metrics_from_confusion(c),
-        "bootstrap_95ci": bootstrap_ci(papers, gold),
+        "bootstrap_95ci": bootstrap_ci(pairs),
         "auc_over_paper_scores": auc(papers, gold),
         "ensemble_stability_mean_score_std": (
             round(statistics.fmean(stds), 3) if stds else None

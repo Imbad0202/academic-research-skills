@@ -12,6 +12,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import assemble_calibration_corpus as mod
+import _calibration_pdf_text as pdftext
 from _calibration_pdf_text import TEXT_NORMALIZATION, normalize_extracted_text
 
 pypdf = pytest.importorskip("pypdf")
@@ -177,7 +178,6 @@ def test_freeze_page_cap_promotes_next(tmp_path):
     selection = json.loads(env["selection_path"].read_text())
     first = selection["selected"]["accepted"][0]
     spare = selection["candidates"]["accepted"][2]
-    make_pdf(env["pdf_dir"] / f"{first}.pdf".replace(first, first), pages=2)  # keep existing
     # Rebuild the capped paper with too many pages and supply the spare.
     (env["pdf_dir"] / f"{first}.pdf").unlink()
     make_pdf(env["pdf_dir"] / f"{first}.pdf", pages=5)
@@ -256,8 +256,8 @@ class _FakeReader:
 def test_lone_surrogate_text_is_hashable_and_deterministic(tmp_path, monkeypatch):
     pdf_path = tmp_path / "s.pdf"
     make_pdf(pdf_path)
-    monkeypatch.setattr(mod.pypdf, "PdfReader", _FakeReader)
-    _, text_sha, pages = mod.pdf_facts(pdf_path)
+    monkeypatch.setattr(pdftext.pypdf, "PdfReader", _FakeReader)
+    _, text_sha, pages, _ = mod.pdf_facts(pdf_path)
     expected = hashlib.sha256("alpha \ufffd beta\n".encode("utf-8")).hexdigest()
     assert text_sha == expected
     assert pages == 2

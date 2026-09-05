@@ -92,10 +92,11 @@ rubric (`adjudication_rubric.md`, sha256-pinned in each measurement row).
 |---|---|---|
 | — | — | no measured run yet |
 
-## Measurement contract (#654)
+## Measurement contract (#654 / #664)
 
-Scored runs publish one `measurement-<date>.json` in `heldout-measurement/1.0`
-envelope form (`suite: reviewer_calibration`, `suite_class: llm_judged`,
+Scored runs publish one `measurement-<date>.json` in `heldout-measurement/1.1`
+envelope form (with the 1.1 pre-registration record + write-once execution
+manifest; 1.0 is closed to new rows) (`suite: reviewer_calibration`, `suite_class: llm_judged`,
 registered in `evals/heldout/suite_registry.json`): mechanical headline
 (FNR/FPR/balanced accuracy from the closed decision grammar) declared via
 `construction_rule`; per-judge `per_item` rows for the judged elements; raw

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import sys
@@ -13,7 +12,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import dispatch_calibration_panel as mod
-from _calibration_pdf_text import extract_manuscript_text, extracted_text_sha256
+from _calibration_pdf_text import pdf_facts
 
 pypdf = pytest.importorskip("pypdf")
 
@@ -50,10 +49,8 @@ def make_pdf(path: Path, pages: int = 1) -> None:
 
 
 def pdf_hashes(path: Path) -> tuple[str, str]:
-    data = path.read_bytes()
-    reader = pypdf.PdfReader(path)
-    normalized = extract_manuscript_text(reader)
-    return (hashlib.sha256(data).hexdigest(), extracted_text_sha256(normalized))
+    pdf_sha, text_sha, _, _ = pdf_facts(path)
+    return pdf_sha, text_sha
 
 
 @pytest.fixture()
@@ -218,7 +215,7 @@ def test_replicate_cannot_overwrite_existing_evidence(env, tmp_path):
 
 
 def test_pdf_hash_mismatch_refused(env, tmp_path):
-    make_pdf(env["cache"] / "p1.pdf".replace("p1", "p1"), pages=2)  # overwrite: different doc
+    make_pdf(env["cache"] / "p1.pdf", pages=2)  # overwrite: different doc
     with pytest.raises(mod.PreconditionFailure, match="pdf_sha256 mismatch"):
         run_cards(env, tmp_path)
 
@@ -238,5 +235,5 @@ def test_work_dir_inside_repo_refused(env, tmp_path, monkeypatch):
 
 
 def test_fence_collision_refused():
-    with pytest.raises(mod.PreconditionFailure, match="collision"):
+    with pytest.raises(mod.PreconditionFailure, match="closing delimiter"):
         mod._fence("paper_content", "text with </paper_content> inside")
