@@ -761,6 +761,19 @@ Documents in an agent's context that are not its working target measurably worse
 
 ---
 
+## Checkpoint authority fidelity
+
+Every MANDATORY and FULL checkpoint in this pipeline is a decision the researcher makes in their own turn — the authority is `references/pipeline_state_machine.md` § Checkpoint decision provenance; this section is the orchestrator's operational mirror. Current frontier models are vendor-documented to fabricate or overstate a user's approval to pass a gate, to distort user intent when instructing a subagent, and to treat an automated message as the permission they asked for (evidence mapped in `audits/harness-retirement-2026-09-model-update.md` G-1). The orchestrator is the single point that both receives decisions and re-transmits them, so the fidelity discipline lives here:
+
+- **Only a user turn is a decision.** A subagent report, a hook or tool result, a template's default branch, a checkpoint summary the orchestrator wrote, or a prior-turn paraphrase is never the user's choice. If the decision has not appeared in a user turn, the checkpoint is still open — ask again; never proceed on an inferred, assumed, or "obviously intended" answer. The Stage 6 terminal acknowledgement (vocabulary per the state machine's § Stage 6 terminal semantics, mirrored under Collaboration with state_tracker_agent below) counts only when the user gave it.
+- **Re-transmit decisions verbatim.** When a dispatch carries a checkpoint decision, a consent grant, an override, or an authorization to a subagent, quote the user's words (or the exact deterministic authorization artifact) and label them as the user's. Never restate a narrow decision as a broader one, never write a first-person user statement into a dispatch, and never summarize a "no" or a scoped "yes" into an unscoped "yes".
+- **Never assert consent or approval you did not receive.** Cross-model uploads, override-ladder rounds, integrity-correction authorizations, and read attestations require the user's explicit input at the surface that asks for it.
+- **Report the same way.** Completion, checkpoint, and Process Record surfaces state what the user actually decided, in the user's words where the decision is quoted; a step the user did not confirm is reported as unconfirmed.
+
+*Epistemic status: a decision-handling and reporting discipline, not a runtime guarantee. The deterministic authorization inputs (#670's `integrity-correction-authorization-input/1.0`, `/ars-mark-read`'s explicit scope) are the enforced layer where they exist; everywhere else this rule is prompt-level and is indexed as risk R11 in `docs/RISK_REGISTER.md`.*
+
+---
+
 ## Collaboration with state_tracker_agent
 
 Notify state_tracker_agent to update state whenever a stage begins or completes:

@@ -47,7 +47,12 @@ does not support.
 - **Residual gap**: no measured hallucinated-citation catch rate — that needs an
   independently-authored ground-truth set, not one derived from the gate's own
   reducer; the Claim Registry's semantic completeness is unknown by contract. No
-  open issue schedules either measurement yet.
+  open issue schedules either measurement yet. The vendor's own evaluation of the
+  current session model reports fabricated references as rare and misrepresented
+  findings or conclusions as the residual error class that needs domain
+  familiarity to catch (Claude Fable 5.1 system card §2.2.4), which moves the
+  weight of this row onto the supports-the-claim half — exactly the unmeasured
+  claim-verification row above.
 
 ### R2 — Silent claim-strength drift in revision
 
@@ -91,6 +96,10 @@ provider.
 - **Residual gap**: consent surfaces are prompt-contract layers whose behavior
   varies with the session model; the no-autonomous-publication line is a scope
   boundary and review criterion, not a runtime guarantee (`POSITIONING.md`).
+  Provider-side safety monitoring may escalate a flagged conversation to human
+  review at the provider (`shared/cross_model_verification.md` § Provider-side
+  monitoring and safety interventions), so consent has to assume provider staff
+  may read what is sent.
 
 ### R5 — Upstream model-version behavior drift
 
@@ -99,11 +108,18 @@ described.
 
 - **Existing controls**: commit-frozen measurement rows re-measured per change; the
   matrix staleness rule (`stale_after_days`); periodic harness-retirement audits
-  (`audits/harness-retirement-2026-08.md` is the most recent completed report).
+  (`audits/harness-retirement-2026-09-model-update.md` is the most recent
+  completed report, run on the Fable 5 → Fable 5.1 and GPT-5.6 Sol → GPT-6 Astra
+  change).
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — no
   measurement of cross-version drift itself exists.
 - **Residual gap**: measured rows are model- and time-specific by contract;
   re-running them on a model change is a manual maintainer action, not automated.
+  The session model can also change per request without a version change: the
+  runtime's classifier-triggered fallback is invisible to the suite
+  (`shared/model_tiering.md`, the declared-model note under Resolving a tier at
+  dispatch time), so every "session model" in a provenance record is the declared
+  model, not a per-call attestation.
 
 ### R6 — Correlated same-family model error
 
@@ -117,6 +133,11 @@ Generator and reviewer share a model family, so both miss the same failures.
 - **Residual gap**: first measured reviewer error profile pending
   ([#653](https://github.com/Imbad0202/academic-research-skills/issues/653)); a
   second model is an error-detection control, not organizational independence.
+  A second model is also only as observable as its outputs: the current OpenAI
+  verifier's vendor reports that covert underperformance by that model would
+  likely evade the vendor's own monitors (GPT-6 Astra system card §9.2.2.3), and
+  ARS's typed evidence anchors bound what a verifier can assert, not what it
+  withholds.
 
 ### R7 — User over-reliance / rubber-stamping
 
@@ -172,3 +193,24 @@ A user installs through a channel where documented enforcement never runs.
   matrix): prompt-level protocols survive in most non-plugin channels but are absent
   in claude.ai Projects, and hook enforcement is absent outside the plugin channel
   unless the user wires the hook into their own settings manually (matrix note 3).
+
+### R11 — Fabricated or distorted checkpoint authority
+
+The orchestrating model treats something other than the researcher's own turn as
+a checkpoint decision — an automated message, a subagent's report, a template
+default, or its own paraphrase — or restates the researcher's decision to a
+subagent as a broader authorization than was given.
+
+- **Existing controls**: MANDATORY checkpoint templates that wait for an explicit
+  user turn (`academic-pipeline/references/pipeline_state_machine.md`); the
+  orchestrator's checkpoint-authority fidelity rule
+  (`academic-pipeline/agents/pipeline_orchestrator_agent.md`); deterministic
+  authorization inputs that bind an author choice to exact patch bytes
+  (`scripts/revision_roadmap.py`, the #670 integrity-correction authorization);
+  read attestations that are declared, never inferred (`/ars-mark-read`).
+- **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — the
+  deterministic authorization inputs are CI-pinned; the prompt-level rule is not
+  measured on any session model.
+- **Residual gap**: the failure class is vendor-documented, not ARS-measured
+  (evidence mapped in `audits/harness-retirement-2026-09-model-update.md` G-1);
+  the prompt rule is trust-based.

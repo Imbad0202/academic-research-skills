@@ -4,16 +4,16 @@
 # Purpose: validate that a given OpenAI verifier model (ARS_CROSS_MODEL, gpt-* id)
 # behaves correctly against the documented call pattern in
 # shared/cross_model_verification.md BEFORE it is used in a real pipeline run.
-# Primary use case: vetting a newly released model id (e.g. gpt-5.6-sol, listed
-# as provisional) whose response shape / grounding behavior has no ARS operating
-# history yet.
+# Primary use case: vetting a newly released model id (one listed as provisional
+# in shared/cross_model_verification.md) whose response shape / grounding
+# behavior has no ARS operating history yet.
 #
 # This is a LIVE test: it issues one real Responses API call (with hosted
 # web_search) against a stable, known-good reference. It costs a fraction of a
 # cent and needs OPENAI_API_KEY, so it is NOT wired into CI — run it manually:
 #
 #   export OPENAI_API_KEY="sk-..."
-#   export ARS_CROSS_MODEL="gpt-5.6-sol"            # model under test
+#   export ARS_CROSS_MODEL="<gpt-* id under test>"  # model under test
 #   export ARS_CROSS_MODEL_REASONING_EFFORT="medium" # optional (default: medium)
 #   bash scripts/cross_model_smoke_test.sh
 #

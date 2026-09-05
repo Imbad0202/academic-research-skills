@@ -247,6 +247,10 @@ When Stage 6 runs, its completion is the pipeline's **terminal checkpoint**:
 3. On acknowledgement: state_tracker marks Stage 6 `completed` and sets the pipeline global state to `completed`. This is the terminal transition — there is no next stage.
 4. After `completed`, no stage transition is legal (see Prohibited Transitions). New requests start a new pipeline run or a targeted single-skill invocation (mid-entry).
 
+### Checkpoint decision provenance
+
+Every checkpoint decision, terminal acknowledgement, override, consent grant, and authorization input in this state machine exists only when it appears in a user turn. A subagent report, a hook or tool result, a template's default branch, an orchestrator-written checkpoint summary, or a paraphrase of an earlier turn is never the user's decision; a checkpoint whose decision has not appeared in a user turn is still open. Re-transmission to a subagent quotes the user's words (or the exact deterministic authorization artifact) and never widens them. Where a deterministic authorization artifact exists (the #670 integrity-correction authorization, the `/ars-mark-read` scope) it is the enforced form of this rule; elsewhere the rule is prompt-level. Mirrored operationally in `pipeline_orchestrator_agent.md` § Checkpoint authority fidelity; the risk is indexed as R11 in `docs/RISK_REGISTER.md`.
+
 ### Post-terminal adjudication-activity side channel (#673)
 
 The ordinary state machine is authoritative and always terminates first. A

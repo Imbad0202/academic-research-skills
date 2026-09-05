@@ -35,6 +35,16 @@ RECEIPT_SCHEMA_VERSION = "ars-codex-citation-receipt/1.0"
 TRANSPORT = "codex_subscription"
 AUTH_MODE = "chatgpt_subscription"
 MIN_CODEX_VERSION = (0, 147, 0)
+# Closed vocabulary of reasoning efforts ARS forwards on turn/start. The
+# app-server schema types ReasoningEffort as any non-empty string the served
+# model advertises (generate-json-schema, codex-cli 0.153.4), and the provider
+# rejects a value the served model does not advertise one RPC later — so this
+# set buys an earlier, better-named error (INVALID_REASONING_EFFORT), not a
+# safety property. `ultra` joined with GPT-6 Astra (system card 2026-09-03
+# §10.1.2.5: the Codex harness ran at Ultra reasoning effort).
+ACCEPTED_REASONING_EFFORTS = frozenset(
+    {"minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
+)
 
 MAX_REQUEST_BYTES = 32 * 1024
 MAX_FIELD_CHARS = 8192
@@ -886,7 +896,7 @@ def run_app_server(
             }
             effort = environ.get("ARS_CROSS_MODEL_REASONING_EFFORT", "")
             if effort:
-                if effort not in {"minimal", "low", "medium", "high", "xhigh", "max"}:
+                if effort not in ACCEPTED_REASONING_EFFORTS:
                     raise TransportError("INVALID_REASONING_EFFORT")
                 turn_params["effort"] = effort
             _send_rpc(proc, {"id": 3, "method": "turn/start", "params": turn_params})

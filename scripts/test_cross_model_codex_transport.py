@@ -1150,3 +1150,46 @@ def test_surrogate_final_and_control_query_fail_closed() -> None:
     assert runtime.parse_app_server_messages(
         messages, raw_stream=raw, request=_request(), model="gpt-5.6"
     )["reason_code"] == "EVENT_STREAM_INVALID"
+
+
+def test_reasoning_effort_ultra_is_forwarded_and_unknown_effort_fails_closed(
+    tmp_path: Path,
+) -> None:
+    # The closed vocabulary (rationale on the constant) is forwarded verbatim on
+    # turn/start and fails closed on a value outside the set.
+    assert "ultra" in runtime.ACCEPTED_REASONING_EFFORTS
+    home = tmp_path / "custom-home"
+    _make_auth(home)
+    fake_bin, capture_path = _make_fake_codex(tmp_path)
+    env = _base_env(fake_bin, home)
+    env["ARS_CROSS_MODEL_REASONING_EFFORT"] = "ultra"
+    completed = subprocess.run(
+        [str(WRAPPER)],
+        input=runtime.canonical_json(_request()),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+        timeout=15,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr.decode()
+    receipt = runtime.strict_json_loads(completed.stdout)
+    assert receipt["verdict"] == "VERIFIED"
+    capture = json.loads(capture_path.read_text(encoding="utf-8"))
+    turn_starts = [m for m in capture["requests"] if m.get("method") == "turn/start"]
+    assert len(turn_starts) == 1
+    assert turn_starts[0]["params"]["effort"] == "ultra"
+
+    # The rejection is pinned in-process (same shape as the APP_SERVER_TIMEOUT
+    # test): the shell → interpreter boundary is already proven by the run above,
+    # and main() formats every TransportError the same way.
+    env["ARS_CROSS_MODEL_REASONING_EFFORT"] = "extreme"
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(),
+            model="gpt-5.6",
+            codex=str(fake_bin / "codex"),
+            source_auth=home / "auth.json",
+            environ=env,
+        )
+    assert exc_info.value.code == "INVALID_REASONING_EFFORT"

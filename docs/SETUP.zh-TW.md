@@ -180,13 +180,14 @@ ARS 使用繼承的 Claude session 模型即可完整運作。想要更高信心
 
 ```bash
 # Step 1: Set your API key (choose one or both)
-export OPENAI_API_KEY="sk-your-key-here"        # For GPT-5.6 Sol / GPT-5.5
+export OPENAI_API_KEY="sk-your-key-here"        # For GPT-6 Astra / GPT-5.6 Sol / GPT-5.5
 export GOOGLE_AI_API_KEY="AIza-your-key-here"    # For Gemini 3.1 Pro
 
 # Step 2: Choose your cross-verification model
-export ARS_CROSS_MODEL="gpt-5.6-sol"            # Current OpenAI flagship — provisional pending ARS validation (run scripts/cross_model_smoke_test.sh)
+export ARS_CROSS_MODEL="gpt-6-astra"            # Current OpenAI flagship — provisional pending ARS validation (run scripts/cross_model_smoke_test.sh)
 # or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"  # Current Google flagship — validated, strong at factual verification
-# or: export ARS_CROSS_MODEL="gpt-5.5"          # Previous generation — validated (designated bakeoff baseline)
+# or: export ARS_CROSS_MODEL="gpt-5.6-sol"      # Previous generation — validated on the ChatGPT-subscription citation transport, provisional on this API route
+# or: export ARS_CROSS_MODEL="gpt-5.5"          # Previous generation — validated (designated API-route bakeoff baseline)
 
 # Optional: reasoning effort for OpenAI verifier calls (unset = provider default)
 # export ARS_CROSS_MODEL_REASONING_EFFORT="medium"
@@ -221,10 +222,12 @@ OpenAI API key 而改走該訂閱。這不涵蓋魔鬼代言人、Reviewer 2、�
 ```bash
 # Citation-integrity calls only. General DA/reviewer/judgment calls remain on API transport.
 export ARS_CROSS_MODEL_TRANSPORT="codex"
+# gpt-6-astra: current OpenAI flagship — provisional on this transport (entry-gate
+# smoke PASS 2026-09-05 on codex-cli 0.153.4; no bakeoff run yet).
+export ARS_CROSS_MODEL="gpt-6-astra"
 # gpt-5.6-sol is validated for THIS transport (2026-08-19 codex-transport bakeoff,
-# superiority on recall + latency — audits/bakeoff-gpt-5-6-sol-codex-2026-08-19.md).
-# gpt-5.5 remains the validated bakeoff baseline alternative.
-export ARS_CROSS_MODEL="gpt-5.6-sol"
+# superiority on recall + latency — audits/bakeoff-gpt-5-6-sol-codex-2026-08-19.md):
+# export ARS_CROSS_MODEL="gpt-5.6-sol"
 
 python3 scripts/cross_model_codex_transport.py detect
 # The producer sends one closed codex_citation_request/1.0 object on stdin:
