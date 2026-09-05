@@ -1008,6 +1008,11 @@ def run_audit_pipeline(
 ) -> dict[str, list[dict[str, Any]]]:
     """Run §4 Step 1-6 + manifest set-diff over caller-supplied inputs.
 
+    ``config.judge_model`` is the caller-supplied judge identity (effort
+    included where it changes judgment). Omitted / null / blank / ``unknown``
+    is recorded as ``unknown`` and binds the cache key to this run (#826), so a
+    verdict can never be reused across runs under an unattributed identity.
+
     Two uncited streams (Step 13 R4 codex P1 #2):
 
     - `uncited_sentences`: D4-c detector positives — output of
@@ -1080,7 +1085,17 @@ def run_audit_pipeline(
             f"max_claims_per_paper must be positive integer; got {cap!r} "
             "(spec §4 step 3 + S-INV-2 / T-P11 cap=0 rejected)"
         )
-    judge_model = config.get("judge_model", "gpt-5.5-xhigh")
+    supplied_judge_model = config.get("judge_model")
+    if supplied_judge_model is not None and not isinstance(supplied_judge_model, str):
+        raise ValueError("judge_model must be a string identity or null")
+    raw_judge_model = (supplied_judge_model or "").strip()
+    judge_identity_known = bool(raw_judge_model) and raw_judge_model.lower() != "unknown"
+    judge_model = raw_judge_model if judge_identity_known else "unknown"
+    # #826: an unattributed judge is never a cache-key component on its own —
+    # same fail-closed shape as the unknown prompt_version below: bind a
+    # run-local component so cross-run hits are impossible while within-run
+    # dedup of repeated citations still holds.
+    cache_judge_model = judge_model if judge_identity_known else f"__unknown__:{audit_run_id}"
     # #361: prompt_version is a judge-cache-key component. Absent key → default
     # to JUDGE_PROMPT_SHA256, the prompt's own fingerprint and the SINGLE SOURCE
     # OF TRUTH for cache invalidation: check_judge_prompt_version.py keeps this
@@ -1257,7 +1272,7 @@ def run_audit_pipeline(
             anchor_value=citation.get("anchor_value", ""),
             retrieved_excerpt=excerpt,
             active_constraints=active_constraints,
-            judge_model=judge_model,
+            judge_model=cache_judge_model,
             prompt_version=prompt_version,
         )
         # In-scope constraint ids for this call. Both fresh judge invocations

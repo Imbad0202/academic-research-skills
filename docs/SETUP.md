@@ -194,6 +194,7 @@ export ARS_CROSS_MODEL="gpt-6-astra"            # Current OpenAI flagship — pr
 # or: export ARS_CROSS_MODEL="gpt-5.5"          # Previous generation — validated (designated API-route bakeoff baseline)
 
 # Optional: reasoning effort for OpenAI verifier calls (unset = provider default)
+# GPT-6 Astra API: low|medium|high|xhigh|max (the Codex citation transport rejects ultra)
 # export ARS_CROSS_MODEL_REASONING_EFFORT="medium"
 
 # Step 3: Run Claude Code as normal — cross-verification activates automatically

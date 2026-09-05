@@ -40,10 +40,14 @@ MIN_CODEX_VERSION = (0, 147, 0)
 # model advertises (generate-json-schema, codex-cli 0.153.4), and the provider
 # rejects a value the served model does not advertise one RPC later — so this
 # set buys an earlier, better-named error (INVALID_REASONING_EFFORT), not a
-# safety property. `ultra` joined with GPT-6 Astra (system card 2026-09-03
-# §10.1.2.5: the Codex harness ran at Ultra reasoning effort).
+# safety property. `ultra` is deliberately absent (#824): the same schema
+# describes effort="ultra" as the replacement for the deprecated
+# multiAgentMode ("proactive multi-agent behavior"), which is outside this
+# single-reference, no-delegation transport's contract. A general Codex
+# research session may use ultra; this contained adapter must not request it
+# (validate_reasoning_effort raises REASONING_EFFORT_REQUIRES_DELEGATION).
 ACCEPTED_REASONING_EFFORTS = frozenset(
-    {"minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
+    {"minimal", "low", "medium", "high", "xhigh", "max"}
 )
 
 MAX_REQUEST_BYTES = 32 * 1024
@@ -201,6 +205,24 @@ class TransportError(RuntimeError):
     def __init__(self, code: str, message: str = "") -> None:
         super().__init__(message or code)
         self.code = code
+
+
+def validate_reasoning_effort(environ: dict[str, str]) -> str:
+    """Transport-contract check on the configured effort, before any side effect.
+
+    Runs before transport detection, auth access, temporary state, or app-server
+    launch. `ultra` is a delegation request (see ACCEPTED_REASONING_EFFORTS),
+    so it gets its own reason code; any other value outside the closed set is
+    the earlier, better-named error. Per-model API vocabularies are not
+    enforced here — this transport speaks the app-server effort enum and the
+    provider rejects what the served model does not advertise.
+    """
+    effort = environ.get("ARS_CROSS_MODEL_REASONING_EFFORT", "")
+    if effort == "ultra":
+        raise TransportError("REASONING_EFFORT_REQUIRES_DELEGATION")
+    if effort and effort not in ACCEPTED_REASONING_EFFORTS:
+        raise TransportError("INVALID_REASONING_EFFORT")
+    return effort
 
 
 def _no_duplicate_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -802,6 +824,7 @@ def run_app_server(
     source_auth: Path,
     environ: dict[str, str],
 ) -> tuple[list[dict[str, Any]], bytes]:
+    effort = validate_reasoning_effort(environ)
     auth_raw = _read_auth_bytes(source_auth)
     with tempfile.TemporaryDirectory(prefix="ars-codex-citation-") as tmp:
         temp_root = Path(tmp)
@@ -894,10 +917,7 @@ def run_app_server(
                 "environments": [],
                 "runtimeWorkspaceRoots": [],
             }
-            effort = environ.get("ARS_CROSS_MODEL_REASONING_EFFORT", "")
             if effort:
-                if effort not in ACCEPTED_REASONING_EFFORTS:
-                    raise TransportError("INVALID_REASONING_EFFORT")
                 turn_params["effort"] = effort
             _send_rpc(proc, {"id": 3, "method": "turn/start", "params": turn_params})
             turn_response = _wait_rpc(
@@ -1322,6 +1342,7 @@ def parse_app_server_messages(
 
 def verify_once(request: dict[str, str], environ: dict[str, str] | None = None) -> dict[str, Any]:
     env = dict(os.environ if environ is None else environ)
+    validate_reasoning_effort(env)
     code, detection = detect_transport(env)
     if code != 0 or not detection.get("available"):
         reason = detection.get("reason_code") or "TRANSPORT_UNAVAILABLE"

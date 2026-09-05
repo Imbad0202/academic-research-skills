@@ -62,7 +62,7 @@ A stress test of 68 AI-generated citations found 31% had problems — and all pa
 
 > The primary row deliberately names no version: the primary is always the session model, so the row cannot go stale on the next Anthropic release. Verifier IDs stay concrete because they are literal API strings the user must export. (`gpt-5.4` / `gpt-5.4-pro` remain accepted for existing setups.)
 
-> **GPT-6 Astra is provisional (listed 2026-09-05, two days after its 2026-09-03 release).** Its ARS-specific behavior on the first-party API route — the five Promotion Bakeoff measures below — is unvalidated, and its API reasoning-effort vocabulary is not confirmed in this repository (its system card reports evaluations at `xhigh` and `max`, and `ultra` in the Codex harness; the API rejects a value it does not accept, so an unknown value fails visibly). On the ChatGPT-subscription citation transport it passed the entry-gate smoke (`scripts/cross_model_smoke_test_codex.sh`, 2026-09-05, codex-cli 0.153.4: `VERIFIED` with a bound source on the Vaswani et al. fixture) — the precondition for a Promotion Bakeoff, not a bakeoff. Under the recommendation policy recorded in the GPT-5.6 Sol note below (#783) the recommendation moves to the current generation on lifecycle grounds; `validated` still requires the sealed bakeoff, on each transport separately. Two vendor-reported facts shape how ARS treats this verifier (GPT-6 Astra system card, 2026-09-03): provider-side misalignment and misuse monitoring can pause, end, or block a call (§ Provider-side monitoring and safety interventions below — never a verdict), and its verbalized evaluation awareness is high (§8.6, §8.8.1 — see the Promotion Bakeoff caveat).
+> **GPT-6 Astra is provisional (listed 2026-09-05, two days after its 2026-09-03 release).** Its ARS-specific behavior on the first-party API route — the five Promotion Bakeoff measures below — is unvalidated, while its API effort vocabulary is documented (see § Reasoning effort below; API support is separate from ARS bakeoff validation). On the ChatGPT-subscription citation transport it passed the entry-gate smoke (`scripts/cross_model_smoke_test_codex.sh`, 2026-09-05, codex-cli 0.153.4: `VERIFIED` with a bound source on the Vaswani et al. fixture) — the precondition for a Promotion Bakeoff, not a bakeoff. Under the recommendation policy recorded in the GPT-5.6 Sol note below (#783) the recommendation moves to the current generation on lifecycle grounds; `validated` still requires the sealed bakeoff, on each transport separately. Two vendor-reported facts shape how ARS treats this verifier (GPT-6 Astra system card, 2026-09-03): provider-side misalignment and misuse monitoring can pause, end, or block a call (§ Provider-side monitoring and safety interventions below — never a verdict), and its verbalized evaluation awareness is high (§8.6, §8.8.1 — see the Promotion Bakeoff caveat).
 
 > **GPT-5.6 Sol status (listed 2026-07-11, three days after release; superseded by GPT-6 Astra on 2026-09-03).** Its endpoint support (Responses API), hosted `web_search` tool, and reasoning-effort values are confirmed against OpenAI's model documentation, but its ARS-specific behavior — grounded-search completion rate, citation-mismatch recall, false-disagreement rate, response-shape stability against the jq grounding guards, p95 latency — is unvalidated. **Recommendation policy (2026-08-19):** GPT-5.5 was superseded by the GPT-5.6 family on 2026-07-09, so the recommendation names the current generation rather than a superseded id — a lifecycle decision, not a measurement claim. `validated` is earned only there — and on 2026-08-19 a codex-transport bakeoff run earned it for the **ChatGPT-subscription citation transport**, with a measured superiority case from the counterbalanced gate fleet (fabrication recall 0.90 vs 0.80, p95 latency 25.0 s vs 49.6 s nearest-rank, grounded completion tied, no inferiority on any measure; recall and latency led in all five paired fleets — `audits/bakeoff-gpt-5-6-sol-codex-2026-08-19.md`). On the **first-party API route** `gpt-5.6-sol` stays **provisional** — that run did not exercise the API route's jq grounding guards, and no parity or superiority is claimed there. For the API route, run `scripts/cross_model_smoke_test.sh` against your key before adopting it; users who prefer an API-route-validated id can stay on `gpt-5.5` or `gemini-3.1-pro-preview` (validated = the id-status allowlist below; the API route has no recorded bakeoff run). Two facts that differ from the GPT-5.5 lineup: GPT-5.6 ships **no `-pro` model ID** — premium operation is standard `gpt-5.6-sol` plus `reasoning: {mode: "pro"}` in the request, billed at standard token rates with more model work per request (the old fixed ~6× unit-price split does not carry over); and its reasoning effort accepts `none|low|medium|high|xhigh|max` (GPT-5.5 tops out at `xhigh`), defaulting to `medium` in both standard and pro modes.
 
@@ -111,8 +111,8 @@ export ARS_CROSS_MODEL="gpt-6-astra"
 # export ARS_CROSS_MODEL="gpt-5.5"
 # Optional: reasoning effort for OpenAI verifier calls (unset = the provider's own
 # default for the chosen model). GPT-5.6 accepts none|low|medium|high|xhigh|max;
-# GPT-5.5 tops out at xhigh; GPT-6 Astra's API vocabulary is not confirmed here
-# (the API rejects an unknown value visibly).
+# GPT-5.5 tops out at xhigh; GPT-6 Astra accepts low|medium|high|xhigh|max
+# (the contained Codex citation transport rejects ultra: it requests delegation).
 # export ARS_CROSS_MODEL_REASONING_EFFORT="medium"
 
 # --- Option B: Google Gemini (first-party, grounded) ---
@@ -419,6 +419,12 @@ Use the **Responses API** (`/v1/responses`) — the hosted `web_search` tool liv
 
 ```bash
 # PROMPT holds the single-reference verification prompt (step 3). One reference per call.
+GUARD=scripts/cross_model_verification
+# Per-model effort vocabulary (#823): reject an unsupported explicit value before
+# any request leaves; unset stays the provider default.
+. "$GUARD/openai_effort_guard.sh"
+ars_openai_effort_check "$ARS_CROSS_MODEL" "${ARS_CROSS_MODEL_REASONING_EFFORT:-}" || exit 1
+
 resp="$(curl -sS -w '\n%{http_code}' https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
@@ -427,16 +433,14 @@ resp="$(curl -sS -w '\n%{http_code}' https://api.openai.com/v1/responses \
     model: $model,
     instructions: "You are a citation-verification assistant. Search the web before every verdict; never answer from memory. If you could not search, respond NOT_SEARCHED.",
     input: $prompt,
-    tools: [{type: "web_search"}],
-    temperature: 0.1
+    tools: [{type: "web_search"}]
   } + (if $effort == "" then {} else {reasoning: {effort: $effort}} end)')")"
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 # The grounding guard and source extraction are kept as canonical jq filters under
 # scripts/cross_model_verification/ so they are behavior-tested in CI (a from-memory verdict, a
 # malformed grounding index, etc.) and cannot silently stop failing closed. Reference them via
-# `jq -f` rather than inlining, so the doc and the test share one definition.
-GUARD=scripts/cross_model_verification
+# `jq -f` rather than inlining, so the doc and the test share one definition ($GUARD above).
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   # Transport/API failure (401/429/5xx, or curl's 000 on a network error) — NOT the same as
   # "searched but found nothing". Surface as a transport error so the consumer falls back to
@@ -493,9 +497,9 @@ else
 fi
 ```
 
-> **Why `temperature: 0.1`:** reference existence/metadata checking is a deterministic factual task, so low temperature reduces run-to-run variance in the verdict. It is not a grounding control — the grounding guard above is what enforces an actual lookup.
+> **Sampling parameters:** the OpenAI Responses request omits `temperature`, `top_p`, and `top_logprobs`; GPT-6 Astra does not support them. Gemini and compatible-provider examples retain their provider-specific parameters. Grounding guards, rather than a sampling setting, enforce an actual lookup.
 
-> **Reasoning effort (OpenAI only):** when `ARS_CROSS_MODEL_REASONING_EFFORT` is set, the payload passes it as `reasoning.effort`, making the effort a verification run uses visible and reproducible. When it is **unset, the field is omitted entirely and the provider's own default for the chosen model applies** — defaults differ across the lineup (GPT-5.6 documents `medium`; other ids carry their own), so forcing one value here would silently change behavior for existing setups. Citation lookup is search-bound, not reasoning-bound, so higher efforts mostly buy latency and cost; set the variable deliberately (never silently run at `xhigh`) if a run shows shallow search behavior. The value is passed through unvalidated (the API rejects unknown values): GPT-5.5 accepts up to `xhigh`, GPT-5.6 adds `max`. GPT-6 Astra's accepted API values are not confirmed in this repository (its system card reports `xhigh`, `max`, and — in the Codex harness — `ultra`); the contained Codex citation transport forwards only the closed set named by `ACCEPTED_REASONING_EFFORTS` in `scripts/cross_model_codex_transport.py` (an earlier, better-named error, not a safety property) and lets the provider reject whatever the served model does not advertise.
+> **Reasoning effort (OpenAI only):** when `ARS_CROSS_MODEL_REASONING_EFFORT` is set, the payload passes it as `reasoning.effort`, making the effort a verification run uses visible and reproducible. When it is **unset, the field is omitted entirely and the provider's own default for the chosen model applies** — defaults differ across the lineup (GPT-5.6 documents `medium`; other ids carry their own), so forcing one value here would silently change behavior for existing setups. Citation lookup is search-bound, not reasoning-bound, so higher efforts mostly buy latency and cost; set the variable deliberately (never silently run at `xhigh`) if a run shows shallow search behavior. Ids without a row in the per-model table below are passed through unvalidated (the API rejects unknown values): GPT-5.5 accepts up to `xhigh`, GPT-5.6 adds `max`. GPT-6 Astra's API values are `low|medium|high|xhigh|max` per the [official model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra) (`none`/`minimal`/`ultra` are not API values); the per-model table lives in `scripts/cross_model_verification/openai_effort_guard.sh`, sourced by both the example above and the smoke entrypoint, so an unsupported explicit value fails before any request leaves. **Contained Codex citation transport (#824):** `ultra` is rejected with `REASONING_EFFORT_REQUIRES_DELEGATION` before detection, auth, temporary state, or launch — the codex-cli 0.153.4 schema defines it as the replacement for the deprecated `multiAgentMode` (proactive delegation), outside this single-reference transport's contract; rationale on `ACCEPTED_REASONING_EFFORTS` in `scripts/cross_model_codex_transport.py`. A general Codex research session may still use it.
 
 ### OpenAI-Compatible API (MiMo, DeepSeek, self-hosted) — ungrounded
 

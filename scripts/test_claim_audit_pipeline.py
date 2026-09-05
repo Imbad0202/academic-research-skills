@@ -356,6 +356,58 @@ class TP2P3CacheBehavior(_PipelineTestBase):
         )
 
 
+class JudgeExecutionIdentity(_PipelineTestBase):
+    """A preferred model must never become invented provenance or a cache hit."""
+
+    def test_changed_judge_identity_partitions_cache_and_emission(self) -> None:
+        cache: dict[str, Any] = {}
+        invocations: list[str] = []
+
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            invocations.append(kwargs["judge_model"])
+            return {"judgment": "SUPPORTED", "rationale": "identity-bound judge"}
+
+        for identity in ("gpt-6-astra-xhigh", "claude-fable-5-1-high", "gpt-6-astra-xhigh"):
+            out = self.run_pipeline(
+                citations=[_citation()], config=_config(judge_model=identity),
+                judge_fn=judge_fn, cache=cache,
+            )
+            self.assertEqual(out["claim_audit_results"][0]["judge_model"], identity)
+        self.assertEqual(invocations, ["gpt-6-astra-xhigh", "claude-fable-5-1-high"])
+        self.assertEqual(len(cache), 2)
+
+    def test_missing_or_unknown_identity_never_hits_a_prior_run(self) -> None:
+        # Same fail-closed shape as the unknown prompt_version (#361): the key is
+        # bound to audit_run_id, so a second run with the same shared cache must
+        # re-invoke the judge, while a repeated citation within one run dedups.
+        def judge_fn(**kwargs: Any) -> dict[str, Any]:
+            invocations.append(kwargs["judge_model"])
+            return {"judgment": "SUPPORTED", "rationale": "runtime identity unavailable"}
+
+        for config in ({}, {"judge_model": None}, {"judge_model": " "}, {"judge_model": "UNKNOWN"}):
+            with self.subTest(config=config):
+                invocations: list[str] = []
+                cache: dict[str, Any] = {}
+                for run_id in ("2026-09-06T00:00:00Z-aaaa", "2026-09-06T00:00:01Z-bbbb"):
+                    out = self.run_pipeline(
+                        citations=[_citation(), _citation()], config=config,
+                        judge_fn=judge_fn, cache=cache, audit_run_id=run_id,
+                    )
+                    self.assertTrue(all(row["judge_model"] == "unknown" for row in out["claim_audit_results"]))
+                    self.assertEqual(self._validate_passport(out), [])
+                # one judge call per run (the duplicate citation dedups within the run)
+                self.assertEqual(invocations, ["unknown", "unknown"])
+                self.assertEqual(len(cache), 2, "each run owns its own cache partition")
+
+    def test_invalid_identity_fails_before_retrieval_or_judge(self) -> None:
+        with self.assertRaisesRegex(ValueError, "judge_model must be a string identity or null"):
+            self.run_pipeline(
+                citations=[_citation()], config=_config(judge_model={"model": "gpt-6-astra"}),
+                retrieve_fn=lambda _: self.fail("invalid identity reached retrieval"),
+                judge_fn=lambda **_: self.fail("invalid identity reached judge"),
+            )
+
+
 # ---------------------------------------------------------------------------
 # #361 — prompt-version partitions the judge cache keyspace.
 # ---------------------------------------------------------------------------

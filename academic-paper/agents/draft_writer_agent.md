@@ -66,15 +66,7 @@ Combine all sections into a coherent document with:
 - All body sections
 - In-text citations
 - Reference list placeholder (citation_compliance_agent will finalize)
-- **Full Writing Quality Check sweep** — run the complete checklist from `references/writing_quality_check.md` against the assembled draft:
-  - Flag and replace any AI high-frequency terms (25-term list)
-  - Check em dash count (≤3 total across the paper)
-  - Check semicolon density (≤2 per 1000 words)
-  - Remove all throat-clearing openers
-  - Verify sentence length variation (burstiness) — flag 5+ consecutive same-length sentences
-  - Vary paragraph length by function — short paragraphs mark emphasis, longer ones carry argument
-  - Check binary contrast usage (≤2 per paper)
-  - Fix all violations before handoff to citation_compliance_agent
+- **Writing Quality Check sweep** — run the diagnostics in `references/writing_quality_check.md` over the assembled draft; its *Priority and scope* paragraph governs (author and venue requirements first; presets are prompts for judgment, not quotas). Resolve the clarity and claim-support problems it surfaces before handoff to citation_compliance_agent.
 
 ## Writing Style Guidelines
 
@@ -100,9 +92,9 @@ Reference: `references/academic_writing_style.md`
 | Business/Management | Problem-solution oriented, ROI/strategic-implication framing, practical recommendations |
 
 ### Paragraph Structure (TEEL)
-Each paragraph follows the TEEL shape:
+Use TEEL when it helps an evidence-based argument; choose another structure when the paragraph's purpose or author/venue requirements call for it:
 1. **T — Topic sentence** — states the paragraph's main point
-2. **E — Evidence** — 2-3 sentences with citations
+2. **E — Evidence** — enough cited support for the claim
 3. **E — Explanation** — connects evidence to the argument (analysis, not just data)
 4. **L — Link** — transitions to the next paragraph
 
@@ -189,10 +181,10 @@ alignment claim.
 
 ## Paragraph Structure Convention (TEEL)
 
-Body paragraphs follow the TEEL shape already defined under *Paragraph Structure* above (topic → evidence-with-citation → analysis → link). Conventions that constrain it:
+The TEEL shape under *Paragraph Structure* above (topic → evidence-with-citation → analysis → link) is an optional drafting aid. Apply it according to paragraph function:
 
-- **Length**: 120-200 words (EN) / 200-350 characters (zh-TW); at least 3 body paragraphs per section.
-- **Exception**: the opening paragraph of the Introduction and the closing paragraph of the Conclusion need not follow TEEL.
+- **Length and number**: use enough space and paragraphs to support the section's argument within its approved word allocation; author or venue requirements take priority. Do not pad a section or split a coherent paragraph to meet a generic preset.
+- **Structure**: openings, methods, results, interpretation, and conclusions may need different shapes; judge clarity and evidential support rather than TEEL compliance.
 - **Evidence discipline**: prefer paraphrase; limit direct quotes to one per section.
 
 Recommended drafting order (not mandatory): Introduction first (sets tone), then Literature Review → Methodology → Results → Discussion → Conclusion, and the Abstract last (it summarizes the finished paper). Write the Abstract elsewhere only if the user asks for a specific section first.
@@ -246,7 +238,7 @@ Step 4: Decision
   └── Under target > 15% ->
       1. Identify the 2 weakest-argued paragraphs
       2. Check for unused assigned sources
-      3. Add new TEEL paragraphs -> recalculate
+      3. Add supported analysis where the section needs it -> recalculate
       4. If still under target -> mark "requires additional analysis"
 
 Step 5: Output Word Count Tracking table
@@ -269,7 +261,7 @@ Total word count monitoring (after assembly):
 | Citation density | Every factual claim has at least 1 citation (exception: #548 absence/novelty claims cannot cite a source for an absence — they carry documented-search provenance in the bounded form and cite the named nearest prior work where adjacent work exists; the explicit absence-of-adjacent-work statement satisfies the check otherwise) | Identify uncited paragraphs, add citations |
 | Total word count | Deviation <= +/-10% from target | Adjust per word count monitoring mechanism |
 | Section word count | Each section deviation <= +/-15% | Expand or trim that section |
-| Paragraph structure | >=80% of paragraphs follow TEEL structure | Rewrite non-compliant paragraphs |
+| Paragraph structure | Paragraphs serve the section's purpose with clear reasoning and appropriate evidential support; author/venue requirements are satisfied | Revise the specific clarity or support problem without enforcing a TEEL quota |
 | Transition completeness | Every adjacent section pair has a Transition | Write missing transition paragraphs |
 | Register consistency | Uniform register throughout (no colloquial mixing) | Fix inconsistent paragraphs |
 | Revision authority (Round 1/2) | Every edit is within a `will_address` exact scope; declined items are untouched absent exact collateral authority | Reject the patch and return to explicit author adjudication |
@@ -281,7 +273,8 @@ Quality gate not passed ->
 ├── Insufficient citation density ->
 │   1. List all factual claims without citations
 │   2. Find usable sources from Annotated Bibliography
-│   3. If no usable source -> rewrite using hedging language ("It may be argued that...")
+│   3. If no usable source -> mark [MATERIAL GAP] for author review or omit the unsupported factual claim; do not pass it by adding hedging language
+│   4. Present an inference or hypothesis only when it follows from identified evidence and is explicitly distinguished from an observed finding; the factual premises still require support
 ├── Register inconsistency ->
 │   1. Scan full text for paragraphs not matching target register
 │   2. Rewrite each paragraph, keeping argument intact
@@ -311,7 +304,7 @@ Quality gate not passed ->
 | Issue | Handling |
 |------|---------|
 | Outline too brief (missing Content Summary) | Infer section content from Literature Matrix, but quality may be reduced |
-| Argument Blueprint CER chain lacks sufficient evidence | Use hedging language in paragraphs + mark "[evidence needs strengthening]" |
+| Argument Blueprint CER chain lacks sufficient evidence | Draft only what the available evidence supports and mark "[evidence needs strengthening]" for the author; do not substitute hedging for the missing evidence |
 | Source annotation missing Key Findings | Use source's Title + Method to infer likely contribution direction |
 
 ### Paper Type Adjustments
@@ -537,8 +530,10 @@ You MUST:
    specific date or version identifier ("as of YYYY-MM-DD, ..." or "the YYYY
    edition, ..."), not a deictic word.
 5. If the dates required to verify the claim are absent from `timeline.yaml` and
-   `literature_corpus[]`, either hedge ("appears to", "is reported as") or do
-   NOT write the claim.
+   `literature_corpus[]`, do NOT write the ordering as a fact: either attribute
+   it to the source that reports it ("X is reported by Y as preceding Z"), mark
+   it `[MATERIAL GAP: date of X unverified]` for author review, or omit it. A
+   bare hedge ("appears to predate") is not a substitute for the missing date.
 
 You may not rely on linguistic plausibility for temporal claims. Temporal claims are arithmetic, not stylistic.
 

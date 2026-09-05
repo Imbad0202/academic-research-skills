@@ -2,17 +2,19 @@
 
 ## Purpose
 
-A set of writing quality rules extracted from common patterns in AI-generated text. These are **good writing rules** that apply regardless of whether the text was AI-generated or human-written. The goal is better prose, not detection evasion.
+A set of context-sensitive writing diagnostics for clear, precise academic prose, regardless of who wrote it.
 
 > **Design boundary**: This checklist improves writing quality. It is NOT a humanizer. We do not aim to fool AI detectors. We aim to produce clear, precise, varied academic prose.
 
 Reference this checklist during the self-review step of drafting (draft_writer_agent Step 2.7, report_compiler_agent final check).
 
+**Priority and scope**: Author requirements and target venue rules take priority, followed by discipline conventions and the approved Style Profile. The patterns below are non-blocking prompts for judgment, not vocabulary bans, punctuation quotas, paragraph templates, or a pass/fail score. Revise only when a specific clarity, precision, or support problem warrants it. Preserve formal word limits, citation and evidence requirements, quoted source text, and the authorized revision scope; this checklist does not authorize rewriting otherwise sound prose or weakening a claim's evidential support.
+
 ---
 
 ## A. High-Frequency Term Warnings
 
-The following terms appear disproportionately in AI-generated text. They are not banned — but when you encounter one, ask: **"Is this really the most precise word here, or am I defaulting to it?"**
+The following terms can be vague or overused in context. They are not banned and do not establish authorship. When reviewing one, ask: **"Is this the most precise word here?"** Keep it when the answer is yes.
 
 ### Flagged Terms
 
@@ -54,29 +56,26 @@ If a flagged term is **standard terminology in the target discipline**, it is ex
 
 ---
 
-## B. Punctuation Pattern Control
+## B. Punctuation Pattern Review
 
 ### Em Dash (—)
-- **Limit**: ≤ 3 per paper total, recommend 0-1
-- **Why**: AI text overuses em dashes for parenthetical asides. Academic writing typically uses commas, parentheses, or separate sentences instead
-- **Fix**: Replace with commas, parentheses, or restructure into separate sentences
+- **Check**: Does the aside clarify the argument, or interrupt it unnecessarily?
+- **Possible revision**: Use commas, parentheses, or a separate sentence when that improves readability. Keep an effective em dash where the author's and venue's style permits it
 - **Exception**: Direct quotes from sources retain their original punctuation
 
 ### Semicolons
-- **Limit**: ≤ 2 per 1000 words
-- **Why**: AI text chains independent clauses with semicolons where a period would be clearer
-- **Fix**: Use a period and start a new sentence. Reserve semicolons for closely related parallel structures
+- **Check**: Are the linked clauses closely related and easy to follow?
+- **Possible revision**: Split an overloaded sentence when a period makes the relationship clearer. Keep semicolons that aid meaning or are required by citation/style conventions
 
 ### Colon-List Sequences
-- **Rule**: Avoid 2+ consecutive paragraphs that each open with a colon followed by a list
-- **Why**: Creates a monotonous enumerate-everything pattern
-- **Fix**: Integrate list items into prose, or use a single consolidated list
+- **Check**: Do repeated lists clarify comparable items, procedures, or findings, or fragment the argument?
+- **Possible revision**: Integrate items into prose or consolidate lists when that improves the explanation. Repeated lists are appropriate when the content or required format calls for them
 
 ---
 
 ## C. Throat-Clearing Openers
 
-Delete the following sentence starters. Cut to the point.
+Review these openers for unnecessary wording. The examples below suggest possible edits, not mandatory substitutions; keep signposting or qualification that helps the reader, and preserve the strength and meaning of the supported claim.
 
 | Throat-clearing phrase | What to do |
 |-----------------------|-----------|
@@ -111,63 +110,51 @@ Exception: Roadmap sentences in the Introduction ("Section 2 reviews the literat
 - **Why**: Real analysis doesn't always decompose into trios. Two strong points beat three padded ones
 - **Fix**: Use as many points as the evidence warrants. 2 is fine. 5 is fine. Don't pad to 3
 
-### Uniform Paragraph Length
-- **Pattern**: All paragraphs are approximately the same length (150-200 words each)
-- **Why**: Natural writing has paragraph length variation. Short paragraphs for emphasis, longer ones for complex arguments
-- **Fix**: Vary paragraph length. A 2-sentence paragraph after a 10-sentence paragraph creates rhythm
+### Paragraph Length
+- **Check**: Does each paragraph have enough space to develop its point without padding or overload?
+- **Possible revision**: Split or combine paragraphs when the argument becomes easier to follow. Similar lengths can be appropriate; do not introduce variation for its own sake
 
 ### Synonym Cycling
-- **Pattern**: Using 3+ different synonyms for the same concept within one paragraph to avoid repetition
+- **Pattern**: Switching terms for the same concept merely to avoid repetition
 - **Why**: In academic writing, consistent terminology is a virtue. Swapping "students" → "learners" → "participants" → "subjects" within one paragraph confuses rather than impresses
-- **Fix**: Pick one term per concept per section. Repeat it. Technical repetition is clarity, not weakness
+- **Possible revision**: Use consistent terminology for the same construct and distinguish terms when they mean different things. Preserve meaningful technical distinctions and the wording of quoted sources
 
 ### Binary Contrast Overuse
-- **Pattern**: "Not X. Y." or "It's not about X — it's about Y." used more than twice per paper
-- **Why**: This rhetorical device is effective once. Repeated, it becomes a tic
-- **Limit**: ≤ 2 per paper
+- **Check**: Does the contrast identify a supported distinction, or impose a false dichotomy or repetitive framing?
+- **Possible revision**: State the actual relationship directly when the contrast obscures it. Keep useful, supported contrasts
 
 ### Mirror Structure
 - **Pattern**: Every section has the same internal structure (topic sentence → 3 evidence points → synthesis sentence)
-- **Why**: Creates a template-stamped feel. Different sections serve different purposes and should have different internal rhythms
-- **Fix**: Let section structure follow content needs. Methods can be procedural. Discussion can be exploratory
+- **Check**: Does the repeated structure fit each section's purpose, or leave analysis missing or padded?
+- **Possible revision**: Let section structure follow content needs. Methods can be procedural and discussion can be exploratory; keep parallel structures when they aid comparison or satisfy the required format
 
 ---
 
-## E. Burstiness (Sentence Length Variation)
+## E. Sentence Length and Readability
 
 ### What to Check
-Good writing has **natural variation in sentence length**. Short sentences create impact. Longer sentences develop complex ideas. The alternation creates rhythm.
+Match sentence length to meaning and the reader's needs. Short sentences can emphasize a finding; longer ones can explain a relationship. Similar lengths are acceptable when the passage remains clear.
 
-### Detection Rule
-If 5+ consecutive sentences all fall within a narrow word-count range (e.g., all between 20-25 words): **flag for review**.
+### Review Prompt
+If a passage is difficult to follow or sounds repetitive, check whether sentence structure contributes to the problem. Word-count similarity alone is not a defect and does not require revision.
 
-### How to Fix
-- Insert a short sentence (≤ 10 words) to break the pattern
-- Combine two short sentences into one complex one if the pattern is monotonously short
-- Read the paragraph aloud — if it feels metronomic, vary it
+### Possible Revisions
+- Split an overloaded sentence at a meaningful boundary
+- Combine fragmented statements when this makes their relationship clearer
+- Read the paragraph aloud to identify awkward phrasing; preserve accurate, readable prose even when its sentence lengths are similar
 
-### Burstiness Targets (by section)
-- **Abstract**: Moderate variation (factual, steady pace)
-- **Introduction**: High variation (hook with short sentences, build with long ones)
-- **Literature Review**: Moderate (steady analytical pace, occasional short synthesis)
-- **Methods**: Low variation acceptable (procedural sections naturally have uniform length)
-- **Results**: Moderate (short for key findings, longer for detailed descriptions)
-- **Discussion**: Highest variation (short for emphasis, long for interpretation, very short for conclusions)
+### Section Context
+Abstracts must respect venue length and structure requirements. Methods may benefit from parallel procedural sentences; results and discussion may need different amounts of explanation. Choose the form that communicates the evidence and reasoning.
 
 ---
 
 ## How to Use This Checklist
 
 ### During Drafting (Preferred)
-Apply rules **while writing each section** in the self-review sub-step (Step 2.7 in draft_writer_agent). This catches issues before they propagate.
+Use these diagnostics in the self-review sub-step (Step 2.7 in draft_writer_agent) when they help resolve an actual writing problem.
 
 ### During Final Review (Fallback)
-If not applied during drafting, run a full-paper sweep before handoff to citation_compliance_agent.
+Review the assembled paper for clarity, precision, and supported claims before handoff to citation_compliance_agent. Do not repeat cosmetic passes once the relevant problems are resolved.
 
-### Scoring (Internal, Not Reported to User)
-For each rule category, track violations:
-- 0 violations: Clean
-- 1-3 violations: Minor — fix in self-review
-- 4+ violations: Pattern issue — review the section's writing approach
-
-Do NOT report scores to the user. Just fix the issues silently during drafting.
+### Review Outcome
+Resolve identified writing problems within the authorized scope and report material evidence gaps or unmet author/venue requirements; nothing in this checklist alone blocks handoff.

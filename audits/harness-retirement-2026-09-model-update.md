@@ -14,8 +14,9 @@
 ## Executive summary
 
 - **Findings: 0 P0, 4 applied doc/harness-currency fixes (MU-001 – MU-004), 0 prompt-text retirements, 2 deferred (MU-005, MU-013), 8 keep-as-debt annotations now backed by a system-card citation.**
+- **Post-release correction (2026-09-06, #823–#826).** A cross-model re-read at the v3.21.2 tag found four items this inventory missed or got wrong. Each is annotated in place with a `Correction (#NNN)` line so the original reasoning stays auditable: #824 → MU-004 (`ultra` reverted from the contained transport); #823 → the sampling-override scan line (`temperature` is an Astra-rejected request parameter); #825 → the numeric-length-caps scan line (the prose quotas the scan missed, plus the hedge-rescue defect the audit did not classify); #826 → the `gpt-*` pin scan line (launcher and claim-audit default).
 - **No agent prompt sentence expired.** Both cards describe the failure classes ARS's remaining scaffolds guard against as *still present* in the new models — stated-guess-as-fact and exaggerated completeness (Fable 5.1 §2.3.3), unhedged estimates and framing extension (§2.2.4), repeated failing actions (§2.3.3), suppressed caveats (§6.6.1), overreach and permissive reading of instructions (Astra §8.6). Retiring those scaffolds on the strength of "the new model is better" would remove protection against silent failures the vendors themselves still report.
-- **What did expire is model currency in documentation and one harness vocabulary gap**, all applied in this PR: the recommended-model line, the cross-model lineup, and the Codex transport's reasoning-effort set (which did not know `ultra`).
+- **What did expire is model currency in documentation and one harness vocabulary gap**, all applied in this PR: the recommended-model line, the cross-model lineup, and the Codex transport's reasoning-effort set (which did not know `ultra`). *Correction (#824): reverted — see MU-004.*
 - **The cards also motivated four additions** (not retirements), listed under "Guardrails added" below, each grounded in a cited section and indexed in `docs/RISK_REGISTER.md`.
 
 ## Findings
@@ -68,6 +69,13 @@ Rationale: GPT-6 Astra's Codex harness runs at `ultra` effort (system card
   0.153.4), so the set is ARS's own guard and was one value short.
 Applied: `ultra` added as a named constant; new test pins forwarding on turn/start
   and fail-closed rejection of an unknown value. The API route stays pass-through.
+Correction (#824, 2026-09-06): reverted. The 0.153.4 `TurnStartParams.multiAgentMode`
+  description reads "@deprecated Ignored. Use `effort: \"ultra\"` for proactive
+  multi-agent behavior" — `ultra` is a delegation request, not merely a larger
+  reasoning amount, and the contained single-reference transport must not opt into
+  it. `validate_reasoning_effort` now rejects `ultra` with
+  `REASONING_EFFORT_REQUIRES_DELEGATION` before detection, auth, temporary state,
+  or launch; `ultra` remains available to a general Codex research session.
 ```
 
 ```
@@ -180,11 +188,11 @@ Decision: keep.
 
 ## Mechanical scan results (all 39 agent bodies + shared agents + commands + hooks)
 
-- Hardcoded model pins in prompt text (`claude-*`, `Opus 4.x`, `Sonnet 4.x`, `Haiku`, `gpt-*`): **0 in prompts.** Remaining hits are the eval-harness default (MU-006), the light-mode `sonnet` cost routing in `commands/` (a cost decision, not a capability workaround — August keep-list), and records (CHANGELOG, audits, evals, design docs — out of scope).
-- Sampling / budget overrides (`temperature`, `top_p`, `max_tokens`, `budget_tokens`): **0** in prompts; the `temperature: 0.1` in the verifier call patterns is a documented determinism choice for an external provider and is not a Claude parameter.
+- Hardcoded model pins in prompt text (`claude-*`, `Opus 4.x`, `Sonnet 4.x`, `Haiku`, `gpt-*`): **0 in prompts.** Remaining hits are the eval-harness default (MU-006), the light-mode `sonnet` cost routing in `commands/` (a cost decision, not a capability workaround — August keep-list), and records (CHANGELOG, audits, evals, design docs — out of scope). *Correction (#826): the scan excluded scripts and config defaults — `scripts/run_codex_audit.sh` launched `codex exec -m gpt-5.5` with no model recorded in the sidecar, and `scripts/claim_audit_pipeline.py` defaulted `judge_model` to `gpt-5.5-xhigh` (repeated in `academic-pipeline/agents/claim_ref_alignment_audit_agent.md`), stamping an identity that may not have run into every row and cache key. The launcher now pins `gpt-6-astra`/`xhigh` and records both in the sidecar `model` block; a missing judge identity is recorded as `unknown` with a run-bound cache key.*
+- Sampling / budget overrides (`temperature`, `top_p`, `max_tokens`, `budget_tokens`): **0** in prompts; the `temperature: 0.1` in the verifier call patterns is a documented determinism choice for an external provider and is not a Claude parameter. *Correction (#823): it is, however, a parameter the recommended external provider rejects — GPT-6 Astra's migration guide lists `temperature`, `top_p`, and `top_logprobs` as unsupported — so the first-party OpenAI request builders (`scripts/cross_model_smoke_test.sh` and the canonical example in `shared/cross_model_verification.md`) now omit it; the Gemini and compatible-provider examples keep their provider-specific parameters.*
 - Reasoning scaffolds ("think step by step", "show your reasoning", `<thinking>`, `<scratchpad>`): **0 hits.**
 - Update-suppressor / anti-formatting instructions: **1 hit**, a format contract (MU-014).
-- Numeric length caps: **1 hit**, kept with vendor evidence (MU-007).
+- Numeric length caps: **1 hit**, kept with vendor evidence (MU-007). *Correction (#825): the scan pattern matched only word-count caps and missed the operative prose quotas — `academic-paper/agents/draft_writer_agent.md` (em dashes ≤3 per paper, semicolons ≤2 per 1,000 words, binary contrasts ≤2, TEEL for every paragraph with 120-200-word bodies and ≥3 body paragraphs per section, an 80% TEEL pass criterion), `academic-paper/references/writing_quality_check.md` (the same limits plus a 5-sentence burstiness detector, per-section variation targets, and an internal violation score), both `report_compiler_agent.md` mirrors (em dashes ≤3 per report), the `academic-paper/SKILL.md` anti-pattern rows (em dashes per page, 2-8-sentence paragraphs), and the enforceable copy in `shared/contracts/writer/full.json` D6 (80% TEEL as a scored dimension). All are now diagnostic and subordinate to author/venue/discipline requirements; MU-007 itself is unchanged. The same pass closed a correctness defect the scan could not see: the citation-density recovery step (and the CER-chain fallback row) told the writer to rewrite an unsourced claim "using hedging language", writer contract D2 said the same, and rule 5 of the M3 temporal iron rule (writer + both compiler mirrors) allowed a bare hedge when the verifying dates were absent; all now route to a source, attribution, omission, or `[MATERIAL GAP]`.*
 - Anti-hallucination phrasing: every hit is a domain contract clause (August verdict), now with a current-model citation for why it stays (MU-009, MU-011).
 
 ## Verification

@@ -1152,17 +1152,17 @@ def test_surrogate_final_and_control_query_fail_closed() -> None:
     )["reason_code"] == "EVENT_STREAM_INVALID"
 
 
-def test_reasoning_effort_ultra_is_forwarded_and_unknown_effort_fails_closed(
+def test_reasoning_effort_max_is_forwarded_and_unknown_effort_fails_closed(
     tmp_path: Path,
 ) -> None:
     # The closed vocabulary (rationale on the constant) is forwarded verbatim on
     # turn/start and fails closed on a value outside the set.
-    assert "ultra" in runtime.ACCEPTED_REASONING_EFFORTS
+    assert "ultra" not in runtime.ACCEPTED_REASONING_EFFORTS
     home = tmp_path / "custom-home"
     _make_auth(home)
     fake_bin, capture_path = _make_fake_codex(tmp_path)
     env = _base_env(fake_bin, home)
-    env["ARS_CROSS_MODEL_REASONING_EFFORT"] = "ultra"
+    env["ARS_CROSS_MODEL_REASONING_EFFORT"] = "max"
     completed = subprocess.run(
         [str(WRAPPER)],
         input=runtime.canonical_json(_request()),
@@ -1178,7 +1178,7 @@ def test_reasoning_effort_ultra_is_forwarded_and_unknown_effort_fails_closed(
     capture = json.loads(capture_path.read_text(encoding="utf-8"))
     turn_starts = [m for m in capture["requests"] if m.get("method") == "turn/start"]
     assert len(turn_starts) == 1
-    assert turn_starts[0]["params"]["effort"] == "ultra"
+    assert turn_starts[0]["params"]["effort"] == "max"
 
     # The rejection is pinned in-process (same shape as the APP_SERVER_TIMEOUT
     # test): the shell → interpreter boundary is already proven by the run above,
@@ -1193,3 +1193,41 @@ def test_reasoning_effort_ultra_is_forwarded_and_unknown_effort_fails_closed(
             environ=env,
         )
     assert exc_info.value.code == "INVALID_REASONING_EFFORT"
+
+
+@pytest.mark.parametrize(
+    "model, effort, reason",
+    [
+        ("gpt-6-astra", "ultra", "REASONING_EFFORT_REQUIRES_DELEGATION"),
+        ("gpt-5.6-sol", "ultra", "REASONING_EFFORT_REQUIRES_DELEGATION"),
+        ("gpt-6-astra", "none", "INVALID_REASONING_EFFORT"),
+    ],
+)
+def test_invalid_effort_fails_before_detection_auth_or_launch(
+    tmp_path: Path, monkeypatch, model: str, effort: str, reason: str
+) -> None:
+    env = {"ARS_CROSS_MODEL": model, "ARS_CROSS_MODEL_REASONING_EFFORT": effort}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("invalid effort reached detection, auth, temporary state, or subprocess")
+
+    monkeypatch.setattr(runtime, "detect_transport", forbidden)
+    monkeypatch.setattr(runtime, "_read_auth_bytes", forbidden)
+    monkeypatch.setattr(runtime.tempfile, "TemporaryDirectory", forbidden)
+    monkeypatch.setattr(runtime.subprocess, "Popen", forbidden)
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.verify_once(_request(), env)
+    assert exc_info.value.code == reason
+    with pytest.raises(runtime.TransportError) as exc_info:
+        runtime.run_app_server(
+            _request(), model=model, codex="must-not-launch",
+            source_auth=tmp_path / "must-not-read", environ=env,
+        )
+    assert exc_info.value.code == reason
+
+
+def test_effort_guard_preserves_provider_default_and_in_set_values() -> None:
+    assert runtime.validate_reasoning_effort({}) == ""
+    assert runtime.validate_reasoning_effort(
+        {"ARS_CROSS_MODEL_REASONING_EFFORT": "minimal"}
+    ) == "minimal"

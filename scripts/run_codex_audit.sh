@@ -7,6 +7,12 @@
 # the LLM session. Same-session in-LLM invocation creates Pattern C3 exposure.
 # See spec §4.7.
 #
+# New audit runs request AUDIT_MODEL at AUDIT_REASONING_EFFORT (below) and
+# record both in the sidecar's `model` block (#826), so provenance never has to
+# be reconstructed from this script's source at the commit of record. This is
+# a runtime selection for new runs, not a claim about historical audits or
+# about which model the provider actually served.
+#
 # Usage:
 #   scripts/run_codex_audit.sh \
 #     --stage <1-6> \
@@ -791,6 +797,10 @@ fi
 # This is `codex exec`, not `codex exec resume` — every audit run starts a
 # fresh thread; the wrapper never resumes a prior thread.
 # ---------------------------------------------------------------------------
+# Explicit pin (never the caller's project default, which is a moving alias);
+# recorded in the sidecar `model` block below.
+AUDIT_MODEL="gpt-6-astra"
+AUDIT_REASONING_EFFORT="xhigh"
 STARTED_AT=$(_now_rfc3339_ms)
 CODEX_EXIT=0
 TEE_EXIT=0
@@ -798,8 +808,8 @@ TEE_EXIT=0
 if [[ "${PRE_CODEX_MUTATION_DETECTED}" -eq 0 ]]; then
   set +e
   codex exec \
-    -m gpt-5.5 \
-    -c 'model_reasoning_effort="xhigh"' \
+    -m "${AUDIT_MODEL}" \
+    -c "model_reasoning_effort=\"${AUDIT_REASONING_EFFORT}\"" \
     --json \
     - \
     2> "${OUT_DIR}/${run_id}.stderr" \
@@ -926,6 +936,10 @@ _sidecar_json() {
 {
   "run_id": $(_json_escape "${run_id}"),
   "codex_cli_version": $(_json_escape "${CODEX_VERSION}"),
+  "model": {
+    "requested": $(_json_escape "${AUDIT_MODEL}"),
+    "reasoning_effort": $(_json_escape "${AUDIT_REASONING_EFFORT}")
+  },
   "runner": {
     "hostname": $(_json_escape "${HOSTNAME_VAL}"),
     "cwd": $(_json_escape "${CWD_VAL}"),

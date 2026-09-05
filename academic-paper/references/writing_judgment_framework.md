@@ -1,6 +1,6 @@
 # Writing Judgment Framework
 
-A cognitive framework for making writing decisions. Complements the procedural `writing_quality_check.md` with judgment heuristics.
+A cognitive framework for making writing decisions. Complements the diagnostic `writing_quality_check.md` with judgment heuristics.
 
 ## The Clarity Test
 

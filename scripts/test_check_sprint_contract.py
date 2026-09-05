@@ -185,7 +185,7 @@ def test_writer_evaluator_byte_unchanged_against_hardcoded_baseline():
 
     expected = {
         "shared/contracts/writer/full.json":
-            "9340ad80971f643ca772243a645d0a52b4ab059e27e04e0bce463e0760d1553b",
+            "ee29da7a0efaf17b7f90059e5a158ba55f4dd3d210062e4d3855da6d03f3f4a3",
         "shared/contracts/evaluator/full.json":
             "ce3b3e19f1da68985ebeb2dd2d7904d7343724d0847fff4e08704d79f083158a",
     }

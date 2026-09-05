@@ -63,9 +63,16 @@ Configuration (`claim_audit_config` block in `academic-pipeline/SKILL.md` mode f
 | Key | Type | Default | Purpose |
 |---|---|---|---|
 | `max_claims_per_paper` | integer ≥ 1 | 100 | Cap on judge invocations. N > cap triggers stratified sampling (see Sampling section below). cap = 0 is rejected. |
-| `judge_model` | string | `gpt-5.5-xhigh` | Model id used for the judge call. Part of cache key — changing it forces cache miss on every citation. |
+| `judge_model` | string or null | `unknown` | Caller-supplied actual judge identity, including effort when relevant. It partitions the cache; a missing/null/blank/unknown identity is recorded as `unknown` and binds the cache key to this `audit_run_id` (no cross-run reuse; a repeated citation still dedups within the run) rather than attributing a call to a preferred model. |
 | `gold_set_path` | path or null | null | Calibration mode gold-set fixture path. Null disables calibration mode. |
 | `cache_dir` | path or null | null | Filesystem cache directory. Null disables persistent cache (still uses in-memory dict per run). |
+
+The dispatcher supplies the judge's execution identity; this field never
+selects a model by itself or proves what a provider served. For a confirmed
+Astra/xhigh judge, for example, use `gpt-6-astra-xhigh`. On a provider fallback,
+update the identity before reusing any cache; if the actual judge cannot be
+established, retain `unknown` so no verdict is reused across runs. The callback resolves
+its own runtime and must not send `unknown` as a provider model id.
 
 ### Sampling behavior
 

@@ -260,4 +260,4 @@ DO NOT simulate any audit step. [+ standard Section 7 anti-fake-audit guard]
 - ARS feedback memory `feedback_codex_iterative_spec_review_to_zero.md` — convergence target rationale.
 - ARS feedback memory `feedback_cross_model_review_cascade_inconsistency.md` — round-N+1 cascade audit rationale.
 - ARS feedback memory `feedback_subagent_tool_hallucination.md` — anti-fake-audit guard rationale.
-- ARS feedback memory `feedback_codex_xhigh_for_drift_audit.md` — model + reasoning-effort selection (gpt-5.5 + xhigh for high-blast-radius bundles).
+- Model + reasoning-effort selection for new drift audits: pinned in `scripts/run_codex_audit.sh` (`AUDIT_MODEL` / `AUDIT_REASONING_EFFORT`) and recorded in each run's sidecar `model` block; older audit records keep their actual identities.

@@ -9,5 +9,6 @@
   "re_review_persuasion_invariance": "paired_controls",
   "role_topology_utility": "paired_controls",
   "tortured_phrase_conformance": "mechanical_match",
-  "within_session_ideation_diversity": "paired_controls"
+  "within_session_ideation_diversity": "paired_controls",
+  "unsupported_claim_recovery": "llm_judged"
 }

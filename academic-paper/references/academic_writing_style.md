@@ -119,7 +119,7 @@ although, despite, while, granted that, notwithstanding
 
 ## Paragraph Construction
 
-### Standard Academic Paragraph (TEEL)
+### A Common Academic Paragraph Shape (TEEL, optional)
 1. **T**opic sentence — states the paragraph's main point
 2. **E**vidence — data, citations, examples that support the point
 3. **E**xplanation — interpret the evidence, connect to argument

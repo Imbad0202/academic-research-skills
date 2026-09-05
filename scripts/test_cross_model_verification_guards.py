@@ -19,6 +19,7 @@ reads as "covered" when it is not).
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -790,3 +791,92 @@ def test_mutation_naive_sources_would_leak_negative_index():
     _, canonical_out = _run_jq(GEMINI_SOURCES, GEMINI_NEGATIVE_INDEX, raw=True)
     assert canonical_out == ""
     assert naive_out != canonical_out
+
+
+# ---------------------------------------------------------------------------
+# #823 — the two shipped OpenAI request builders (smoke entrypoint + the documented
+# Bash example) are executed against a fake `curl`: no network, no key. Pins the
+# emitted JSON (no sampling parameters GPT-6 Astra rejects), the omitted-effort
+# provider default, and that an unsupported explicit Astra effort never reaches
+# the transport. Both surfaces source the same canonical guard file.
+# ---------------------------------------------------------------------------
+
+REPO = GUARD_DIR.parent.parent
+SMOKE = REPO / "scripts" / "cross_model_smoke_test.sh"
+DOC = REPO / "shared" / "cross_model_verification.md"
+EFFORT_GUARD = GUARD_DIR / "openai_effort_guard.sh"
+
+
+def _documented_openai_builder() -> str:
+    """The fenced bash block that issues the Responses-API request, located by content."""
+    blocks = DOC.read_text(encoding="utf-8").split("```bash\n")[1:]
+    hits = [b.split("\n```", 1)[0] for b in blocks if "https://api.openai.com/v1/responses" in b]
+    assert len(hits) == 1, "expected exactly one documented OpenAI request builder"
+    return hits[0]
+
+
+@pytest.fixture(scope="module")
+def fake_curl_bin(tmp_path_factory) -> Path:
+    fake_bin = tmp_path_factory.mktemp("fake-curl-bin")
+    curl = fake_bin / "curl"
+    # POSIX sh, not an interpreter start: argv NUL-separated to $ARS_TEST_CAPTURE,
+    # then a synthetic non-2xx body so the surface stops after the transport check.
+    curl.write_text(
+        "#!/bin/sh\nprintf '%s\\0' \"$@\" > \"$ARS_TEST_CAPTURE\"\n"
+        "printf '%s\\n%s\\n' '{\"error\": \"synthetic transport stop\"}' 400\n",
+        encoding="utf-8",
+    )
+    curl.chmod(0o755)
+    return fake_bin
+
+
+def test_both_openai_builders_source_the_canonical_effort_guard():
+    assert EFFORT_GUARD.is_file()
+    for surface in (SMOKE.read_text(encoding="utf-8"), _documented_openai_builder()):
+        assert '. "$GUARD/openai_effort_guard.sh"' in surface
+        assert "ars_openai_effort_check" in surface
+
+
+@pytest.mark.parametrize("surface", ["smoke", "documented-example"])
+@pytest.mark.parametrize(
+    "model, effort, accepted",
+    [
+        ("gpt-6-astra", "", True),         # unset → field omitted, provider default
+        ("gpt-6-astra", "max", True),
+        ("gpt-6-astra", "ultra", False),   # not an Astra API value
+        ("gpt-6-astra", "minimal", False),
+        ("gpt-5.5", "minimal", True),      # other ids stay pass-through
+    ],
+)
+def test_openai_payload_model_compatibility_without_network(
+    tmp_path: Path, fake_curl_bin: Path, surface: str, model: str, effort: str, accepted: bool
+):
+    _require_jq()
+    capture = tmp_path / "captured.bin"
+    if surface == "smoke":
+        command = ["bash", str(SMOKE)]
+    else:
+        command = ["bash", "-c", "PROMPT='Synthetic reference fixture'\n" + _documented_openai_builder()]
+    env = {
+        "PATH": str(fake_curl_bin) + os.pathsep + os.environ.get("PATH", os.defpath),
+        "OPENAI_API_KEY": "synthetic-test-only",
+        "ARS_CROSS_MODEL": model,
+        "ARS_CROSS_MODEL_REASONING_EFFORT": effort,
+        "ARS_TEST_CAPTURE": str(capture),
+    }
+    completed = subprocess.run(
+        command, cwd=REPO, env=env, text=True, capture_output=True, timeout=10, check=False
+    )
+    if not accepted:
+        assert completed.returncode != 0
+        assert "CROSS-MODEL-ERROR: invalid_astra_reasoning_effort" in completed.stdout
+        assert not capture.exists(), "invalid Astra effort reached curl"
+        return
+    assert capture.exists(), completed.stdout + completed.stderr
+    args = capture.read_bytes().decode("utf-8").split("\0")
+    assert "https://api.openai.com/v1/responses" in args
+    payload = json.loads(args[args.index("-d") + 1])
+    assert payload["model"] == model
+    assert payload["tools"] == [{"type": "web_search"}]
+    assert not {"temperature", "top_p", "top_logprobs", "logprobs"} & payload.keys()
+    assert payload.get("reasoning") == ({"effort": effort} if effort else None)

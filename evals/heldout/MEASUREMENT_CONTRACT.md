@@ -75,6 +75,7 @@ table below is an informative mirror:
 | Suite | Class | Notes |
 |---|---|---|
 | `revision_claim_drift` | `llm_judged` | cross-model judge + maintainer adjudication |
+| `unsupported_claim_recovery` | `llm_judged` | maintainer adjudication of the #825 drafting recovery route (unsupported / contradicted claim → source, omission, or `[MATERIAL GAP]`; hedge-only rescue fails); seed only, `NOT_RUN` |
 | `indirect_prompt_injection_behavior` | `paired_controls` | #675 2 x 2 synthetic behavioral probe; no structural-safety claim |
 | `rq_framing_offlist` | `llm_judged` | judge + replicate protocol already in its README |
 | `pipeline_behavior_robustness` | `mechanical_match` | full-expectation mechanical match; judge only transcribes |

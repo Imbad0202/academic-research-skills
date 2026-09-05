@@ -199,5 +199,3 @@ def test_bash_blocks_includes_unterminated_final_block():
         "unterminated final ```bash block was dropped — its OPENAI_BASE_URL expansion would "
         f"escape the bash-scanning checks (fail-OPEN). Recovered lines: {recovered!r}"
     )
-
-

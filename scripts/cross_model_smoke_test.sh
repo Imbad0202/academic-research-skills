@@ -14,7 +14,7 @@
 #
 #   export OPENAI_API_KEY="sk-..."
 #   export ARS_CROSS_MODEL="<gpt-* id under test>"  # model under test
-#   export ARS_CROSS_MODEL_REASONING_EFFORT="medium" # optional (default: medium)
+#   export ARS_CROSS_MODEL_REASONING_EFFORT="medium" # optional (unset = provider default)
 #   bash scripts/cross_model_smoke_test.sh
 #
 # Checks (exit 0 only if all hard checks pass):
@@ -59,6 +59,10 @@ esac
   echo "ERROR: canonical jq guards not found under $GUARD (run from a repo checkout)"; exit 1; }
 
 EFFORT="${ARS_CROSS_MODEL_REASONING_EFFORT:-}"
+# Per-model effort vocabulary (#823): reject an unsupported explicit value before
+# any request leaves; unset stays the provider default.
+. "$GUARD/openai_effort_guard.sh"
+ars_openai_effort_check "$ARS_CROSS_MODEL" "$EFFORT" || exit 1
 note "model=$ARS_CROSS_MODEL effort=${EFFORT:-(provider default — reasoning field omitted)}"
 
 # --- One real call against a stable reference --------------------------------
@@ -85,8 +89,7 @@ resp="$(curl -sS -w '\n%{http_code}' https://api.openai.com/v1/responses \
     model: $model,
     instructions: "You are a citation-verification assistant. Search the web before every verdict; never answer from memory. If you could not search, respond NOT_SEARCHED.",
     input: $prompt,
-    tools: [{type: "web_search"}],
-    temperature: 0.1
+    tools: [{type: "web_search"}]
   } + (if $effort == "" then {} else {reasoning: {effort: $effort}} end)')")"
 
 http="${resp##*$'\n'}"; body="${resp%$'\n'*}"

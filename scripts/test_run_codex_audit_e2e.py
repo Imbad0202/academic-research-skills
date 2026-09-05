@@ -73,7 +73,7 @@ def _make_codex_mock(bin_dir: Path) -> Path:
     The mock supports two invocation forms:
       1. `codex --version` → prints `codex-cli 0.128.0` (matches §3.4 sidecar
          codex_cli_version semver pattern)
-      2. `codex exec -m gpt-5.5 -c '...' --json - < <prompt>` → emits canonical
+      2. `codex exec -m gpt-6-astra -c '...' --json - < <prompt>` → emits canonical
          JSONL events to stdout matching §3.3 four-event clean-completion shape
          with a Section-6-formatted PASS verdict in the agent_message text.
     """
@@ -90,6 +90,13 @@ def _make_codex_mock(bin_dir: Path) -> Path:
           echo "codex-cli 0.128.0"
           exit 0
         fi
+
+        # Reject a stale model pin, changed effort, or resumed-context audit:
+        # the wrapper must pass an explicit model/effort (never the caller's
+        # project default) and start a fresh thread. Joined on a separator
+        # that cannot appear in argv so a boundary shift is caught.
+        expected=(exec -m gpt-6-astra -c 'model_reasoning_effort="xhigh"' --json -)
+        [[ "$(IFS=$'\x1f'; printf '%s' "$*")" == "$(IFS=$'\x1f'; printf '%s' "${expected[*]}")" ]] || exit 64
 
         # Drain stdin (the rendered audit prompt). We don't inspect it.
         cat >/dev/null
@@ -280,6 +287,8 @@ def test_wrapper_dispatches_end_to_end(tmp_path):
     )
     assert sidecar_doc["run_id"] == run_id
     assert sidecar_doc["codex_cli_version"] == "0.128.0"
+    # #826: requested identity is recorded, matching what the mock accepted.
+    assert sidecar_doc["model"] == {"requested": "gpt-6-astra", "reasoning_effort": "xhigh"}
     assert sidecar_doc["process"]["exit_code"] == 0
 
     # JSONL events each validate against audit_jsonl.schema.json's row schema.

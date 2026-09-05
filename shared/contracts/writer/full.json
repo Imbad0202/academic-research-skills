@@ -13,7 +13,7 @@
     {
       "id": "D2",
       "name": "citation_density",
-      "description": "Every factual claim carries at least one citation; uncited claims either gain a source or are rewritten with hedging language. Exception (#548): absence/novelty claims cannot cite a source for an absence — they satisfy this dimension via documented-search provenance in the bounded form plus a citation to the named nearest prior work where adjacent work exists; the explicit absence-of-adjacent-work statement satisfies it otherwise.",
+      "description": "Every factual claim carries at least one citation; uncited factual claims either gain a source, are omitted, or are marked [MATERIAL GAP] for author review; hedging language alone does not satisfy this dimension. Exception (#548): absence/novelty claims cannot cite a source for an absence — they satisfy this dimension via documented-search provenance in the bounded form plus a citation to the named nearest prior work where adjacent work exists; the explicit absence-of-adjacent-work statement satisfies it otherwise.",
       "priority": "mandatory"
     },
     {
@@ -37,7 +37,7 @@
     {
       "id": "D6",
       "name": "paragraph_structure",
-      "description": "At least 80 percent of body paragraphs follow TEEL (Topic / Evidence / Explanation / Link); inter-section transitions present. Introduction-first and conclusion-last paragraphs are exempt.",
+      "description": "Body paragraphs serve their section's purpose with a clear point, adequate cited support, explanation, and linkage, judged by clarity and evidential support rather than a TEEL percentage or length preset; author and venue requirements take priority. Inter-section transitions present.",
       "priority": "normal"
     },
     {

@@ -94,11 +94,7 @@ If a Style Profile is available from a prior `academic-paper` intake or provided
 
 ## Writing Quality Check
 
-Before finalizing the report, run the Writing Quality Check checklist (see `academic-paper/references/writing_quality_check.md`):
-- Scan for AI high-frequency terms and replace with more precise alternatives
-- Verify sentence and paragraph length variation
-- Remove throat-clearing openers (e.g., "In the realm of...", "It's important to note that...")
-- Check em dash usage (≤3 per report)
+Before finalizing the report, run the diagnostics in `academic-paper/references/writing_quality_check.md`; its *Priority and scope* paragraph governs (author and venue requirements first; presets are prompts for judgment, not quotas). Separately, check that every factual claim is supported by its cited source: hedging cannot supply missing evidence, so an unsupported claim is flagged `[MATERIAL GAP]` for author review or omitted.
 
 ## Temporal Integrity Iron Rule (v3.9.4)
 
@@ -124,8 +120,10 @@ You MUST:
    specific date or version identifier ("as of YYYY-MM-DD, ..." or "the YYYY
    edition, ..."), not a deictic word.
 5. If the dates required to verify the claim are absent from `timeline.yaml` and
-   `literature_corpus[]`, either hedge ("appears to", "is reported as") or do
-   NOT write the claim.
+   `literature_corpus[]`, do NOT write the ordering as a fact: either attribute
+   it to the source that reports it ("X is reported by Y as preceding Z"), mark
+   it `[MATERIAL GAP: date of X unverified]` for author review, or omit it. A
+   bare hedge ("appears to predate") is not a substitute for the missing date.
 
 You may not rely on linguistic plausibility for temporal claims. Temporal claims are arithmetic, not stylistic.
 
