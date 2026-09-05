@@ -40,7 +40,8 @@ Extracted-text hashes are pinned to the extractor: pypdf's text extraction is
 version-sensitive, so the manifest records `pypdf_version` alongside
 `extracted_text_sha256` and `verify` compares only when the installed version
 matches (a version drift downgrades that check to a named warning, never a
-silent pass).
+silent pass). The normalization RULE (`_calibration_pdf_text.TEXT_NORMALIZATION`,
+shared with the dispatcher) is also recorded and mismatches are hard failures.
 
 Stdlib + pypdf (existing repo dependency: pdf_read_preflight.py).
 """
@@ -52,9 +53,16 @@ import hashlib
 import json
 import re
 import sys
-import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _calibration_pdf_text import (  # noqa: E402
+    TEXT_NORMALIZATION,
+    extract_manuscript_text,
+    extracted_text_sha256,
+)
 
 try:
     import pypdf
@@ -213,9 +221,8 @@ def pdf_facts(pdf_path: Path) -> tuple[str, str, int]:
         raise SystemExit("pypdf is required for freeze/verify")
     data = pdf_path.read_bytes()
     reader = pypdf.PdfReader(pdf_path)
-    text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    normalized = unicodedata.normalize("NFC", text)
-    return sha256_hex(data), sha256_hex(normalized.encode("utf-8")), len(reader.pages)
+    normalized = extract_manuscript_text(reader)
+    return sha256_hex(data), extracted_text_sha256(normalized), len(reader.pages)
 
 
 def leak_scan(papers_payload: dict) -> list[str]:
@@ -326,7 +333,11 @@ def cmd_freeze(args: argparse.Namespace) -> int:
             "page_cap": args.page_cap,
             "exclusions": selection["exclusions_applied"] + freeze_exclusions,
         },
-        "extraction": {"tool": "pypdf", "pypdf_version": pypdf.__version__},
+        "extraction": {
+            "tool": "pypdf",
+            "pypdf_version": pypdf.__version__,
+            "text_normalization": TEXT_NORMALIZATION,
+        },
         "papers": papers,
     }
     hits = leak_scan(papers_payload)
@@ -387,6 +398,12 @@ def cmd_verify(args: argparse.Namespace) -> int:
         if row["label"] not in ("accept", "reject"):
             failures.append(f"{row['paper_id']}: invalid label {row['label']!r}")
 
+    recorded_norm = papers_payload["extraction"].get("text_normalization")
+    if recorded_norm != TEXT_NORMALIZATION:
+        failures.append(
+            f"text_normalization rule mismatch: manifest {recorded_norm!r} vs "
+            f"checker {TEXT_NORMALIZATION!r} (a rule, not a version: re-freeze)"
+        )
     version_match = pypdf is not None and (
         pypdf.__version__ == papers_payload["extraction"]["pypdf_version"]
     )

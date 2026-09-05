@@ -1,0 +1,146 @@
+{
+  "suite": "reviewer_calibration",
+  "source": {
+    "api": "OpenReview API v2 (api2.openreview.net)",
+    "venue_id": "ICLR.cc/2026/Conference",
+    "pools": {
+      "accepted": {
+        "count": 5351,
+        "ids_sha256": "7614bcd3cf566a1bb783810815c7e650341f6961c0f865bbcd24301ac436a342"
+      },
+      "rejected": {
+        "count": 8356,
+        "ids_sha256": "cfbba2a75f1f7fe2a6f2815752323064a06315cefe248b4b0c2c18005df108ad"
+      }
+    },
+    "pool_id_lists": {
+      "accepted": "corpus/pool_accepted_ids.txt",
+      "rejected": "corpus/pool_rejected_ids.txt"
+    }
+  },
+  "selection": {
+    "seed": "ars-653-reviewer-calibration-iclr2026-v1",
+    "rule": "per class, sort pool ids by sha256(seed US class US id); walk in that order; skip ids in the exclusion ledger; take the first N remaining",
+    "quotas": {
+      "accepted": 6,
+      "rejected": 6
+    },
+    "page_cap": 60,
+    "exclusions": []
+  },
+  "extraction": {
+    "tool": "pypdf",
+    "pypdf_version": "6.11.0",
+    "text_normalization": "pypdf-pages-joined-lf; NFC; lone-surrogate->U+FFFD"
+  },
+  "papers": [
+    {
+      "paper_id": "CPxZClPMiy",
+      "title": "Aria: an Agent for Retrieval and Iterative Auto-Formalization via Dependency Graph",
+      "pdf_url": "https://openreview.net/pdf?id=CPxZClPMiy",
+      "pdf_sha256": "f46ac2df5992548d866318d222b6d0b1d3f64daf53ae9794be3f8a129b283a4c",
+      "extracted_text_sha256": "005ea4285f3b94842b38138e5b28d25721a29cb0a1cac1372bd7ff53e431da25",
+      "page_count": 33,
+      "retrieved_at": "2026-09-05T23:35:42Z"
+    },
+    {
+      "paper_id": "CU5EHe1KUt",
+      "title": "Diffusion Negative Preference Optimization Made Simple",
+      "pdf_url": "https://openreview.net/pdf?id=CU5EHe1KUt",
+      "pdf_sha256": "856036848ee298df78384da312d274ed52e1840c3fbbd7d12240710d6dffb4d9",
+      "extracted_text_sha256": "e60fb1134a345208cd99c92bb914ad85e016d7f329aa27ce658e9d4129fb5d00",
+      "page_count": 19,
+      "retrieved_at": "2026-09-05T23:35:46Z"
+    },
+    {
+      "paper_id": "If8O8CdCbi",
+      "title": "Keep the Beam on Track: Stabilizing Reward Trajectories in Guided Decoding",
+      "pdf_url": "https://openreview.net/pdf?id=If8O8CdCbi",
+      "pdf_sha256": "975e256fdc2a0d841c2adf92a165382592939441d5ea61ad9b20d8adf83d4bb6",
+      "extracted_text_sha256": "782ac52b71c2999ff7eed2401f1b24dc6d8b8e6e17eb393cd7dae89c690b2557",
+      "page_count": 16,
+      "retrieved_at": "2026-09-05T23:36:27Z"
+    },
+    {
+      "paper_id": "KN2RD4fpnH",
+      "title": "Geometry of Nash Mirror Dynamics: Adaptive $\\beta$-Control for Stable and Bias-Robust Self-Improving LLM Agents",
+      "pdf_url": "https://openreview.net/pdf?id=KN2RD4fpnH",
+      "pdf_sha256": "44355183dbf3923d45ee712054e5f814693fef81c1806eef44d25d4a6ffc6c13",
+      "extracted_text_sha256": "23b5662ef61b03d7df174bce1c0c884ac2e783dc208f166cf9b934c35e04e92f",
+      "page_count": 20,
+      "retrieved_at": "2026-09-05T23:36:19Z"
+    },
+    {
+      "paper_id": "OKUGAxu6Ww",
+      "title": "FreeAdapt: Unleashing Diffusion Priors for Ultra-High-Definition Image Restoration",
+      "pdf_url": "https://openreview.net/pdf?id=OKUGAxu6Ww",
+      "pdf_sha256": "40e9b0644de96a309eb5844bb8afa5d7ea88bb610161c36df342952af2faccd7",
+      "extracted_text_sha256": "5c19f22fcc582ffa500bafafcbf218a4add6ba69f58b0c4e30aa63379ff38cc5",
+      "page_count": 24,
+      "retrieved_at": "2026-09-05T23:36:05Z"
+    },
+    {
+      "paper_id": "UbWy2QVmke",
+      "title": "GAA-PtrNet: Graph attention aggregation-based pointer network for one-shot DAG scheduling",
+      "pdf_url": "https://openreview.net/pdf?id=UbWy2QVmke",
+      "pdf_sha256": "d8169064436c698fca513216b14abd5866966cb345ee1a23070b93cd007f4787",
+      "extracted_text_sha256": "ea457e479abf0214797bda3b36be98fa39420dd720735a5755a28a8f9e9e5e34",
+      "page_count": 24,
+      "retrieved_at": "2026-09-05T23:36:16Z"
+    },
+    {
+      "paper_id": "VVstc2W3RW",
+      "title": "Prospective Learning: Memory-Efficient MLP Training via Brain-Inspired Direct Optimization",
+      "pdf_url": "https://openreview.net/pdf?id=VVstc2W3RW",
+      "pdf_sha256": "0102eeb94a42c4f7dbd1d74e9bc6349a021655f472637d084f90348374d58552",
+      "extracted_text_sha256": "8425e5f0bb41eb5175da70df41a67123ac9b9c1560c25befe7afbc215f61c428",
+      "page_count": 25,
+      "retrieved_at": "2026-09-05T23:36:23Z"
+    },
+    {
+      "paper_id": "XrgZp1NFDT",
+      "title": "Latent Space Uniformization in Generation",
+      "pdf_url": "https://openreview.net/pdf?id=XrgZp1NFDT",
+      "pdf_sha256": "20b3b696ea495143e8dcdd155b1b360df5c8aef80fc02d3489e3a6957fd30ff9",
+      "extracted_text_sha256": "4f5d2377caa9244533efe89cb440ffd8cc15e361d7865acef7116ae42b060d17",
+      "page_count": 11,
+      "retrieved_at": "2026-09-05T23:36:13Z"
+    },
+    {
+      "paper_id": "ZumVIktGbt",
+      "title": "From Verifiable Dot to Reward Chain: Harnessing Verifiable Reference-based Rewards for Reinforcement Learning of Open-ended Generation",
+      "pdf_url": "https://openreview.net/pdf?id=ZumVIktGbt",
+      "pdf_sha256": "c996ce860fa95a7e2250573178aa001462337080815e525e0ce4f5b0e3fbcf76",
+      "extracted_text_sha256": "da8660c16d28fc54148c7f1ab5e37e5004beb9e0c85bfd10fece475864fd36e5",
+      "page_count": 19,
+      "retrieved_at": "2026-09-05T23:35:54Z"
+    },
+    {
+      "paper_id": "nCEs0tSwc2",
+      "title": "Geometric-Mean Policy Optimization",
+      "pdf_url": "https://openreview.net/pdf?id=nCEs0tSwc2",
+      "pdf_sha256": "f2a2af86c50c88300bc2a96fb825ef9cc35c29c6719052ac28a8a197b4534b99",
+      "extracted_text_sha256": "0bf148a80063ca7cab5446d79780af75fae41929c6bfdf30d60f7c37dee9ffb1",
+      "page_count": 21,
+      "retrieved_at": "2026-09-05T23:35:51Z"
+    },
+    {
+      "paper_id": "qRTJWXentH",
+      "title": "t-BEN: A Temporal Logic Guided Approach for Temporal Reasoning Benchmark Generation",
+      "pdf_url": "https://openreview.net/pdf?id=qRTJWXentH",
+      "pdf_sha256": "f32281ad6a0584ee5f699678fbeebc82fc261a3f1f3e55154e21d43661aa1899",
+      "extracted_text_sha256": "0357c0dd053797961c1f29b57e15391f410275fb79a4bd1f6c5d3567bdda634b",
+      "page_count": 39,
+      "retrieved_at": "2026-09-05T23:36:25Z"
+    },
+    {
+      "paper_id": "ssWi0rC3mx",
+      "title": "When Priors Backfire: On the Vulnerability of Unlearnable Examples to Pretraining",
+      "pdf_url": "https://openreview.net/pdf?id=ssWi0rC3mx",
+      "pdf_sha256": "6cf76889ffb8235d5aca1ee1e3f96eda95707ecf24ee4ac5543480fa2c125ab5",
+      "extracted_text_sha256": "3b08ccfecc410d7b3832a4eea4ac4c727dda3208d9a1d4e625cd1730b72439a4",
+      "page_count": 21,
+      "retrieved_at": "2026-09-05T23:35:56Z"
+    }
+  ]
+}

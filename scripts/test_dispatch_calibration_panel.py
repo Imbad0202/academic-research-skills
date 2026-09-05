@@ -6,7 +6,6 @@ import hashlib
 import json
 import os
 import sys
-import unicodedata
 from pathlib import Path
 
 import pytest
@@ -14,6 +13,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import dispatch_calibration_panel as mod
+from _calibration_pdf_text import extract_manuscript_text, extracted_text_sha256
 
 pypdf = pytest.importorskip("pypdf")
 
@@ -52,12 +52,8 @@ def make_pdf(path: Path, pages: int = 1) -> None:
 def pdf_hashes(path: Path) -> tuple[str, str]:
     data = path.read_bytes()
     reader = pypdf.PdfReader(path)
-    text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    normalized = unicodedata.normalize("NFC", text)
-    return (
-        hashlib.sha256(data).hexdigest(),
-        hashlib.sha256(normalized.encode("utf-8")).hexdigest(),
-    )
+    normalized = extract_manuscript_text(reader)
+    return (hashlib.sha256(data).hexdigest(), extracted_text_sha256(normalized))
 
 
 @pytest.fixture()

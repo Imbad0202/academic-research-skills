@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
-import unicodedata
 from pathlib import Path
 
 import pytest
@@ -12,6 +12,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import assemble_calibration_corpus as mod
+from _calibration_pdf_text import TEXT_NORMALIZATION, normalize_extracted_text
 
 pypdf = pytest.importorskip("pypdf")
 
@@ -234,3 +235,42 @@ def test_verify_missing_pdf_is_warning_not_failure(tmp_path):
     victim = json.loads((tmp_path / "corpus" / "papers.json").read_text())["papers"][0]
     (env["pdf_dir"] / f"{victim['paper_id']}.pdf").unlink()
     assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 0
+
+
+# --- text normalization (shared with the dispatcher) ------------------------
+
+class _FakePage:
+    def __init__(self, text: str) -> None:
+        self._text = text
+
+    def extract_text(self) -> str:
+        return self._text
+
+
+class _FakeReader:
+    def __init__(self, _path) -> None:
+        # a lone high surrogate, as pypdf emits from math/symbol fonts
+        self.pages = [_FakePage("alpha \ud835 beta"), _FakePage("")]
+
+
+def test_lone_surrogate_text_is_hashable_and_deterministic(tmp_path, monkeypatch):
+    pdf_path = tmp_path / "s.pdf"
+    make_pdf(pdf_path)
+    monkeypatch.setattr(mod.pypdf, "PdfReader", _FakeReader)
+    _, text_sha, pages = mod.pdf_facts(pdf_path)
+    expected = hashlib.sha256("alpha \ufffd beta\n".encode("utf-8")).hexdigest()
+    assert text_sha == expected
+    assert pages == 2
+    assert normalize_extracted_text("\ud835\udc00") == "\ufffd\ufffd"
+    assert normalize_extracted_text("plain") == "plain"
+
+
+def test_manifest_records_normalization_rule_and_verify_pins_it(tmp_path):
+    env = freeze_env(tmp_path)
+    run_freeze(env)
+    papers_path = tmp_path / "corpus" / "papers.json"
+    payload = json.loads(papers_path.read_text())
+    assert payload["extraction"]["text_normalization"] == TEXT_NORMALIZATION
+    payload["extraction"]["text_normalization"] = "NFC"  # rule drift, not a version drift
+    papers_path.write_text(json.dumps(payload), encoding="utf-8")
+    assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 1

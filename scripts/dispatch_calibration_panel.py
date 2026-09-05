@@ -58,12 +58,15 @@ import json
 import subprocess
 import sys
 import time
-import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _calibration_pdf_text import (  # noqa: E402
+    extract_manuscript_text,
+    extracted_text_sha256,
+)
 from dispatch_e4_panel import (  # noqa: E402
     AGENT_DIR,
     AGENT_FILES,
@@ -131,9 +134,8 @@ def manuscript_text(entry: dict, pdf_cache: Path) -> str:
     if sha256_hex(data) != entry["pdf_sha256"]:
         raise PreconditionFailure(f"{entry['paper_id']}: pdf_sha256 mismatch against manifest")
     reader = pypdf.PdfReader(pdf_path)
-    text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    normalized = unicodedata.normalize("NFC", text)
-    if sha256_hex(normalized.encode("utf-8")) != entry["extracted_text_sha256"]:
+    normalized = extract_manuscript_text(reader)
+    if extracted_text_sha256(normalized) != entry["extracted_text_sha256"]:
         raise PreconditionFailure(
             f"{entry['paper_id']}: extracted_text_sha256 mismatch (pypdf version "
             "drift or altered PDF); re-freeze or align the extractor before dispatch"

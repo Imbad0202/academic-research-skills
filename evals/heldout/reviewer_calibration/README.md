@@ -12,7 +12,11 @@ against shipping a built-in gold set stands unamended: this directory ships
 
 - `corpus/papers.json` — 12 ICLR 2026 papers (OpenReview): forum id, title,
   canonical PDF URL, `pdf_sha256`, `extracted_text_sha256` (pypdf, version
-  pinned in the manifest), page count, retrieval timestamp. **Label-free by
+  pinned in the manifest; normalization rule recorded as
+  `extraction.text_normalization` and shared with the dispatcher via
+  `scripts/_calibration_pdf_text.py` — NFC plus lone-surrogate → U+FFFD, the
+  latter because one sampled manuscript's math fonts emit code points strict
+  UTF-8 refuses), page count, retrieval timestamp. **Label-free by
   construction** (leak guard in `scripts/assemble_calibration_corpus.py`);
   this is the only corpus file on the dispatcher's read path.
 - `manifests/gold_labels.json` — the gold labels (6 `accept` / 6 `reject`)
@@ -31,8 +35,9 @@ against shipping a built-in gold set stands unamended: this directory ships
   closed-enum exclusion ledger recorded in the manifest. Reconstruction:
   `python scripts/assemble_calibration_corpus.py verify --out-dir <this dir>
   --pdf-dir <your PDF cache>` (PDFs re-fetched with your own OpenReview
-  account; anonymous PDF download was closed off by OpenReview as of
-  2026-08-07).
+  account via `scripts/fetch_calibration_corpus.py`; anonymous PDF download
+  was closed off by OpenReview as of 2026-08-07). Frozen 2026-09-06 (UTC
+  2026-09-05T23:35–23:36Z retrieval window); no page-cap exclusion fired.
 - Licensing: OpenReview submission notes carry their own licenses (the
   sampled notes declare CC BY 4.0); manuscript PDFs are NOT redistributed
   here. Metadata stored is pointer-grade (ids, titles, hashes, timestamps).

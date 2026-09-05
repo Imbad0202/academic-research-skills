@@ -1,0 +1,89 @@
+{
+  "label_transform": "ICLR 2026 public decision -> binary gold label: 'Accept (Poster|Spotlight|Oral)' -> accept; Rejected_Submission pool decisions -> reject. Withdrawn and desk-rejected submissions sit in separate OpenReview venue partitions and never enter a pool.",
+  "labels": [
+    {
+      "paper_id": "CPxZClPMiy",
+      "label": "accept",
+      "decision_raw": "Accept (Poster)",
+      "decision_note_id": "R2BVLsbZNC",
+      "openreview_venue_string": "ICLR 2026 Poster"
+    },
+    {
+      "paper_id": "CU5EHe1KUt",
+      "label": "accept",
+      "decision_raw": "Accept (Poster)",
+      "decision_note_id": "ELpRL3DNvo",
+      "openreview_venue_string": "ICLR 2026 Poster"
+    },
+    {
+      "paper_id": "If8O8CdCbi",
+      "label": "reject",
+      "decision_raw": "Reject",
+      "decision_note_id": "xkWa3EwrkM",
+      "openreview_venue_string": "Submitted to ICLR 2026"
+    },
+    {
+      "paper_id": "KN2RD4fpnH",
+      "label": "reject",
+      "decision_raw": "Reject",
+      "decision_note_id": "GCgjyf6z21",
+      "openreview_venue_string": "Submitted to ICLR 2026"
+    },
+    {
+      "paper_id": "OKUGAxu6Ww",
+      "label": "accept",
+      "decision_raw": "Accept (Poster)",
+      "decision_note_id": "asMkiZIY3r",
+      "openreview_venue_string": "ICLR 2026 Poster"
+    },
+    {
+      "paper_id": "UbWy2QVmke",
+      "label": "reject",
+      "decision_raw": "Reject",
+      "decision_note_id": "q0v9WcC2bh",
+      "openreview_venue_string": "Submitted to ICLR 2026"
+    },
+    {
+      "paper_id": "VVstc2W3RW",
+      "label": "reject",
+      "decision_raw": "Reject",
+      "decision_note_id": "snYufUfOQf",
+      "openreview_venue_string": "Submitted to ICLR 2026"
+    },
+    {
+      "paper_id": "XrgZp1NFDT",
+      "label": "reject",
+      "decision_raw": "Reject",
+      "decision_note_id": "kwZGX3cAq3",
+      "openreview_venue_string": "Submitted to ICLR 2026"
+    },
+    {
+      "paper_id": "ZumVIktGbt",
+      "label": "accept",
+      "decision_raw": "Accept (Poster)",
+      "decision_note_id": "LxK0yeCj5X",
+      "openreview_venue_string": "ICLR 2026 Poster"
+    },
+    {
+      "paper_id": "nCEs0tSwc2",
+      "label": "accept",
+      "decision_raw": "Accept (Poster)",
+      "decision_note_id": "qJ62CSSUV2",
+      "openreview_venue_string": "ICLR 2026 Poster"
+    },
+    {
+      "paper_id": "qRTJWXentH",
+      "label": "reject",
+      "decision_raw": "Reject",
+      "decision_note_id": "sRcfVnoilF",
+      "openreview_venue_string": "Submitted to ICLR 2026"
+    },
+    {
+      "paper_id": "ssWi0rC3mx",
+      "label": "accept",
+      "decision_raw": "Accept (Poster)",
+      "decision_note_id": "OwVOy46bad",
+      "openreview_venue_string": "ICLR 2026 Poster"
+    }
+  ]
+}
