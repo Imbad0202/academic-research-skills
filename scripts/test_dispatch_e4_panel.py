@@ -4333,6 +4333,7 @@ def test_the_transport_runs_with_stream_json_and_its_own_config_dir(tmp_path, mo
     transport = harness.ClaudeCliTransport(model="m", effort="high")
     call = harness.Call("eic.phase1", "system", "user", paper_visible=False)
     assert transport(call, tmp_path) == "headtail"
+    assert transport.last_raw_stdout == Ok.stdout
     argv = seen["argv"]
     assert argv[argv.index("--output-format") + 1] == "stream-json" and "--verbose" in argv
     assert "CLAUDECODE" not in seen["env"]

@@ -602,3 +602,17 @@ def test_structured_auth_failure_is_not_retried(env, tmp_path):
     assert transport.calls == ["field_analyst"]
     raw = env["work"] / "cards" / "p1" / "raw"
     assert (raw / "field_analyst.attempt1.transport-stream.jsonl").read_text().startswith("{")
+
+
+def test_successful_calls_keep_the_raw_stream_when_the_transport_offers_it(env, tmp_path):
+    class Streaming(_RaisingTransport):
+        def __call__(self, call, sandbox):
+            text = super().__call__(call, sandbox)
+            self.last_raw_stdout = '{"type":"assistant"}\n{"type":"result","subtype":"success"}\n'
+            return text
+
+    transport = Streaming({}, {"field_analyst": [ANALYSIS]})
+    assert mod.stage_cards(parsed(env, "cards"), transport) == 0
+    raw = env["work"] / "cards" / "p1" / "raw"
+    assert (raw / "field_analyst.transport-stream.jsonl").read_text().startswith('{"type":"assistant"}')
+    assert (raw / "field_analyst.md").read_text() == ANALYSIS

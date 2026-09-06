@@ -632,6 +632,10 @@ class ClaudeCliTransport:
         # own state files; nothing of the operator's is ever inside it).
         self._config_dir = Path(tempfile.mkdtemp(prefix="ars-subject-config-"))
         atexit.register(shutil.rmtree, self._config_dir, ignore_errors=True)
+        # Raw stream of the most recent SUCCESSFUL call, for a dispatcher
+        # that wants to keep the framing (message count, stop reasons) as
+        # evidence next to the text it returned.
+        self.last_raw_stdout = ""
 
     @classmethod
     def subject_environment(cls, source=None, *, config_dir: Path,
@@ -832,6 +836,7 @@ class ClaudeCliTransport:
                 stderr=completed.stderr,
                 raw_stdout=completed.stdout,
             )
+        self.last_raw_stdout = completed.stdout
         return text
 
 

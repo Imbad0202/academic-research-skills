@@ -370,6 +370,11 @@ def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: P
         row.update({"outcome": "completed", "output_sha256": sha256_hex(response.encode("utf-8"))})
         state.calls.append(row)
         bundle.write(f"{call.label}.md", response)
+        raw_stream = getattr(transport, "last_raw_stdout", "")
+        if raw_stream:
+            # The stream framing (how many assistant messages, stop reasons)
+            # is what showed the 2026-09-06 synthesis had lost its head.
+            bundle.write(f"{call.label}.transport-stream.jsonl", raw_stream)
         state.completed.append(call.label)
         bundle.journal(f"{call.label}: completed ({len(response)} chars)")
         return response
