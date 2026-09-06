@@ -193,3 +193,41 @@ def test_decision_extraction_grammar():
     assert mod.extract_decision("## Decision: Reject\n")[0] == "Reject"
     assert mod.extract_decision("Decision: Accept\n")[0] is None  # needs a heading line
     assert mod.extract_decision("### Decision: Weak Accept\n")[0] is None  # closed set
+
+
+def test_gold_paper_without_results_blocks_full_tier(tmp_path):
+    runs = tmp_path / "runs"
+    for r in (1, 2, 3):
+        write_panel(runs, "p1", r, "Accept")
+    gold = write_gold(tmp_path, {"p1": "accept", "n1": "reject"})
+    with pytest.raises(SystemExit, match="without a complete scored ensemble"):
+        run(tmp_path, runs, gold)
+
+
+def test_duplicate_panel_record_refused(tmp_path):
+    runs = tmp_path / "runs"
+    for r in (1, 2, 3):
+        write_panel(runs, "p1", r, "Accept")
+    stem = "2026-08-09-p1-r1"  # a second record for p1-r1 under another stem
+    raw = runs / stem / "raw"
+    raw.mkdir(parents=True)
+    (runs / f"{stem}.json").write_text(json.dumps({
+        "suite": "reviewer_calibration", "stage": "panel", "paper_id": "p1",
+        "replicate": 1, "raw_bundle": f"runs/{stem}/raw", "status": "complete",
+    }), encoding="utf-8")
+    (raw / "synthesis.md").write_text("### Decision: [Reject]\n", encoding="utf-8")
+    gold = write_gold(tmp_path, {"p1": "accept"})
+    with pytest.raises(SystemExit, match="duplicate panel record"):
+        run(tmp_path, runs, gold)
+
+
+def test_override_without_raw_excerpt_is_not_accepted(tmp_path):
+    runs = tmp_path / "runs"
+    write_panel(runs, "p1", 1, "Accept")
+    write_panel(runs, "p1", 2, "", synthesis="prose without a verdict\n")
+    write_panel(runs, "p1", 3, "Accept")
+    gold = write_gold(tmp_path, {"p1": "accept"})
+    overrides = tmp_path / "overrides.json"
+    overrides.write_text(json.dumps({"p1-r2": {"decision": "Minor Revision"}}), encoding="utf-8")
+    rc, result = run(tmp_path, runs, gold, overrides=str(overrides))
+    assert rc == 1 and result is None

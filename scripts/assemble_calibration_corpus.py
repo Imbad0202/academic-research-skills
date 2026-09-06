@@ -80,6 +80,13 @@ EXCLUSION_REASONS = frozenset(
 
 ACCEPT_DECISION_RE = re.compile(r"^Accept \((Poster|Spotlight|Oral)\)$")
 
+
+def label_matches_decision(label: str, decision_raw: str) -> bool:
+    """The label transform, as a predicate (freeze applies it; verify re-checks it)."""
+    if label == "accept":
+        return bool(ACCEPT_DECISION_RE.match(decision_raw))
+    return "reject" in decision_raw.lower()
+
 # OpenReview forum ids are URL-safe base64-ish tokens; ids are later spliced
 # into file names (`<id>.pdf`, cards/<id>/), so anything else is refused here.
 PAPER_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -391,6 +398,21 @@ def cmd_verify(args: argparse.Namespace) -> int:
     for row in labels_payload["labels"]:
         if row["label"] not in ("accept", "reject"):
             failures.append(f"{row['paper_id']}: invalid label {row['label']!r}")
+        elif not label_matches_decision(row["label"], row["decision_raw"]):
+            failures.append(
+                f"{row['paper_id']}: label {row['label']!r} contradicts decision_raw "
+                f"{row['decision_raw']!r}"
+            )
+    quotas = papers_payload["selection"]["quotas"]
+    by_label = {"accept": 0, "reject": 0}
+    for row in labels_payload["labels"]:
+        by_label[row["label"]] = by_label.get(row["label"], 0) + 1
+    expected = {"accept": quotas["accepted"], "reject": quotas["rejected"]}
+    if len(paper_ids) != sum(quotas.values()) or by_label != expected:
+        failures.append(
+            f"paper count/quota mismatch: {len(paper_ids)} papers, labels {by_label}, "
+            f"quotas {expected}"
+        )
 
     recorded_norm = papers_payload["extraction"].get("text_normalization")
     if recorded_norm != TEXT_NORMALIZATION:

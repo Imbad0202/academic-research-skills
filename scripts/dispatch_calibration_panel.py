@@ -53,6 +53,7 @@ is its own `claude -p` process with an empty sandbox directory as `--add-dir`
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import sys
 from dataclasses import dataclass, field
@@ -60,7 +61,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _calibration_pdf_text import pdf_facts, pypdf, sha256_hex  # noqa: E402
+from _calibration_pdf_text import (  # noqa: E402
+    TEXT_NORMALIZATION,
+    pdf_facts,
+    pypdf,
+    sha256_hex,
+)
 from _e4_evidence import EvidencePathError, assert_plain_file  # noqa: E402
 from dispatch_e4_panel import (  # noqa: E402
     AGENT_DIR,
@@ -136,9 +142,13 @@ def manuscript_text(entry: dict, pdf_cache: Path, extraction: dict | None = None
     if not pdf_path.is_file():
         raise PreconditionFailure(f"cached PDF missing: {pdf_path}")
     _plain_file(pdf_path, pdf_cache, "cached PDF")
-    pdf_sha, text_sha, _, normalized = pdf_facts(pdf_path)
+    pdf_sha, text_sha, pages, normalized = pdf_facts(pdf_path)
     if pdf_sha != entry["pdf_sha256"]:
         raise PreconditionFailure(f"{entry['paper_id']}: pdf_sha256 mismatch against manifest")
+    if pages != entry["page_count"]:
+        raise PreconditionFailure(
+            f"{entry['paper_id']}: page_count mismatch (cache {pages}, manifest {entry['page_count']})"
+        )
     if text_sha != entry["extracted_text_sha256"]:
         manifest_version = (extraction or {}).get("pypdf_version")
         cause = (
@@ -177,17 +187,42 @@ def guard_label_isolation(corpus_dir: Path, pdf_cache: Path) -> None:
 class PanelState:
     completed: list[str] = field(default_factory=list)
     retries: list[dict] = field(default_factory=list)
+    calls: list[dict] = field(default_factory=list)  # per-attempt timing + hashes
+
+
+def _rfc3339_now() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def _prompt_sha256(call: Call) -> str:
+    """Hash of the exact (system, user) pair dispatched; the two parts are
+    hashed as a JSON array so a boundary shift cannot collide."""
+    return sha256_hex(json.dumps([call.system, call.user], ensure_ascii=False).encode("utf-8"))
 
 
 def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: PanelState) -> str:
-    """One call with a single retry on transport failure; abort otherwise."""
+    """One call with a single retry on transport failure; abort otherwise.
+
+    Every attempt leaves a row in `state.calls` (label, attempt, RFC-3339
+    start/complete, prompt and output hashes) — the per-call evidence the
+    heldout-measurement/1.1 execution manifest is built from."""
     for attempt in (1, 2):
+        started = _rfc3339_now()
+        row = {
+            "call": call.label,
+            "attempt": attempt,
+            "started_at": started,
+            "prompt_sha256": _prompt_sha256(call),
+        }
         try:
             response = transport(call, sandbox)
         except TransportFailure as failure:
+            row.update({"completed_at": _rfc3339_now(), "outcome": "transport_failure"})
+            state.calls.append(row)
             location = bundle.write(
                 f"{call.label}.attempt{attempt}.transport-failure.txt",
-                f"{failure}\n",
+                f"{failure}\n\n--- stdout (partial model output, verbatim) ---\n"
+                f"{failure.stdout}\n\n--- stderr ---\n{failure.stderr}\n",
             )
             state.retries.append(
                 {"call": call.label, "attempt": attempt, "kind": "transport", "evidence": location}
@@ -196,8 +231,13 @@ def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: P
             if attempt == 2:
                 raise
             continue
+        row["completed_at"] = _rfc3339_now()
         if not response.strip():
+            row["outcome"] = "empty_response"
+            state.calls.append(row)
             raise TransportFailure(call.label, "[TRANSPORT: empty response]")
+        row.update({"outcome": "completed", "output_sha256": sha256_hex(response.encode("utf-8"))})
+        state.calls.append(row)
         bundle.write(f"{call.label}.md", response)
         state.completed.append(call.label)
         bundle.journal(f"{call.label}: completed ({len(response)} chars)")
@@ -208,9 +248,15 @@ def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: P
 def _prepare(args) -> tuple[dict, str, Path]:
     """Shared stage preamble: manifest entry, hash-verified manuscript, work dir."""
     corpus = load_corpus(Path(args.corpus_dir))
+    extraction = corpus.get("extraction") or {}
+    if extraction.get("text_normalization") != TEXT_NORMALIZATION:
+        raise PreconditionFailure(
+            f"manifest text_normalization {extraction.get('text_normalization')!r} != "
+            f"dispatcher rule {TEXT_NORMALIZATION!r}; re-freeze before dispatch"
+        )
     entry = paper_entry(corpus, args.paper)
     guard_label_isolation(Path(args.corpus_dir), Path(args.pdf_cache))
-    manuscript = manuscript_text(entry, Path(args.pdf_cache), corpus.get("extraction"))
+    manuscript = manuscript_text(entry, Path(args.pdf_cache), extraction)
     work = Path(args.work_dir)
     if _is_inside(work, REPO):
         raise PreconditionFailure("work dir must sit outside the repository")
@@ -254,6 +300,7 @@ def stage_cards(args, transport) -> int:
                 "model_id": args.model,
                 "effort": args.effort,
                 "analysis_sha256": sha256_hex(analysis.encode("utf-8")),
+                "calls": state.calls,
             },
             indent=2,
         )
@@ -278,6 +325,7 @@ def load_frozen_card(work: Path, paper: str, seat: str) -> str:
         raise PreconditionFailure(
             f"no frozen Card #{index} for {paper}; run the cards stage first"
         )
+    _plain_file(path, work / "cards", "frozen card")
     return path.read_text(encoding="utf-8")
 
 
@@ -367,6 +415,7 @@ def stage_panel(args, transport) -> int:
             "status": status,
             "completed_calls": state.completed,
             "retries": state.retries,
+            "calls": state.calls,
             "raw_bundle": str(Path("runs") / stem / "raw"),
         }
     )

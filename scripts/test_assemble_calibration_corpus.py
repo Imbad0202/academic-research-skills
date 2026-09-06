@@ -280,3 +280,28 @@ def test_malformed_pool_id_refused(tmp_path):
     path = make_pool(tmp_path, "bad", ["okID_1", "../escape"])
     with pytest.raises(SystemExit, match="malformed id"):
         mod.load_pool([path])
+
+
+def test_verify_detects_label_flip_against_decision(tmp_path):
+    env = freeze_env(tmp_path)
+    run_freeze(env)
+    labels_path = tmp_path / "manifests" / "gold_labels.json"
+    payload = json.loads(labels_path.read_text())
+    victim = next(r for r in payload["labels"] if r["label"] == "accept")
+    victim["label"] = "reject"  # valid enum, contradicts decision_raw
+    labels_path.write_text(json.dumps(payload), encoding="utf-8")
+    assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 1
+
+
+def test_verify_detects_synchronized_paper_removal(tmp_path):
+    env = freeze_env(tmp_path)
+    run_freeze(env)
+    papers_path = tmp_path / "corpus" / "papers.json"
+    labels_path = tmp_path / "manifests" / "gold_labels.json"
+    papers = json.loads(papers_path.read_text())
+    labels = json.loads(labels_path.read_text())
+    gone = papers["papers"].pop()["paper_id"]
+    labels["labels"] = [r for r in labels["labels"] if r["paper_id"] != gone]
+    papers_path.write_text(json.dumps(papers), encoding="utf-8")
+    labels_path.write_text(json.dumps(labels), encoding="utf-8")
+    assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 1

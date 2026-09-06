@@ -123,11 +123,25 @@ def collect(runs_dir: Path, overrides: dict) -> tuple[dict, list[dict]]:
         if synthesis is None:
             needs_adjudication.append({"panel": key, "problem": "missing synthesis raw"})
             continue
+        if key in panels:
+            raise SystemExit(
+                f"duplicate panel record for {key} (attempts "
+                f"{panels[key].get('attempt_id')!r} and {record.get('attempt_id')!r}); "
+                "no completed panel is discarded silently — retire one explicitly"
+            )
         decision, status = extract_decision(synthesis)
         if decision is None:
-            override = overrides.get(key, {}).get("decision")
-            if override in DECISIONS:
-                decision, status = override, "adjudicated"
+            override = overrides.get(key, {})
+            excerpt = override.get("raw", "")
+            if override.get("decision") in DECISIONS and excerpt and excerpt in synthesis:
+                decision, status = override["decision"], "adjudicated"
+            elif override.get("decision") in DECISIONS:
+                # Rubric A1 requires the verbatim raw excerpt; A2 (no decision
+                # statement) is a re-dispatch, never an override.
+                needs_adjudication.append(
+                    {"panel": key, "problem": f"{status}; override lacks a verbatim `raw` excerpt found in synthesis.md"}
+                )
+                continue
             else:
                 needs_adjudication.append({"panel": key, "problem": status})
                 continue
@@ -283,6 +297,12 @@ def main(argv: list[str] | None = None) -> int:
     missing_gold = sorted(set(papers) - set(gold))
     if missing_gold:
         raise SystemExit(f"papers without gold labels: {missing_gold}")
+    missing_results = sorted(set(gold) - set(papers))
+    if missing_results:
+        raise SystemExit(
+            f"gold papers without a complete scored ensemble: {missing_results}; "
+            "the full tier publishes only when every gold paper is scored"
+        )
 
     pairs = outcome_pairs(papers, gold)
     c = confusion(pairs)

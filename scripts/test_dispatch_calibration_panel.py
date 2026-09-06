@@ -12,7 +12,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import dispatch_calibration_panel as mod
-from _calibration_pdf_text import pdf_facts
+from _calibration_pdf_text import TEXT_NORMALIZATION, pdf_facts
 
 pypdf = pytest.importorskip("pypdf")
 
@@ -66,6 +66,11 @@ def env(tmp_path):
         json.dumps(
             {
                 "suite": "reviewer_calibration",
+                "extraction": {
+                    "tool": "pypdf",
+                    "pypdf_version": pypdf.__version__,
+                    "text_normalization": TEXT_NORMALIZATION,
+                },
                 "papers": [
                     {
                         "paper_id": "p1",
@@ -260,3 +265,47 @@ def test_untrusted_blocks_carry_boundary_sentences(env, tmp_path, monkeypatch):
     synthesis = calls["synthesis"].user
     assert mod.REPORT_BOUNDARY in synthesis
     assert synthesis.index(mod.REPORT_BOUNDARY) < synthesis.index(f"<{mod.REPORT_TAG}>")
+
+
+def _edit_manifest(env, mutate):
+    path = env["corpus"] / "corpus" / "papers.json"
+    payload = json.loads(path.read_text())
+    mutate(payload)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_normalization_rule_drift_refused(env, tmp_path):
+    _edit_manifest(env, lambda p: p["extraction"].update(text_normalization="NFC"))
+    with pytest.raises(mod.PreconditionFailure, match="text_normalization"):
+        run_cards(env, tmp_path)
+
+
+def test_page_count_mismatch_refused(env, tmp_path):
+    _edit_manifest(env, lambda p: p["papers"][0].update(page_count=7))
+    with pytest.raises(mod.PreconditionFailure, match="page_count mismatch"):
+        run_cards(env, tmp_path)
+
+
+def test_symlinked_frozen_card_refused(env, tmp_path):
+    """A card pointing at gold_labels.json must not reach any seat prompt."""
+    assert run_cards(env, tmp_path) == 0
+    card = env["work"] / "cards" / "p1" / "card1.md"
+    card.unlink()
+    card.symlink_to(env["corpus"] / "manifests" / "gold_labels.json")
+    rc = mod.main(base_argv(env, "panel") + scripted(tmp_path, panel_responses()))
+    assert rc == 1
+    blocked = json.loads((env["work"] / "runs" / "blocked-2026-08-07-p1-r1.json").read_text())
+    assert "frozen card" in blocked["abort_reason"] and "symlink" in blocked["abort_reason"]
+
+
+def test_records_carry_per_call_timing_and_hashes(env, tmp_path):
+    assert run_cards(env, tmp_path) == 0
+    assert mod.main(base_argv(env, "panel") + scripted(tmp_path, panel_responses())) == 0
+    record = json.loads((env["work"] / "runs" / "2026-08-07-p1-r1.json").read_text())
+    assert [c["call"] for c in record["calls"]] == [f"seat-{s}" for s in mod.SEATS] + ["synthesis"]
+    for row in record["calls"]:
+        assert row["outcome"] == "completed"
+        assert row["started_at"] <= row["completed_at"]
+        assert len(row["prompt_sha256"]) == 64 and len(row["output_sha256"]) == 64
+    frozen = json.loads((env["work"] / "cards" / "p1" / "frozen.json").read_text())
+    assert frozen["calls"][0]["call"] == "field_analyst"
