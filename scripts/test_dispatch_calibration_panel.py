@@ -588,3 +588,17 @@ def test_manifest_refuses_bad_timestamps(env, tmp_path):
     with pytest.raises(mod.PreconditionFailure, match="RFC 3339"):
         mod.main(_manifest_argv(env, generated_at="not-a-timestamp"))
     assert not (env["work"] / "execution-manifest.json").exists()
+
+
+def test_structured_auth_failure_is_not_retried(env, tmp_path):
+    structured = TransportFailure(
+        "field_analyst", "[TRANSPORT: result error_during_execution] Failed to authenticate.",
+        stdout="Failed to authenticate. API Error: 401 API key is invalid.",
+        raw_stdout='{"type":"result","is_error":true}',
+    )
+    assert mod._is_auth_failure(structured)
+    transport = _RaisingTransport({"field_analyst": [structured, structured]}, {})
+    assert mod.stage_cards(parsed(env, "cards"), transport) == 1
+    assert transport.calls == ["field_analyst"]
+    raw = env["work"] / "cards" / "p1" / "raw"
+    assert (raw / "field_analyst.attempt1.transport-stream.jsonl").read_text().startswith("{")

@@ -4339,3 +4339,94 @@ def test_the_transport_runs_with_stream_json_and_its_own_config_dir(tmp_path, mo
     config_dir = Path(seen["env"]["CLAUDE_CONFIG_DIR"])
     assert config_dir.is_dir() and not any(config_dir.iterdir())
     assert config_dir != Path.home() / ".claude"
+
+
+def test_retracted_and_superseded_messages_are_evicted():
+    """Refusal fallback: the retracted partial must not precede its
+    replacement in the response (wire signals verified on CLI 2.1.260)."""
+    lines = [
+        _event("assistant", uuid="u1", message={"content": [{"type": "text", "text": "partial-A "}]}),
+        _event("assistant", uuid="u2", supersedes=["u1"], message={"content": [{"type": "text", "text": "final-A "}]}),
+        _event("assistant", uuid="u3", message={"content": [{"type": "text", "text": "partial-B "}]}),
+        _event("system", subtype="model_refusal_fallback", retracted_message_uuids=["u3"]),
+        _event("assistant", uuid="u4", message={"content": [{"type": "text", "text": "final-B"}]}),
+        _event("result", subtype="success", is_error=False, result="final-B"),
+    ]
+    text = harness.ClaudeCliTransport.response_text("\n".join(lines) + "\n")
+    assert text == "final-A final-B"
+
+
+def test_unicode_line_separators_inside_text_do_not_break_framing():
+    text = "line one\u2028line two\u0085line three\u2029end"
+    lines = [
+        json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}}, ensure_ascii=False),
+        json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": text}, ensure_ascii=False),
+    ]
+    assert harness.ClaudeCliTransport.response_text("\r\n".join(lines) + "\r\n") == text
+
+
+def test_subject_environment_keeps_documented_network_configuration(tmp_path):
+    source = {"PATH": "/usr/bin", "HTTPS_PROXY": "http://proxy:3128", "no_proxy": "localhost",
+              "NODE_EXTRA_CA_CERTS": "/etc/ca.pem", "CLAUDE_CODE_CLIENT_CERT": "/c.pem",
+              "CLAUDE_CODE_SESSION_ID": "leak", "AWS_PROFILE": "p"}
+    env = harness.ClaudeCliTransport.subject_environment(source, config_dir=tmp_path, thinking_tokens=1)
+    for key in ("HTTPS_PROXY", "no_proxy", "NODE_EXTRA_CA_CERTS", "CLAUDE_CODE_CLIENT_CERT"):
+        assert env[key] == source[key]
+    assert "CLAUDE_CODE_SESSION_ID" not in env and "AWS_PROFILE" not in env
+
+
+def test_structured_failures_expose_text_not_framing(tmp_path, monkeypatch):
+    """A stream that stops after init carries NO response; an error result
+    carries the CLI's diagnostic; both keep the raw stream separately."""
+    class InitOnly:
+        returncode = 1
+        stdout = _event("system", subtype="init") + "\n"
+        stderr = ""
+
+    transport = harness.ClaudeCliTransport(model="m", effort="high")
+    call = harness.Call("eic.phase1", "system", "user", paper_visible=False)
+    monkeypatch.setattr(harness.subprocess, "run", lambda *a, **k: InitOnly())
+    with pytest.raises(harness.TransportFailure) as err:
+        transport(call, tmp_path)
+    assert err.value.stdout == "" and err.value.raw_stdout.startswith("{")
+
+    class AuthResult:
+        returncode = 0
+        stdout = _event("system", subtype="init") + "\n" + _event(
+            "result", subtype="error_during_execution", is_error=True,
+            result="Failed to authenticate. API Error: 401 API key is invalid.") + "\n"
+        stderr = ""
+
+    monkeypatch.setattr(harness.subprocess, "run", lambda *a, **k: AuthResult())
+    with pytest.raises(harness.TransportFailure) as err:
+        transport(call, tmp_path)
+    assert err.value.summary.startswith("[TRANSPORT: result error_during_execution]")
+    assert err.value.stdout.startswith("Failed to authenticate")
+    assert err.value.raw_stdout.startswith("{")
+
+    class Plain:
+        returncode = 1
+        stdout = "Failed to authenticate. API Error: 401 API key is invalid.\n"
+        stderr = ""
+
+    monkeypatch.setattr(harness.subprocess, "run", lambda *a, **k: Plain())
+    with pytest.raises(harness.TransportFailure) as err:
+        transport(call, tmp_path)
+    assert err.value.summary == "[TRANSPORT: exit 1]" and err.value.stdout.startswith("Failed") and err.value.raw_stdout == ""
+
+
+def test_a_framing_only_failure_is_recorded_as_no_model_response(tmp_path, monkeypatch):
+    """E4's abort handler used to write the stream framing as a
+    `partial-response.md` and claim a partial response was preserved."""
+    class InitOnly:
+        returncode = 1
+        stdout = _event("system", subtype="init", cwd="/private/secret") + "\n"
+        stderr = ""
+
+    transport = harness.ClaudeCliTransport(model="m", effort="high")
+    call = harness.Call("eic.phase1", "system", "user", paper_visible=False)
+    monkeypatch.setattr(harness.subprocess, "run", lambda *a, **k: InitOnly())
+    with pytest.raises(harness.TransportFailure) as err:
+        transport(call, tmp_path)
+    assert not err.value.stdout
+    assert err.value.raw_stdout

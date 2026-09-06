@@ -236,7 +236,9 @@ def _prompt_sha256(call: Call) -> str:
 AUTH_FAILURE_SIGNATURE = re.compile(
     r"\A\s*(?:Failed to authenticate\b|Not logged in\b|API Error: 40[13]\b)", re.IGNORECASE
 )
-EXIT_FAILURE_SUMMARY = re.compile(r"^\[TRANSPORT: exit \d+\]$")
+# Exit-code failures (plain-text startup diagnostic) and structured result
+# failures (the CLI's diagnostic rides the stream's result event).
+EXIT_FAILURE_SUMMARY = re.compile(r"^\[TRANSPORT: (?:exit \d+|result [a-z_]+)\]")
 
 ANTHROPIC_DEFAULT_BASE_URL = "https://api.anthropic.com"
 ANTHROPIC_VERSION = "2023-06-01"
@@ -338,6 +340,10 @@ def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: P
                 f"{failure}\n\n--- stdout (partial model output, verbatim) ---\n"
                 f"{failure.stdout}\n\n--- stderr ---\n{failure.stderr}\n",
             )
+            if getattr(failure, "raw_stdout", ""):
+                bundle.write(
+                    f"{call.label}.attempt{attempt}.transport-stream.jsonl", failure.raw_stdout
+                )
             if _is_auth_failure(failure):
                 bundle.journal(
                     f"{call.label}: credential rejected on attempt {attempt}; not retried"
