@@ -393,7 +393,7 @@ def test_freeze_records_uniform_layout_and_verify_recomputes_it(tmp_path, monkey
     assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 1
 
 
-def test_verify_skips_layout_check_when_a_pdf_is_missing(tmp_path, monkeypatch, capsys):
+def test_verify_partial_cache_cannot_clear_but_can_still_refuse(tmp_path, monkeypatch, capsys):
     env = freeze_env(tmp_path)
     selection = json.loads(env["selection_path"].read_text())
     monkeypatch.setattr(mod, "first_page_text", _first_page_by_class(selection, SUBMISSION, SUBMISSION))
@@ -401,8 +401,16 @@ def test_verify_skips_layout_check_when_a_pdf_is_missing(tmp_path, monkeypatch, 
     victim = selection["selected"]["accepted"][0]
     (env["pdf_dir"] / f"{victim}.pdf").unlink()
     assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 0
-    out = capsys.readouterr().out
-    assert "layout-tell check skipped" in out
+    assert "layout-tell check partial" in capsys.readouterr().out
+    # The remaining PDFs still prove a separation: FAIL, even with one missing.
+    monkeypatch.setattr(mod, "first_page_text", _first_page_by_class(selection, CAMERA_READY, SUBMISSION))
+    assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 1
+
+
+def test_layout_tells_survive_extractor_line_breaks():
+    broken = "Under review as a\nconference paper at ICLR 2027\nAnonymous\nauthors\n" + "\n".join(f"{n:03d}" for n in range(12))
+    tells = mod.layout_tells(broken)
+    assert tells["under_review_header"] and tells["anonymous_authors"] and tells["line_numbers"]
 
 
 def test_verify_warns_on_manifest_without_layout_block(tmp_path, monkeypatch, capsys):

@@ -28,8 +28,18 @@ def call_row(label, start, attempt=1):
         "call": label, "attempt": attempt, "started_at": f"2026-09-06T12:{start:02d}:00.000000Z",
         "completed_at": f"2026-09-06T12:{start + 1:02d}:00.000000Z", "outcome": "completed",
         "prompt_sha256": hashlib.sha256(label.encode()).hexdigest(),
-        "output_sha256": hashlib.sha256((label + "out").encode()).hexdigest(),
+        "output_sha256": hashlib.sha256(output_for(label).encode()).hexdigest(),
     }
+
+
+def output_for(label: str) -> str:
+    return f"# {label}\n\n### Decision: [Major Revision]\n" if label == "synthesis" else f"{label} output\n"
+
+
+def write_raw(raw_dir: Path, labels) -> None:
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    for label in labels:
+        (raw_dir / f"{label}.md").write_text(output_for(label))
 
 
 def provenance(**over):
@@ -42,26 +52,31 @@ def provenance(**over):
     return base
 
 
+PANEL_LABELS = [f"seat-{s}" for s in dispatcher.SEATS] + ["synthesis"]
+
+
 def make_work(tmp_path: Path, *, dirty=False, blocked=True) -> Path:
     work = tmp_path / "work"
     cards = work / "cards" / "p1"
-    cards.mkdir(parents=True)
+    write_raw(cards / "raw", ["field_analyst"])
     (cards / "frozen.json").write_text(json.dumps({
         "suite": "reviewer_calibration", "stage": "cards", "paper_id": "p1", "status": "complete",
         **provenance(suite_commit_dirty=dirty), "calls": [call_row("field_analyst", 0)],
+        "raw_bundle": "cards/p1/raw",
     }))
     runs = work / "runs"
-    runs.mkdir()
-    labels = [f"seat-{s}" for s in dispatcher.SEATS] + ["synthesis"]
+    write_raw(runs / "2026-09-06-p1-r1" / "raw", PANEL_LABELS)
     (runs / "2026-09-06-p1-r1.json").write_text(json.dumps({
         "suite": "reviewer_calibration", "stage": "panel", "paper_id": "p1", "replicate": 1,
         "status": "complete", **provenance(suite_commit_dirty=dirty),
-        "calls": [call_row(label, 2 + 2 * i) for i, label in enumerate(labels)],
+        "calls": [call_row(label, 2 + 2 * i) for i, label in enumerate(PANEL_LABELS)],
+        "raw_bundle": "runs/2026-09-06-p1-r1/raw",
     }))
     if blocked:
         (runs / "blocked-2026-09-06-p2-r1.json").write_text(json.dumps({
-            "suite": "reviewer_calibration", "stage": "panel", "status": "aborted",
-            **provenance(suite_commit_dirty=dirty), "calls": [],
+            "suite": "reviewer_calibration", "stage": "panel", "paper_id": "p2", "replicate": 1,
+            "status": "aborted", "abort_reason": "TransportFailure: x",
+            **provenance(suite_commit_dirty=dirty), "calls": [], "raw_bundle": "runs/2026-09-06-p2-r1/raw",
         }))
     return work
 
@@ -82,6 +97,7 @@ def make_metrics(tmp_path: Path, replicates=3) -> Path:
         "bootstrap_95ci": {}, "exact_label_agreement": {"count": 1, "share": 1.0},
         "replicate_stability": {"side_agreement_share": 1.0, "exact_agreement_share": 1.0},
         "auc": "NOT REPORTED", "blocked_runs": ["blocked-2026-09-06-p2-r1.json"],
+        "per_panel": {"p1-r1": {"replicate": 1, "attempt_id": "attempt-1", "decision": "Major Revision"}},
     }))
     return path
 
@@ -141,8 +157,8 @@ def test_row_builds_validates_and_is_write_once(tmp_path, pinned):
     assert row["preregistration"]["frozen_commit"] == HEAD == row["subject"]["config"]["suite_commit"]
     assert row["preregistration"]["plan_sha256"] == mod.sha256_file(mod.REPO / mod.PLAN_REF)
     assert row["adjudication"]["rubric_sha256"] == row["preregistration"]["rubric_sha256"]
-    assert row["adjudication"]["resolution_direction"] == "flags_only"
-    assert row["aggregate"]["headline"]["estimand_status"] == "lower_bound"
+    assert row["adjudication"]["resolution_direction"] == "bidirectional"
+    assert row["aggregate"]["headline"]["estimand_status"] == "point_estimate"
     assert row["aggregate"]["agreement"] == {
         "rate": 0.5, "divergent_items": ["w2"],
         "note": row["aggregate"]["agreement"]["note"],
@@ -152,7 +168,7 @@ def test_row_builds_validates_and_is_write_once(tmp_path, pinned):
     assert row["attempts"]["blocked_runs"] == ["blocked-2026-09-06-p2-r1.json"]
     assert row["adjudication"]["overrides"][0]["criterion_ref"] == "B3"
     assert row["caveats"][0].startswith("HARNESS REHEARSAL")
-    assert any("lower bound" in c for c in row["caveats"])
+    assert not any("lower bound" in c for c in row["caveats"])
     assert row["results"]["auc"] == "NOT REPORTED"
     with pytest.raises(mod.PreconditionFailure, match="write-once"):
         mod.main(args)
@@ -180,7 +196,7 @@ def test_stale_manifest_refuses(tmp_path, pinned):
     manifest = json.loads((work / "execution-manifest.json").read_text())
     manifest["calls"] = manifest["calls"][:-1]
     (work / "execution-manifest.json").write_text(json.dumps(manifest))
-    with pytest.raises(mod.PreconditionFailure, match="stale"):
+    with pytest.raises(mod.PreconditionFailure, match="stale or foreign"):
         mod.main(argv(tmp_path, work, make_metrics(tmp_path), make_judges(tmp_path)))
 
 
@@ -227,3 +243,79 @@ def test_empty_or_missing_judges_refuse(tmp_path, pinned):
     empty.write_text("[]")
     with pytest.raises(mod.PreconditionFailure, match="judges"):
         mod.main(argv(tmp_path, work, make_metrics(tmp_path), empty))
+
+
+# --- codex round 2 (2026-09-06) --------------------------------------------
+
+def test_foreign_metrics_are_refused(tmp_path, pinned):
+    work = make_work(tmp_path)
+    make_manifest(work)
+    metrics = make_metrics(tmp_path)
+    payload = json.loads(metrics.read_text())
+    payload["per_panel"]["p9-r1"] = {"replicate": 1, "attempt_id": "attempt-1", "decision": "Accept"}
+    metrics.write_text(json.dumps(payload))
+    with pytest.raises(mod.PreconditionFailure, match="foreign or partial"):
+        mod.main(argv(tmp_path, work, metrics, make_judges(tmp_path, diverge=False)))
+    payload["per_panel"] = {"p1-r1": {"replicate": 1, "attempt_id": "attempt-9", "decision": "Accept"}}
+    metrics.write_text(json.dumps(payload))
+    with pytest.raises(mod.PreconditionFailure, match="attempt_id"):
+        mod.main(argv(tmp_path, work, metrics, make_judges(tmp_path, diverge=False)))
+
+
+def test_edited_raw_output_is_refused(tmp_path, pinned):
+    work = make_work(tmp_path)
+    make_manifest(work)
+    synthesis = work / "runs" / "2026-09-06-p1-r1" / "raw" / "synthesis.md"
+    synthesis.write_text(synthesis.read_text().replace("Major Revision", "Accept"))
+    with pytest.raises(mod.PreconditionFailure, match="no longer hashes"):
+        mod.main(argv(tmp_path, work, make_metrics(tmp_path), make_judges(tmp_path, diverge=False)))
+
+
+def test_unsupported_claim_is_refused_before_writing(tmp_path, pinned):
+    work = make_work(tmp_path)
+    make_manifest(work)
+    with pytest.raises(mod.PreconditionFailure, match="concurrency"):
+        mod.main(argv(tmp_path, work, make_metrics(tmp_path), make_judges(tmp_path, diverge=False), ["--claim", "concurrency"]))
+    assert not (tmp_path / "row.json").exists()
+
+
+def test_non_finite_metrics_are_refused(tmp_path, pinned):
+    work = make_work(tmp_path)
+    make_manifest(work)
+    metrics = make_metrics(tmp_path)
+    metrics.write_text(metrics.read_text().replace('"FNR_over_harsh": 0.0', '"FNR_over_harsh": NaN'))
+    with pytest.raises(mod.PreconditionFailure, match="strict JSON"):
+        mod.main(argv(tmp_path, work, metrics, make_judges(tmp_path, diverge=False)))
+
+
+def test_judge_failure_ledger_satisfies_partial_coverage(tmp_path, pinned, capsys):
+    work = make_work(tmp_path)
+    make_manifest(work)
+    judges = make_judges(tmp_path, diverge=False)
+    rows = json.loads(judges.read_text())
+    rows[1]["per_item"] = rows[1]["per_item"][:1]  # judge-2 never returned w2
+    judges.write_text(json.dumps(rows))
+    assert mod.main(argv(tmp_path, work, make_metrics(tmp_path), judges)) == 1
+    assert "I11" in capsys.readouterr().err
+    ok = argv(tmp_path, work, make_metrics(tmp_path), judges, [
+        "--blocked-run", "judge-2 exhausted its retry on item w2 (transport failure)",
+    ])
+    assert mod.main(ok) == 0
+    row = json.loads((tmp_path / "row.json").read_text())
+    assert any("w2" in b for b in row["attempts"]["blocked_runs"])
+
+
+def test_sha256_at_commit_reads_the_named_commit(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x"}
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    (repo / "plan.md").write_text("v1\n")
+    subprocess.run(["git", "add", "plan.md"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "v1"], cwd=repo, check=True, env={**env, "PATH": "/usr/bin:/bin:/opt/homebrew/bin"})
+    first = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
+    (repo / "plan.md").write_text("v2\n")
+    subprocess.run(["git", "commit", "-q", "-am", "v2"], cwd=repo, check=True, env={**env, "PATH": "/usr/bin:/bin:/opt/homebrew/bin"})
+    assert mod.sha256_at_commit(first, "plan.md", repo=repo) == hashlib.sha256(b"v1\n").hexdigest()
+    assert mod.sha256_at_commit("HEAD", "plan.md", repo=repo) == hashlib.sha256(b"v2\n").hexdigest()
+    assert mod.sha256_at_commit(first, "missing.md", repo=repo) is None

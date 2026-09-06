@@ -509,3 +509,82 @@ def test_records_carry_credential_preflight_outcome(env, tmp_path):
     frozen = json.loads((env["work"] / "cards" / "p1" / "frozen.json").read_text())
     assert record["credential_preflight"].startswith("skipped")
     assert frozen["credential_preflight"].startswith("skipped")
+
+
+# --- codex round 2 (2026-09-06) --------------------------------------------
+
+def test_auth_signature_ignores_partial_prose_and_timeouts(env, tmp_path):
+    timeout = TransportFailure(
+        "field_analyst", "[TRANSPORT: TimeoutExpired after 3600s]",
+        stdout="Not logged in is what the reviewed UI displays; the paper argues...",
+    )
+    assert not mod._is_auth_failure(timeout)
+    mid_text = TransportFailure("field_analyst", "[TRANSPORT: exit 1]", stdout="Review\n\nNot logged in\n")
+    assert not mod._is_auth_failure(mid_text)
+    assert mod._is_auth_failure(AUTH_FAILURE)
+    assert mod._is_auth_failure(TransportFailure("x", "[TRANSPORT: exit 1]", stderr="Not logged in\n"))
+    transport = _RaisingTransport({"field_analyst": [timeout]}, {"field_analyst": [ANALYSIS]})
+    assert mod.stage_cards(parsed(env, "cards"), transport) == 0
+    assert transport.calls == ["field_analyst", "field_analyst"]
+
+
+def test_credential_preflight_never_follows_redirects_and_skips_plain_http():
+    handler = mod._NoRedirect()
+    assert handler.redirect_request(None, None, 302, "Found", {}, "https://elsewhere.example/") is None
+
+    def opener(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, 302, "Found", {"Location": "https://elsewhere.example/"}, None)
+
+    assert mod.credential_preflight({"ANTHROPIC_API_KEY": "k"}, opener=opener) == "inconclusive: HTTP 302"
+
+    def never(request, timeout):  # pragma: no cover
+        raise AssertionError("plain http must not carry the key")
+
+    outcome = mod.credential_preflight({"ANTHROPIC_API_KEY": "k", "ANTHROPIC_BASE_URL": "http://proxy.local"}, opener=never)
+    assert outcome.startswith("skipped") and "https" in outcome
+
+
+def test_cards_rerun_refuses_reused_evidence_dir(env, tmp_path):
+    transport = _RaisingTransport({"field_analyst": [AUTH_FAILURE]}, {})
+    assert mod.stage_cards(parsed(env, "cards"), transport) == 1
+    blocked = env["work"] / "runs" / "blocked-cards-p1.json"
+    before = blocked.read_bytes()
+    with pytest.raises(mod.PreconditionFailure, match="fresh work dir"):
+        run_cards(env, tmp_path)
+    assert blocked.read_bytes() == before
+
+
+def test_manifest_admits_records_by_content_not_filename(env, tmp_path):
+    assert run_cards(env, tmp_path) == 0
+    seat_auth = TransportFailure("seat-eic", "[TRANSPORT: exit 1]", stdout="Not logged in\n")
+    transport = _RaisingTransport({"seat-eic": [seat_auth]}, panel_responses())
+    assert mod.stage_panel(parsed(env, "panel"), transport) == 1
+    runs = env["work"] / "runs"
+    (runs / "blocked-2026-08-07-p1-r1.json").rename(runs / "2026-08-07-p1-r1.json")
+    assert mod.main(_manifest_argv(env)) == 0  # the aborted panel is still listed as blocked
+    calls = json.loads((env["work"] / "execution-manifest.json").read_text())["calls"]
+    assert [c["call_id"] for c in calls] == ["cards-p1/field_analyst"]
+
+
+def test_manifest_refuses_edited_raw_output_and_foreign_stage(env, tmp_path):
+    assert run_cards(env, tmp_path) == 0
+    assert mod.main(base_argv(env, "panel") + scripted(tmp_path, panel_responses())) == 0
+    synthesis = env["work"] / "runs" / "2026-08-07-p1-r1" / "raw" / "synthesis.md"
+    synthesis.write_text(SYNTHESIS.replace("Major Revision", "Accept"))
+    with pytest.raises(mod.PreconditionFailure, match="no longer hashes"):
+        mod.main(_manifest_argv(env))
+    synthesis.write_text(SYNTHESIS)
+    frozen = env["work"] / "cards" / "p1" / "frozen.json"
+    record = json.loads(frozen.read_text())
+    record["stage"] = "panel"
+    frozen.write_text(json.dumps(record))
+    with pytest.raises(mod.PreconditionFailure, match="cards record"):
+        mod.main(_manifest_argv(env))
+
+
+def test_manifest_refuses_bad_timestamps(env, tmp_path):
+    assert run_cards(env, tmp_path) == 0
+    assert mod.main(base_argv(env, "panel") + scripted(tmp_path, panel_responses())) == 0
+    with pytest.raises(mod.PreconditionFailure, match="RFC 3339"):
+        mod.main(_manifest_argv(env, generated_at="not-a-timestamp"))
+    assert not (env["work"] / "execution-manifest.json").exists()

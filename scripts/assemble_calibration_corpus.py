@@ -81,8 +81,6 @@ LAYOUT_SIGNALS = (
     "line_numbers",         # >= LINE_NUMBER_MIN lines that are bare 3-digit numbers
 )
 LINE_NUMBER_MIN = 10
-_PUBLISHED_HEADER = re.compile(r"^\s*published as a conference paper at", re.IGNORECASE | re.MULTILINE)
-_UNDER_REVIEW_HEADER = re.compile(r"^\s*under review as a conference paper", re.IGNORECASE | re.MULTILINE)
 _BARE_LINE_NUMBER = re.compile(r"^\s*\d{3}\s*$", re.MULTILINE)
 LAYOUT_RULE = (
     "every signal must be constant across the whole corpus (all papers hit, or "
@@ -92,11 +90,14 @@ LAYOUT_RULE = (
 
 
 def layout_tells(first_page: str) -> dict[str, bool]:
-    lowered = first_page.lower()
+    # Extractors break header phrases across lines and pad them with odd
+    # whitespace; the phrase tests run on a whitespace-folded copy while the
+    # line-number test needs the line structure.
+    folded = " ".join(first_page.split()).lower()
     return {
-        "published_header": bool(_PUBLISHED_HEADER.search(first_page)),
-        "under_review_header": bool(_UNDER_REVIEW_HEADER.search(first_page)),
-        "anonymous_authors": "anonymous author" in lowered,
+        "published_header": "published as a conference paper at" in folded,
+        "under_review_header": "under review as a conference paper" in folded,
+        "anonymous_authors": "anonymous author" in folded,
         "line_numbers": len(_BARE_LINE_NUMBER.findall(first_page)) >= LINE_NUMBER_MIN,
     }
 
@@ -527,17 +528,24 @@ def cmd_verify(args: argparse.Namespace) -> int:
     if hits:
         failures.append(f"label-leak guard: {hits}")
 
-    missing_pdfs = [pid for pid in paper_ids if not (pdf_dir / f"{pid}.pdf").is_file()]
-    if missing_pdfs:
-        warnings.append(
-            f"layout-tell check skipped: {len(missing_pdfs)} PDF(s) not in local cache"
-        )
-    else:
-        counts, separating = layout_check(ids_by_class(labels_payload["labels"]), pdf_dir)
+    missing_pdfs = {pid for pid in paper_ids if not (pdf_dir / f"{pid}.pdf").is_file()}
+    present = {
+        cls: [pid for pid in ids if pid not in missing_pdfs]
+        for cls, ids in ids_by_class(labels_payload["labels"]).items()
+    }
+    if any(present.values()):
+        # Every cached PDF is checked; a partial cache can still PROVE a
+        # separation but can never clear the corpus.
+        counts, separating = layout_check(present, pdf_dir)
         if separating:
             failures.append(_layout_failure(counts, separating))
         recorded = papers_payload.get("layout_tell_check")
-        if recorded is None:
+        if missing_pdfs:
+            warnings.append(
+                f"layout-tell check partial: {len(missing_pdfs)} PDF(s) not in local cache; "
+                "the corpus is not cleared"
+            )
+        elif recorded is None:
             warnings.append(
                 "manifest predates the layout-tell check (no layout_tell_check block); "
                 "re-freeze to record it"
@@ -547,6 +555,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
                 f"layout_tell_check per_class drifted: manifest {recorded.get('per_class')} "
                 f"vs recomputed {counts}"
             )
+    else:
+        warnings.append("layout-tell check skipped: no PDF in local cache")
 
     for line in warnings:
         print(f"WARN: {line}")

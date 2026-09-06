@@ -104,7 +104,8 @@ record is frozen. The synthesizer additionally never receives the manuscript.
    `--stage panel` per (paper, replicate). A rejected credential is caught by a
    zero-cost `GET /v1/models` preflight before the first billed call and is
    never retried mid-run; an aborted cards stage leaves
-   `runs/blocked-cards-<paper>.json` with its per-call rows.
+   `runs/blocked-cards-<paper>.json` with its per-call rows, and a re-run
+   needs a fresh work dir (evidence and stage records are write-once).
 2. `dispatch_calibration_panel.py --stage manifest` once, after the last
    panel: folds every completed call row into the write-once
    `execution-manifest.json` (`heldout-execution-manifest/1.0`); refuses mixed

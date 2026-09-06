@@ -13,6 +13,10 @@ Pre-registration binding (contract § Version 1.1 pre-registration record):
 the same paths at `frozen_commit` (= the records' `suite_commit`); a drift
 refuses — an amendment is the only sanctioned way to change a frozen plan.
 A dirty `suite_commit` refuses for the same reason (no commit names the bytes).
+The scorer output is bound to the attempt (every scored panel is a complete
+panel record here with this attempt id, and vice versa), the manifest is
+re-derived from the records — whose raw outputs are re-hashed — and every
+declared timing claim is checked against the local manifest before the write.
 
 Output goes wherever `--out` says (write-once). Filing the row under
 `evals/heldout/reviewer_calibration/` together with the raw bundles and the
@@ -58,14 +62,10 @@ CONSTRUCTION_RULE = (
     "balanced accuracy = (TPR + TNR) / 2 over papers; per paper the decision is the "
     "majority vote across replicates of the binarized synthesizer decision "
     "(Accept/Minor Revision -> positive, Major Revision/Reject -> negative) extracted "
-    "by the closed `### Decision:` grammar; class-A adjudication is flags-only "
-    "(adjudication_rubric.md § Resolution direction), so the value is published "
-    "as a lower bound of the audited agreement (contract I13)"
-)
-LOWER_BOUND_CAVEAT = (
-    "Lower bound: adjudication is flags-only (only panels the closed grammar "
-    "could not transcribe were re-read), so the headline is a lower bound of the "
-    "audited agreement with the gold labels, not a point estimate."
+    "by the closed `### Decision:` grammar; class-A adjudication is bidirectional "
+    "(every synthesis decision is transcribed blind by the adjudicator and compared "
+    "with the grammar, adjudication_rubric.md § Resolution direction), so the value "
+    "is a point estimate over the audited decisions"
 )
 SINGLE_FAMILY_CAVEAT = (
     "Single-family panel (substrate_plan primary_only): all five seats and the "
@@ -79,9 +79,10 @@ REHEARSAL_CAVEAT = (
 )
 
 
-def sha256_at_commit(commit: str, rel: str) -> str | None:
+def sha256_at_commit(commit: str, rel: str, repo: Path = REPO) -> str | None:
+    """SHA-256 of `rel` as committed at `commit` (None when absent there)."""
     probe = subprocess.run(
-        ["git", "show", f"{commit}:{rel}"], cwd=REPO, capture_output=True, check=False
+        ["git", "show", f"{commit}:{rel}"], cwd=repo, capture_output=True, check=False
     )
     if probe.returncode != 0:
         return None
@@ -152,18 +153,49 @@ def agreement_block(judges: list[dict]) -> dict:
 
 
 def _load_json(path: str | None, default):
+    """Strict JSON (duplicate keys and NaN/Infinity refused, like the checker)."""
     if not path:
         return default
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    try:
+        return checker._loads_strict(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise PreconditionFailure(f"{path}: not strict JSON ({exc})") from exc
+
+
+def bind_metrics(metrics: dict, work: Path, identity: dict) -> None:
+    """The scorer output must describe THIS attempt: every scored panel is a
+    complete panel record under `work` with this attempt id, and vice versa."""
+    if metrics.get("suite") != SUITE:
+        raise PreconditionFailure("metrics file is not a reviewer_calibration scorer output")
+    _, records, _ = load_attempt(work)
+    panels_here = {
+        f"{r['paper_id']}-r{r['replicate']}" for _, r in records if r.get("stage") == "panel"
+    }
+    scored = metrics.get("per_panel") or {}
+    if set(scored) != panels_here:
+        raise PreconditionFailure(
+            f"metrics cover panels {sorted(scored)} but this attempt holds "
+            f"{sorted(panels_here)}; foreign or partial scorer output"
+        )
+    for key, row in scored.items():
+        if row.get("attempt_id") != identity["attempt_id"]:
+            raise PreconditionFailure(f"metrics panel {key}: attempt_id is not {identity['attempt_id']!r}")
+    papers = {r["paper_id"] for _, r in records if r.get("stage") == "panel"}
+    if metrics.get("n_papers") != len(papers):
+        raise PreconditionFailure(f"metrics n_papers {metrics.get('n_papers')} != {len(papers)} panel papers here")
 
 
 def build_row(args) -> dict:
     work = Path(args.work_dir)
     identity, blocked = attempt_identity(work)
-    metrics = json.loads(Path(args.metrics).read_text(encoding="utf-8"))
-    if metrics.get("suite") != SUITE:
-        raise PreconditionFailure("metrics file is not a reviewer_calibration scorer output")
+    metrics = _load_json(args.metrics, None)
+    bind_metrics(metrics, work, identity)
     manifest_path = verified_manifest(work)
+    claims = sorted(set(args.claim))
+    manifest = _load_json(str(manifest_path), None)
+    claim_errors = checker._execution_claim_errors(manifest, set(claims))
+    if claim_errors:
+        raise PreconditionFailure("declared claims unsupported by the manifest: " + "; ".join(claim_errors))
     judges = _load_json(args.judges, None)
     if not isinstance(judges, list) or not judges:
         raise PreconditionFailure("--judges must be a non-empty JSON list of judge rows (Phase 3.5 output)")
@@ -172,9 +204,9 @@ def build_row(args) -> dict:
     plan_ref, plan_sha = frozen_ref(PLAN_REF, commit)
     rubric_ref, rubric_sha = frozen_ref(RUBRIC_REF, commit)
     runs_ref = args.runs_ref.rstrip("/")
-    blocked_runs = sorted(set(blocked) | set(metrics.get("blocked_runs", [])))
+    blocked_runs = sorted(set(blocked) | set(metrics.get("blocked_runs", [])) | set(args.blocked_run))
     headline_value = metrics["metrics"].get("balanced_accuracy")
-    caveats = [LOWER_BOUND_CAVEAT, SINGLE_FAMILY_CAVEAT, *args.caveat]
+    caveats = [SINGLE_FAMILY_CAVEAT, *args.caveat]
     if args.rehearsal:
         caveats.insert(0, REHEARSAL_CAVEAT)
 
@@ -211,7 +243,7 @@ def build_row(args) -> dict:
                 "metric_name": "balanced_accuracy",
                 "value": headline_value if headline_value is not None else "NOT COMPUTABLE",
                 "construction_rule": CONSTRUCTION_RULE,
-                "estimand_status": "lower_bound",
+                "estimand_status": "point_estimate",
             },
             "agreement": agreement_block(judges),
         },
@@ -227,7 +259,7 @@ def build_row(args) -> dict:
             "rubric_sha256": rubric_sha,
             "rubric_precommitted": True,
             "blinded_to": ["expected_label"],
-            "resolution_direction": "flags_only",
+            "resolution_direction": "bidirectional",
             "resolution_rule_ref": RESOLUTION_RULE_REF,
             "overrides": _load_json(args.overrides, []),
             "raw_published": True,
@@ -248,7 +280,7 @@ def build_row(args) -> dict:
             "ref": f"{runs_ref}/{MANIFEST_NAME}",
             "sha256": sha256_file(manifest_path),
             "write_once": True,
-            "claims": sorted(set(args.claim)),
+            "claims": claims,
         },
         "attempts": {
             "atomicity": ATOMICITY,
@@ -290,6 +322,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--overrides", help="JSON list of contract-shaped adjudication overrides")
     parser.add_argument("--amendments", help="JSON list of contract-shaped amendments")
     parser.add_argument("--replicate-exception", help="written sentence when runs_per_paper < 2")
+    parser.add_argument(
+        "--blocked-run", action="append", default=[],
+        help="one attempts.blocked_runs entry, e.g. a judge failure naming its item id (I11)",
+    )
     parser.add_argument("--rehearsal", action="store_true", help="stamp the rehearsal caveat first")
     parser.add_argument("--resolve-refs", action="store_true", help="also run checker R1-R5 (filed rows only)")
     parser.add_argument("--out", required=True)
@@ -307,7 +343,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"ERROR: {line}", file=sys.stderr)
         print("row NOT written: contract validation failed", file=sys.stderr)
         return 1
-    write_once(Path(args.out), json.dumps(row, indent=2, ensure_ascii=False) + "\n", "a measurement row")
+    text = json.dumps(row, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    if checker._loads_strict(text) != row:
+        raise PreconditionFailure("serialized row does not round-trip through the strict parser")
+    write_once(Path(args.out), text, "a measurement row")
     print(f"measurement row: {args.out} (validated against heldout-measurement/1.1"
           f"{' incl. R1-R5' if args.resolve_refs else ', I-invariants only'})")
     return 0

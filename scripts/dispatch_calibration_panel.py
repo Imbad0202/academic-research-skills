@@ -207,6 +207,13 @@ class PanelState:
     calls: list[dict] = field(default_factory=list)  # per-attempt timing + hashes
 
 
+def _parse_rfc3339(value: str) -> dt.datetime:
+    parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("timestamp lacks an offset")
+    return parsed
+
+
 def _rfc3339_now() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
@@ -222,8 +229,9 @@ def _prompt_sha256(call: Call) -> str:
 # `--bare` login-less form is `Not logged in`). A rejected credential is
 # deterministic: the second attempt can only repeat the first.
 AUTH_FAILURE_SIGNATURE = re.compile(
-    r"Failed to authenticate|API Error: 40[13]\b|\bNot logged in\b", re.IGNORECASE
+    r"\A\s*(?:Failed to authenticate\b|Not logged in\b|API Error: 40[13]\b)", re.IGNORECASE
 )
+EXIT_FAILURE_SUMMARY = re.compile(r"^\[TRANSPORT: exit \d+\]$")
 
 ANTHROPIC_DEFAULT_BASE_URL = "https://api.anthropic.com"
 ANTHROPIC_VERSION = "2023-06-01"
@@ -234,13 +242,30 @@ class CredentialRejected(TransportFailure):
 
 
 def _is_auth_failure(failure: TransportFailure) -> bool:
+    """Only a non-zero-exit failure whose stdout or stderr STARTS with the
+    CLI's own credential diagnostic. A timeout's partial model text, or a
+    review that happens to quote "Not logged in", never qualifies."""
+    if not EXIT_FAILURE_SUMMARY.match(failure.summary or ""):
+        return False
     return bool(
-        AUTH_FAILURE_SIGNATURE.search(failure.stdout or "")
-        or AUTH_FAILURE_SIGNATURE.search(failure.stderr or "")
+        AUTH_FAILURE_SIGNATURE.match(failure.stdout or "")
+        or AUTH_FAILURE_SIGNATURE.match(failure.stderr or "")
     )
 
 
-def credential_preflight(environ=None, *, opener=urllib.request.urlopen, timeout: float = 5.0) -> str:
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A credential probe never follows a redirect: urllib would copy the
+    `x-api-key` header onto the redirected request, i.e. hand the key to
+    whatever origin a proxy points at."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401
+        return None
+
+
+_PREFLIGHT_OPENER = urllib.request.build_opener(_NoRedirect())
+
+
+def credential_preflight(environ=None, *, opener=_PREFLIGHT_OPENER.open, timeout: float = 5.0) -> str:
     """Zero-cost credential probe before the first billed call.
 
     `GET /v1/models` with the operator's `ANTHROPIC_API_KEY` costs nothing
@@ -257,6 +282,8 @@ def credential_preflight(environ=None, *, opener=urllib.request.urlopen, timeout
     if not key:
         return "skipped: ANTHROPIC_API_KEY unset (apiKeyHelper path is not probed)"
     base = environ.get("ANTHROPIC_BASE_URL", "").strip() or ANTHROPIC_DEFAULT_BASE_URL
+    if not base.lower().startswith("https://"):
+        return "skipped: ANTHROPIC_BASE_URL is not https; the key is not sent in clear"
     request = urllib.request.Request(
         base.rstrip("/") + "/v1/models?limit=1",
         headers={"x-api-key": key, "anthropic-version": ANTHROPIC_VERSION},
@@ -271,6 +298,7 @@ def credential_preflight(environ=None, *, opener=urllib.request.urlopen, timeout
                 f"credential preflight: HTTP {exc.code} from {base.rstrip('/')}/v1/models "
                 "— the API key in ANTHROPIC_API_KEY is rejected; no billed call was made"
             ) from None
+        # A 3xx lands here too: redirects are refused, never followed.
         return f"inconclusive: HTTP {exc.code}"
     except (urllib.error.URLError, OSError, ValueError) as exc:
         return f"inconclusive: {type(exc).__name__}"
@@ -391,10 +419,14 @@ def _write_record(path: Path, record: dict) -> int:
     blocked = record["status"] != "complete"
     if blocked:
         path = path.with_name(f"blocked-{path.name}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    write_once(path, _json_text(record), "a stage record")
     print(f"{'BLOCKED record' if blocked else 'record'}: {path}")
     return 1 if blocked else 0
+
+
+def _json_text(value) -> str:
+    """Strict JSON (no NaN/Infinity) with a trailing newline."""
+    return json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
 
 
 def write_once(path: Path, text: str, what: str) -> None:
@@ -412,6 +444,11 @@ def stage_cards(args, transport, preflight: str = PREFLIGHT_NOT_PROBED) -> int:
     entry, manuscript, work = _prepare(args)
     cards_dir = work / "cards" / args.paper
     bundle = Bundle(cards_dir / "raw")
+    if bundle.claimed_existing:
+        raise PreconditionFailure(
+            f"evidence dir for cards-{args.paper} already holds content; a re-run "
+            "may not overwrite the attempt it replaces — recover in a fresh work dir"
+        )
     sandbox = work / "sandbox" / f"cards-{args.paper}"
     sandbox.mkdir(parents=True, exist_ok=True)
 
@@ -567,26 +604,71 @@ MANIFEST_NAME = "execution-manifest.json"
 ATTEMPT_IDENTITY = ("attempt_id", "model_id", "effort", "substrate_plan", "suite_commit")
 
 
-def _load_attempt_records(work: Path) -> tuple[list[tuple[str, dict]], list[str]]:
-    """(stem, record) for every frozen-cards and panel record under `work`,
-    plus the blocked record names (listed, never folded into the manifest)."""
-    records: list[tuple[str, dict]] = []
-    blocked: list[str] = []
-    for frozen in sorted((work / "cards").glob("*/frozen.json")):
-        _plain_file(frozen, work / "cards", "frozen cards record")
-        record = json.loads(frozen.read_text(encoding="utf-8"))
-        records.append((f"cards-{record['paper_id']}", record))
+def _read_record(path: Path, root: Path, what: str) -> dict:
+    _plain_file(path, root, what)
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise PreconditionFailure(f"{what} {path.name}: unreadable ({exc})") from exc
+    if not isinstance(record, dict):
+        raise PreconditionFailure(f"{what} {path.name}: not a JSON object")
+    return record
+
+
+def _admit(record: dict, *, path: Path, stage: str, work: Path) -> str | None:
+    """Return the record's stem when it is a complete `stage` record of this
+    suite whose raw outputs still hash to the recorded values; None for a
+    blocked record (listed, never folded). The filename is never the
+    authority: status and provenance come from the record body."""
+    if record.get("suite") != "reviewer_calibration" or record.get("stage") != stage:
+        raise PreconditionFailure(f"{path.name}: not a reviewer_calibration {stage} record")
+    for key in (*ATTEMPT_IDENTITY, "status", "calls", "raw_bundle"):
+        if key not in record:
+            raise PreconditionFailure(f"{path.name}: record lacks {key!r}")
+    if record["status"] != "complete":
+        return None
+    raw_dir = work / record["raw_bundle"]
+    for call in record["calls"]:
+        if call.get("outcome") != "completed":
+            continue
+        output = raw_dir / f"{call['call']}.md"
+        if not output.is_file():
+            raise PreconditionFailure(f"{path.name}: raw output {output.name} missing")
+        _plain_file(output, raw_dir, "raw output")
+        if sha256_hex(output.read_bytes()) != call.get("output_sha256"):
+            raise PreconditionFailure(
+                f"{path.name}: {output.name} no longer hashes to the recorded output_sha256"
+            )
+    return path.stem
+
+
+def _load_attempt_records(work: Path) -> tuple[list[tuple[str, dict]], list[tuple[str, dict]]]:
+    """(stem, record) rows for every complete cards/panel record under
+    `work`, and the blocked (aborted) records, both admitted by content."""
+    complete: list[tuple[str, dict]] = []
+    blocked: list[tuple[str, dict]] = []
+    for frozen in sorted((work / "cards").glob("*/frozen.json")) if (work / "cards").is_dir() else []:
+        record = _read_record(frozen, work / "cards", "frozen cards record")
+        stem = _admit(record, path=frozen, stage="cards", work=work)
+        if stem is None:
+            raise PreconditionFailure(f"{frozen}: a frozen cards record cannot be aborted")
+        complete.append((f"cards-{record['paper_id']}", record))
     runs = work / "runs"
     for path in sorted(runs.glob("*.json")) if runs.is_dir() else []:
-        _plain_file(path, runs, "panel record")
-        if path.name.startswith("blocked-"):
-            blocked.append(path.name)
-            continue
-        record = json.loads(path.read_text(encoding="utf-8"))
-        if record.get("suite") != "reviewer_calibration" or record.get("stage") != "panel":
-            continue
-        records.append((path.stem, record))
-    return records, blocked
+        record = _read_record(path, runs, "stage record")
+        stage = record.get("stage")
+        if stage not in ("cards", "panel"):
+            raise PreconditionFailure(f"{path.name}: unknown stage {stage!r}")
+        stem = _admit(record, path=path, stage=stage, work=work)
+        if stem is None:
+            blocked.append((path.name, record))
+        elif stage == "panel":
+            complete.append((stem, record))
+        else:
+            raise PreconditionFailure(
+                f"{path.name}: a complete cards record belongs in cards/<paper>/frozen.json"
+            )
+    return complete, blocked
 
 
 def load_attempt(work: Path) -> tuple[dict, list[tuple[str, dict]], list[str]]:
@@ -597,14 +679,14 @@ def load_attempt(work: Path) -> tuple[dict, list[tuple[str, dict]], list[str]]:
     if not records:
         raise PreconditionFailure(f"no completed call under {work}: nothing to manifest")
     identity = {key: records[0][1].get(key) for key in ATTEMPT_IDENTITY}
-    for stem, record in records:
+    for stem, record in records + blocked:
         for key in ATTEMPT_IDENTITY:
             if record.get(key) != identity[key]:
                 raise PreconditionFailure(
                     f"{stem}: {key} {record.get(key)!r} differs from {identity[key]!r}; "
                     "one attempt, one identity"
                 )
-    return identity, records, blocked
+    return identity, records, [name for name, _ in blocked]
 
 
 def build_execution_manifest(work: Path, created_at: str, attempt_id: str | None = None) -> dict:
@@ -661,12 +743,28 @@ def _validate_manifest(manifest: dict) -> None:
     except ImportError as exc:  # pragma: no cover - CI installs it
         raise PreconditionFailure("jsonschema is required to emit an execution manifest") from exc
     schema = json.loads(MANIFEST_SCHEMA.read_text(encoding="utf-8"))
-    errors = list(jsonschema.Draft202012Validator(schema).iter_errors(manifest))
+    errors = [
+        f"{list(e.absolute_path)}: {e.message}"
+        for e in jsonschema.Draft202012Validator(schema).iter_errors(manifest)
+    ]
+    # `format: date-time` is advisory in JSON Schema; the checker's R5 parses
+    # every timestamp, so the same parse runs here, before the write.
+    stamps = [("created_at", manifest["created_at"])]
+    window = manifest.get("execution_window") or {}
+    stamps += [(f"execution_window.{k}", window[k]) for k in ("started_at", "completed_at") if k in window]
+    for call in manifest["calls"]:
+        stamps += [(f"{call['call_id']}.{k}", call[k]) for k in ("started_at", "completed_at")]
+    for label, value in stamps:
+        try:
+            _parse_rfc3339(value)
+        except ValueError:
+            errors.append(f"{label}: not an RFC 3339 timestamp ({value!r})")
+    if not errors:
+        for call in manifest["calls"]:
+            if _parse_rfc3339(call["completed_at"]) < _parse_rfc3339(call["started_at"]):
+                errors.append(f"{call['call_id']}: completed before it started")
     if errors:
-        raise PreconditionFailure(
-            "execution manifest does not satisfy its schema: "
-            + "; ".join(f"{list(e.absolute_path)}: {e.message}" for e in errors)
-        )
+        raise PreconditionFailure("execution manifest is not valid: " + "; ".join(errors))
 
 
 def stage_manifest(args) -> int:
@@ -677,7 +775,7 @@ def stage_manifest(args) -> int:
     _validate_manifest(manifest)
     path = work / MANIFEST_NAME
     write_once(
-        path, json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+        path, _json_text(manifest),
         "the execution manifest (a re-run is a new attempt in a new work dir)",
     )
     print(f"execution manifest: {path} ({len(manifest['calls'])} completed calls)")

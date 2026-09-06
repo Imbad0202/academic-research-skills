@@ -66,16 +66,23 @@ and are not consulted (`blinded_to` still lists what applies).
 
 ## Resolution direction (`heldout-measurement/1.1` anchor)
 
-`resolution_direction: flags_only`. Adjudication touches only FLAGGED
-elements: class A fires only when the closed decision grammar yields zero or
-multiple values for a synthesis text; class B fires only when the two judges
-diverge on a weakness. Unflagged elements are taken as extracted / judged and
-are never re-read by the adjudicator, so a transcription or classification
-error that no flag caught stays in the raw numbers. Per contract invariant
-I13 the measurement row therefore carries `estimand_status: lower_bound`, a
-construction rule and a caveat that name the headline a lower bound: the
-label states that only flagged elements were audited; it is not a directional
-claim about the unflagged remainder. `resolution_rule_ref` points here.
+`resolution_direction: bidirectional` for the headline-bearing element
+(class A). The adjudicator does not wait for a flag: after every panel record
+is frozen, the adjudicator reads EVERY synthesis text blind (never the gold
+label, never the venue partition) and transcribes its final decision from the
+closed four-value set. The transcription is then compared with the closed
+grammar's extraction. A disagreement in either direction — the grammar read a
+decision the adjudicator does not find, or the adjudicator finds one the
+grammar missed or mis-read — is recorded as an override with the verbatim
+raw excerpt and its criterion (A1 / A2 / A3) and the adjudicated value wins;
+an A2 outcome re-dispatches the synthesis call once, as above. Because every
+decision is audited, the measurement row publishes the headline as
+`estimand_status: point_estimate`; unflagged extraction errors cannot survive
+into the number. `resolution_rule_ref` points here.
+
+Class B (severity-risk classes) is not adjudicated bidirectionally: only
+judge divergence escalates, as stated under B. Class B never feeds the
+headline; its histogram is reported separately with its own coverage note.
 
 ## Tie and construction rules referenced by the measurement row
 
