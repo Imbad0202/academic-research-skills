@@ -101,7 +101,10 @@ record is frozen. The synthesizer additionally never receives the manuscript.
 ## Tooling (one attempt, in order)
 
 1. `dispatch_calibration_panel.py --stage cards` per paper, then
-   `--stage panel` per (paper, replicate). A rejected credential is caught by a
+   `--stage panel` per (paper, replicate). Each call runs in an allowlisted
+   environment with an empty `CLAUDE_CONFIG_DIR` (no operator CLAUDE.md,
+   settings or output style) and captures every assistant message
+   (stream-json). A rejected credential is caught by a
    zero-cost `GET /v1/models` preflight before the first billed call and is
    never retried mid-run; an aborted cards stage leaves
    `runs/blocked-cards-<paper>.json` with its per-call rows, and a re-run

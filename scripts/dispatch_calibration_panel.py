@@ -9,11 +9,12 @@ is a sibling of `dispatch_e4_panel.py`, not a mode of it: the E4 harness's
 `seats_for` gate rejects any contract mode outside the sprint families, and its
 Phase-1/Phase-2 heading slicing reads sprint-only agent subsections.
 
-What IS shared is the infrastructure layer, imported from `dispatch_e4_panel`
-unchanged: `ClaudeCliTransport` (headless `claude -p --bare` with the emptied
-tool whitelist and staged credential), `Bundle` (write-once evidence + journal),
-`Call`/`TransportFailure`/`PreconditionFailure`, and `card_for` (fence-aware
-Reviewer Configuration Card slicing).
+What IS shared is the infrastructure layer, imported from `dispatch_e4_panel`:
+`ClaudeCliTransport` (headless `claude -p --bare` with the emptied tool
+whitelist, an allowlisted environment, an empty `CLAUDE_CONFIG_DIR`, and
+stream-json capture of every assistant message), `Bundle` (write-once
+evidence + journal), `Call`/`TransportFailure`/`PreconditionFailure`, and
+`card_for` (fence-aware Reviewer Configuration Card slicing).
 
 Isolation axes (they differ from E4's):
 
@@ -60,7 +61,11 @@ detected by a zero-cost `GET /v1/models` preflight before the first billed
 call and is never retried when it surfaces mid-run (the CLI took minutes to
 report a 401 on a whole-manuscript prompt, and the blind retry doubled it);
 an aborted cards stage now leaves a `blocked-cards-<paper>.json` record with
-its per-call rows instead of losing them.
+its per-call rows instead of losing them. The second take (2026-09-07) found
+two more, both fixed in the shared transport: the text-mode CLI printed only
+the last assistant message (a continued synthesis lost its head, decision
+line included), and `--bare` still let the operator's global CLAUDE.md,
+`language` setting and output style reach the seats.
 """
 
 from __future__ import annotations
@@ -543,7 +548,9 @@ def stage_panel(args, transport, preflight: str = PREFLIGHT_NOT_PROBED) -> int:
         "engine": "calibration single-call (pre-v3.6.2), whole agent file as system prompt",
         "manuscript_sha256": entry["extracted_text_sha256"],
         "dispatch": (
-            "fresh `claude -p` process per call; empty sandbox via --add-dir; "
+            "fresh `claude -p --bare` process per call with an allowlisted environment "
+            "and an empty CLAUDE_CONFIG_DIR (no user CLAUDE.md / settings / output style); "
+            "stream-json capture of every assistant message; empty sandbox via --add-dir; "
             "tools whitelisted off; gold labels structurally unreadable"
         ),
     }

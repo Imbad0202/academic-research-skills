@@ -18,8 +18,12 @@ dispatch are amendments logged in RUN_NOTES, never silent edits.
 - **Subject model**: `claude-fable-5-1` (Claude Fable 5.1; updated from
   `claude-fable-5` on 2026-09-06 before any dispatch — a pre-dispatch edit,
   not an amendment), effort `xhigh`, headless `claude -p --bare` with emptied
-  tool whitelist (E4 transport recipe); fresh process per call; alias
-  resolution probed before the fleet starts.
+  tool whitelist (E4 transport recipe), an allowlisted environment and an
+  empty `CLAUDE_CONFIG_DIR` (the 2026-09-07 probe showed `--bare` alone still
+  delivers the operator's global CLAUDE.md, `language` setting and output
+  style to the seats), stream-json capture of every assistant message (a
+  continued reply is not truncated to its last message); fresh process per
+  call; alias resolution and a contamination probe run before the fleet.
 
 ## Gold corpus
 

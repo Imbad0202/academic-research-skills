@@ -541,7 +541,23 @@ class ClaudeCliTransport:
                  "NotebookEdit,Task,Agent,Skill,TodoWrite,SlashCommand")
     FLAGS = ("--bare", "--no-session-persistence", "--strict-mcp-config",
              "--tools", "",
-             "--disallowedTools", TOOL_DENY)
+             "--disallowedTools", TOOL_DENY,
+             # Every assistant message of the turn sequence, not just the
+             # last one: in text mode `claude -p` prints only the final
+             # message, and a deliverable long enough to be continued in a
+             # second message lost its head (2026-09-06 calibration
+             # rehearsal: the synthesis came back starting mid-table, with
+             # the decision line in the missing part).
+             "--output-format", "stream-json", "--verbose")
+    # The subject's environment is built from this allowlist, never
+    # inherited: a harness launched from inside a Claude Code session
+    # otherwise hands the subject that session's CLAUDE_* variables, and
+    # `--bare` does NOT stop the user-level CLAUDE.md, `settings.json`
+    # `language`, or the output style from reaching the prompt (probed
+    # 2026-09-07 on 2.1.260: the whole global CLAUDE.md arrived as a
+    # system-reminder). An empty CLAUDE_CONFIG_DIR is the fence that held.
+    ENV_KEEP = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "TERM", "USER", "SHELL")
+    ENV_KEEP_PREFIXES = ("ANTHROPIC_",)
 
     @staticmethod
     def auth_flags() -> list[str]:
@@ -598,10 +614,64 @@ class ClaudeCliTransport:
         # fresh copy of the operator's helper command into the temp tree on
         # every call and removed none of them.
         self._auth = self.auth_flags()
+        # One empty config dir per transport (the CLI populates it with its
+        # own state files; nothing of the operator's is ever inside it).
+        self._config_dir = Path(tempfile.mkdtemp(prefix="ars-subject-config-"))
+        atexit.register(shutil.rmtree, self._config_dir, ignore_errors=True)
+
+    @classmethod
+    def subject_environment(cls, source=None, *, config_dir: Path,
+                            thinking_tokens: int) -> dict[str, str]:
+        source = os.environ if source is None else source
+        environment = {
+            key: value for key, value in source.items()
+            if key in cls.ENV_KEEP or key.startswith(cls.ENV_KEEP_PREFIXES)
+        }
+        environment["CLAUDE_CONFIG_DIR"] = str(config_dir)
+        environment["MAX_THINKING_TOKENS"] = str(thinking_tokens)
+        return environment
+
+    @staticmethod
+    def response_text(stdout: str) -> str:
+        """Concatenate every assistant text block of a stream-json run.
+
+        Raises ValueError on a malformed stream or a result event that
+        reports an error; the caller turns that into a TransportFailure
+        carrying the raw bytes."""
+        texts: list[str] = []
+        result = None
+        for line in stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except ValueError as exc:
+                raise ValueError(f"non-JSON line in stream-json output: {line[:80]!r}") from exc
+            if not isinstance(event, dict):
+                raise ValueError("stream-json event is not an object")
+            if event.get("type") == "assistant":
+                for block in (event.get("message") or {}).get("content") or []:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        texts.append(block.get("text") or "")
+            elif event.get("type") == "result":
+                result = event
+        if result is None:
+            raise ValueError("stream-json output carries no result event")
+        if result.get("is_error") or result.get("subtype") != "success":
+            raise ValueError(
+                f"result event reports {result.get('subtype')!r} "
+                f"(is_error={result.get('is_error')!r})"
+            )
+        text = "".join(texts)
+        if not text.strip() and isinstance(result.get("result"), str):
+            text = result["result"]
+        return text
 
     def __call__(self, call: Call, sandbox: Path) -> str:
-        environment = dict(os.environ)
-        environment["MAX_THINKING_TOKENS"] = str(self.thinking_tokens)
+        environment = self.subject_environment(
+            config_dir=self._config_dir, thinking_tokens=self.thinking_tokens
+        )
         try:
             completed = subprocess.run(
             [
@@ -662,7 +732,23 @@ class ClaudeCliTransport:
                 "[TRANSPORT: exit 0 with no output]",
                 stderr=completed.stderr,
             )
-        return completed.stdout
+        try:
+            text = self.response_text(completed.stdout)
+        except ValueError as failure:
+            raise TransportFailure(
+                call.label,
+                f"[TRANSPORT: unreadable stream-json] {failure}",
+                stderr=completed.stderr,
+                stdout=completed.stdout,
+            ) from failure
+        if not text.strip():
+            raise TransportFailure(
+                call.label,
+                "[TRANSPORT: exit 0 with no assistant text]",
+                stderr=completed.stderr,
+                stdout=completed.stdout,
+            )
+        return text
 
 
 def run_checker(argv: list[str], *, cwd: Path) -> tuple[int, str, str]:
