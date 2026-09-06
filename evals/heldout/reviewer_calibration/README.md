@@ -10,6 +10,19 @@ against shipping a built-in gold set stands unamended: this directory ships
 
 ## Corpus (provenance manifest, not a dataset)
 
+> **SUPERSEDED — layout leaks the label; harness rehearsal only (2026-09-06, #828).**
+> The 2026-09-06 freeze below is byte-valid but unusable as a calibration gold
+> set: OpenReview replaces accepted ICLR papers' PDFs with the camera-ready
+> revision (`Published as a conference paper at ICLR 2026` header, named
+> authors, no line numbers) while rejected papers keep the anonymous
+> line-numbered submission PDF — 6/6 + 6/6 in this corpus, 30/30 in a fresh
+> accepted-pool sample. Submission-time revisions are not readable by an
+> ordinary account. This manifest is retained to exercise the dispatch /
+> scoring / measurement-envelope path end to end; **no error profile may be
+> published from it.** The gold corpus will be an ICLR 2027 submission-time
+> capture (PDFs fetched before decisions, labels attached after), and `freeze`
+> gains a layout-tell check before that run.
+
 - `corpus/papers.json` — 12 ICLR 2026 papers (OpenReview): forum id, title,
   canonical PDF URL, `pdf_sha256`, `extracted_text_sha256` (pypdf, version
   pinned in the manifest; normalization rule recorded as
@@ -42,17 +55,21 @@ against shipping a built-in gold set stands unamended: this directory ships
   sampled notes declare CC BY 4.0); manuscript PDFs are NOT redistributed
   here. Metadata stored is pointer-grade (ids, titles, hashes, timestamps).
 
-### Why ICLR 2026
+### Why ICLR 2026 (as pre-registered on 2026-08-07)
 
-Decisions became public 2026-01 — at/after the subject model's stated
-training cutoff (2026-01), minimizing decision-leakage risk; it is also the
-same venue family and label route Lu et al. (2026) used, which makes the
+Decisions became public 2026-01 — at/after the then-subject model's stated
+training cutoff (Claude Fable 5, 2026-01), minimizing decision-leakage risk;
+it is also the same venue family and label route Lu et al. (2026) used, which makes the
 protocol's Lu comparison table applicable (all-binary accept/reject ML-venue
 gold set). Residual risk is handled by a per-paper **contamination probe**
 (pre-registered hit rule in `RUN_PLAN.md`): 0/18 candidates claimed recall of
 their actual outcome; one candidate (`nCEs0tSwc2`) reported knowing the paper
 itself but not its decision and was retained — recorded here so readers can
-weigh it.
+weigh it. Two facts now cut against this venue for a *measured* run: the
+layout leak above, and the subject model's move to Claude Fable 5.1 (stated
+cutoff 2026-06), which places the ICLR 2026 decisions inside training. Both
+are resolved by the ICLR 2027 capture; the probe is re-run on the subject
+model actually dispatched.
 
 ### Known corpus limits (declared up front)
 

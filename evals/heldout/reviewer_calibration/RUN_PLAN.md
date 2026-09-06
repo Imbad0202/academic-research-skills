@@ -1,5 +1,10 @@
 # Reviewer-Calibration First Measured Run — Pre-Registration (#653)
 
+> **Corpus status (2026-09-06, #828):** the frozen ICLR 2026 corpus leaks the
+> label through PDF layout and is a *harness rehearsal* corpus only. Runs on
+> it publish no measurement row and no profile. This plan otherwise stands
+> for the ICLR 2027 submission-time corpus.
+
 Registered before the first scored panel dispatches. Changes after the first
 dispatch are amendments logged in RUN_NOTES, never silent edits.
 
@@ -10,9 +15,11 @@ dispatch are amendments logged in RUN_NOTES, never silent edits.
 - **Subject**: the `academic-paper-reviewer` calibration panel engine
   (pre-v3.6.2 single-call five-seat + synthesizer semantics), dispatched
   isolated via `scripts/dispatch_calibration_panel.py`.
-- **Subject model**: `claude-fable-5`, effort `xhigh`, headless
-  `claude -p --bare` with emptied tool whitelist (E4 transport recipe);
-  fresh process per call; alias resolution probed before the fleet starts.
+- **Subject model**: `claude-fable-5-1` (Claude Fable 5.1; updated from
+  `claude-fable-5` on 2026-09-06 before any dispatch — a pre-dispatch edit,
+  not an amendment), effort `xhigh`, headless `claude -p --bare` with emptied
+  tool whitelist (E4 transport recipe); fresh process per call; alias
+  resolution probed before the fleet starts.
 
 ## Gold corpus
 
@@ -64,9 +71,11 @@ dispatch are amendments logged in RUN_NOTES, never silent edits.
 ## Judges (Phase 3.5 severity-risk classification)
 
 - Two judge configurations, two model families (#654 I2):
-  `judge-claude-fable-5` (Anthropic) and `judge-codex-gpt-5.6-sol-xhigh`
+  `judge-claude-fable-5-1` (Anthropic) and `judge-codex-gpt-6-astra-xhigh`
   (OpenAI, codex CLI, stateless `< /dev/null`, timeout ≥ 600 s, one retry,
-  attempt-atomic per item batch).
+  attempt-atomic per item batch; `gpt-6-astra` is the recommended OpenAI
+  verifier under the #783 generation-currency policy and is **provisional**
+  on the codex transport — the judge row records that status).
 - Judges see the seats' weakness text only — never the manuscript, never
   gold labels. Divergent items escalate to maintainer adjudication under
   `adjudication_rubric.md` (criterion_ref required). Judge failure after the

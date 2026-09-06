@@ -445,7 +445,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--corpus-dir", default=str(SUITE_DIR))
     parser.add_argument("--pdf-cache", required=True)
     parser.add_argument("--work-dir", required=True)
-    parser.add_argument("--model", default="claude-fable-5")
+    parser.add_argument("--model", default="claude-fable-5-1")
     parser.add_argument("--effort", default="xhigh")
     parser.add_argument("--date", required=True)
     parser.add_argument("--generated-at", dest="generated_at", required=True)
