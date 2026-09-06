@@ -14,11 +14,9 @@ script derives is recomputable from those committed artifacts:
     `needs_adjudication` and the maintainer supplies the transcription in an
     overrides file (each row carries the verbatim raw excerpt), mirroring the
     #654 adjudication discipline.
-  * Score extraction: the four scoring seats' `Weighted Average` values
-    (the Devil's Advocate emits no 0-100 score by design and is never minted
-    one). Panel score = mean of available seat scores; paper score = median
-    across replicates. No continuous score exists (protocol Phase 2: "Do not
-    report AUC"), so no numeric seat field is extracted.
+  * No score extraction: the seat contract is categorical and no continuous
+    score exists (protocol Phase 2: "Do not report AUC"), so no numeric seat
+    field is extracted and nothing is averaged.
   * Decision aggregation: binarize (Accept/Minor -> positive,
     Major/Reject -> negative; Lu 2026 Table 1 convention), then majority vote
     across the 3 replicates (odd count: always defined). The exact-decision

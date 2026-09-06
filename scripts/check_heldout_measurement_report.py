@@ -346,43 +346,16 @@ def _execution_claim_errors(manifest: dict, claims: set[str]) -> list[str]:
     return errors
 
 
-def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
-    """Cross-field invariants I1-I15. Assumes the report is schema-valid."""
+def judge_divergence(
+    judges: list[dict],
+) -> tuple[set[str], set[str], dict[str, dict[int, dict]], list[str]]:
+    """(comparable item ids, divergent item ids, per-item judge payloads, I9 errors).
+
+    The one definition of cross-judge divergence: items judged by >=2
+    judges are comparable; a comparable item is divergent when any judge's
+    verdict payload differs from the first judge's. Shared with the row
+    builders so a row is composed by the same rule that validates it."""
     errors: list[str] = []
-    warnings: list[str] = []
-
-    suite = report["suite"]
-    suite_class = report["suite_class"]
-    judges = report["judges"]
-    exception = report["judge_plan"]["exception"]
-    agreement = report["aggregate"]["agreement"]
-    adjudication = report["adjudication"]
-
-    # ---- I9: identity hygiene (judges) -------------------------------------
-    judge_ids = [_fold(j["judge_id"]) for j in judges]
-    if len(judge_ids) != len(set(judge_ids)):
-        errors.append(f"I9: duplicate judge_id among {sorted(judge_ids)!r} (fold-compared)")
-    model_to_families: dict[str, set[str]] = {}
-    config_pairs: dict[tuple[str, str], list[str]] = {}
-    for j in judges:
-        model_to_families.setdefault(_fold(j["model_id"]), set()).add(_fold(j["model_family"]))
-        config_pairs.setdefault(
-            (_fold(j["model_id"]), _fold(j["prompt_ref"])), []
-        ).append(j["judge_id"])
-    for model_id, families in model_to_families.items():
-        if len(families) > 1:
-            errors.append(
-                f"I9: model_id {model_id!r} listed under {len(families)} different "
-                "model_family values — one physical judge cannot span families"
-            )
-    for (model_id, _prompt), ids in config_pairs.items():
-        if len(ids) > 1:
-            errors.append(
-                f"I9: judges {sorted(ids)!r} share the same (model_id, prompt_ref) "
-                f"({model_id!r}) — the same judge configuration listed twice does "
-                "not add independence"
-            )
-
     # ---- I9: identity hygiene (item ids) + per-judge indexing ---------------
     fold_to_raw: dict[str, str] = {}
     by_item: dict[str, dict[int, dict]] = {}
@@ -421,6 +394,48 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
             )
         if any(_typed(p) != _typed(payloads[0]) for p in payloads[1:]):
             divergent.add(fid)
+    return comparable, divergent, by_item, errors
+
+
+def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
+    """Cross-field invariants I1-I15. Assumes the report is schema-valid."""
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    suite = report["suite"]
+    suite_class = report["suite_class"]
+    judges = report["judges"]
+    exception = report["judge_plan"]["exception"]
+    agreement = report["aggregate"]["agreement"]
+    adjudication = report["adjudication"]
+
+    # ---- I9: identity hygiene (judges) -------------------------------------
+    judge_ids = [_fold(j["judge_id"]) for j in judges]
+    if len(judge_ids) != len(set(judge_ids)):
+        errors.append(f"I9: duplicate judge_id among {sorted(judge_ids)!r} (fold-compared)")
+    model_to_families: dict[str, set[str]] = {}
+    config_pairs: dict[tuple[str, str], list[str]] = {}
+    for j in judges:
+        model_to_families.setdefault(_fold(j["model_id"]), set()).add(_fold(j["model_family"]))
+        config_pairs.setdefault(
+            (_fold(j["model_id"]), _fold(j["prompt_ref"])), []
+        ).append(j["judge_id"])
+    for model_id, families in model_to_families.items():
+        if len(families) > 1:
+            errors.append(
+                f"I9: model_id {model_id!r} listed under {len(families)} different "
+                "model_family values — one physical judge cannot span families"
+            )
+    for (model_id, _prompt), ids in config_pairs.items():
+        if len(ids) > 1:
+            errors.append(
+                f"I9: judges {sorted(ids)!r} share the same (model_id, prompt_ref) "
+                f"({model_id!r}) — the same judge configuration listed twice does "
+                "not add independence"
+            )
+
+    comparable, divergent, by_item, i9_errors = judge_divergence(judges)
+    errors.extend(i9_errors)
 
     # ---- I1: agreement rate recomputed -------------------------------------
     rate = agreement["rate"]

@@ -20,8 +20,11 @@ against shipping a built-in gold set stands unamended: this directory ships
 > ordinary account. This manifest is retained to exercise the dispatch /
 > scoring / measurement-envelope path end to end; **no error profile may be
 > published from it.** The gold corpus will be an ICLR 2027 submission-time
-> capture (PDFs fetched before decisions, labels attached after), and `freeze`
-> gains a layout-tell check before that run.
+> capture (PDFs fetched before decisions, labels attached after).
+> Since the layout-tell guard landed in `assemble_calibration_corpus.py`
+> (2026-09-06), `verify` FAILs on this corpus by design (every signal is 6/0
+> across the classes); `freeze` refuses any corpus whose page-1 layout is not
+> constant across every paper, and records `layout_tell_check` when it is.
 
 - `corpus/papers.json` — 12 ICLR 2026 papers (OpenReview): forum id, title,
   canonical PDF URL, `pdf_sha256`, `extracted_text_sha256` (pypdf, version
@@ -94,6 +97,26 @@ agent files, and the local PDF cache (hash-verified against the manifest,
 symlinks refused); `manifests/gold_labels.json` is on no read path, and the
 join happens only in `scripts/score_calibration_run.py` after every panel
 record is frozen. The synthesizer additionally never receives the manuscript.
+
+## Tooling (one attempt, in order)
+
+1. `dispatch_calibration_panel.py --stage cards` per paper, then
+   `--stage panel` per (paper, replicate). A rejected credential is caught by a
+   zero-cost `GET /v1/models` preflight before the first billed call and is
+   never retried mid-run; an aborted cards stage leaves
+   `runs/blocked-cards-<paper>.json` with its per-call rows.
+2. `dispatch_calibration_panel.py --stage manifest` once, after the last
+   panel: folds every completed call row into the write-once
+   `execution-manifest.json` (`heldout-execution-manifest/1.0`); refuses mixed
+   attempt ids.
+3. `score_calibration_run.py` — mechanical metrics, gold joined only here.
+4. Phase 3.5 judges (two families) produce the contract-shaped judge rows.
+5. `build_calibration_measurement_row.py` — the 1.1 row: pre-registration
+   record (plan + rubric hashed and compared against `frozen_commit`), manifest
+   reference, blocked runs, judge rows, adjudication overrides; validated by
+   `check_heldout_measurement_report.py` before it is written. Filing the row
+   and `runs/` under this directory is a separate step; `--resolve-refs` then
+   re-runs R1-R5.
 
 ## Run rules
 

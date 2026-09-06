@@ -99,5 +99,9 @@ dispatch are amendments logged in RUN_NOTES, never silent edits.
   `preregistration` record binding this file and `adjudication_rubric.md`
   by SHA-256 to the frozen commit, and a suite-local write-once
   `execution_manifest` with per-call ids, RFC-3339 start/complete
-  timestamps, and prompt/output hashes — the dispatcher emits the manifest;
-  the scorer builds the row. Both land with the scored run, never after.
+  timestamps, and prompt/output hashes — the dispatcher's `manifest` stage
+  emits the manifest; `scripts/build_calibration_measurement_row.py` builds
+  the row from the scorer output, the manifest, the judge rows and the
+  pre-registered plan + rubric (hash-compared against `frozen_commit`), and
+  refuses to write a row the contract checker rejects. Both land with the
+  scored run, never after.

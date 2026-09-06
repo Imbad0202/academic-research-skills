@@ -675,3 +675,7 @@ path = "scripts/test_dispatch_calibration_panel.py"
 [[pytest]]
 id = "653-calibration-scorer"
 path = "scripts/test_score_calibration_run.py"
+
+[[pytest]]
+id = "653-calibration-measurement-row"
+path = "scripts/test_build_calibration_measurement_row.py"

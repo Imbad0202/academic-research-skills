@@ -22,7 +22,10 @@ boundaries around that scope:
   platform, not by this repo.
 - **Maintainer/evaluation harnesses are not user paths.** A few repo scripts exist
   only for maintainers running measurements (e.g. `scripts/dispatch_e4_panel.py`
-  through `claude -p`, `scripts/run_review_criteria_constructive_value.py` through
+  and `scripts/dispatch_calibration_panel.py` through `claude -p` — the latter
+  also sends the operator's own `ANTHROPIC_API_KEY` to the Anthropic API's
+  `GET /v1/models` as a zero-cost credential preflight before the first billed
+  call — `scripts/run_review_criteria_constructive_value.py` through
   the Codex CLI, `scripts/check_ranking_lift.py` through `gh api`). They send
   content through locally authenticated CLIs when a maintainer invokes them, are
   never triggered by any user-facing feature, and are deliberately excluded from

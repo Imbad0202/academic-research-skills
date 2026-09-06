@@ -34,20 +34,33 @@ Isolation axes (they differ from E4's):
     branch in this dispatcher by design; adding one later must implement the
     calibration transport exception in `shared/cross_model_verification.md`.
 
-Two stages, dispatched separately so replicates share frozen cards:
+Three stages, dispatched separately so replicates share frozen cards:
 
-  cards   Per paper, once: field_analyst call -> four Reviewer Configuration
-          Cards, frozen under <work-dir>/cards/<paper>/ and reused by every
-          replicate (varying cards per replicate would confound calibration).
-  panel   Per (paper, replicate): five seat calls (EIC, methodology, domain,
-          perspective get their own card; the Devil's Advocate is cardless by
-          design) + one synthesizer call over the five seat reports (the
-          synthesizer never sees the manuscript). Emits a per-run record JSON
-          plus the raw evidence bundle.
+  cards     Per paper, once: field_analyst call -> four Reviewer Configuration
+            Cards, frozen under <work-dir>/cards/<paper>/ and reused by every
+            replicate (varying cards per replicate would confound calibration).
+  panel     Per (paper, replicate): five seat calls (EIC, methodology, domain,
+            perspective get their own card; the Devil's Advocate is cardless by
+            design) + one synthesizer call over the five seat reports (the
+            synthesizer never sees the manuscript). Emits a per-run record JSON
+            plus the raw evidence bundle.
+  manifest  After the last panel: folds every completed call row from the
+            frozen cards and the panel records into ONE write-once
+            `execution-manifest.json` (`heldout-execution-manifest/1.0`, the
+            per-call evidence a `heldout-measurement/1.1` row references).
+            Failed attempts stay in the raw bundles and the blocked records;
+            they never enter the manifest (no output hash exists for them).
 
 Fresh context per call is a protocol requirement (ensembling notes); each call
 is its own `claude -p` process with an empty sandbox directory as `--add-dir`
 (tools are already whitelisted off; the empty sandbox is defense in depth).
+
+Rehearsal findings folded in (2026-09-06, #828): a rejected credential is
+detected by a zero-cost `GET /v1/models` preflight before the first billed
+call and is never retried when it surfaces mid-run (the CLI took minutes to
+report a 401 on a whole-manuscript prompt, and the blind retry doubled it);
+an aborted cards stage now leaves a `blocked-cards-<paper>.json` record with
+its per-call rows instead of losing them.
 """
 
 from __future__ import annotations
@@ -55,7 +68,11 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
+import re
 import sys
+import urllib.error
+import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -200,8 +217,72 @@ def _prompt_sha256(call: Call) -> str:
     return sha256_hex(json.dumps([call.system, call.user], ensure_ascii=False).encode("utf-8"))
 
 
+# The headless CLI's own credential-rejection spellings (2026-09-06 rehearsal:
+# `Failed to authenticate. API Error: 401 API key is invalid.` on stdout; the
+# `--bare` login-less form is `Not logged in`). A rejected credential is
+# deterministic: the second attempt can only repeat the first.
+AUTH_FAILURE_SIGNATURE = re.compile(
+    r"Failed to authenticate|API Error: 40[13]\b|\bNot logged in\b", re.IGNORECASE
+)
+
+ANTHROPIC_DEFAULT_BASE_URL = "https://api.anthropic.com"
+ANTHROPIC_VERSION = "2023-06-01"
+
+
+class CredentialRejected(TransportFailure):
+    """A transport failure whose cause is the credential, not the call."""
+
+
+def _is_auth_failure(failure: TransportFailure) -> bool:
+    return bool(
+        AUTH_FAILURE_SIGNATURE.search(failure.stdout or "")
+        or AUTH_FAILURE_SIGNATURE.search(failure.stderr or "")
+    )
+
+
+def credential_preflight(environ=None, *, opener=urllib.request.urlopen, timeout: float = 5.0) -> str:
+    """Zero-cost credential probe before the first billed call.
+
+    `GET /v1/models` with the operator's `ANTHROPIC_API_KEY` costs nothing
+    and answers 401/403 for a rejected key. Only that definitive answer
+    refuses (PreconditionFailure — no billed call has been made); network
+    trouble or an unexpected status is reported as `inconclusive` and the
+    run proceeds, because the CLI itself would then be the arbiter anyway.
+    Without the env var the CLI's `apiKeyHelper` path is in use and is not
+    probed (`skipped`). The key never appears in the returned text or in
+    any exception message.
+    """
+    environ = os.environ if environ is None else environ
+    key = environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not key:
+        return "skipped: ANTHROPIC_API_KEY unset (apiKeyHelper path is not probed)"
+    base = environ.get("ANTHROPIC_BASE_URL", "").strip() or ANTHROPIC_DEFAULT_BASE_URL
+    request = urllib.request.Request(
+        base.rstrip("/") + "/v1/models?limit=1",
+        headers={"x-api-key": key, "anthropic-version": ANTHROPIC_VERSION},
+        method="GET",
+    )
+    try:
+        with opener(request, timeout=timeout) as response:
+            status = getattr(response, "status", None)
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            raise PreconditionFailure(
+                f"credential preflight: HTTP {exc.code} from {base.rstrip('/')}/v1/models "
+                "— the API key in ANTHROPIC_API_KEY is rejected; no billed call was made"
+            ) from None
+        return f"inconclusive: HTTP {exc.code}"
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        return f"inconclusive: {type(exc).__name__}"
+    return "ok" if status == 200 else f"inconclusive: HTTP {status}"
+
+
 def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: PanelState) -> str:
     """One call with a single retry on transport failure; abort otherwise.
+
+    A credential rejection (`AUTH_FAILURE_SIGNATURE`) is NOT retried: it is
+    re-raised as `CredentialRejected` after its evidence is written, so the
+    stage aborts on attempt 1 instead of burning a second identical call.
 
     Every attempt leaves a row in `state.calls` (label, attempt, RFC-3339
     start/complete, prompt and output hashes) — the per-call evidence the
@@ -224,6 +305,17 @@ def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: P
                 f"{failure}\n\n--- stdout (partial model output, verbatim) ---\n"
                 f"{failure.stdout}\n\n--- stderr ---\n{failure.stderr}\n",
             )
+            if _is_auth_failure(failure):
+                bundle.journal(
+                    f"{call.label}: credential rejected on attempt {attempt}; not retried"
+                )
+                raise CredentialRejected(
+                    call.label,
+                    "[TRANSPORT: credential rejected — not retried; "
+                    f"evidence {location}]",
+                    stderr=failure.stderr,
+                    stdout=failure.stdout,
+                ) from failure
             state.retries.append(
                 {"call": call.label, "attempt": attempt, "kind": "transport", "evidence": location}
             )
@@ -263,7 +355,60 @@ def _prepare(args) -> tuple[dict, str, Path]:
     return entry, manuscript, work
 
 
-def stage_cards(args, transport) -> int:
+PREFLIGHT_NOT_PROBED = "skipped: not probed"
+
+
+def _provenance(args, preflight: str) -> dict:
+    """Fields every record shares so the manifest stage can prove one attempt."""
+    head, dirty = _git_state()
+    return {
+        "model_id": args.model,
+        "effort": args.effort,
+        "substrate_plan": SUBSTRATE_PLAN,
+        "attempt_id": args.attempt_id,
+        "suite_commit": head,
+        "suite_commit_dirty": dirty,
+        "credential_preflight": preflight,
+    }
+
+
+def _finish_record(record: dict, state: PanelState, abort_reason: str | None) -> None:
+    record["status"] = "aborted" if abort_reason else "complete"
+    if abort_reason:
+        record["abort_reason"] = abort_reason
+    record.update(
+        {"completed_calls": state.completed, "retries": state.retries, "calls": state.calls}
+    )
+
+
+def _abort_reason(failure: BaseException) -> str:
+    return f"{type(failure).__name__}: {failure}"
+
+
+def _write_record(path: Path, record: dict) -> int:
+    """Write a stage record; a blocked record carries the `blocked-` prefix
+    on its name and the stage's exit code is 1."""
+    blocked = record["status"] != "complete"
+    if blocked:
+        path = path.with_name(f"blocked-{path.name}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"{'BLOCKED record' if blocked else 'record'}: {path}")
+    return 1 if blocked else 0
+
+
+def write_once(path: Path, text: str, what: str) -> None:
+    """Create `path` or refuse; the write-once evidence rule (E4 `Bundle.write`)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        handle = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError as exc:
+        raise PreconditionFailure(f"{path} already exists; {what} is write-once") from exc
+    with os.fdopen(handle, "w", encoding="utf-8") as stream:
+        stream.write(text)
+
+
+def stage_cards(args, transport, preflight: str = PREFLIGHT_NOT_PROBED) -> int:
     entry, manuscript, work = _prepare(args)
     cards_dir = work / "cards" / args.paper
     bundle = Bundle(cards_dir / "raw")
@@ -271,6 +416,15 @@ def stage_cards(args, transport) -> int:
     sandbox.mkdir(parents=True, exist_ok=True)
 
     state = PanelState()
+    record = {
+        "suite": "reviewer_calibration",
+        "stage": "cards",
+        "paper_id": args.paper,
+        "generated_at": args.generated_at,
+        **_provenance(args, preflight),
+        "manuscript_sha256": entry["extracted_text_sha256"],
+        "raw_bundle": str(Path("cards") / args.paper / "raw"),
+    }
     call = Call(
         label="field_analyst",
         system=agent_file("field_analyst"),
@@ -282,33 +436,32 @@ def stage_cards(args, transport) -> int:
         ),
         paper_visible=True,
     )
-    analysis = _attempt_call(transport, bundle, call, sandbox, state)
+    try:
+        analysis = _attempt_call(transport, bundle, call, sandbox, state)
+        cards = {}
+        for seat, index in SEAT_CARD_INDEX.items():
+            card = card_for(analysis, index)
+            if card is None:
+                raise PreconditionFailure(
+                    f"field analysis for {args.paper} yields no Card #{index} ({seat}); "
+                    "cards stage must be re-run before any panel dispatches"
+                )
+            cards[index] = card
+    except (TransportFailure, PreconditionFailure) as failure:
+        # Like the panel stage: an aborted cards stage keeps its per-call
+        # rows (timing, prompt hash, outcome) in a blocked record instead of
+        # losing them with the traceback (2026-09-06 rehearsal finding).
+        _finish_record(record, state, _abort_reason(failure))
+        return _write_record(work / "runs" / f"cards-{args.paper}.json", record)
 
-    for seat, index in SEAT_CARD_INDEX.items():
-        card = card_for(analysis, index)
-        if card is None:
-            raise PreconditionFailure(
-                f"field analysis for {args.paper} yields no Card #{index} ({seat}); "
-                "cards stage must be re-run before any panel dispatches"
-            )
+    for index, card in cards.items():
         (cards_dir / f"card{index}.md").write_text(card + "\n", encoding="utf-8")
-    (cards_dir / "frozen.json").write_text(
-        json.dumps(
-            {
-                "paper_id": args.paper,
-                "frozen_at": args.generated_at,
-                "model_id": args.model,
-                "effort": args.effort,
-                "analysis_sha256": sha256_hex(analysis.encode("utf-8")),
-                "calls": state.calls,
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
+    record.update(
+        {"frozen_at": args.generated_at, "analysis_sha256": sha256_hex(analysis.encode("utf-8"))}
     )
+    _finish_record(record, state, None)
     print(f"cards frozen for {args.paper}: {sorted(SEAT_CARD_INDEX)}")
-    return 0
+    return _write_record(cards_dir / "frozen.json", record)
 
 
 def _is_inside(path: Path, root: Path) -> bool:
@@ -329,7 +482,7 @@ def load_frozen_card(work: Path, paper: str, seat: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def stage_panel(args, transport) -> int:
+def stage_panel(args, transport, preflight: str = PREFLIGHT_NOT_PROBED) -> int:
     entry, manuscript, work = _prepare(args)
     stem = f"{args.date}-{args.paper}-r{args.replicate}"
     bundle = Bundle(work / "runs" / stem / "raw")
@@ -341,7 +494,6 @@ def stage_panel(args, transport) -> int:
     sandbox = work / "sandbox" / stem
     sandbox.mkdir(parents=True, exist_ok=True)
 
-    head, dirty = _git_state()
     state = PanelState()
     record = {
         "suite": "reviewer_calibration",
@@ -350,12 +502,7 @@ def stage_panel(args, transport) -> int:
         "replicate": args.replicate,
         "date": args.date,
         "generated_at": args.generated_at,
-        "model_id": args.model,
-        "effort": args.effort,
-        "substrate_plan": SUBSTRATE_PLAN,
-        "attempt_id": args.attempt_id,
-        "suite_commit": head,
-        "suite_commit_dirty": dirty,
+        **_provenance(args, preflight),
         "engine": "calibration single-call (pre-v3.6.2), whole agent file as system prompt",
         "manuscript_sha256": entry["extracted_text_sha256"],
         "dispatch": (
@@ -365,7 +512,6 @@ def stage_panel(args, transport) -> int:
     }
 
     seat_reports: dict[str, str] = {}
-    status = "complete"
     abort_reason = None
     try:
         for seat in SEATS:
@@ -407,27 +553,135 @@ def stage_panel(args, transport) -> int:
         )
         _attempt_call(transport, bundle, synthesis_call, sandbox, state)
     except (TransportFailure, PreconditionFailure) as failure:
-        status = "aborted"
-        abort_reason = f"{type(failure).__name__}: {failure}"
+        abort_reason = _abort_reason(failure)
 
-    record.update(
-        {
-            "status": status,
-            "completed_calls": state.completed,
-            "retries": state.retries,
-            "calls": state.calls,
-            "raw_bundle": str(Path("runs") / stem / "raw"),
-        }
+    record["raw_bundle"] = str(Path("runs") / stem / "raw")
+    _finish_record(record, state, abort_reason)
+    return _write_record(work / "runs" / f"{stem}.json", record)
+
+
+MANIFEST_SCHEMA = REPO / "evals" / "heldout" / "execution_manifest.schema.json"
+MANIFEST_NAME = "execution-manifest.json"
+# Fields every record of one attempt must agree on before its calls may
+# share a manifest (the 1.1 row cites ONE subject configuration).
+ATTEMPT_IDENTITY = ("attempt_id", "model_id", "effort", "substrate_plan", "suite_commit")
+
+
+def _load_attempt_records(work: Path) -> tuple[list[tuple[str, dict]], list[str]]:
+    """(stem, record) for every frozen-cards and panel record under `work`,
+    plus the blocked record names (listed, never folded into the manifest)."""
+    records: list[tuple[str, dict]] = []
+    blocked: list[str] = []
+    for frozen in sorted((work / "cards").glob("*/frozen.json")):
+        _plain_file(frozen, work / "cards", "frozen cards record")
+        record = json.loads(frozen.read_text(encoding="utf-8"))
+        records.append((f"cards-{record['paper_id']}", record))
+    runs = work / "runs"
+    for path in sorted(runs.glob("*.json")) if runs.is_dir() else []:
+        _plain_file(path, runs, "panel record")
+        if path.name.startswith("blocked-"):
+            blocked.append(path.name)
+            continue
+        record = json.loads(path.read_text(encoding="utf-8"))
+        if record.get("suite") != "reviewer_calibration" or record.get("stage") != "panel":
+            continue
+        records.append((path.stem, record))
+    return records, blocked
+
+
+def load_attempt(work: Path) -> tuple[dict, list[tuple[str, dict]], list[str]]:
+    """(identity, (stem, record) rows, blocked record names) for the ONE
+    attempt under `work`; refuses records that disagree on any
+    `ATTEMPT_IDENTITY` field (evidence is per attempt, never a union)."""
+    records, blocked = _load_attempt_records(work)
+    if not records:
+        raise PreconditionFailure(f"no completed call under {work}: nothing to manifest")
+    identity = {key: records[0][1].get(key) for key in ATTEMPT_IDENTITY}
+    for stem, record in records:
+        for key in ATTEMPT_IDENTITY:
+            if record.get(key) != identity[key]:
+                raise PreconditionFailure(
+                    f"{stem}: {key} {record.get(key)!r} differs from {identity[key]!r}; "
+                    "one attempt, one identity"
+                )
+    return identity, records, blocked
+
+
+def build_execution_manifest(work: Path, created_at: str, attempt_id: str | None = None) -> dict:
+    """Fold the completed call rows of ONE attempt into a schema-shaped manifest.
+
+    Refuses when `attempt_id` is given and differs from the records', or
+    when no completed call exists."""
+    identity, records, blocked = load_attempt(work)
+    if attempt_id is not None and identity["attempt_id"] != attempt_id:
+        raise PreconditionFailure(
+            f"records carry attempt_id {identity['attempt_id']!r}, not {attempt_id!r}"
+        )
+    rows = []
+    for stem, record in records:
+        for call in record.get("calls", []):
+            if call.get("outcome") != "completed":
+                continue
+            rows.append(
+                {
+                    "call_id": f"{stem}/{call['call']}",
+                    "started_at": call["started_at"],
+                    "completed_at": call["completed_at"],
+                    "prompt_sha256": call["prompt_sha256"],
+                    "output_sha256": call["output_sha256"],
+                    "concurrency_group": None,
+                    "attempt": call["attempt"],
+                }
+            )
+    if not rows:
+        raise PreconditionFailure(f"no completed call under {work}: nothing to manifest")
+    rows.sort(key=lambda row: (row["started_at"], row["call_id"]))
+    calls = [{"call_id": row["call_id"], "sequence_index": index, **{k: v for k, v in row.items() if k != "call_id"}}
+             for index, row in enumerate(rows, start=1)]
+    manifest = {
+        "schema_version": "heldout-execution-manifest/1.0",
+        "suite": "reviewer_calibration",
+        "created_at": created_at,
+        "write_once": True,
+        "execution_window": {
+            "window_id": f"reviewer_calibration-{identity['attempt_id']}",
+            "started_at": calls[0]["started_at"],
+            "completed_at": max(row["completed_at"] for row in calls),
+        },
+        "calls": calls,
+    }
+    if blocked:
+        print(f"blocked records listed for attempts.blocked_runs, not manifested: {blocked}")
+    return manifest
+
+
+def _validate_manifest(manifest: dict) -> None:
+    try:
+        import jsonschema
+    except ImportError as exc:  # pragma: no cover - CI installs it
+        raise PreconditionFailure("jsonschema is required to emit an execution manifest") from exc
+    schema = json.loads(MANIFEST_SCHEMA.read_text(encoding="utf-8"))
+    errors = list(jsonschema.Draft202012Validator(schema).iter_errors(manifest))
+    if errors:
+        raise PreconditionFailure(
+            "execution manifest does not satisfy its schema: "
+            + "; ".join(f"{list(e.absolute_path)}: {e.message}" for e in errors)
+        )
+
+
+def stage_manifest(args) -> int:
+    work = Path(args.work_dir)
+    if _is_inside(work, REPO):
+        raise PreconditionFailure("work dir must sit outside the repository")
+    manifest = build_execution_manifest(work, args.generated_at, args.attempt_id)
+    _validate_manifest(manifest)
+    path = work / MANIFEST_NAME
+    write_once(
+        path, json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+        "the execution manifest (a re-run is a new attempt in a new work dir)",
     )
-    if abort_reason:
-        record["abort_reason"] = abort_reason
-    out_dir = work / "runs"
-    out_name = f"{stem}.json" if status == "complete" else f"blocked-{stem}.json"
-    (out_dir / out_name).write_text(
-        json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
-    print(f"{'record' if status == 'complete' else 'BLOCKED record'}: {out_dir / out_name}")
-    return 0 if status == "complete" else 1
+    print(f"execution manifest: {path} ({len(manifest['calls'])} completed calls)")
+    return 0
 
 
 def build_transport(args):
@@ -437,27 +691,42 @@ def build_transport(args):
     return ScriptedTransport(scripted)
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--stage", choices=("cards", "panel"), required=True)
-    parser.add_argument("--paper", required=True)
+    parser.add_argument("--stage", choices=("cards", "panel", "manifest"), required=True)
+    parser.add_argument("--paper")
     parser.add_argument("--replicate", type=int, default=1)
     parser.add_argument("--corpus-dir", default=str(SUITE_DIR))
-    parser.add_argument("--pdf-cache", required=True)
+    parser.add_argument("--pdf-cache")
     parser.add_argument("--work-dir", required=True)
     parser.add_argument("--model", default="claude-fable-5-1")
     parser.add_argument("--effort", default="xhigh")
-    parser.add_argument("--date", required=True)
+    parser.add_argument("--date")
     parser.add_argument("--generated-at", dest="generated_at", required=True)
-    parser.add_argument("--attempt-id", dest="attempt_id", required=True)
+    parser.add_argument("--attempt-id", dest="attempt_id")
     parser.add_argument("--transport", choices=("cli", "scripted"), default="cli")
     parser.add_argument("--scripted-responses")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
+    if args.stage == "manifest":
+        return stage_manifest(args)
+    missing = [
+        flag for flag, value in (
+            ("--paper", args.paper), ("--pdf-cache", args.pdf_cache),
+            ("--date", args.date), ("--attempt-id", args.attempt_id),
+        ) if not value
+    ]
+    if missing:
+        parser.error(f"--stage {args.stage} requires {', '.join(missing)}")
 
     transport = build_transport(args)
-    if args.stage == "cards":
-        return stage_cards(args, transport)
-    return stage_panel(args, transport)
+    preflight = credential_preflight() if args.transport == "cli" else "skipped: scripted transport"
+    stage = stage_cards if args.stage == "cards" else stage_panel
+    return stage(args, transport, preflight)
 
 
 if __name__ == "__main__":

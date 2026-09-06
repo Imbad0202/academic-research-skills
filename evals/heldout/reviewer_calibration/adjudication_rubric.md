@@ -64,6 +64,19 @@ records the chosen class with `criterion_ref` (B1/B2/B3), the judges' raw
 values, and a one-sentence rationale. Gold labels are irrelevant to class B
 and are not consulted (`blinded_to` still lists what applies).
 
+## Resolution direction (`heldout-measurement/1.1` anchor)
+
+`resolution_direction: flags_only`. Adjudication touches only FLAGGED
+elements: class A fires only when the closed decision grammar yields zero or
+multiple values for a synthesis text; class B fires only when the two judges
+diverge on a weakness. Unflagged elements are taken as extracted / judged and
+are never re-read by the adjudicator, so a transcription or classification
+error that no flag caught stays in the raw numbers. Per contract invariant
+I13 the measurement row therefore carries `estimand_status: lower_bound`, a
+construction rule and a caveat that name the headline a lower bound: the
+label states that only flagged elements were audited; it is not a directional
+claim about the unflagged remainder. `resolution_rule_ref` points here.
+
 ## Tie and construction rules referenced by the measurement row
 
 - Headline metric construction: majority vote over 3 replicates on the
