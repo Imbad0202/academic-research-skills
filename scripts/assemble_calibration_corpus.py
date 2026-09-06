@@ -61,11 +61,82 @@ from _calibration_pdf_text import (  # noqa: E402
     pdf_facts,
     pypdf,
     sha256_hex,
+    first_page_text,
 )
 
 US = "\x1f"  # unit separator: unambiguous key joiner (ids are ASCII base64-ish)
 
 CLASSES = ("accepted", "rejected")
+
+# Layout tells (#828): a venue template's page-1 marks that separate a
+# camera-ready PDF from an anonymous submission PDF. OpenReview swaps an
+# accepted paper's PDF for its camera-ready revision, so on a naively
+# assembled corpus these marks ARE the label. Each signal is a page-1
+# boolean; `freeze` refuses any corpus where a signal's share differs
+# between the two classes, and `verify` recomputes the same check.
+LAYOUT_SIGNALS = (
+    "published_header",     # "Published as a conference paper at ..."
+    "under_review_header",  # "Under review as a conference paper at ..."
+    "anonymous_authors",    # "Anonymous authors"
+    "line_numbers",         # >= LINE_NUMBER_MIN lines that are bare 3-digit numbers
+)
+LINE_NUMBER_MIN = 10
+_PUBLISHED_HEADER = re.compile(r"^\s*published as a conference paper at", re.IGNORECASE | re.MULTILINE)
+_UNDER_REVIEW_HEADER = re.compile(r"^\s*under review as a conference paper", re.IGNORECASE | re.MULTILINE)
+_BARE_LINE_NUMBER = re.compile(r"^\s*\d{3}\s*$", re.MULTILINE)
+LAYOUT_RULE = (
+    "every signal must be constant across the whole corpus (all papers hit, or "
+    "none): a rejected paper has no camera-ready, so any mix of document kinds "
+    "is a label channel; refused at freeze, recomputed by verify"
+)
+
+
+def layout_tells(first_page: str) -> dict[str, bool]:
+    lowered = first_page.lower()
+    return {
+        "published_header": bool(_PUBLISHED_HEADER.search(first_page)),
+        "under_review_header": bool(_UNDER_REVIEW_HEADER.search(first_page)),
+        "anonymous_authors": "anonymous author" in lowered,
+        "line_numbers": len(_BARE_LINE_NUMBER.findall(first_page)) >= LINE_NUMBER_MIN,
+    }
+
+
+def layout_separation(tells_by_class: dict[str, list[dict[str, bool]]]) -> tuple[dict, list[str]]:
+    """(per-class hit counts, signal names that are not constant across the corpus)."""
+    counts = {
+        cls: {sig: sum(1 for t in rows if t[sig]) for sig in LAYOUT_SIGNALS}
+        for cls, rows in tells_by_class.items()
+    }
+    everything = [t for rows in tells_by_class.values() for t in rows]
+    separating = [sig for sig in LAYOUT_SIGNALS if len({t[sig] for t in everything}) > 1]
+    return counts, separating
+
+
+def ids_by_class(labels: list[dict]) -> dict[str, list[str]]:
+    return {
+        "accepted": [r["paper_id"] for r in labels if r["label"] == "accept"],
+        "rejected": [r["paper_id"] for r in labels if r["label"] == "reject"],
+    }
+
+
+def layout_check(paper_ids_by_class: dict[str, list[str]], pdf_dir: Path) -> tuple[dict, list[str]]:
+    tells = {
+        cls: [layout_tells(first_page_text(pdf_dir / f"{pid}.pdf")) for pid in ids]
+        for cls, ids in paper_ids_by_class.items()
+    }
+    return layout_separation(tells)
+
+
+def _layout_failure(counts: dict, separating: list[str]) -> str:
+    detail = "; ".join(
+        f"{sig}: " + ", ".join(f"{cls} {counts[cls][sig]}" for cls in counts)
+        for sig in separating
+    )
+    return (
+        f"layout-tell guard: page-1 layout is not constant across the corpus ({detail}); "
+        "the PDFs are not all the same document kind — capture submission-time "
+        "PDFs for every paper (see #828)"
+    )
 
 EXCLUSION_REASONS = frozenset(
     {
@@ -349,6 +420,16 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     if hits:
         raise SystemExit(f"label-leak guard: decision vocabulary in papers.json: {hits}")
 
+    counts, separating = layout_check(ids_by_class(labels), pdf_dir)
+    if separating:
+        raise SystemExit(_layout_failure(counts, separating))
+    papers_payload["layout_tell_check"] = {
+        "rule": LAYOUT_RULE,
+        "signals": list(LAYOUT_SIGNALS),
+        "per_class": counts,
+        "result": "uniform",
+    }
+
     corpus_dir = out_dir / "corpus"
     manifests_dir = out_dir / "manifests"
     corpus_dir.mkdir(parents=True, exist_ok=True)
@@ -445,6 +526,27 @@ def cmd_verify(args: argparse.Namespace) -> int:
     hits = leak_scan(papers_payload)
     if hits:
         failures.append(f"label-leak guard: {hits}")
+
+    missing_pdfs = [pid for pid in paper_ids if not (pdf_dir / f"{pid}.pdf").is_file()]
+    if missing_pdfs:
+        warnings.append(
+            f"layout-tell check skipped: {len(missing_pdfs)} PDF(s) not in local cache"
+        )
+    else:
+        counts, separating = layout_check(ids_by_class(labels_payload["labels"]), pdf_dir)
+        if separating:
+            failures.append(_layout_failure(counts, separating))
+        recorded = papers_payload.get("layout_tell_check")
+        if recorded is None:
+            warnings.append(
+                "manifest predates the layout-tell check (no layout_tell_check block); "
+                "re-freeze to record it"
+            )
+        elif recorded.get("per_class") != counts:
+            failures.append(
+                f"layout_tell_check per_class drifted: manifest {recorded.get('per_class')} "
+                f"vs recomputed {counts}"
+            )
 
     for line in warnings:
         print(f"WARN: {line}")

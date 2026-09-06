@@ -57,17 +57,31 @@ def extracted_text_sha256(normalized: str) -> str:
     return sha256_hex(normalized.encode("utf-8"))
 
 
+def _open_reader(pdf_path: Path):
+    """(bytes, pypdf.PdfReader) parsed from the same bytes that get hashed."""
+    if pypdf is None:
+        raise RuntimeError("pypdf is required to read manuscripts")
+    data = pdf_path.read_bytes()
+    return data, pypdf.PdfReader(io.BytesIO(data))
+
+
 def pdf_facts(
     pdf_path: Path, *, extract_text: bool = True
 ) -> tuple[str, str | None, int, str | None]:
     """(pdf_sha256, extracted_text_sha256, page_count, normalized_text) for a
     cached PDF, parsed from the same bytes that were hashed. With
     `extract_text=False` the text fields are None (page count only)."""
-    if pypdf is None:
-        raise RuntimeError("pypdf is required to hash manuscripts")
-    data = pdf_path.read_bytes()
-    reader = pypdf.PdfReader(io.BytesIO(data))
+    data, reader = _open_reader(pdf_path)
     if not extract_text:
         return sha256_hex(data), None, len(reader.pages), None
     normalized = extract_manuscript_text(reader)
     return sha256_hex(data), extracted_text_sha256(normalized), len(reader.pages), normalized
+
+
+def first_page_text(pdf_path: Path) -> str:
+    """Normalized text of page 1 only — the page that carries a venue
+    template's layout tells (header line, author block, line numbers)."""
+    _, reader = _open_reader(pdf_path)
+    if not reader.pages:
+        return ""
+    return normalize_extracted_text(reader.pages[0].extract_text() or "")

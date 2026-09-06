@@ -305,3 +305,114 @@ def test_verify_detects_synchronized_paper_removal(tmp_path):
     papers_path.write_text(json.dumps(papers), encoding="utf-8")
     labels_path.write_text(json.dumps(labels), encoding="utf-8")
     assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 1
+
+
+# --- layout-tell guard (#828) ---------------------------------------------
+
+CAMERA_READY = (
+    "Published as a conference paper at ICLR 2026\n"
+    "ARIA: AN AGENT FOR RETRIEVAL\nHanyu Wang1 Ruohan Xie1\n1Peking University\nABSTRACT\n"
+)
+SUBMISSION = (
+    "\n".join(f"{n:03d}" for n in range(54))
+    + "\nUnder review as a conference paper at ICLR 2026\n"
+    "A TITLE\nAnonymous authors\nPaper under double-blind review\nABSTRACT\n"
+)
+
+
+def test_layout_tells_detect_the_three_openreview_signals():
+    tells = mod.layout_tells(CAMERA_READY)
+    assert tells == {
+        "published_header": True, "under_review_header": False,
+        "anonymous_authors": False, "line_numbers": False,
+    }
+    tells = mod.layout_tells(SUBMISSION)
+    assert tells == {
+        "published_header": False, "under_review_header": True,
+        "anonymous_authors": True, "line_numbers": True,
+    }
+    # A table with a few three-digit cells is not a numbered manuscript.
+    few = "\n".join(["100", "200", "300", "results"])
+    assert mod.layout_tells(few)["line_numbers"] is False
+    assert mod.layout_tells("")["published_header"] is False
+
+
+def _first_page_by_class(selection: dict, accepted_text: str, rejected_text: str):
+    by_id = {}
+    for pid in selection["selected"]["accepted"]:
+        by_id[pid] = accepted_text
+    for pid in selection["selected"]["rejected"]:
+        by_id[pid] = rejected_text
+    return lambda pdf_path: by_id[Path(pdf_path).stem]
+
+
+def test_freeze_refuses_when_layout_separates_the_classes(tmp_path, monkeypatch):
+    env = freeze_env(tmp_path)
+    selection = json.loads(env["selection_path"].read_text())
+    monkeypatch.setattr(mod, "first_page_text", _first_page_by_class(selection, CAMERA_READY, SUBMISSION))
+    with pytest.raises(SystemExit) as excinfo:
+        run_freeze(env)
+    message = str(excinfo.value)
+    assert "layout-tell guard" in message
+    for signal in ("published_header", "under_review_header", "anonymous_authors", "line_numbers"):
+        assert signal in message
+    assert not (tmp_path / "corpus" / "papers.json").exists()
+    assert not (tmp_path / "manifests" / "gold_labels.json").exists()
+
+
+def test_freeze_refuses_partial_layout_imbalance(tmp_path, monkeypatch):
+    env = freeze_env(tmp_path)
+    selection = json.loads(env["selection_path"].read_text())
+    texts = _first_page_by_class(selection, SUBMISSION, SUBMISSION)
+    leaky = selection["selected"]["accepted"][0]
+
+    def first_page(pdf_path):
+        return CAMERA_READY if Path(pdf_path).stem == leaky else texts(pdf_path)
+
+    monkeypatch.setattr(mod, "first_page_text", first_page)
+    with pytest.raises(SystemExit, match="published_header"):
+        run_freeze(env)
+
+
+def test_freeze_records_uniform_layout_and_verify_recomputes_it(tmp_path, monkeypatch):
+    env = freeze_env(tmp_path)
+    selection = json.loads(env["selection_path"].read_text())
+    monkeypatch.setattr(mod, "first_page_text", _first_page_by_class(selection, SUBMISSION, SUBMISSION))
+    run_freeze(env)
+    payload = json.loads((tmp_path / "corpus" / "papers.json").read_text())
+    check = payload["layout_tell_check"]
+    assert check["result"] == "uniform"
+    assert check["signals"] == list(mod.LAYOUT_SIGNALS)
+    assert check["per_class"]["accepted"] == check["per_class"]["rejected"]
+    assert check["per_class"]["accepted"]["line_numbers"] == 2
+    assert "papers" in payload and all("layout" not in p for p in payload["papers"])
+    assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 0
+
+    # The same manifest against PDFs whose layout now separates: verify FAILs.
+    monkeypatch.setattr(mod, "first_page_text", _first_page_by_class(selection, CAMERA_READY, SUBMISSION))
+    assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 1
+
+
+def test_verify_skips_layout_check_when_a_pdf_is_missing(tmp_path, monkeypatch, capsys):
+    env = freeze_env(tmp_path)
+    selection = json.loads(env["selection_path"].read_text())
+    monkeypatch.setattr(mod, "first_page_text", _first_page_by_class(selection, SUBMISSION, SUBMISSION))
+    run_freeze(env)
+    victim = selection["selected"]["accepted"][0]
+    (env["pdf_dir"] / f"{victim}.pdf").unlink()
+    assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 0
+    out = capsys.readouterr().out
+    assert "layout-tell check skipped" in out
+
+
+def test_verify_warns_on_manifest_without_layout_block(tmp_path, monkeypatch, capsys):
+    env = freeze_env(tmp_path)
+    selection = json.loads(env["selection_path"].read_text())
+    monkeypatch.setattr(mod, "first_page_text", _first_page_by_class(selection, SUBMISSION, SUBMISSION))
+    run_freeze(env)
+    papers_path = tmp_path / "corpus" / "papers.json"
+    payload = json.loads(papers_path.read_text())
+    del payload["layout_tell_check"]
+    papers_path.write_text(json.dumps(payload, indent=2) + "\n")
+    assert mod.main(["verify", "--out-dir", str(tmp_path), "--pdf-dir", str(env["pdf_dir"])]) == 0
+    assert "predates the layout-tell check" in capsys.readouterr().out
