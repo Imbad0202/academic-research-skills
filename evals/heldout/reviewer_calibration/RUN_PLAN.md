@@ -49,8 +49,11 @@ dispatch are amendments logged in RUN_NOTES, never silent edits.
 
 ## Schedule and ensembling
 
-- `runs_per_paper: 3` (protocol budget override; median scores, majority-vote
-  decisions, variance reported as stability).
+- `runs_per_paper: 3` (protocol budget override; majority-vote decisions on
+  the acceptable/reject side, exact-label mode per paper; replicate
+  agreement — on side and on exact label — reported as stability. No
+  continuous score exists under the categorical seat contract, so nothing is
+  averaged.)
 - Cards stage once per paper (field analyst; four Reviewer Configuration
   Cards frozen, reused by every replicate). 12 cards calls + 36 panels ×
   (5 seats + 1 synthesis) = 228 subject calls planned.
@@ -74,7 +77,8 @@ dispatch are amendments logged in RUN_NOTES, never silent edits.
 - Per-panel records + raw bundles under `runs/` (write-once).
 - `scripts/score_calibration_run.py` metrics JSON (mechanical headline:
   confusion matrix, balanced accuracy, FNR over-harsh, FPR lenient,
-  bootstrap 95% CIs seed 653, AUC over paper scores, stability;
+  bootstrap 95% CIs seed 653, exact-label agreement, replicate stability;
+  AUC NOT REPORTED per protocol Phase 2 — no continuous rubric score;
   Minor/Major sub-matrix NOT ESTIMABLE; per-dimension error NOT COMPUTABLE).
 - The Phase 4 Calibration Report (protocol template; Lu 2026 comparison
   table shown — all-binary accept/reject ML-venue gold set qualifies — with

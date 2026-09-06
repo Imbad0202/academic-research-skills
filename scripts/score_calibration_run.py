@@ -17,16 +17,18 @@ script derives is recomputable from those committed artifacts:
   * Score extraction: the four scoring seats' `Weighted Average` values
     (the Devil's Advocate emits no 0-100 score by design and is never minted
     one). Panel score = mean of available seat scores; paper score = median
-    across replicates; AUC thresholds over paper scores.
+    across replicates. No continuous score exists (protocol Phase 2: "Do not
+    report AUC"), so no numeric seat field is extracted.
   * Decision aggregation: binarize (Accept/Minor -> positive,
     Major/Reject -> negative; Lu 2026 Table 1 convention), then majority vote
     across the 3 replicates (odd count: always defined). The exact-decision
     mode is also reported per paper; a three-way exact split is reported as
     `no_exact_mode` rather than resolved.
   * Metrics: balanced accuracy, FNR (over-harsh), FPR (lenient) with 95%
-    bootstrap CIs (1000 resamples over papers, fixed seed), AUC over the
-    paper-score threshold sweep, ensemble stability (mean std of paper scores
-    across replicates).
+    bootstrap CIs (1000 resamples over papers, fixed seed); exact-label
+    agreement (protocol Phase 2 table, against a binary gold set: only
+    `Accept`/`Reject` can match exactly); replicate agreement as stability
+    (share of papers whose replicates agree on side, and on exact label).
   * Honest gaps are emitted, not omitted: the Minor/Major boundary sub-matrix
     prints NOT ESTIMABLE (all-binary gold set), per-dimension calibration
     error prints NOT COMPUTABLE (no `per_dimension_gold_scores` supplied),
@@ -45,7 +47,6 @@ import json
 import random
 from collections import Counter
 import re
-import statistics
 import sys
 from pathlib import Path
 
@@ -56,10 +57,7 @@ DECISION_RE = re.compile(
     r"^#{2,4}\s*Decision:\s*\[?\s*(Accept|Minor Revision|Major Revision|Reject)\s*\]?\s*$",
     re.MULTILINE,
 )
-WEIGHTED_AVG_RE = re.compile(
-    r"Weighted\s+Average[^0-9\n]{0,40}?(\d{1,3}(?:\.\d+)?)", re.IGNORECASE
-)
-SCORING_SEATS = ("eic", "methodology", "domain", "perspective")
+EXACT_LABEL_FOR_GOLD = {"accept": "Accept", "reject": "Reject"}
 
 BOOTSTRAP_RESAMPLES = 1000
 BOOTSTRAP_SEED = 653
@@ -73,15 +71,6 @@ def extract_decision(synthesis_text: str) -> tuple[str | None, str]:
     if not hits:
         return None, "no_decision_line"
     return None, f"multiple_distinct_decisions:{sorted(hits)}"
-
-
-def extract_seat_score(seat_text: str) -> float | None:
-    hits = [float(m.group(1)) for m in WEIGHTED_AVG_RE.finditer(seat_text)]
-    hits = [h for h in hits if 0 <= h <= 100]
-    if not hits:
-        return None
-    # The final weighted average in a report is the seat's summary line.
-    return hits[-1]
 
 
 def binarize(decision: str) -> str:
@@ -145,22 +134,12 @@ def collect(runs_dir: Path, overrides: dict) -> tuple[dict, list[dict]]:
             else:
                 needs_adjudication.append({"panel": key, "problem": status})
                 continue
-        seat_scores = {}
-        for seat in SCORING_SEATS:
-            text = read_raw(runs_dir, record, f"seat-{seat}.md")
-            score = extract_seat_score(text) if text else None
-            if score is None:
-                override = overrides.get(key, {}).get("seat_scores", {}).get(seat)
-                score = override if isinstance(override, (int, float)) else None
-            seat_scores[seat] = score
-        available = [s for s in seat_scores.values() if s is not None]
         panels[key] = {
             "paper_id": record["paper_id"],
             "replicate": record["replicate"],
+            "attempt_id": record.get("attempt_id"),
             "decision": decision,
             "decision_status": status,
-            "seat_scores": seat_scores,
-            "panel_score": statistics.fmean(available) if available else None,
         }
     return {"panels": panels, "blocked": blocked}, needs_adjudication
 
@@ -180,13 +159,12 @@ def aggregate_papers(panels: dict[str, dict], expected_replicates: int) -> dict[
         majority = "positive" if sides.count("positive") > sides.count("negative") else "negative"
         ranked = Counter(r["decision"] for r in rows).most_common()
         modes = [d for d, c in ranked if c == ranked[0][1]]
-        scores = [r["panel_score"] for r in rows if r["panel_score"] is not None]
         out[paper_id] = {
             "replicate_decisions": [r["decision"] for r in sorted(rows, key=lambda x: x["replicate"])],
             "majority_side": majority,
             "exact_mode": modes[0] if len(modes) == 1 else "no_exact_mode",
-            "paper_score": statistics.median(scores) if scores else None,
-            "score_std": statistics.stdev(scores) if len(scores) >= 2 else None,
+            "replicates_agree_on_side": len(set(sides)) == 1,
+            "replicates_agree_exactly": len(set(r["decision"] for r in rows)) == 1,
         }
     return out
 
@@ -243,18 +221,6 @@ def bootstrap_ci(pairs: list[tuple[str, str]]) -> dict:
     return out
 
 
-def auc(papers: dict[str, dict], gold: dict[str, str]) -> float | None:
-    """Rank AUC of paper_score for gold accept vs reject (ties count 0.5)."""
-    pos = [r["paper_score"] for i, r in papers.items() if gold[i] == "accept" and r["paper_score"] is not None]
-    neg = [r["paper_score"] for i, r in papers.items() if gold[i] == "reject" and r["paper_score"] is not None]
-    if not pos or not neg:
-        return None
-    wins = sum(1 for p in pos for n in neg if p > n) + 0.5 * sum(
-        1 for p in pos for n in neg if p == n
-    )
-    return wins / (len(pos) * len(neg))
-
-
 def severity_histogram(path: Path | None) -> dict:
     if path is None:
         return {"status": "pending", "note": "Phase 3.5 judged classifications not yet supplied"}
@@ -306,7 +272,9 @@ def main(argv: list[str] | None = None) -> int:
 
     pairs = outcome_pairs(papers, gold)
     c = confusion(pairs)
-    stds = [r["score_std"] for r in papers.values() if r["score_std"] is not None]
+    exact_hits = sum(
+        1 for i, row in papers.items() if row["exact_mode"] == EXACT_LABEL_FOR_GOLD[gold[i]]
+    )
     result = {
         "suite": "reviewer_calibration",
         "tier": "full",
@@ -319,10 +287,21 @@ def main(argv: list[str] | None = None) -> int:
         "confusion_matrix": c,
         "metrics": metrics_from_confusion(c),
         "bootstrap_95ci": bootstrap_ci(pairs),
-        "auc_over_paper_scores": auc(papers, gold),
-        "ensemble_stability_mean_score_std": (
-            round(statistics.fmean(stds), 3) if stds else None
-        ),
+        "exact_label_agreement": {
+            "count": exact_hits,
+            "share": round(exact_hits / len(papers), 4),
+            "target_set_size": len(papers),
+            "note": "binary gold set: only Accept (gold accept) / Reject (gold reject) can match exactly",
+        },
+        "replicate_stability": {
+            "side_agreement_share": round(
+                sum(1 for r in papers.values() if r["replicates_agree_on_side"]) / len(papers), 4
+            ),
+            "exact_agreement_share": round(
+                sum(1 for r in papers.values() if r["replicates_agree_exactly"]) / len(papers), 4
+            ),
+        },
+        "auc": "NOT REPORTED — no continuous rubric score exists (calibration protocol Phase 2)",
         "minor_major_boundary_submatrix": (
             "NOT ESTIMABLE — gold set lacks both sides of the Minor/Major boundary "
             "(all-binary accept/reject corpus)"

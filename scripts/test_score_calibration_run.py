@@ -14,7 +14,7 @@ import score_calibration_run as mod
 
 
 def write_panel(runs_dir: Path, paper: str, replicate: int, decision: str,
-                score: float = 60.0, synthesis: str | None = None) -> None:
+                synthesis: str | None = None) -> None:
     stem = f"2026-08-07-{paper}-r{replicate}"
     raw = runs_dir / stem / "raw"
     raw.mkdir(parents=True)
@@ -35,11 +35,8 @@ def write_panel(runs_dir: Path, paper: str, replicate: int, decision: str,
         synthesis if synthesis is not None else f"### Decision: [{decision}]\n",
         encoding="utf-8",
     )
-    for seat in mod.SCORING_SEATS:
-        (raw / f"seat-{seat}.md").write_text(
-            f"body\n\nWeighted Average: {score}\n", encoding="utf-8"
-        )
-    (raw / "seat-da.md").write_text("da report, no score\n", encoding="utf-8")
+    for seat in ("eic", "methodology", "domain", "perspective", "da"):
+        (raw / f"seat-{seat}.md").write_text("categorical seat report\n", encoding="utf-8")
 
 
 def write_gold(tmp_path: Path, labels: dict[str, str]) -> Path:
@@ -71,10 +68,9 @@ def standard(tmp_path):
         "j1": ["Minor Revision", "Accept", "Minor Revision"],   # positive, gold reject -> FP
         "j2": ["Reject", "Major Revision", "Reject"],           # negative, gold reject -> TN
     }
-    scores = {"a1": 55, "a2": 80, "j1": 70, "j2": 30}
     for paper, decisions in plan.items():
         for i, decision in enumerate(decisions, start=1):
-            write_panel(runs, paper, i, decision, score=scores[paper])
+            write_panel(runs, paper, i, decision)
     gold = write_gold(tmp_path, {"a1": "accept", "a2": "accept", "j1": "reject", "j2": "reject"})
     return {"tmp": tmp_path, "runs": runs, "gold": gold}
 
@@ -89,10 +85,16 @@ def test_confusion_and_metrics(standard):
     assert result["gold_composition"] == {"accept": 2, "reject": 2}
 
 
-def test_auc_ranks_scores(standard):
+def test_exact_agreement_and_stability_are_categorical(standard):
     rc, result = run(standard["tmp"], standard["runs"], standard["gold"])
-    # accept scores {55, 80} vs reject {70, 30}: wins 3 of 4 pairings.
-    assert result["auc_over_paper_scores"] == 0.75
+    # exact modes: a1 Major Revision, a2 Accept (=gold), j1 Minor Revision, j2 Reject (=gold)
+    assert result["exact_label_agreement"]["count"] == 2
+    assert result["exact_label_agreement"]["share"] == 0.5
+    # side agreement: a1 splits (neg,neg,pos), a2 all positive, j1 all positive, j2 all negative
+    assert result["replicate_stability"]["side_agreement_share"] == 0.75
+    assert result["replicate_stability"]["exact_agreement_share"] == 0.0
+    assert result["auc"].startswith("NOT REPORTED")
+    assert "panel_score" not in next(iter(result["per_panel"].values()))
 
 
 def test_bootstrap_is_deterministic(standard):
