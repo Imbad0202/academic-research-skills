@@ -4454,4 +4454,41 @@ def test_truncated_stream_keeps_complete_surviving_assistant_frames(tmp_path, mo
     monkeypatch.setattr(harness.subprocess, "run", fake_cli)
     with pytest.raises(harness.TransportFailure) as err:
         transport(harness.Call("eic.phase1", "system", "user", paper_visible=False), tmp_path)
+    assert err.value.stdout == "kept"
+    assert err.value.raw_stdout == (raw.encode() if failure_mode == "timeout" else raw)
+
+
+@pytest.mark.parametrize("exit_code", [0, 1])
+def test_cli_byte_truncation_preserves_prefix_and_exact_raw_bytes(tmp_path, monkeypatch, exit_code):
+    # A real local byte emitter reproduces subprocess text-mode decoding;
+    # no subject CLI or provider is invoked.
+    raw = (_event("assistant", uuid="u1", message={"content": [{"type": "text", "text": "kept"}]})
+           + '\n{"type":"assistant","message":{"content":[{"type":"text","text":"').encode() + b'\xe4\xb8'
+    real_run = subprocess.run
+    def byte_emitter(argv, **kwargs):
+        assert argv[:2] == ["claude", "-p"]
+        assert kwargs["text"] is False and isinstance(kwargs["input"], bytes)
+        program = f"import sys; sys.stdin.buffer.read(); sys.stdout.buffer.write({raw!r}); sys.exit({exit_code})"
+        return real_run([sys.executable, "-c", program], **kwargs)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    transport = harness.ClaudeCliTransport(model="m", effort="high")
+    monkeypatch.setattr(harness.subprocess, "run", byte_emitter)
+    with pytest.raises(harness.TransportFailure) as err:
+        transport(harness.Call("eic.phase1", "system", "user", paper_visible=False), tmp_path)
+    assert "invalid UTF-8" in err.value.summary
     assert err.value.stdout == "kept" and err.value.raw_stdout == raw
+    bundle = harness.Bundle(tmp_path / "evidence")
+    bundle.write("raw.jsonl", err.value.raw_stdout)
+    assert (bundle.root / "raw.jsonl").read_bytes() == raw
+    with pytest.raises(harness.PreservationError):
+        bundle.write("raw.jsonl", b"replacement")
+
+
+def test_valid_utf8_bytes_decode_strictly_without_rewriting_line_endings(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    raw = _stream("review \u2028 text\r\nend").encode()
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    transport = harness.ClaudeCliTransport(model="m", effort="high")
+    monkeypatch.setattr(harness.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0, stdout=raw, stderr=b""))
+    assert transport(harness.Call("eic.phase1", "system", "user", paper_visible=False), tmp_path) == "review \u2028 text\r\nend"
+    assert transport.last_raw_stdout.encode() == raw

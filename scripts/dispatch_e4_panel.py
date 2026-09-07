@@ -365,7 +365,7 @@ class TransportFailure(RuntimeError):
     """
 
     def __init__(self, label: str, summary: str, stderr: str = "",
-                 stdout: str = "", raw_stdout: str = "", diagnostic: str = "") -> None:
+                 stdout: str = "", raw_stdout: str | bytes = "", diagnostic: str = "") -> None:
         super().__init__(f"{label}: {summary}")
         self.label = label
         self.summary = summary
@@ -453,7 +453,7 @@ class Bundle:
         self.claimed_existing = root.is_dir() and any(root.iterdir())
         self.root.mkdir(parents=True, exist_ok=True)
 
-    def write(self, name: str, text: str) -> str:
+    def write(self, name: str, text: str | bytes) -> str:
         path = self.root / name
         try:
             handle = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
@@ -462,8 +462,8 @@ class Bundle:
                 f"{name} already exists; an attempt may not overwrite the "
                 "response it replaces"
             ) from exc
-        with os.fdopen(handle, "w", encoding="utf-8") as stream:
-            stream.write(text)
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(text.encode("utf-8") if isinstance(text, str) else text)
         return name
 
     def journal(self, line: str) -> None:
@@ -474,7 +474,7 @@ class Bundle:
         return (self.root / name).exists()
 
 
-def _try_write(bundle: Bundle, name: str, text: str) -> str | None:
+def _try_write(bundle: Bundle, name: str, text: str | bytes) -> str | None:
     """Best-effort write inside an abort handler.
 
     The abort being recorded may BE the disk failing, and an exception
@@ -717,6 +717,17 @@ class ClaudeCliTransport:
     def partial_text(cls, stdout: str) -> str:
         return cls.assistant_text(cls.partial_events(stdout))
 
+    @staticmethod
+    def decodable_prefix(stdout: str | bytes | None) -> str:
+        """Decode only bytes preceding the first invalid UTF-8 sequence.
+        The original bytes travel separately as immutable transport evidence."""
+        if stdout is None or isinstance(stdout, str):
+            return stdout or ""
+        try:
+            return stdout.decode("utf-8")
+        except UnicodeDecodeError as failure:
+            return stdout[:failure.start].decode("utf-8")
+
     @classmethod
     def result_diagnostic(cls, stdout: str) -> str:
         return "\n".join(
@@ -769,9 +780,11 @@ class ClaudeCliTransport:
                 "--system-prompt", call.system,
                 "--add-dir", str(sandbox),
             ],
-            input=call.user,
+            input=call.user.encode("utf-8"),
             capture_output=True,
-            text=True,
+            # Decode explicitly after capture: text=True can raise before
+            # returning any stdout when a process ends inside a UTF-8 codepoint.
+            text=False,
             cwd=sandbox,
             env=environment,
                 timeout=self.timeout,
@@ -783,13 +796,13 @@ class ClaudeCliTransport:
             # The summary must not carry str(failure): that embeds the whole
             # argv -- system prompt and absolute staged paths -- into a
             # transport log meant for public commit.
-            raw = _as_text(failure.stdout)
+            raw = self.decodable_prefix(failure.stdout)
             raise TransportFailure(
                 call.label,
                 f"[TRANSPORT: TimeoutExpired after {self.timeout}s]",
                 stderr=_as_text(failure.stderr),
                 stdout=self.partial_text(raw),
-                raw_stdout=raw,
+                raw_stdout=failure.stdout or "",
             ) from failure
         except (OSError, subprocess.SubprocessError) as failure:
             # A missing binary must not escape as a traceback: `main` would
@@ -797,6 +810,21 @@ class ClaudeCliTransport:
             raise TransportFailure(
                 call.label, f"[TRANSPORT: {type(failure).__name__}] {failure}"
             ) from failure
+        captured = completed.stdout
+        completed.stderr = _as_text(completed.stderr)
+        if isinstance(captured, bytes):
+            try:
+                completed.stdout = captured.decode("utf-8")
+            except UnicodeDecodeError as failure:
+                prefix = self.decodable_prefix(captured)
+                raise TransportFailure(
+                    call.label,
+                    f"[TRANSPORT: exit {completed.returncode}] invalid UTF-8 output",
+                    stderr=completed.stderr,
+                    stdout=self.partial_text(prefix),
+                    raw_stdout=captured,
+                    diagnostic=self.result_diagnostic(prefix),
+                ) from failure
         if completed.returncode != 0:
             # A startup diagnostic ("Failed to authenticate ...") is plain
             # text, not stream-json; it stays readable in `stdout` so a
