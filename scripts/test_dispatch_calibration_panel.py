@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import sys
 from pathlib import Path
 
@@ -435,6 +436,58 @@ def test_credential_preflight_is_inconclusive_on_network_trouble_and_skips_witho
 
     assert mod.credential_preflight({}, opener=never).startswith("skipped")
     assert mod.credential_preflight({"ANTHROPIC_API_KEY": "   "}, opener=never).startswith("skipped")
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_credential_preflight_identifies_tls_trust_failure_without_echoing_reason(wrapped):
+    def opener(request, timeout):
+        error = ssl.SSLCertVerificationError("untrusted issuer; sk-ant-test-secret")
+        raise urllib.error.URLError(error) if wrapped else error
+
+    outcome = mod.credential_preflight({"ANTHROPIC_API_KEY": "sk-ant-test-secret"}, opener=opener)
+    assert outcome == "inconclusive: TLS certificate verification failed"
+    assert "sk-ant-test-secret" not in outcome
+
+
+@pytest.mark.parametrize("stage", ["cards", "panel"])
+@pytest.mark.parametrize("outcome", [
+    "inconclusive: TLS certificate verification failed",
+    "inconclusive: HTTP 503",
+    "skipped: ANTHROPIC_API_KEY unset (apiKeyHelper path is not probed)",
+])
+def test_required_preflight_stops_before_transport_is_constructed(env, monkeypatch, stage, outcome):
+    monkeypatch.setattr(mod, "credential_preflight", lambda: outcome)
+
+    def never(args):
+        pytest.fail("a failed required preflight must not construct or call the transport")
+
+    monkeypatch.setattr(mod, "build_transport", never)
+    with pytest.raises(mod.PreconditionFailure, match="no model call was made"):
+        mod.main(base_argv(env, stage) + ["--transport", "cli", "--require-preflight-ok"])
+    assert not env["work"].exists()
+
+
+@pytest.mark.parametrize("required,outcome", [
+    (True, "ok"),
+    (False, "inconclusive: TLS certificate verification failed"),
+])
+def test_preflight_gate_preserves_success_and_explicit_default_fallback(env, monkeypatch, required, outcome):
+    transport = mod.ScriptedTransport({"field_analyst": [ANALYSIS]})
+    monkeypatch.setattr(mod, "build_transport", lambda args: transport)
+    monkeypatch.setattr(mod, "credential_preflight", lambda: outcome)
+    argv = base_argv(env, "cards") + ["--transport", "cli"]
+    if required:
+        argv.append("--require-preflight-ok")
+    assert mod.main(argv) == 0
+    assert len(transport.calls) == 1
+    record = json.loads((env["work"] / "cards/p1/frozen.json").read_text())
+    assert record["credential_preflight"] == outcome
+
+
+def test_scripted_transport_cannot_satisfy_required_live_preflight(env, tmp_path):
+    with pytest.raises(mod.PreconditionFailure, match="skipped: scripted transport"):
+        mod.main(base_argv(env, "cards") + ["--require-preflight-ok"])
+    assert not env["work"].exists()
 
 
 def _manifest_argv(env, generated_at="2026-08-07T01:00:00Z", extra=()):

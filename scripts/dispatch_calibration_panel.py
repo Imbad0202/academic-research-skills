@@ -75,6 +75,7 @@ import datetime as dt
 import json
 import os
 import re
+import ssl
 import sys
 import urllib.error
 import urllib.request
@@ -279,7 +280,8 @@ def credential_preflight(environ=None, *, opener=_PREFLIGHT_OPENER.open, timeout
     and answers 401/403 for a rejected key. Only that definitive answer
     refuses (PreconditionFailure — no billed call has been made); network
     trouble or an unexpected status is reported as `inconclusive` and the
-    run proceeds, because the CLI itself would then be the arbiter anyway.
+    run proceeds, because the CLI itself would then be the arbiter anyway,
+    unless the operator selects `--require-preflight-ok`.
     Without the env var the CLI's `apiKeyHelper` path is in use and is not
     probed (`skipped`). The key never appears in the returned text or in
     any exception message.
@@ -308,6 +310,12 @@ def credential_preflight(environ=None, *, opener=_PREFLIGHT_OPENER.open, timeout
         # A 3xx lands here too: redirects are refused, never followed.
         return f"inconclusive: HTTP {exc.code}"
     except (urllib.error.URLError, OSError, ValueError) as exc:
+        reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+        if isinstance(reason, ssl.SSLCertVerificationError):
+            # The local Python can lack roots even while the Node-based CLI
+            # connects successfully. Diagnose that case without echoing an
+            # exception reason that could contain a URL or credential.
+            return "inconclusive: TLS certificate verification failed"
         return f"inconclusive: {type(exc).__name__}"
     return "ok" if status == 200 else f"inconclusive: HTTP {status}"
 
@@ -821,6 +829,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--generated-at", dest="generated_at", required=True)
     parser.add_argument("--attempt-id", dest="attempt_id")
     parser.add_argument("--transport", choices=("cli", "scripted"), default="cli")
+    parser.add_argument(
+        "--require-preflight-ok", action="store_true",
+        help="refuse cards/panel dispatch unless the zero-cost credential preflight returns ok",
+    )
     parser.add_argument("--scripted-responses")
     return parser
 
@@ -839,8 +851,13 @@ def main(argv: list[str] | None = None) -> int:
     if missing:
         parser.error(f"--stage {args.stage} requires {', '.join(missing)}")
 
-    transport = build_transport(args)
     preflight = credential_preflight() if args.transport == "cli" else "skipped: scripted transport"
+    if args.require_preflight_ok and preflight != "ok":
+        raise PreconditionFailure(
+            f"--require-preflight-ok: {preflight}; no model call was made. "
+            "Resolve the credential/network/TLS setup before starting the attempt."
+        )
+    transport = build_transport(args)
     stage = stage_cards if args.stage == "cards" else stage_panel
     return stage(args, transport, preflight)
 

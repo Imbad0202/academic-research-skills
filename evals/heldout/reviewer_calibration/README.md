@@ -100,6 +100,18 @@ record is frozen. The synthesizer additionally never receives the manuscript.
 
 ## Tooling (one attempt, in order)
 
+Before a live attempt, align the Python environment with the corpus manifest's
+`extraction.pypdf_version`; an extractor upgrade can change the extracted text
+even when the PDF bytes match. If Python lacks trusted CA roots, configure its
+trust store or point `SSL_CERT_FILE` at an existing trusted CA bundle. Successful
+CLI calls do not prove Python's separate credential preflight succeeded.
+
+The call ledger counts CLI dispatch attempts. Its hashes bind the supplied
+system/user pair and returned text. A dispatch can include response
+continuations and auxiliary model use; inspect the retained stream for that
+usage. The CLI's `num_turns` field does not establish the number of provider
+requests.
+
 1. `dispatch_calibration_panel.py --stage cards` per paper, then
    `--stage panel` per (paper, replicate). Each call runs in an allowlisted
    environment with an empty `CLAUDE_CONFIG_DIR` (no operator CLAUDE.md,
@@ -109,6 +121,12 @@ record is frozen. The synthesizer additionally never receives the manuscript.
    never retried mid-run; an aborted cards stage leaves
    `runs/blocked-cards-<paper>.json` with its per-call rows, and a re-run
    needs a fresh work dir (evidence and stage records are write-once).
+   For a run whose acceptance requires `credential_preflight: ok`, pass
+   `--require-preflight-ok` to both live stages: an inconclusive or skipped
+   preflight then stops before constructing the model transport. Without that
+   option, the documented CLI fallback remains available and the record
+   retains the actual preflight outcome. A later successful recheck does not
+   change an earlier write-once record.
 2. `dispatch_calibration_panel.py --stage manifest` once, after the last
    panel: folds every completed call row into the write-once
    `execution-manifest.json` (`heldout-execution-manifest/1.0`); refuses mixed
