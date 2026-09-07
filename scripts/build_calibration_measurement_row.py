@@ -37,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _e4_evidence import sha256_file  # noqa: E402
 import check_heldout_measurement_report as checker  # noqa: E402
+import score_calibration_run as scorer  # noqa: E402
 from dispatch_calibration_panel import (  # noqa: E402
     MANIFEST_NAME,
     PreconditionFailure,
@@ -162,7 +163,7 @@ def _load_json(path: str | None, default):
         raise PreconditionFailure(f"{path}: not strict JSON ({exc})") from exc
 
 
-def bind_metrics(metrics: dict, work: Path, identity: dict) -> None:
+def bind_metrics(metrics: dict, work: Path, identity: dict, args) -> None:
     """The scorer output must describe THIS attempt: every scored panel is a
     complete panel record under `work` with this attempt id, and vice versa."""
     if metrics.get("suite") != SUITE:
@@ -183,13 +184,65 @@ def bind_metrics(metrics: dict, work: Path, identity: dict) -> None:
     papers = {r["paper_id"] for _, r in records if r.get("stage") == "panel"}
     if metrics.get("n_papers") != len(papers):
         raise PreconditionFailure(f"metrics n_papers {metrics.get('n_papers')} != {len(papers)} panel papers here")
+    bindings = scorer.input_bindings(
+        work / "runs", Path(args.gold),
+        Path(args.decision_overrides) if args.decision_overrides else None,
+        Path(args.severity_classifications) if args.severity_classifications else None,
+    )
+    if metrics.get("input_bindings") != bindings:
+        raise PreconditionFailure("metrics input bindings differ: synthesis, gold, decision overrides or severity input changed")
+    collected, unresolved = scorer.collect(work / "runs", _load_json(args.decision_overrides, {}))
+    expected = {
+        key: {k: v for k, v in row.items() if k != "paper_id"}
+        for key, row in collected["panels"].items()
+    }
+    if unresolved or scored != expected:
+        raise PreconditionFailure("metrics decisions differ from the bound synthesis and decision overrides")
+
+
+def verified_class_a_audit(args, metrics: dict, work: Path) -> dict:
+    """Class A is a blind synthesis transcription, not a severity judge item.
+
+    Require every panel, including grammar successes, before making the
+    bidirectional / point-estimate attestations. A2 cannot produce a row.
+    """
+    audit = _load_json(args.class_a_audit, None)
+    if not isinstance(audit, dict) or audit.get("schema") != "calibration-class-a-audit/1":
+        raise PreconditionFailure("class-A audit must use calibration-class-a-audit/1")
+    if not isinstance(audit.get("adjudicator"), str) or not audit["adjudicator"].strip():
+        raise PreconditionFailure("class-A audit must name its adjudicator")
+    if not {"expected_label", "venue_partition"}.issubset(audit.get("blinded_to") or []):
+        raise PreconditionFailure("class-A audit must attest blinding to expected_label and venue_partition")
+    panels = audit.get("panels")
+    if not isinstance(panels, dict) or set(panels) != set(metrics["per_panel"]):
+        raise PreconditionFailure("class-A audit requires complete panel coverage")
+    records, _ = scorer.load_panels(work / "runs")
+    syntheses = {scorer.panel_key(r): scorer.read_raw(work / "runs", r, "synthesis.md") for r in records}
+    overrides = _load_json(args.decision_overrides, {})
+    for key, entry in panels.items():
+        if not isinstance(entry, dict):
+            raise PreconditionFailure(f"class-A audit {key}: expected an object")
+        if entry.get("synthesis_sha256") != metrics["input_bindings"]["synthesis_sha256"][key]:
+            raise PreconditionFailure(f"class-A audit {key}: synthesis hash mismatch")
+        if entry.get("decision") not in scorer.DECISIONS or entry["decision"] != metrics["per_panel"][key]["decision"]:
+            raise PreconditionFailure(f"class-A audit {key}: decision differs from scored decision; resolve before building")
+        excerpt = entry.get("raw")
+        if not isinstance(excerpt, str) or not excerpt.strip() or excerpt not in syntheses[key]:
+            raise PreconditionFailure(f"class-A audit {key}: no verbatim raw excerpt in synthesis")
+        allowed = ("A1", "A3") if key in overrides else ("grammar_confirmed",)
+        if entry.get("criterion_ref") not in allowed:
+            raise PreconditionFailure(f"class-A audit {key}: criterion must be one of {allowed}")
+        if key in overrides and excerpt != overrides[key]["raw"]:
+            raise PreconditionFailure(f"class-A audit {key}: excerpt differs from decision override")
+    return {"sha256": sha256_file(Path(args.class_a_audit)), "record": audit}
 
 
 def build_row(args) -> dict:
     work = Path(args.work_dir)
     identity, blocked = attempt_identity(work)
     metrics = _load_json(args.metrics, None)
-    bind_metrics(metrics, work, identity)
+    bind_metrics(metrics, work, identity, args)
+    class_a_audit = verified_class_a_audit(args, metrics, work)
     manifest_path = verified_manifest(work)
     claims = sorted(set(args.claim))
     manifest = _load_json(str(manifest_path), None)
@@ -289,6 +342,9 @@ def build_row(args) -> dict:
         },
         "raw_outputs": {"retained": True, "paths": [runs_ref + "/"]},
         "results": {
+            "scoring_input_bindings": metrics["input_bindings"],
+            "class_a_audit": class_a_audit,
+            "per_panel_decisions": metrics["per_panel"],
             "design": "single-arm calibration of the panel decision against public venue decisions",
             "arm_roles": {"treatment_or_cohort_arms": [], "variant_packet_arms": []},
             "n_papers": metrics["n_papers"],
@@ -312,6 +368,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--work-dir", required=True, help="dispatcher work dir (records + manifest)")
     parser.add_argument("--metrics", required=True, help="score_calibration_run.py output")
+    parser.add_argument("--gold", required=True, help="exact gold file used by the scorer")
+    parser.add_argument("--decision-overrides", help="panel-keyed class-A overrides used by the scorer")
+    parser.add_argument("--severity-classifications", help="exact severity input used by the scorer, when supplied")
+    parser.add_argument("--class-a-audit", required=True, help="complete blind synthesis audit (calibration-class-a-audit/1)")
     parser.add_argument("--judges", required=True, help="JSON list of contract-shaped judge rows")
     parser.add_argument("--judge-template-version", required=True)
     parser.add_argument("--measurement-date", required=True)

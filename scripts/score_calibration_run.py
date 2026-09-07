@@ -41,6 +41,7 @@ the committed inputs alone.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 from collections import Counter
@@ -99,8 +100,28 @@ def read_raw(runs_dir: Path, record: dict, name: str) -> str | None:
     return path.read_text(encoding="utf-8")
 
 
+def input_bindings(runs_dir: Path, gold: Path, overrides: Path | None = None,
+                   severity: Path | None = None) -> dict:
+    """Bind the scorer to exact input bytes, including an explicit absent file."""
+    def digest(path):
+        return hashlib.sha256(path.read_bytes()).hexdigest() if path else None
+
+    records, _ = load_panels(runs_dir)
+    return {
+        "gold_sha256": digest(gold),
+        "decision_overrides_sha256": digest(overrides),
+        "severity_classifications_sha256": digest(severity),
+        "synthesis_sha256": {
+            panel_key(r): digest(runs_dir / Path(r["raw_bundle"]).relative_to("runs") / "synthesis.md")
+            for r in records
+        },
+    }
+
+
 def collect(runs_dir: Path, overrides: dict) -> tuple[dict, list[dict]]:
     """Per-panel rows keyed by panel; unresolved extraction problems listed."""
+    if not isinstance(overrides, dict):
+        raise SystemExit("decision overrides must be a panel-keyed object")
     records, blocked = load_panels(runs_dir)
     panels: dict[str, dict] = {}
     needs_adjudication: list[dict] = []
@@ -116,29 +137,39 @@ def collect(runs_dir: Path, overrides: dict) -> tuple[dict, list[dict]]:
                 f"{panels[key].get('attempt_id')!r} and {record.get('attempt_id')!r}); "
                 "no completed panel is discarded silently — retire one explicitly"
             )
-        decision, status = extract_decision(synthesis)
-        if decision is None:
-            override = overrides.get(key, {})
+        raw_decision, raw_status = extract_decision(synthesis)
+        decision, status = raw_decision, raw_status
+        if key in overrides:
+            override = overrides[key]
+            if not isinstance(override, dict):
+                needs_adjudication.append({"panel": key, "problem": "override must be an object"})
+                continue
             excerpt = override.get("raw", "")
-            if override.get("decision") in DECISIONS and excerpt and excerpt in synthesis:
+            if (override.get("decision") in DECISIONS and isinstance(excerpt, str)
+                    and excerpt.strip() and excerpt in synthesis):
                 decision, status = override["decision"], "adjudicated"
-            elif override.get("decision") in DECISIONS:
+            else:
                 # Rubric A1 requires the verbatim raw excerpt; A2 (no decision
                 # statement) is a re-dispatch, never an override.
                 needs_adjudication.append(
-                    {"panel": key, "problem": f"{status}; override lacks a verbatim `raw` excerpt found in synthesis.md"}
+                    {"panel": key, "problem": f"{status}; override lacks a valid decision or verbatim `raw` excerpt found in synthesis.md"}
                 )
                 continue
-            else:
-                needs_adjudication.append({"panel": key, "problem": status})
-                continue
+        elif decision is None:
+            needs_adjudication.append({"panel": key, "problem": status})
+            continue
         panels[key] = {
             "paper_id": record["paper_id"],
             "replicate": record["replicate"],
             "attempt_id": record.get("attempt_id"),
             "decision": decision,
             "decision_status": status,
+            "raw_decision": raw_decision,
+            "raw_decision_status": raw_status,
         }
+    unknown = set(overrides) - {panel_key(r) for r in records}
+    if unknown:
+        raise SystemExit(f"overrides name unknown panels: {sorted(unknown)}")
     return {"panels": panels, "blocked": blocked}, needs_adjudication
 
 
@@ -276,6 +307,11 @@ def main(argv: list[str] | None = None) -> int:
     result = {
         "suite": "reviewer_calibration",
         "tier": "full",
+        "input_bindings": input_bindings(
+            Path(args.runs_dir), Path(args.gold),
+            Path(args.overrides) if args.overrides else None,
+            Path(args.severity_classifications) if args.severity_classifications else None,
+        ),
         "n_papers": len(papers),
         "gold_composition": {
             "accept": sum(1 for i in papers if gold[i] == "accept"),

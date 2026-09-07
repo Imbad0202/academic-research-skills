@@ -250,13 +250,14 @@ class CredentialRejected(TransportFailure):
 
 
 def _is_auth_failure(failure: TransportFailure) -> bool:
-    """Only a non-zero-exit failure whose stdout or stderr STARTS with the
-    CLI's own credential diagnostic. A timeout's partial model text, or a
-    review that happens to quote "Not logged in", never qualifies."""
+    """Only an exit/result failure with the CLI's credential diagnostic.
+    Structured diagnostics are independent of partial assistant text; a
+    timeout or a review quoting "Not logged in" never qualifies."""
     if not EXIT_FAILURE_SUMMARY.match(failure.summary or ""):
         return False
     return bool(
-        AUTH_FAILURE_SIGNATURE.match(failure.stdout or "")
+        AUTH_FAILURE_SIGNATURE.match(failure.diagnostic or "")
+        or (not failure.raw_stdout and AUTH_FAILURE_SIGNATURE.match(failure.stdout or ""))
         or AUTH_FAILURE_SIGNATURE.match(failure.stderr or "")
     )
 
@@ -340,13 +341,19 @@ def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: P
         }
         try:
             response = transport(call, sandbox)
+        except KeyboardInterrupt:
+            row.update({"completed_at": _rfc3339_now(), "outcome": "interrupted"})
+            state.calls.append(row)
+            bundle.journal(f"{call.label}: operator interrupt on attempt {attempt}; not retried")
+            raise
         except TransportFailure as failure:
             row.update({"completed_at": _rfc3339_now(), "outcome": "transport_failure"})
             state.calls.append(row)
             location = bundle.write(
                 f"{call.label}.attempt{attempt}.transport-failure.txt",
                 f"{failure}\n\n--- stdout (partial model output, verbatim) ---\n"
-                f"{failure.stdout}\n\n--- stderr ---\n{failure.stderr}\n",
+                f"{failure.stdout}\n\n--- stderr ---\n{failure.stderr}\n"
+                f"\n--- CLI diagnostic ---\n{failure.diagnostic}\n",
             )
             if getattr(failure, "raw_stdout", ""):
                 bundle.write(
@@ -362,6 +369,8 @@ def _attempt_call(transport, bundle: Bundle, call: Call, sandbox: Path, state: P
                     f"evidence {location}]",
                     stderr=failure.stderr,
                     stdout=failure.stdout,
+                    raw_stdout=failure.raw_stdout,
+                    diagnostic=failure.diagnostic,
                 ) from failure
             state.retries.append(
                 {"call": call.label, "attempt": attempt, "kind": "transport", "evidence": location}
@@ -508,18 +517,18 @@ def stage_cards(args, transport, preflight: str = PREFLIGHT_NOT_PROBED) -> int:
                     "cards stage must be re-run before any panel dispatches"
                 )
             cards[index] = card
-    except (TransportFailure, PreconditionFailure) as failure:
+        for index, card in cards.items():
+            (cards_dir / f"card{index}.md").write_text(card + "\n", encoding="utf-8")
+        record.update(
+            {"frozen_at": args.generated_at, "analysis_sha256": sha256_hex(analysis.encode("utf-8"))}
+        )
+    except (TransportFailure, PreconditionFailure, KeyboardInterrupt) as failure:
         # Like the panel stage: an aborted cards stage keeps its per-call
         # rows (timing, prompt hash, outcome) in a blocked record instead of
         # losing them with the traceback (2026-09-06 rehearsal finding).
         _finish_record(record, state, _abort_reason(failure))
         return _write_record(work / "runs" / f"cards-{args.paper}.json", record)
 
-    for index, card in cards.items():
-        (cards_dir / f"card{index}.md").write_text(card + "\n", encoding="utf-8")
-    record.update(
-        {"frozen_at": args.generated_at, "analysis_sha256": sha256_hex(analysis.encode("utf-8"))}
-    )
     _finish_record(record, state, None)
     print(f"cards frozen for {args.paper}: {sorted(SEAT_CARD_INDEX)}")
     return _write_record(cards_dir / "frozen.json", record)
@@ -615,7 +624,7 @@ def stage_panel(args, transport, preflight: str = PREFLIGHT_NOT_PROBED) -> int:
             paper_visible=False,
         )
         _attempt_call(transport, bundle, synthesis_call, sandbox, state)
-    except (TransportFailure, PreconditionFailure) as failure:
+    except (TransportFailure, PreconditionFailure, KeyboardInterrupt) as failure:
         abort_reason = _abort_reason(failure)
 
     record["raw_bundle"] = str(Path("runs") / stem / "raw")

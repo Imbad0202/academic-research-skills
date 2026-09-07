@@ -89,6 +89,20 @@ def make_manifest(work: Path) -> None:
 
 def make_metrics(tmp_path: Path, replicates=3) -> Path:
     path = tmp_path / "metrics.json"
+    gold = tmp_path / "gold.json"
+    gold.write_text(json.dumps({"labels": [{"paper_id": "p1", "label": "accept"}]}))
+    bindings = mod.scorer.input_bindings(tmp_path / "work" / "runs", gold)
+    collected, unresolved = mod.scorer.collect(tmp_path / "work" / "runs", {})
+    assert not unresolved
+    (tmp_path / "class-a-audit.json").write_text(json.dumps({
+        "schema": "calibration-class-a-audit/1", "adjudicator": "blind maintainer",
+        "blinded_to": ["expected_label", "venue_partition"],
+        "panels": {"p1-r1": {
+            "synthesis_sha256": bindings["synthesis_sha256"]["p1-r1"],
+            "decision": "Major Revision", "raw": "### Decision: [Major Revision]",
+            "criterion_ref": "grammar_confirmed",
+        }},
+    }))
     path.write_text(json.dumps({
         "suite": "reviewer_calibration", "tier": "full", "n_papers": 1,
         "gold_composition": {"accept": 1, "reject": 0}, "runs_per_paper": replicates,
@@ -97,7 +111,9 @@ def make_metrics(tmp_path: Path, replicates=3) -> Path:
         "bootstrap_95ci": {}, "exact_label_agreement": {"count": 1, "share": 1.0},
         "replicate_stability": {"side_agreement_share": 1.0, "exact_agreement_share": 1.0},
         "auc": "NOT REPORTED", "blocked_runs": ["blocked-2026-09-06-p2-r1.json"],
-        "per_panel": {"p1-r1": {"replicate": 1, "attempt_id": "attempt-1", "decision": "Major Revision"}},
+        "input_bindings": bindings,
+        "per_panel": {k: {kk: v for kk, v in row.items() if kk != "paper_id"}
+                      for k, row in collected["panels"].items()},
     }))
     return path
 
@@ -133,6 +149,7 @@ def make_overrides(tmp_path: Path) -> Path:
 def argv(tmp_path: Path, work: Path, metrics: Path, judges: Path, extra=()):
     return [
         "--work-dir", str(work), "--metrics", str(metrics), "--judges", str(judges),
+        "--gold", str(tmp_path / "gold.json"), "--class-a-audit", str(tmp_path / "class-a-audit.json"),
         "--judge-template-version", "judge_template_v1", "--measurement-date", "2026-09-06",
         "--runs-ref", "evals/heldout/reviewer_calibration/runs/2026-09-06-attempt-1",
         "--verdict", "harness rehearsal", "--out", str(tmp_path / "row.json"), *extra,
@@ -319,3 +336,79 @@ def test_sha256_at_commit_reads_the_named_commit(tmp_path):
     assert mod.sha256_at_commit(first, "plan.md", repo=repo) == hashlib.sha256(b"v1\n").hexdigest()
     assert mod.sha256_at_commit("HEAD", "plan.md", repo=repo) == hashlib.sha256(b"v2\n").hexdigest()
     assert mod.sha256_at_commit(first, "missing.md", repo=repo) is None
+
+
+@pytest.mark.parametrize("mutation,match", [
+    ("coverage", "complete panel coverage"), ("hash", "hash mismatch"),
+    ("decision", "decision differs"), ("excerpt", "verbatim raw"),
+    ("blinding", "blinding"), ("criterion", "criterion"),
+])
+def test_class_a_audit_must_cover_and_match_every_synthesis(tmp_path, pinned, mutation, match):
+    work = make_work(tmp_path)
+    make_manifest(work)
+    metrics = make_metrics(tmp_path)
+    audit_path = tmp_path / "class-a-audit.json"
+    audit = json.loads(audit_path.read_text())
+    entry = audit["panels"]["p1-r1"]
+    if mutation == "coverage":
+        audit["panels"] = {}
+    elif mutation == "blinding":
+        audit["blinded_to"] = ["expected_label"]
+    else:
+        field, value = {"hash": ("synthesis_sha256", SHA), "decision": ("decision", "Reject"),
+                        "excerpt": ("raw", "absent"), "criterion": ("criterion_ref", "A2")}[mutation]
+        entry[field] = value
+    audit_path.write_text(json.dumps(audit))
+    with pytest.raises(mod.PreconditionFailure, match=match):
+        mod.main(argv(tmp_path, work, metrics, make_judges(tmp_path, diverge=False)))
+    assert not (tmp_path / "row.json").exists()
+
+
+@pytest.mark.parametrize("changed", ["gold", "overrides", "severity", "missing_binding"])
+def test_same_panel_ids_cannot_hide_different_scoring_inputs(tmp_path, pinned, changed):
+    work = make_work(tmp_path)
+    make_manifest(work)
+    metrics = make_metrics(tmp_path)
+    extra = []
+    if changed == "gold":
+        (tmp_path / "gold.json").write_text(json.dumps({"labels": [{"paper_id": "p1", "label": "reject"}]}))
+    elif changed in ("overrides", "severity"):
+        path = tmp_path / "new-input.json"
+        path.write_text("{}" if changed == "overrides" else "[]")
+        extra = ["--decision-overrides" if changed == "overrides" else "--severity-classifications", str(path)]
+    else:
+        payload = json.loads(metrics.read_text())
+        del payload["input_bindings"]
+        metrics.write_text(json.dumps(payload))
+    with pytest.raises(mod.PreconditionFailure, match="input bindings differ"):
+        mod.main(argv(tmp_path, work, metrics, make_judges(tmp_path, diverge=False), extra))
+
+
+def test_class_a_correction_builds_without_a_fictitious_severity_judge_item(tmp_path, pinned):
+    work = make_work(tmp_path)
+    synthesis = work / "runs" / "2026-09-06-p1-r1" / "raw" / "synthesis.md"
+    synthesis.write_text("Quoted example:\n### Decision: [Reject]\n\nFinal decision: Accept.\n")
+    record_path = work / "runs" / "2026-09-06-p1-r1.json"
+    record = json.loads(record_path.read_text())
+    record["calls"][-1]["output_sha256"] = mod.sha256_file(synthesis)
+    record_path.write_text(json.dumps(record))
+    make_manifest(work)
+    metrics = make_metrics(tmp_path, replicates=1)
+    override_path = tmp_path / "decisions.json"
+    override_path.write_text(json.dumps({"p1-r1": {"decision": "Accept", "raw": "Final decision: Accept."}}))
+    assert mod.scorer.main([
+        "--runs-dir", str(work / "runs"), "--gold", str(tmp_path / "gold.json"),
+        "--overrides", str(override_path), "--replicates", "1", "--out", str(metrics),
+    ]) == 0
+    audit_path = tmp_path / "class-a-audit.json"
+    audit = json.loads(audit_path.read_text())
+    audit["panels"]["p1-r1"].update(decision="Accept", raw="Final decision: Accept.", criterion_ref="A3")
+    audit_path.write_text(json.dumps(audit))
+    assert mod.main(argv(tmp_path, work, metrics, make_judges(tmp_path, diverge=False), [
+        "--decision-overrides", str(override_path), "--replicate-exception", "one synthetic rehearsal replicate",
+    ])) == 0
+    row = json.loads((tmp_path / "row.json").read_text())
+    assert row["adjudication"]["overrides"] == []
+    assert row["results"]["class_a_audit"]["record"] == audit
+    assert row["results"]["per_panel_decisions"]["p1-r1"]["raw_decision"] == "Reject"
+    assert row["results"]["per_panel_decisions"]["p1-r1"]["decision"] == "Accept"

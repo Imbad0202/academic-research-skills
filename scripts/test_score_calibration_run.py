@@ -149,6 +149,28 @@ def test_partial_ensemble_refused(standard):
         run(standard["tmp"], standard["runs"], gold)
 
 
+def test_override_corrects_a_successfully_parsed_quoted_heading(tmp_path):
+    runs = tmp_path / "runs"
+    write_panel(runs, "p1", 1, "", synthesis="Quoted example:\n### Decision: [Reject]\n\nFinal decision: Accept.\n")
+    gold = write_gold(tmp_path, {"p1": "accept"})
+    overrides = tmp_path / "overrides.json"
+    overrides.write_text(json.dumps({"p1-r1": {"decision": "Accept", "raw": "Final decision: Accept."}}))
+    rc, result = run(tmp_path, runs, gold, replicates=1, overrides=overrides)
+    assert rc == 0
+    row = result["per_panel"]["p1-r1"]
+    assert row["decision"] == "Accept" and row["raw_decision"] == "Reject"
+    assert row["decision_status"] == "adjudicated" and row["raw_decision_status"] == "extracted"
+    assert result["confusion_matrix"]["TP"] == 1
+    assert result["input_bindings"] == mod.input_bindings(runs, gold, overrides)
+
+
+def test_invalid_override_cannot_hide_behind_successful_extraction(standard):
+    overrides = standard["tmp"] / "overrides.json"
+    overrides.write_text(json.dumps({"a1-r1": {"decision": "Accept", "raw": "not in the synthesis"}}))
+    rc, _ = run(standard["tmp"], standard["runs"], standard["gold"], overrides=overrides)
+    assert rc == 1
+
+
 def test_multiple_distinct_decisions_flagged(standard, capsys):
     write_panel(
         standard["runs"], "a4", 1, "",

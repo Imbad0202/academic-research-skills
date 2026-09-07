@@ -365,7 +365,7 @@ class TransportFailure(RuntimeError):
     """
 
     def __init__(self, label: str, summary: str, stderr: str = "",
-                 stdout: str = "", raw_stdout: str = "") -> None:
+                 stdout: str = "", raw_stdout: str = "", diagnostic: str = "") -> None:
         super().__init__(f"{label}: {summary}")
         self.label = label
         self.summary = summary
@@ -379,6 +379,10 @@ class TransportFailure(RuntimeError):
         # The transport's raw stdout (stream-json events), kept as transport
         # evidence in its own right.
         self.raw_stdout = raw_stdout
+        # CLI diagnostics are not assistant text, even when both arrive in
+        # the same stream. Consumers classify this field without quoting a
+        # model response as an authentication failure.
+        self.diagnostic = diagnostic
 
 
 class PanelAborted(RuntimeError):
@@ -695,13 +699,32 @@ class ClaudeCliTransport:
         return "".join(text for uuid, text in messages if uuid is None or str(uuid) not in evicted)
 
     @classmethod
+    def partial_events(cls, stdout: str) -> list[dict]:
+        """Recover the complete prefix of an interrupted NDJSON stream.
+
+        Stop at the first invalid frame; never skip corruption and pretend
+        later frames form an intact stream. Success parsing remains strict.
+        """
+        events = []
+        for line in stdout.split("\n"):
+            try:
+                events.extend(cls.stream_events(line))
+            except ValueError:
+                break
+        return events
+
+    @classmethod
     def partial_text(cls, stdout: str) -> str:
-        """Best-effort assistant text from a stream that may be cut short or
-        not stream-json at all (a startup diagnostic): never raises."""
-        try:
-            return cls.assistant_text(cls.stream_events(stdout))
-        except ValueError:
-            return ""
+        return cls.assistant_text(cls.partial_events(stdout))
+
+    @classmethod
+    def result_diagnostic(cls, stdout: str) -> str:
+        return "\n".join(
+            str(event.get("result") or "")
+            for event in cls.partial_events(stdout)
+            if event.get("type") == "result"
+            and (event.get("is_error") or event.get("subtype") != "success")
+        )
 
     @classmethod
     def response_text(cls, stdout: str) -> str:
@@ -786,6 +809,7 @@ class ClaudeCliTransport:
                 stderr=completed.stderr,
                 stdout=self.partial_text(completed.stdout) if is_stream else completed.stdout,
                 raw_stdout=completed.stdout if is_stream else "",
+                diagnostic=self.result_diagnostic(completed.stdout) if is_stream else "",
             )
         if not completed.stdout.strip():
             # The evidence contract classifies a missing response as a
@@ -803,7 +827,9 @@ class ClaudeCliTransport:
                 call.label,
                 f"[TRANSPORT: unreadable stream-json] {failure}",
                 stderr=completed.stderr,
-                stdout=completed.stdout,
+                stdout=self.partial_text(completed.stdout) if completed.stdout.lstrip().startswith("{") else completed.stdout,
+                raw_stdout=completed.stdout if completed.stdout.lstrip().startswith("{") else "",
+                diagnostic=self.result_diagnostic(completed.stdout),
             ) from failure
         result = next((e for e in events if e.get("type") == "result"), None)
         if result is not None and (result.get("is_error") or result.get("subtype") != "success"):
@@ -816,8 +842,9 @@ class ClaudeCliTransport:
                 call.label,
                 f"[TRANSPORT: result {result.get('subtype') or 'error'}] {diagnostic[:200]}",
                 stderr=completed.stderr,
-                stdout=partial if partial.strip() else diagnostic,
+                stdout=partial,
                 raw_stdout=completed.stdout,
+                diagnostic=diagnostic,
             )
         try:
             text = self.response_text(completed.stdout)

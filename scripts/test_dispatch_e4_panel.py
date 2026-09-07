@@ -4402,7 +4402,8 @@ def test_structured_failures_expose_text_not_framing(tmp_path, monkeypatch):
     with pytest.raises(harness.TransportFailure) as err:
         transport(call, tmp_path)
     assert err.value.summary.startswith("[TRANSPORT: result error_during_execution]")
-    assert err.value.stdout.startswith("Failed to authenticate")
+    assert err.value.stdout == ""
+    assert err.value.diagnostic.startswith("Failed to authenticate")
     assert err.value.raw_stdout.startswith("{")
 
     class Plain:
@@ -4431,3 +4432,26 @@ def test_a_framing_only_failure_is_recorded_as_no_model_response(tmp_path, monke
         transport(call, tmp_path)
     assert not err.value.stdout
     assert err.value.raw_stdout
+
+
+@pytest.mark.parametrize("failure_mode", ["timeout", "nonzero", "zero"])
+def test_truncated_stream_keeps_complete_surviving_assistant_frames(tmp_path, monkeypatch, failure_mode):
+    raw = "\n".join([
+        _event("assistant", uuid="old", message={"content": [{"type": "text", "text": "retracted"}]}),
+        _event("assistant", uuid="new", supersedes=["old"], message={"content": [{"type": "text", "text": "kept"}]}),
+        _event("assistant", uuid="other", message={"content": [{"type": "text", "text": "also retracted"}]}),
+        _event("system", subtype="model_refusal_fallback", retracted_message_uuids=["other"]),
+        '{"type":"assistant","message":',
+    ])
+    assert harness.ClaudeCliTransport.partial_text(raw) == "kept"
+    def fake_cli(*args, **kwargs):
+        if failure_mode == "timeout":
+            raise subprocess.TimeoutExpired(cmd=args[0], timeout=1, output=raw.encode())
+        from types import SimpleNamespace
+        return SimpleNamespace(returncode=1 if failure_mode == "nonzero" else 0, stdout=raw, stderr="")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    transport = harness.ClaudeCliTransport(model="m", effort="high")
+    monkeypatch.setattr(harness.subprocess, "run", fake_cli)
+    with pytest.raises(harness.TransportFailure) as err:
+        transport(harness.Call("eic.phase1", "system", "user", paper_visible=False), tmp_path)
+    assert err.value.stdout == "kept" and err.value.raw_stdout == raw

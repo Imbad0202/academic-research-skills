@@ -131,7 +131,11 @@ requests.
    panel: folds every completed call row into the write-once
    `execution-manifest.json` (`heldout-execution-manifest/1.0`); refuses mixed
    attempt ids.
-3. `score_calibration_run.py` — mechanical metrics, gold joined only here.
+3. Audit every frozen synthesis blind under rubric class A, then run
+   `score_calibration_run.py` — mechanical metrics, gold joined only here.
+   Panel-keyed `--overrides` apply even when the grammar extracted a value;
+   output retains both the raw extraction and adjudicated decision, and hashes
+   every synthesis plus the exact gold, override and optional severity files.
 4. Phase 3.5 judges (two families) produce the contract-shaped judge rows.
 5. `build_calibration_measurement_row.py` — the 1.1 row: pre-registration
    record (plan + rubric hashed and compared against `frozen_commit`), manifest
@@ -139,6 +143,40 @@ requests.
    `check_heldout_measurement_report.py` before it is written. Filing the row
    and `runs/` under this directory is a separate step; `--resolve-refs` then
    re-runs R1-R5.
+
+The builder requires `--gold` and any `--decision-overrides` /
+`--severity-classifications` used by the scorer. Different bytes or an omitted
+input refuse the row, even when all panel and attempt identifiers match.
+`--overrides` on the **builder** is reserved for class-B judge/item overrides;
+it is a separate file from the scorer's panel-keyed class-A overrides.
+
+`--class-a-audit` supplies a separate blind transcription record. It must
+cover every scored panel, match the synthesis hashes and final scored
+decisions, and include a verbatim excerpt. For example (illustrative only):
+
+```json
+{
+  "schema": "calibration-class-a-audit/1",
+  "adjudicator": "maintainer identifier",
+  "blinded_to": ["expected_label", "venue_partition"],
+  "panels": {
+    "paper-id-r1": {
+      "synthesis_sha256": "<64 hex characters from the frozen synthesis bytes>",
+      "decision": "Accept",
+      "raw": "### Decision: [Accept]",
+      "criterion_ref": "grammar_confirmed"
+    }
+  }
+}
+```
+
+Use `grammar_confirmed` for an unchanged extraction, or `A1` / `A3` for a
+scorer override with the same excerpt. An A2/no-decision outcome blocks the
+row. The builder embeds the complete audit, its file hash, raw/adjudicated
+panel decisions and scoring input hashes under `results`; only complete
+audit coverage permits `bidirectional` and `point_estimate`. Retain the
+exact scoring inputs with the published evidence so these bindings can be
+rechecked. The frozen rubric and run plan remain byte-unchanged.
 
 ## Run rules
 

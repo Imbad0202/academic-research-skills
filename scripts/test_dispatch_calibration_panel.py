@@ -648,6 +648,7 @@ def test_structured_auth_failure_is_not_retried(env, tmp_path):
         "field_analyst", "[TRANSPORT: result error_during_execution] Failed to authenticate.",
         stdout="Failed to authenticate. API Error: 401 API key is invalid.",
         raw_stdout='{"type":"result","is_error":true}',
+        diagnostic="Failed to authenticate. API Error: 401 API key is invalid.",
     )
     assert mod._is_auth_failure(structured)
     transport = _RaisingTransport({"field_analyst": [structured, structured]}, {})
@@ -655,6 +656,52 @@ def test_structured_auth_failure_is_not_retried(env, tmp_path):
     assert transport.calls == ["field_analyst"]
     raw = env["work"] / "cards" / "p1" / "raw"
     assert (raw / "field_analyst.attempt1.transport-stream.jsonl").read_text().startswith("{")
+
+
+@pytest.mark.parametrize("exit_code", [0, 1])
+@pytest.mark.parametrize("partial", ["", "A partial review."])
+def test_cli_structured_auth_diagnostic_stops_after_one_call(env, tmp_path, monkeypatch, exit_code, partial):
+    events = [{"type": "assistant", "message": {"content": [{"type": "text", "text": partial}]}},
+              {"type": "result", "subtype": "error_during_execution", "is_error": True,
+               "result": "Failed to authenticate. API Error: 401 API key is invalid."}]
+    raw = "\n".join(json.dumps(e) for e in events) + "\n"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    transport = mod.ClaudeCliTransport(model="test", effort="high")
+    calls = []
+    from types import SimpleNamespace
+    def fake_cli(*args, **kwargs):
+        calls.append(args)
+        return SimpleNamespace(returncode=exit_code, stdout=raw, stderr="")
+    # Stage provenance also runs subprocesses; pin it before replacing the shared module.
+    monkeypatch.setattr(mod, "_git_state", lambda: ("f" * 40, False))
+    import dispatch_e4_panel
+    monkeypatch.setattr(dispatch_e4_panel.subprocess, "run", fake_cli)
+    assert mod.stage_cards(parsed(env, "cards"), transport) == 1
+    assert len(calls) == 1
+    record = json.loads((env["work"] / "runs" / "blocked-cards-p1.json").read_text())
+    assert record["abort_reason"].startswith("CredentialRejected")
+    assert record["retries"] == []
+
+
+@pytest.mark.parametrize("stage,label", [("cards", "field_analyst"), ("panel", "seat-methodology")])
+def test_interrupt_preserves_a_blocked_stage_and_call_ledger(env, tmp_path, stage, label):
+    if stage == "panel":
+        assert run_cards(env, tmp_path) == 0
+    transport = _RaisingTransport({label: [KeyboardInterrupt()]}, panel_responses())
+    method = mod.stage_cards if stage == "cards" else mod.stage_panel
+    assert method(parsed(env, stage), transport) == 1
+    name = "blocked-cards-p1.json" if stage == "cards" else "blocked-2026-08-07-p1-r1.json"
+    record = json.loads((env["work"] / "runs" / name).read_text())
+    assert record["status"] == "aborted" and record["abort_reason"].startswith("KeyboardInterrupt")
+    row = record["calls"][-1]
+    assert row["call"] == label and row["outcome"] == "interrupted" and row["attempt"] == 1
+    assert row["started_at"] <= row["completed_at"] and len(row["prompt_sha256"]) == 64
+    assert record["retries"] == []
+    if stage == "panel":
+        assert record["completed_calls"] == ["seat-eic"]
+        assert (env["work"] / record["raw_bundle"] / "seat-eic.md").is_file()
+        _, _, blocked = mod.load_attempt(env["work"])
+        assert name in blocked
 
 
 def test_successful_calls_keep_the_raw_stream_when_the_transport_offers_it(env, tmp_path):
