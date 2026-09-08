@@ -1,3 +1,4 @@
+---
 # Failure Paths — Research Pipeline Failure Path Map
 
 ## Overview
@@ -194,19 +195,19 @@ This document lists all failure scenarios that may be encountered across all mod
 - Extracted INSIGHTs < 3
 
 **User Notification Message**:
-> We've explored several directions, each with its own value. However, I notice we've been going back and forth between a few directions — this may mean you have multifaceted interests in this topic, but it can also make the research hard to focus. Would you like to:
-> (A) Continue the Socratic dialogue, but focus on [the most promising direction] you just mentioned?
-> (B) Switch to full mode, and let my team help you systematically explore and converge?
+> We have explored several directions, each with its own value. I can summarize only the directions you have already expressed, in the order they were expressed, without presenting any preselected option or ranking. Would you like to:
+> (A) Continue the Socratic dialogue, focusing on one of these directions of your choice?
+> (B) Switch to full mode (leaving non-generation Socratic mode with transition marker `[SOCRATIC-NON-GENERATION-EXIT: explicit_user_request]`), and let my team help you systematically explore and converge?
 > (C) Take a pause, think it over, and come back later?
 
 **Handling Steps**:
-1. Compile currently extracted INSIGHTs
-2. Identify the 1-2 directions with the most convergence potential
-3. Provide 3 options (continue with focus / switch mode / pause)
-4. If user chooses to continue but still hasn't converged by round 15 → auto-compile + end
+1. Compile currently extracted INSIGHTs.
+2. Summarize only the user-expressed directions in the order they were expressed, without ranking, preselecting, or proposing candidates.
+3. Provide the three options (continue on a user-chosen direction / switch mode with transition marker / pause).
+4. If the dialogue meets the Auto-End Conditions defined in `deep-research/agents/socratic_mentor_agent.md` § Auto-End Conditions (Precise) → auto-compile + end.
 
 **Recovery Paths**:
-- Continue with focus → restrict discussion scope, converge within 5 rounds
+- Continue with focus → continue questioning on the direction chosen by the researcher
 - Switch to full mode → pass extracted INSIGHTs to research_question_agent
 - Pause → save INSIGHT list; user can re-enter at any time
 
@@ -353,3 +354,5 @@ This document lists all failure scenarios that may be encountered across all mod
 **Recovery Paths**:
 - Focus on a single framework → continue workflow
 - User insists on interdisciplinary → suggest switching to mixed-methods or narrative review
+
+---
