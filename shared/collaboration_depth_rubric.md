@@ -1,12 +1,12 @@
 ---
-rubric_version: "1.0"
+rubric_version: "1.0.1"
 paper_citation: "Wang, S., & Zhang, H. (2026). Pedagogical partnerships with generative AI in higher education: how dual cognitive pathways paradoxically enable transformative learning. International Journal of Educational Technology in Higher Education, 23:11. DOI: 10.1186/s41239-026-00585-x"
 license: CC-BY-NC 4.0
 ---
 
 # Collaboration Depth Rubric
 
-**Status**: v1.0 (introduced ARS v3.5, 2026-04-21)
+**Status**: v1.0.1 (introduced ARS v3.5, 2026-04-21)
 **Source**: Wang, S., & Zhang, H. (2026). *IJETHE* 23:11. DOI [10.1186/s41239-026-00585-x](https://doi.org/10.1186/s41239-026-00585-x). Open Access, CC BY 4.0.
 **Canonical location**: `shared/collaboration_depth_rubric.md` in `Imbad0202/academic-research-skills`. External consumers should reference by stable URL; do not vendor (bump the `rubric_version` field on any modification).
 
@@ -64,6 +64,8 @@ The rubric is **descriptive, not prescriptive**. It does not gate user progressi
 - No explicit challenges to AI reasoning in the dialogue
 
 **Empirical anchor**: H2a β = 0.437, p < 0.001, f² = 0.243 — **the single highest-impact path** in Wang & Zhang's model. Also the dimension with highest IPMA importance (0.438) *and* lowest IPMA performance (56.7/100), identifying it as the top priority for pedagogical intervention. If a user scores low here, that is the signal the paper most strongly implicates as correctable.
+
+**Related construct**: Low Cognitive Vigilance is the primary failure that this vigilance dimension is meant to make visible, linking directly to "cognitive surrender" (Shaw & Nave, 2026, preprint). This risk is highlighted by Gartenberg et al. (2026) as pushing scholarly ecosystems toward higher volume at the expense of quality, though their editorial analysis is observational, aggregate, and restricted to a single journal's submission corpus.
 
 ---
 
