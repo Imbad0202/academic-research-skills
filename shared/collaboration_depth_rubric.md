@@ -1,12 +1,12 @@
 ---
-rubric_version: "1.0"
+rubric_version: "1.0.1"
 paper_citation: "Wang, S., & Zhang, H. (2026). Pedagogical partnerships with generative AI in higher education: how dual cognitive pathways paradoxically enable transformative learning. International Journal of Educational Technology in Higher Education, 23:11. DOI: 10.1186/s41239-026-00585-x"
 license: CC-BY-NC 4.0
 ---
 
 # Collaboration Depth Rubric
 
-**Status**: v1.0 (introduced ARS v3.5, 2026-04-21)
+**Status**: v1.0.1 (introduced ARS v3.5, 2026-04-21; patch 1.0.1 on 2026-09-08 adds a related-construct citation, #833)
 **Source**: Wang, S., & Zhang, H. (2026). *IJETHE* 23:11. DOI [10.1186/s41239-026-00585-x](https://doi.org/10.1186/s41239-026-00585-x). Open Access, CC BY 4.0.
 **Canonical location**: `shared/collaboration_depth_rubric.md` in `Imbad0202/academic-research-skills`. External consumers should reference by stable URL; do not vendor (bump the `rubric_version` field on any modification).
 
@@ -64,6 +64,8 @@ The rubric is **descriptive, not prescriptive**. It does not gate user progressi
 - No explicit challenges to AI reasoning in the dialogue
 
 **Empirical anchor**: H2a β = 0.437, p < 0.001, f² = 0.243 — **the single highest-impact path** in Wang & Zhang's model. Also the dimension with highest IPMA importance (0.438) *and* lowest IPMA performance (56.7/100), identifying it as the top priority for pedagogical intervention. If a user scores low here, that is the signal the paper most strongly implicates as correctable.
+
+**Related construct**: the risk this dimension is meant to make visible is *uncritical acceptance of AI output*. Gartenberg et al. (2026, *Organization Science* 37(3), [10.1287/orsc.2026.ed.v37.n3](https://doi.org/10.1287/orsc.2026.ed.v37.n3), §5.1) discuss that risk under the label "cognitive surrender" (Shaw & Nave, 2026, preprint, as cited there) and contrast it with human-first use. Their editorial is observational, aggregate, and limited to one journal's submission and review corpus, and it reads the combination of AI tools and publication incentives, not this construct alone, as tending toward more rather than better research. This note adds a citation only: the dimension's operationalisation, the scoring, and the rubric's descriptive-only reporting rule are unchanged, and a low score remains an observation, not a failure.
 
 ---
 

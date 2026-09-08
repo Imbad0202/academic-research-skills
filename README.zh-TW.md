@@ -34,6 +34,8 @@ v3.8 補上 L3 缺口的另一半。v3.7.3 讓每一筆引用都帶 locator anch
 
 [**Ren 等人**](https://arxiv.org/abs/2607.13104)（2026，*Self-Improvements in Modern Agentic Systems: A Survey*）補上第三個、survey 層級的錨點。其科學發現章節的綜合結論（§7.4）指出：發現型 agent 難以自行驗證 novelty、正確性與可重現性，反而可能鑽弱代理指標的漏洞；證據管理必須跨異質工具與文獻維持；並帶有治理疑慮——「證據薄弱時，科學寫作也會放大錯誤資訊」。其生成迴圈章節（§5.1–§5.2）把人工稽核與保留人類標註列為自生成評估迴圈的實務防護；歷史章節（§2.2）則記下同一課題最早的版本：Lenat 的 EURISKO 的實務成功高度依賴使用者充當外部評估訊號、修剪無效的 heuristic 漂移——survey 明言此限制延續到現代 agentic 系統。ARS 引用這篇 survey 作為 human-in-the-loop 立場的設計依據，而非「人機協作必然勝過全自動」的實證證明；survey 對 ARS 可落地的增量記錄在 #539–#541 與 #547–#550。
 
+[**Gartenberg 等人**](https://doi.org/10.1287/orsc.2026.ed.v37.n3)（2026，*Organization Science* 37(3):795-812，*More versus better*）補上第四個錨點，也是第一個來自期刊端的錨點。*Organization Science* 的 AI 工作小組用商用 AI 寫作分類器與標準可讀性指標，量了該刊 2021 年 1 月到 2026 年 2 月收到的全部首次投稿（6,957 篇）與文字型審查意見（10,389 份）。被判為大量由 AI 撰寫的稿件在這些指標上更難讀、也更常被 desk reject；AI 味較重的審查意見偏向理論、遠離資料；編輯群的結論是，現行 AI 工具加上「不發表就出局」的誘因，「看來正把系統推向『更多而非更好』的均衡」。其 §5 把「認知投降」（cognitive surrender，該文引 Shaw & Nave, 2026）與「人先行」的用法對比，並要求作者揭露稿件如何產出。這些證據是觀察性、總體層次、且只來自一本期刊，分類器也是專有工具。ARS 引用這篇社論作為「產量不是目標」（見 `POSITIONING.md`）、Collaboration Depth Observer 與 claim-strength ladder 的設計依據，不是關於 ARS 產出的證據；可落地的增量記錄在 #829–#833。
+
 v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）：Semantic Scholar API 驗證、反洩漏協議、VLM 圖表驗證、修訂軌跡追蹤。ARS 目前以分類式、證據錨定的準則軌跡實作最後一項，不計算分數差。
 
 ---
