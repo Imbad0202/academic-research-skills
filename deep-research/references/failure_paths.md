@@ -194,20 +194,23 @@ This document lists all failure scenarios that may be encountered across all mod
 - Extracted INSIGHTs < 3
 
 **User Notification Message**:
-> We've explored several directions, each with its own value. However, I notice we've been going back and forth between a few directions — this may mean you have multifaceted interests in this topic, but it can also make the research hard to focus. Would you like to:
-> (A) Continue the Socratic dialogue, but focus on [the most promising direction] you just mentioned?
-> (B) Switch to full mode, and let my team help you systematically explore and converge?
+> We've explored several directions, each with its own value. I notice we've been going back and forth between a few of them. Here are the directions you have raised so far, in the order you raised them:
+> [the directions the user has expressed, listed chronologically, in the user's own words]
+>
+> Would you like to:
+> (A) Continue the Socratic dialogue, focusing on one of these directions? You choose which one.
+> (B) Switch to full mode and let my team explore and converge systematically? (This leaves non-generation Socratic mode: the exact marker `[SOCRATIC-NON-GENERATION-EXIT: explicit_user_request]` is emitted on a standalone line before any candidate content.)
 > (C) Take a pause, think it over, and come back later?
 
 **Handling Steps**:
 1. Compile currently extracted INSIGHTs
-2. Identify the 1-2 directions with the most convergence potential
-3. Provide 3 options (continue with focus / switch mode / pause)
-4. If user chooses to continue but still hasn't converged by round 15 → auto-compile + end
+2. Summarize the directions the user has expressed, in the order they were expressed and in the user's wording. Do not rank them, do not pre-fill option (A) with a system pick, and do not FINER-score them; the choice among them is the user's
+3. Provide 3 options (continue on a user-chosen direction / switch mode with the visible exit marker / pause)
+4. If the user chooses to continue and the dialogue still does not converge, `deep-research/agents/socratic_mentor_agent.md` § Auto-End Conditions (Precise) decides when the dialogue ends. That section is the single authority for round caps and stagnation thresholds; this file states no round count of its own
 
 **Recovery Paths**:
-- Continue with focus → restrict discussion scope, converge within 5 rounds
-- Switch to full mode → pass extracted INSIGHTs to research_question_agent
+- Continue with focus → the user has chosen the direction; keep the Socratic questioning on it without limiting what the user may raise next
+- Switch to full mode → emit the exit marker, then pass extracted INSIGHTs to research_question_agent
 - Pause → save INSIGHT list; user can re-enter at any time
 
 ---

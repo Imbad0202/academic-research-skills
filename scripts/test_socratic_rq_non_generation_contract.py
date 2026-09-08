@@ -8,11 +8,34 @@ Run standalone:
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MARKER = "[SOCRATIC-NON-GENERATION-EXIT: explicit_user_request]"
+
+# #834: the mentor agent is the single authority for auto-end round caps
+# (#490). Reference files point at it and carry no round count of their own.
+AUTO_END_AUTHORITY_HEADING = "### Auto-End Conditions (Precise)"
+AUTO_END_POINTER = "Auto-End Conditions"
+AUTO_END_AUTHORITY_FILE = "socratic_mentor_agent.md"
+
+# #834: vocabulary that turns the user's own directions into a ranked or
+# preselected option, or narrows the dialogue on the system's initiative.
+# The #735 boundary forbids ranking and preselection, not only generation.
+F6_RANKING_PHRASES = (
+    "most promising",
+    "convergence potential",
+    "restrict discussion scope",
+    "restrict scope",
+    "restrict the scope",
+    "narrow the scope",
+)
+_ROUND_COUNT = re.compile(r"\b\d+\s+rounds?\b|\bround\s+\d+\b", re.IGNORECASE)
+_END_VERB = re.compile(
+    r"auto-?compile|automatically compile|\bends?\b|\bterminat", re.IGNORECASE
+)
 
 PATHS = {
     "positioning": REPO_ROOT / "POSITIONING.md",
@@ -85,6 +108,31 @@ def _contract_errors(documents: dict[str, str]) -> list[str]:
         normalized = " ".join(prose.lower().split())
         if "explicit user request" not in normalized and "explicitly asks" not in normalized:
             errors.append(f"{name}: exit is not bound to an explicit user request")
+
+    # #834 — F6 (non-convergence) must not rank, preselect, or narrow.
+    f6 = _between(documents["failure_paths"], "### F6:", "### F7:")
+    f6_lower = f6.lower()
+    for phrase in F6_RANKING_PHRASES:
+        if phrase in f6_lower:
+            errors.append(
+                f"failure_paths: F6 still ranks, preselects, or narrows a direction ({phrase!r})"
+            )
+
+    # #834 — no reference file states its own auto-end round count; both
+    # point at the agent file, which must still carry the authority heading.
+    management = _between(
+        documents["protocol"], "## Dialogue Management Rules", "## Reading Probe"
+    )
+    for name, section in {"failure_paths": f6, "protocol": management}.items():
+        for line in section.splitlines():
+            probe = line.replace(AUTO_END_POINTER, "")
+            if _ROUND_COUNT.search(probe) and _END_VERB.search(probe):
+                errors.append(f"{name}: carries its own auto-end round count")
+                break
+        if AUTO_END_POINTER not in section or AUTO_END_AUTHORITY_FILE not in section:
+            errors.append(f"{name}: auto-end authority pointer missing")
+    if AUTO_END_AUTHORITY_HEADING not in documents["mentor"]:
+        errors.append("mentor: auto-end authority heading missing")
 
     return errors
 
@@ -171,3 +219,73 @@ def test_no_answer_iron_rule_is_scoped_to_active_non_generation_mode() -> None:
     for name in ("skill", "mentor", "protocol"):
         assert "while non-generation Socratic mode is active" in documents[name], name
         assert MARKER in documents[name], name
+
+
+def test_f6_ranked_or_preselected_direction_regression_is_detected() -> None:
+    """The pre-#834 F6 bytes (ranked pick, convergence-potential triage, scope
+    restriction) must fail the contract."""
+    documents = _read_all()
+    anchor = "### F6: Socratic Dialogue Does Not Converge\n"
+    pre_fix_lines = (
+        "> (A) Continue the Socratic dialogue, but focus on [the most promising direction] you just mentioned?\n"
+        "2. Identify the 1-2 directions with the most convergence potential\n"
+        "- Continue with focus → restrict discussion scope, converge within 5 rounds\n"
+    )
+    documents["failure_paths"] = documents["failure_paths"].replace(
+        anchor, anchor + "\n" + pre_fix_lines, 1
+    )
+    errors = _contract_errors(documents)
+    for phrase in ("most promising", "convergence potential", "restrict discussion scope"):
+        assert any(phrase in error for error in errors), (phrase, errors)
+
+
+def test_reference_file_own_round_cap_regression_is_detected() -> None:
+    """The pre-#834 'round 15 → end' sentences on both reference files must fail."""
+    documents = _read_all()
+    documents["protocol"] = documents["protocol"].replace(
+        "## Dialogue Management Rules\n",
+        "## Dialogue Management Rules\n\n"
+        "- If dialogue exceeds 15 rounds -> automatically compile INSIGHTs and end\n",
+        1,
+    )
+    documents["failure_paths"] = documents["failure_paths"].replace(
+        "### F6: Socratic Dialogue Does Not Converge\n",
+        "### F6: Socratic Dialogue Does Not Converge\n\n"
+        "4. If user chooses to continue but still hasn't converged by round 15 → auto-compile + end\n",
+        1,
+    )
+    errors = _contract_errors(documents)
+    assert "protocol: carries its own auto-end round count" in errors
+    assert "failure_paths: carries its own auto-end round count" in errors
+
+
+def test_auto_end_authority_pointer_removal_is_detected() -> None:
+    documents = _read_all()
+    documents["failure_paths"] = documents["failure_paths"].replace(
+        AUTO_END_POINTER, "auto-end rules"
+    )
+    documents["protocol"] = documents["protocol"].replace(
+        AUTO_END_AUTHORITY_FILE, "the mentor agent"
+    )
+    documents["mentor"] = documents["mentor"].replace(
+        AUTO_END_AUTHORITY_HEADING, "### Auto-End Conditions", 1
+    )
+    errors = _contract_errors(documents)
+    assert "failure_paths: auto-end authority pointer missing" in errors
+    assert "protocol: auto-end authority pointer missing" in errors
+    assert "mentor: auto-end authority heading missing" in errors
+
+
+def test_stagnation_trigger_and_layer_minimums_are_not_round_caps() -> None:
+    """Round counts that are triggers or layer minimums, not termination rules,
+    stay allowed on the reference files."""
+    documents = _read_all()
+    documents["protocol"] = documents["protocol"].replace(
+        "## Dialogue Management Rules\n",
+        "## Dialogue Management Rules\n\n"
+        "- At least 2 rounds of dialogue per layer before moving to the next\n"
+        "- If no convergence after 10 rounds -> summarize only user-expressed directions\n",
+        1,
+    )
+    errors = _contract_errors(documents)
+    assert "protocol: carries its own auto-end round count" not in errors
