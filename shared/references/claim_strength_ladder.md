@@ -8,6 +8,8 @@ does not check. Mechanism shape borrowed from
 [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills) by
 @MissOrangePeel (`sci-ssci-polishing`, `references/invariants.md`).
 
+Gartenberg et al. (2026, Fig. 8) provide external evidence that AI-written text hedges less, meaning the ladder's guarded direction is the empirically observed drift direction; the scope of this cited editorial is observational, aggregate, and limited to a single journal.
+
 **Epistemic status:** the field-relative ladder remains advisory / interpretive
 guidance. Since #670, exact claim surfaces that were explicitly registered and
 hash-bound are mechanically preserved or replaced only by exact author-approved
