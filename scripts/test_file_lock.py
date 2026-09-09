@@ -311,6 +311,23 @@ def test_windows_edeadlock_counts_as_contention(
         os.close(fd)
 
 
+def test_persistent_interruption_still_honours_the_deadline(
+    tmp_path: Path, fake_windows: _FakeMsvcrt, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def locking(fd: int, mode: int, nbytes: int) -> None:
+        raise InterruptedError(errno.EINTR, "Interrupted system call")
+
+    monkeypatch.setattr(fake_windows, "locking", locking)
+    fd = _open_lock(tmp_path / "x.lock")
+    try:
+        started = time.monotonic()
+        with pytest.raises(file_lock.LockTimeout):
+            file_lock.acquire(fd, exclusive=True, timeout=0.2)
+        assert 0.15 <= time.monotonic() - started < 3.0
+    finally:
+        os.close(fd)
+
+
 def test_windows_unexpected_oserror_propagates_unchanged(
     tmp_path: Path, fake_windows: _FakeMsvcrt, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -373,10 +390,34 @@ assert file_lock.BACKEND == "msvcrt" and not file_lock.SHARED_LOCKS_SUPPORTED
 tmp = pathlib.Path(tempfile.mkdtemp())
 
 # adjudication: a read degrades to an exclusive lock; the lock file stays empty
+import threading, time
 store = tmp / "activity.json"
 with adjudication_activity._store_lock(store, exclusive=False):
-    assert store.with_name(store.name + ".lock").stat().st_size == 0
+    store_lock = store.with_name(store.name + ".lock")
+    assert store_lock.stat().st_size == 0
 print("ADJUDICATION_READ_OK")
+
+# adjudication policy: a reader waits (bounded), a writer does not wait
+adjudication_activity.READER_FALLBACK_WAIT_SECONDS = 0.3
+held = os.open(store_lock, os.O_RDWR | os.O_CREAT, 0o600)
+file_lock.acquire(held, timeout=0)
+started = time.monotonic()
+try:
+    with adjudication_activity._store_lock(store, exclusive=True):
+        raise SystemExit("writer acquired a held lock")
+except adjudication_activity.ActivityError:
+    assert time.monotonic() - started < 0.2, "writer must not wait"
+started = time.monotonic()
+try:
+    with adjudication_activity._store_lock(store, exclusive=False):
+        raise SystemExit("reader acquired a held lock")
+except adjudication_activity.ActivityError:
+    assert 0.25 <= time.monotonic() - started < 3.0, "reader must wait the bounded window"
+threading.Timer(0.1, file_lock.release, args=(held,)).start()
+with adjudication_activity._store_lock(store, exclusive=False):
+    pass
+os.close(held)
+print("ADJUDICATION_POLICY_OK")
 
 # inquiry: the alpha refuses non-POSIX hosts
 try:
@@ -431,6 +472,7 @@ def test_consumers_import_and_behave_with_fcntl_absent() -> None:
     assert result.returncode == 0, result.stderr
     for marker in (
         "ADJUDICATION_READ_OK",
+        "ADJUDICATION_POLICY_OK",
         "INQUIRY_REFUSES_OK",
         "BINDING_BOUNDED_OK",
         "MARK_READ_OK",

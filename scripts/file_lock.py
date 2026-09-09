@@ -99,7 +99,11 @@ def acquire(fd: int, *, exclusive: bool = True, timeout: float | None) -> None:
         try:
             _try_once(fd, exclusive=exclusive)
             return
-        except InterruptedError:
+        except InterruptedError as exc:
+            # A signal interrupted the attempt; retry, but never past the
+            # deadline, so a persistent interruption cannot defeat the bound.
+            if time.monotonic() >= deadline:
+                raise LockTimeout(wait) from exc
             continue
         except OSError as exc:
             if exc.errno not in _CONTENTION_ERRNOS:
