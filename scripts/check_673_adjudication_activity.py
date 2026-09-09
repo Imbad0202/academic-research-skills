@@ -72,6 +72,10 @@ PYTHON_EXECUTION_WHITELIST = {
     # Prompt-size regression test names the bounded #673 documentation block;
     # it neither imports nor executes the activity runtime.
     Path("scripts/test_v3_6_7_phase_6_6.py"),
+    # Shared file-lock helper test (#845): imports the activity runtime in a
+    # subprocess only to exercise its lock backend under a fake msvcrt; it
+    # never reads, renders, or writes an activity store as a consumer.
+    Path("scripts/test_file_lock.py"),
 }
 
 LIMITATION_SENTENCE = (
