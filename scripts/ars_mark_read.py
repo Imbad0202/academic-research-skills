@@ -157,8 +157,6 @@ def _ledger_lock(
 
     acquired = False
     try:
-        if fcntl is None and os.fstat(fd).st_size == 0:
-            os.write(fd, b"\0")
         os.lseek(fd, 0, os.SEEK_SET)
         deadline = time.monotonic() + timeout
         while True:
