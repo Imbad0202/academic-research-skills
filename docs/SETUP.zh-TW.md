@@ -26,6 +26,8 @@ curl -fsSL https://claude.ai/install.sh | bash
 irm https://claude.ai/install.ps1 | iex
 ```
 
+**平台支援。** macOS 與 Linux 是經過測試的平台，CI 只在 Ubuntu 上執行。Windows 屬盡力支援：會鎖檔的 script 共用一個 helper（`scripts/file_lock.py`），內含 `msvcrt` 後端；沒有 Windows CI job，Windows 行為仰賴貢獻者驗證（#843、#845）。在 Windows 上，共享讀取鎖會降級為獨占鎖並短暫等待，無限期的鎖等待上限為 30 秒，探究分支帳本（alpha）會拒絕執行。
+
 <details>
 <summary>替代方案：npm 安裝（已棄用）</summary>
 

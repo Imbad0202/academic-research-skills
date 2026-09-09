@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import fcntl
 import hashlib
 import json
 from pathlib import Path
@@ -14,6 +13,7 @@ import jsonschema
 import pytest
 
 from scripts import adjudication_activity as activity
+from scripts import file_lock
 from scripts import check_re_review_synthesis as re_review
 from scripts.test_check_re_review_synthesis import emit, scenario_g2d
 
@@ -862,8 +862,11 @@ def test_symlink_artifact_and_lock_contention_fail_without_mutation(
     before = store.read_bytes()
     lock_path = store.with_name(store.name + ".lock")
     with lock_path.open("r+b") as lock_file:
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        code, stdout, stderr = _call(capsys, "validate", "--store", str(store))
+        file_lock.acquire(lock_file.fileno(), exclusive=True, timeout=0)
+        try:
+            code, stdout, stderr = _call(capsys, "validate", "--store", str(store))
+        finally:
+            file_lock.release(lock_file.fileno())
     assert code == 7
     assert stdout == ""
     assert "ERROR:LOCK" in stderr

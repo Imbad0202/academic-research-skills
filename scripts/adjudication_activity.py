@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import copy
 import errno
-import fcntl
 import hashlib
 import json
 import os
@@ -26,6 +25,11 @@ from typing import Any, Iterator, Sequence
 
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
+
+try:  # Dual-path import: package import under pytest vs direct script use.
+    from scripts import file_lock
+except ImportError:  # pragma: no cover - direct ``python scripts/<tool>.py`` use
+    import file_lock  # type: ignore[no-redef]
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -355,6 +359,13 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
             os.close(opened_fd)
 
 
+# Readers take a shared lock where the host supports one and never wait.
+# Where shared locks are unavailable (msvcrt), a read degrades to an exclusive
+# lock with this short bounded wait so two concurrent readers do not turn into
+# a spurious LOCK failure; writers keep the non-waiting exclusive lock.
+READER_FALLBACK_WAIT_SECONDS = 5.0
+
+
 @contextmanager
 def _store_lock(path: Path, *, exclusive: bool) -> Iterator[None]:
     lock_path = path.with_name(path.name + ".lock")
@@ -363,8 +374,12 @@ def _store_lock(path: Path, *, exclusive: bool) -> Iterator[None]:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size != 0:
             raise ActivityError("LOCK", "lock metadata is not an empty single-linked regular file")
-        operation = (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB
-        fcntl.flock(fd, operation)
+        wait = (
+            0.0
+            if exclusive or file_lock.SHARED_LOCKS_SUPPORTED
+            else READER_FALLBACK_WAIT_SECONDS
+        )
+        file_lock.acquire(fd, exclusive=exclusive, timeout=wait)
     except ActivityError:
         if "fd" in locals():
             os.close(fd)
@@ -376,7 +391,7 @@ def _store_lock(path: Path, *, exclusive: bool) -> Iterator[None]:
     try:
         yield
     finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        file_lock.release(fd)
         os.close(fd)
 
 

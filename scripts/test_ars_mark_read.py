@@ -807,7 +807,7 @@ class TestLockedLedgerTransaction(unittest.TestCase):
             log_path = Path(tmp) / "passport_human_read_log.yaml"
             lock_path = ars_mark_read._ledger_lock_path(log_path)
             lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
-            ars_mark_read.fcntl.flock(lock_fd, ars_mark_read.fcntl.LOCK_EX)
+            ars_mark_read.file_lock.acquire(lock_fd, exclusive=True, timeout=0)
             try:
                 with self.assertRaisesRegex(
                     ars_mark_read.LedgerLockError, "timed out"
@@ -817,7 +817,7 @@ class TestLockedLedgerTransaction(unittest.TestCase):
                     ):
                         self.fail("contended lock must not be acquired")
             finally:
-                ars_mark_read.fcntl.flock(lock_fd, ars_mark_read.fcntl.LOCK_UN)
+                ars_mark_read.file_lock.release(lock_fd)
                 os.close(lock_fd)
 
     def test_cli_lock_failure_is_visible_without_traceback(self) -> None:
