@@ -27,8 +27,6 @@ from __future__ import annotations
 import errno
 import os
 import time
-from contextlib import contextmanager
-from typing import Iterator
 
 try:
     import fcntl
@@ -114,16 +112,3 @@ def release(fd: int) -> None:
     else:
         _msvcrt_byte0(fd, msvcrt.LK_UNLCK)
 
-
-@contextmanager
-def held(fd: int, *, exclusive: bool = True, timeout: float | None) -> Iterator[None]:
-    """Hold a lock for the block; releases only what it acquired.
-
-    Releasing an unheld lock is a no-op under ``flock`` but an error under
-    ``msvcrt``, so the release lives here, after a successful acquire.
-    """
-    acquire(fd, exclusive=exclusive, timeout=timeout)
-    try:
-        yield
-    finally:
-        release(fd)

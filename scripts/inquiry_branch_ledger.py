@@ -1690,14 +1690,24 @@ def _transaction_lock(passport: Path, *, timeout_seconds: float = 30.0) -> Itera
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             raise ContractError(f"transaction_lock: must be a regular file: {lock_path}")
         try:
-            with file_lock.held(fd, exclusive=True, timeout=normalized_timeout):
-                yield
+            file_lock.acquire(fd, exclusive=True, timeout=normalized_timeout)
         except file_lock.LockTimeout:
             raise ContractError(
                 f"passport locked by another session: {passport}"
             ) from None
-    finally:
+    except BaseException:
         os.close(fd)
+        raise
+    # Separate from acquisition: a LockTimeout raised inside the body must not
+    # be reported as "passport locked", and release runs only after a
+    # successful acquire (an unheld release is an error under msvcrt).
+    try:
+        yield
+    finally:
+        try:
+            file_lock.release(fd)
+        finally:
+            os.close(fd)
 
 
 def _plain_pointer(pointer: Mapping[str, Any] | None) -> dict[str, str] | None:

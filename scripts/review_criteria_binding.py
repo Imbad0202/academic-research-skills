@@ -505,13 +505,22 @@ def _locked(path: Path) -> Iterator[None]:
         fd = os.open(lock_path, flags, 0o600)
     except OSError as exc:
         raise BindingError(f"cannot open lock {lock_path}: {exc}") from exc
+    # Acquisition and the guarded body are separate try blocks so a
+    # LockTimeout raised inside the body is never blamed on this lock, and the
+    # release runs only after a successful acquire (an unheld release is an
+    # error under msvcrt).
     try:
-        try:
-            with file_lock.held(fd, exclusive=True, timeout=None):
-                yield
-        except file_lock.LockTimeout as exc:
-            raise BindingError(f"manifest lock {lock_path}: {exc}") from exc
+        file_lock.acquire(fd, exclusive=True, timeout=None)
+    except file_lock.LockTimeout as exc:
+        os.close(fd)
+        raise BindingError(f"manifest lock {lock_path}: {exc}") from exc
+    except BaseException:
+        os.close(fd)
+        raise
+    try:
+        yield
     finally:
+        file_lock.release(fd)
         os.close(fd)
 
 

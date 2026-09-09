@@ -101,27 +101,11 @@ def test_helper_never_writes_to_the_lock_file(tmp_path: Path) -> None:
     fd = _open_lock(lock)
     try:
         for exclusive in (True, False):
-            with file_lock.held(fd, exclusive=exclusive, timeout=0):
-                pass
+            file_lock.acquire(fd, exclusive=exclusive, timeout=0)
+            file_lock.release(fd)
     finally:
         os.close(fd)
     assert lock.stat().st_size == 0
-
-
-def test_held_releases_only_after_a_successful_acquire(
-    lock_pair: tuple[int, int],
-) -> None:
-    a, b = lock_pair
-    file_lock.acquire(a, exclusive=True, timeout=0)
-    with pytest.raises(file_lock.LockTimeout):
-        with file_lock.held(b, exclusive=True, timeout=0):
-            pytest.fail("held() must not enter while the lock is taken")
-    file_lock.release(a)
-    with file_lock.held(b, exclusive=True, timeout=0):
-        with pytest.raises(file_lock.LockTimeout):
-            file_lock.acquire(a, exclusive=True, timeout=0)
-    file_lock.acquire(a, exclusive=True, timeout=0)
-    file_lock.release(a)
 
 
 @pytest.mark.skipif(file_lock.BACKEND != "fcntl", reason="no shared locks")
@@ -321,7 +305,16 @@ except review_criteria_binding.BindingError as exc:
 file_lock.release(fd)
 os.close(fd)
 with review_criteria_binding._locked(manifest):
-    pass
+    # a LockTimeout raised inside the body must surface as itself, not as
+    # BindingError blaming the manifest lock
+    inner = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        file_lock.acquire(inner, timeout=0)
+        raise SystemExit("inner acquire succeeded while the manifest lock is held")
+    except file_lock.LockTimeout:
+        pass
+    finally:
+        os.close(inner)
 print("BINDING_BOUNDED_OK")
 
 # ars-mark-read: bounded ledger lock with visible contention
