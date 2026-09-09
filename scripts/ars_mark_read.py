@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import argparse
 import errno
-import fcntl
 import os
 import sys
 import tempfile
@@ -49,6 +48,12 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import yaml
+
+try:
+    import fcntl
+except ModuleNotFoundError:  # pragma: no cover - exercised on Windows
+    fcntl = None  # type: ignore[assignment]
+    import msvcrt
 
 try:
     from scripts.human_read_attestation_resolver import (
@@ -75,6 +80,22 @@ LOCATOR_MAX_LEN = 200
 NOTE_MAX_LEN = 1000
 LEDGER_LOCK_TIMEOUT_SECONDS = 10.0
 LEDGER_LOCK_POLL_SECONDS = 0.05
+
+
+def _lock_nonblocking(fd: int) -> None:
+    """Acquire one byte of the peer lock using the host OS backend."""
+    if fcntl is not None:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return
+    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+
+
+def _unlock(fd: int) -> None:
+    """Release the peer lock using the host OS backend."""
+    if fcntl is not None:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return
+    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
 
 
 class LedgerLockError(RuntimeError):
@@ -136,10 +157,11 @@ def _ledger_lock(
 
     acquired = False
     try:
+        os.lseek(fd, 0, os.SEEK_SET)
         deadline = time.monotonic() + timeout
         while True:
             try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                _lock_nonblocking(fd)
                 acquired = True
                 break
             except InterruptedError:
@@ -163,7 +185,7 @@ def _ledger_lock(
         release_error: OSError | None = None
         if acquired:
             try:
-                fcntl.flock(fd, fcntl.LOCK_UN)
+                _unlock(fd)
             except OSError as exc:
                 release_error = exc
         try:
