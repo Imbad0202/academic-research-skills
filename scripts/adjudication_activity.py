@@ -26,10 +26,10 @@ from typing import Any, Iterator, Sequence
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
-try:  # Dual-path import: package import under pytest vs direct script use.
-    from scripts import file_lock
-except ImportError:  # pragma: no cover - direct ``python scripts/<tool>.py`` use
-    import file_lock  # type: ignore[no-redef]
+try:  # Dual-path import: sibling module on sys.path vs package import.
+    import file_lock
+except ImportError:  # pragma: no cover - package-import path
+    from scripts import file_lock  # type: ignore[no-redef]
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -359,10 +359,10 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
             os.close(opened_fd)
 
 
-# Readers take a shared lock where the host supports one and never wait.
-# Where shared locks are unavailable (msvcrt), a read degrades to an exclusive
-# lock with this short bounded wait so two concurrent readers do not turn into
-# a spurious LOCK failure; writers keep the non-waiting exclusive lock.
+# Readers take a shared lock under flock and never wait.  msvcrt has no shared
+# mode, so there a read degrades to an exclusive lock with this short bounded
+# wait so two concurrent readers do not turn into a spurious LOCK failure;
+# writers keep the non-waiting exclusive lock on both backends.
 READER_FALLBACK_WAIT_SECONDS = 5.0
 
 
@@ -376,7 +376,7 @@ def _store_lock(path: Path, *, exclusive: bool) -> Iterator[None]:
             raise ActivityError("LOCK", "lock metadata is not an empty single-linked regular file")
         wait = (
             0.0
-            if exclusive or file_lock.SHARED_LOCKS_SUPPORTED
+            if exclusive or file_lock.BACKEND == "fcntl"
             else READER_FALLBACK_WAIT_SECONDS
         )
         file_lock.acquire(fd, exclusive=exclusive, timeout=wait)

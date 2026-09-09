@@ -1686,24 +1686,18 @@ def _transaction_lock(passport: Path, *, timeout_seconds: float = 30.0) -> Itera
         _require_regular_nonsymlink(lock_path, "transaction_lock")
     flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(lock_path, flags, 0o600)
-    acquired = False
     try:
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             raise ContractError(f"transaction_lock: must be a regular file: {lock_path}")
         try:
-            file_lock.acquire(fd, exclusive=True, timeout=normalized_timeout)
+            with file_lock.held(fd, exclusive=True, timeout=normalized_timeout):
+                yield
         except file_lock.LockTimeout:
             raise ContractError(
                 f"passport locked by another session: {passport}"
             ) from None
-        acquired = True
-        yield
     finally:
-        try:
-            if acquired:
-                file_lock.release(fd)
-        finally:
-            os.close(fd)
+        os.close(fd)
 
 
 def _plain_pointer(pointer: Mapping[str, Any] | None) -> dict[str, str] | None:

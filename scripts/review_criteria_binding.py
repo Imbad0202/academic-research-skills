@@ -505,23 +505,13 @@ def _locked(path: Path) -> Iterator[None]:
         fd = os.open(lock_path, flags, 0o600)
     except OSError as exc:
         raise BindingError(f"cannot open lock {lock_path}: {exc}") from exc
-    acquired = False
     try:
-        # Blocking on POSIX; the msvcrt backend caps the wait at
-        # file_lock.WINDOWS_BLOCKING_WAIT_SECONDS and raises LockTimeout.
         try:
-            file_lock.acquire(fd, exclusive=True, timeout=None)
+            with file_lock.held(fd, exclusive=True, timeout=None):
+                yield
         except file_lock.LockTimeout as exc:
-            raise BindingError(
-                f"manifest lock {lock_path} still held after {exc.waited:g}s"
-            ) from exc
-        acquired = True
-        yield
+            raise BindingError(f"manifest lock {lock_path}: {exc}") from exc
     finally:
-        # Releasing an unheld lock is a no-op under flock but an error under
-        # msvcrt, so only release what this frame acquired.
-        if acquired:
-            file_lock.release(fd)
         os.close(fd)
 
 

@@ -47,15 +47,18 @@ from typing import Any, Iterator
 
 import yaml
 
+try:  # Dual-path import: sibling module on sys.path vs package import.
+    import file_lock
+except ImportError:  # pragma: no cover - package-import path
+    from scripts import file_lock  # type: ignore[no-redef]
+
 try:
-    from scripts import file_lock
     from scripts.human_read_attestation_resolver import (
         LedgerValidationError,
         _UniqueKeySafeLoader,
         _validated_rows,
     )
 except ModuleNotFoundError:  # direct ``python scripts/ars_mark_read.py`` use
-    import file_lock  # type: ignore[no-redef]
     from human_read_attestation_resolver import (  # type: ignore[no-redef]
         LedgerValidationError,
         _UniqueKeySafeLoader,
