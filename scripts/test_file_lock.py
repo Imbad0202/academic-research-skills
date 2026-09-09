@@ -304,17 +304,21 @@ except review_criteria_binding.BindingError as exc:
     assert "still held after 0.1s" in str(exc), str(exc)
 file_lock.release(fd)
 os.close(fd)
-with review_criteria_binding._locked(manifest):
-    # a LockTimeout raised inside the body must surface as itself, not as
-    # BindingError blaming the manifest lock
-    inner = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
-    try:
+# a LockTimeout raised inside the body must leave _locked() as itself, not as
+# BindingError blaming the manifest lock
+inner = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+try:
+    with review_criteria_binding._locked(manifest):
         file_lock.acquire(inner, timeout=0)
         raise SystemExit("inner acquire succeeded while the manifest lock is held")
-    except file_lock.LockTimeout:
-        pass
-    finally:
-        os.close(inner)
+except review_criteria_binding.BindingError as exc:
+    raise SystemExit(f"body LockTimeout was blamed on the manifest lock: {exc}")
+except file_lock.LockTimeout:
+    pass
+finally:
+    os.close(inner)
+with review_criteria_binding._locked(manifest):
+    pass
 print("BINDING_BOUNDED_OK")
 
 # ars-mark-read: bounded ledger lock with visible contention
