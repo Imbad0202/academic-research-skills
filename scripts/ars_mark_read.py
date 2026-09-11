@@ -36,11 +36,9 @@ Behavior summary:
 from __future__ import annotations
 
 import argparse
-import errno
 import os
 import sys
 import tempfile
-import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -49,11 +47,10 @@ from typing import Any, Iterator
 
 import yaml
 
-try:
-    import fcntl
-except ModuleNotFoundError:  # pragma: no cover - exercised on Windows
-    fcntl = None  # type: ignore[assignment]
-    import msvcrt
+try:  # Dual-path import: sibling module on sys.path vs package import.
+    import file_lock
+except ImportError:  # pragma: no cover - package-import path
+    from scripts import file_lock  # type: ignore[no-redef]
 
 try:
     from scripts.human_read_attestation_resolver import (
@@ -79,23 +76,6 @@ READ_SCOPE_LEVELS = ("full_text", "sections", "abstract_only", "toc_only", "unkn
 LOCATOR_MAX_LEN = 200
 NOTE_MAX_LEN = 1000
 LEDGER_LOCK_TIMEOUT_SECONDS = 10.0
-LEDGER_LOCK_POLL_SECONDS = 0.05
-
-
-def _lock_nonblocking(fd: int) -> None:
-    """Acquire one byte of the peer lock using the host OS backend."""
-    if fcntl is not None:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return
-    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-
-
-def _unlock(fd: int) -> None:
-    """Release the peer lock using the host OS backend."""
-    if fcntl is not None:
-        fcntl.flock(fd, fcntl.LOCK_UN)
-        return
-    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
 
 
 class LedgerLockError(RuntimeError):
@@ -157,27 +137,15 @@ def _ledger_lock(
 
     acquired = False
     try:
-        os.lseek(fd, 0, os.SEEK_SET)
-        deadline = time.monotonic() + timeout
-        while True:
-            try:
-                _lock_nonblocking(fd)
-                acquired = True
-                break
-            except InterruptedError:
-                continue
-            except OSError as exc:
-                if exc.errno in (errno.EACCES, errno.EAGAIN):
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0:
-                        raise LedgerLockError(
-                            f"timed out after {timeout:g}s waiting for peer lock"
-                        ) from exc
-                    time.sleep(min(LEDGER_LOCK_POLL_SECONDS, remaining))
-                    continue
-                raise LedgerLockError(
-                    f"cannot acquire peer lock: {exc}"
-                ) from exc
+        try:
+            file_lock.acquire(fd, exclusive=True, timeout=timeout)
+        except file_lock.LockTimeout as exc:
+            raise LedgerLockError(
+                f"timed out after {timeout:g}s waiting for peer lock"
+            ) from exc
+        except OSError as exc:
+            raise LedgerLockError(f"cannot acquire peer lock: {exc}") from exc
+        acquired = True
 
         yield
     finally:
@@ -185,7 +153,7 @@ def _ledger_lock(
         release_error: OSError | None = None
         if acquired:
             try:
-                _unlock(fd)
+                file_lock.release(fd)
             except OSError as exc:
                 release_error = exc
         try:

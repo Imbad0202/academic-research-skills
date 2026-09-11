@@ -8,7 +8,6 @@ verdict.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import hashlib
 import json
 import os
@@ -22,6 +21,11 @@ from typing import Any, Iterator, NoReturn
 
 from resolve_review_target_context import ContractError as ResolverError
 from resolve_review_target_context import resolve
+
+try:  # Dual-path import: sibling module on sys.path vs package import.
+    import file_lock
+except ImportError:  # pragma: no cover - package-import path
+    from scripts import file_lock  # type: ignore[no-redef]
 
 
 SCHEMA_VERSION = "review-criteria-binding/1.0"
@@ -501,11 +505,22 @@ def _locked(path: Path) -> Iterator[None]:
         fd = os.open(lock_path, flags, 0o600)
     except OSError as exc:
         raise BindingError(f"cannot open lock {lock_path}: {exc}") from exc
+    # Acquisition and the guarded body are separate try blocks so a
+    # LockTimeout raised inside the body is never blamed on this lock, and the
+    # release runs only after a successful acquire (an unheld release is an
+    # error under msvcrt).
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        file_lock.acquire(fd, exclusive=True, timeout=None)
+    except file_lock.LockTimeout as exc:
+        os.close(fd)
+        raise BindingError(f"manifest lock {lock_path}: {exc}") from exc
+    except BaseException:
+        os.close(fd)
+        raise
+    try:
         yield
     finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        file_lock.release(fd)
         os.close(fd)
 
 

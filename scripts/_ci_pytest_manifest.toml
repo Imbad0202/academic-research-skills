@@ -679,3 +679,7 @@ path = "scripts/test_score_calibration_run.py"
 [[pytest]]
 id = "653-calibration-measurement-row"
 path = "scripts/test_build_calibration_measurement_row.py"
+
+[[pytest]]
+id = "845-shared-file-lock"
+path = "scripts/test_file_lock.py"

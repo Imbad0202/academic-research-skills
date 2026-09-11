@@ -40,10 +40,7 @@ from scripts.research_workflow_profile import (
     seal_profile,
 )
 
-try:
-    import fcntl
-except ImportError:  # pragma: no cover - POSIX-only alpha coverage
-    fcntl = None  # type: ignore[assignment]
+from scripts import file_lock
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -1330,7 +1327,7 @@ def test_absent_and_orphan_pointer_states(tmp_path: Path) -> None:
 def test_shared_passport_sidecar_excludes_another_current_writer(
     tmp_path: Path,
 ) -> None:
-    if fcntl is None:
+    if file_lock.BACKEND != "fcntl":
         pytest.skip("POSIX advisory locking is unavailable")
     profile = _profile()
     passport = _passport(tmp_path / "passport.yaml")
@@ -1338,7 +1335,7 @@ def test_shared_passport_sidecar_excludes_another_current_writer(
     lock_path.touch(mode=0o600)
 
     with lock_path.open("r+") as held:
-        fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        file_lock.acquire(held.fileno(), exclusive=True, timeout=0)
         with pytest.raises(ContractError, match="passport locked by another session"):
             load_bound_ledger(
                 passport,

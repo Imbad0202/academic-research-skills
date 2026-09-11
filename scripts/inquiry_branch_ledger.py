@@ -54,7 +54,6 @@ import os
 import re
 import stat
 import sys
-import time
 import unicodedata
 import uuid
 from contextlib import contextmanager
@@ -62,12 +61,8 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterable, Iterator, Mapping, NoReturn, Sequence
 
-try:  # POSIX is the supported durable-publication platform for this alpha.
-    import fcntl
-except ImportError:  # pragma: no cover - exercised only on non-POSIX hosts
-    fcntl = None  # type: ignore[assignment]
-
 try:  # Dual-path import: script invocation vs package import under pytest.
+    import file_lock
     from research_workflow_profile import (
         JCS_SAFE_INTEGER_MAX,
         ContractError as ProfileContractError,
@@ -77,6 +72,7 @@ try:  # Dual-path import: script invocation vs package import under pytest.
         validate_profile,
     )
 except ImportError:  # pragma: no cover - package-import path
+    from scripts import file_lock  # type: ignore[no-redef]
     from scripts.research_workflow_profile import (
         JCS_SAFE_INTEGER_MAX,
         ContractError as ProfileContractError,
@@ -1668,7 +1664,10 @@ def _assert_safe_ledger_target(passport: Path, ledger: Path) -> None:
 
 @contextmanager
 def _transaction_lock(passport: Path, *, timeout_seconds: float = 30.0) -> Iterator[None]:
-    if fcntl is None:
+    # POSIX is the supported durable-publication platform for this alpha; the
+    # msvcrt backend has no CI coverage, so the ledger refuses rather than run
+    # its durable writes under an unverified lock (#845).
+    if file_lock.BACKEND != "fcntl":
         raise ContractError(
             "concurrency protection unavailable on this platform; refusing ledger access"
         )
@@ -1687,24 +1686,26 @@ def _transaction_lock(passport: Path, *, timeout_seconds: float = 30.0) -> Itera
         _require_regular_nonsymlink(lock_path, "transaction_lock")
     flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(lock_path, flags, 0o600)
-    deadline = time.monotonic() + normalized_timeout
     try:
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             raise ContractError(f"transaction_lock: must be a regular file: {lock_path}")
-        while True:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.monotonic() >= deadline:
-                    raise ContractError(
-                        f"passport locked by another session: {passport}"
-                    )
-                time.sleep(0.05)
+        try:
+            file_lock.acquire(fd, exclusive=True, timeout=normalized_timeout)
+        except file_lock.LockTimeout:
+            raise ContractError(
+                f"passport locked by another session: {passport}"
+            ) from None
+    except BaseException:
+        os.close(fd)
+        raise
+    # Separate from acquisition: a LockTimeout raised inside the body must not
+    # be reported as "passport locked", and release runs only after a
+    # successful acquire (an unheld release is an error under msvcrt).
+    try:
         yield
     finally:
         try:
-            fcntl.flock(fd, fcntl.LOCK_UN)
+            file_lock.release(fd)
         finally:
             os.close(fd)
 
