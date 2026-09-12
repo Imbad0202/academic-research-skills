@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: "Universal deep research agent team. 13-agent pipeline for rigorous academic research on any topic. 8 modes: full research, quick brief, paper review, lit-review, fact-check, three-way literature scan, Socratic guided research dialogue, and systematic review with optional meta-analysis. Covers research question formulation, Socratic mentoring, methodology design, systematic literature search, source verification, cross-source synthesis, risk of bias assessment, meta-analysis, APA 7.0 report compilation, editorial review, devil's advocate challenges, ethics review, and post-research literature monitoring. Triggers on: research, deep research, literature review, systematic review, meta-analysis, PRISMA, evidence synthesis, fact-check, WHY HOW WHAT papers, 3W literature scan, guide my research, help me think through, 研究, 深度研究, 文獻回顧, 文獻探討, 系統性回顧, 後設分析, 事實查核, 三段式文獻掃描, 引導我的研究, 幫我釐清, 幫我想想, 我不確定要研究什麼, 研究方向, 研究主題, 심층 연구, 문헌 조사, 체계적 문헌고찰, 메타분석, 사실 확인, 연구 방향을 잡아줘, 연구 주제 정하는 것을 도와줘."
+description: "Universal deep research agent team. 13-agent pipeline for rigorous academic research on any topic. 8 modes: full research, quick brief, paper review, lit-review, fact-check, three-way literature scan, Socratic guided research dialogue, and systematic review with optional meta-analysis. Covers research question formulation, Socratic mentoring, methodology design, systematic literature search, source verification, cross-source synthesis, risk of bias assessment, meta-analysis, APA 7.0 report compilation, editorial review, devil's advocate challenges, ethics review, and post-research literature monitoring. Triggers on: research, deep research, literature review, systematic review, meta-analysis, PRISMA, evidence synthesis, fact-check, WHY HOW WHAT papers, 3W literature scan, guide my research, help me think through, 研究, 深度研究, 文獻回顧, 文獻探討, 系統性回顧, 後設分析, 事實查核, 三段式文獻掃描, 引導我的研究, 幫我釐清, 幫我想想, 我不確定要研究什麼, 研究方向, 研究主題, 심층 연구, 문헌 조사, 체계적 문헌고찰, 메타분석, 사실 확인, 연구 방향을 잡아줘, 연구 주제 정하는 것을 도와줘, investigación profunda, revisión de literatura, revisión sistemática, metaanálisis, síntesis de evidencia, verificación de datos, escaneo de tres vías, comparación de artículos WHY HOW WHAT, guía mi investigación, ayúdame a razonar, ayúdame a definir mi dirección de investigación, ayúdame a elegir el tema de investigación."
 metadata:
   version: "2.12.1"
   last_updated: "2026-08-15"
@@ -51,6 +51,8 @@ Guide my research on the impact of declining birth rates on private universities
 ### Trigger Keywords
 
 **English**: research, deep research, literature review, systematic review, meta-analysis, PRISMA, evidence synthesis, fact-check, methodology, APA report, academic analysis, policy analysis, WHY HOW WHAT papers, 3W literature scan, guide my research, help me think through, monitor this topic, set up alerts
+
+**Español**: investigación, investigación profunda, revisión de literatura, revisión sistemática, metaanálisis, síntesis de evidencia, verificación de datos, metodología, informe APA, análisis académico, análisis de políticas, comparación de artículos WHY HOW WHAT, escaneo de tres vías, guía mi investigación, ayúdame a razonar, monitorear este tema, configurar alertas
 
 **繁體中文**: 研究, 深度研究, 文獻回顧, 文獻探討, 系統性回顧, 後設分析, 證據綜整, 事實查核, 三段式文獻掃描, WHY HOW WHAT 論文比較, 研究方法, 學術分析, 政策分析, 引導我的研究, 幫我釐清, 監測這個主題, 設定追蹤
 

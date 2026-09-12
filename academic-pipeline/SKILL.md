@@ -1,6 +1,6 @@
 ---
 name: academic-pipeline
-description: "Orchestrator for the full academic research pipeline: research -> write -> integrity check -> review -> revise -> re-review -> re-revise -> final integrity check -> finalize. Coordinates deep-research, academic-paper, and academic-paper-reviewer into a seamless 10-stage workflow with mandatory, coverage-bounded integrity checks, two-stage peer review, and auditable quality-assurance artifacts. Triggers on: academic pipeline, research to paper, full paper workflow, paper pipeline, end-to-end paper, research-to-publication, complete paper workflow, 연구부터 논문까지, 연구 주제 설정부터 논문 완성까지, 논문 전체 워크플로."
+description: "Orchestrator for the full academic research pipeline: research -> write -> integrity check -> review -> revise -> re-review -> re-revise -> final integrity check -> finalize. Coordinates deep-research, academic-paper, and academic-paper-reviewer into a seamless 10-stage workflow with mandatory, coverage-bounded integrity checks, two-stage peer review, and auditable quality-assurance artifacts. Triggers on: academic pipeline, research to paper, full paper workflow, paper pipeline, end-to-end paper, research-to-publication, complete paper workflow, 연구부터 논문까지, 연구 주제 설정부터 논문 완성까지, 논문 전체 워크플로, flujo de trabajo académico, investigación a artículo, flujo completo de artículo, pipeline de investigación completa, publicación de investigación, flujo de trabajo completo del artículo."
 metadata:
   version: "3.21.2"
   last_updated: "2026-09-06"
@@ -77,6 +77,8 @@ resume_from_passport=<hash> [stage=<n>] [mode=<m>]
 ### Trigger Keywords
 
 **English**: academic pipeline, research to paper, full paper workflow, paper pipeline, end-to-end paper, research-to-publication, complete paper workflow
+
+**Español**: flujo de trabajo académico, investigación a artículo, pipeline de artículo completo, desde tema de investigación hasta artículo terminado, flujo completo de investigación-publicación
 
 **한국어**: 학술 파이프라인, 연구부터 논문까지, 논문 전체 워크플로, 연구 주제 설정부터 논문 완성까지, 연구-논문 전 과정
 
