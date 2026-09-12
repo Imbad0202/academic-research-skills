@@ -47,11 +47,19 @@ never moves Δ.
 
 ## Known caveats
 
-- **03 trigger gap.** In two pilots the with-plugin arm answered the ICLR
-  "should we push back" prompt without invoking the skill, although SKILL.md lists
-  "should we push back" / "conference rebuttal" as revision-coach triggers. The
-  case is kept as a fire case; a Δ near 0 here is the honest signal. Follow-up
-  issue to be filed by the maintainer.
+- **03 fires since #851.** Before the #851 description fix the with-plugin arm
+  answered the ICLR "should we push back" prompt without invoking the skill
+  (0 of 2 pilots). After the fix: 7 of 7 verification runs invoked it. One of
+  those seven misrouted ICLR peer reviews into the #668 committee-correspondence
+  branch (the skill forbids inferring committee authority); the other six
+  reasoned explicitly that anonymous conference referees are peer review.
+  Tracked separately from #851.
+- **Judge style matters.** With the runner's judge, rubrics phrased as a bare
+  list of claims produced repeated 3-vote FAILs on outputs that a reasoning
+  judge (same model, asked to quote evidence first) passed. Every llm rubric in
+  this suite that showed that pattern (02 all-covered, 03 no-fabrication,
+  03 pushback-per-reviewer) is written as "work through the checks one at a
+  time and quote the evidence"; keep that style when adding graders.
 - **no-rewrite is judged, not regex-checked.** Manuscript prose vs. quoted
   reviewer text cannot be told apart lexically. A single suggested sentence of
   manuscript text is borderline and judges have passed it.
