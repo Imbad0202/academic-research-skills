@@ -20,7 +20,7 @@ These contributions can be merged quickly with minimal review:
 
 - **Typo and formatting fixes** — spelling, broken links, markdown rendering issues
 - **New examples** — pipeline output showcases, worked examples for specific disciplines
-- **Translation improvements** — better zh-TW or EN phrasing in READMEs or agent definitions
+- **Translation improvements** — better phrasing in READMEs. Translations that touch operative instructions (agent definitions, IRON RULE text, integrity protocols, trigger keywords) are not fast-merge; they follow the review tier of the file they touch, even when presented as translation.
 
 ### Requires maintainer review
 
@@ -57,6 +57,22 @@ Either shape is accepted under the same maintainer-facing conditions:
 - **Model-portability note.** ARS prompts are calibrated against Claude (Opus for architecture/review, Sonnet for execution; never Haiku). The PR must document which providers/models were tested and where downstream-agent behavior diverged from the Claude baseline.
 - **Open a design issue first** before submitting the PR (for in-tree) or before requesting sibling-distribution recognition in this repo's README.
 
+### Locale packs (community-maintained)
+
+ARS ships one default locale: English plus Traditional Chinese (zh-TW), the pairing the bilingual abstract, the Chinese citation guide, the worked examples, and the PDF fonts assume. Support for another output locale is delivered as a **locale pack**, and every non-default pack is community-maintained, whether it lives under `locales/<locale>/` in this repository or in a sibling distribution. The maintainer owns the extension interface and the default behaviour; the maintainer does not translate, review, or support a pack's language content.
+
+Until the locale mechanism lands (tracked in #850), activation-layer contributions are still accepted on their own: a translated README under the existing README drift lints, and conservative, intent-specific trigger phrases under the #509 rules (no broad standalone words, routing smoke evidence, boundary fixtures under `tests/fixtures/issue_133_routing/`, and all four `description` fields kept under the Agent Skills 1,024-character limit).
+
+A pack is accepted and stays listed as supported under these conditions:
+
+- **Two named owners.** A primary owner and a distinct backup owner, both stated in the pack's manifest, who accept language review, locale-specific issues, and synchronisation with every ARS minor release. Locale-specific issues are redirected to them.
+- **Recorded currency.** The pack records the last upstream commit and release it was verified against, the capabilities it covers, and reproducible validation evidence. Within 14 days of each minor release the owners either update the pack or record a compatibility attestation for the new release.
+- **Visible staleness.** CI fails visibly for a listed pack whose compatibility record is stale, whose tracked upstream dependencies changed, or whose mappings, assets, or required fixtures are missing or invalid. A missed deadline marks the pack stale and removes it from the supported list; this never delays a core release. Two consecutive missed minor releases, or the loss of both owners, allow the pack to be deprecated and unbundled. Reinstatement requires accepted ownership and current evidence.
+- **Configuration and presentation only.** A pack supplies documented configuration and presentation assets: trigger phrases, the output-language pair, citation-guide mapping, example sets, fonts. It never replaces or overlays core `SKILL.md` files, agent definitions, IRON RULE text, integrity protocols, handoff schemas, modes, or oversight rules. A change that alters workflow semantics goes through normal maintainer review even when it arrives as translation.
+- **Trigger discipline.** Trigger phrases follow the #509 rules above; a pack cannot widen a skill's activation with standalone words.
+
+Third-party directory listings in `THIRD_PARTY.md` remain a separate, non-endorsement channel and do not confer supported-pack status.
+
 ---
 
 ## PR guidelines
@@ -65,7 +81,7 @@ Either shape is accepted under the same maintainer-facing conditions:
 - **Describe what and why** — explain the motivation, not just the change
 - **Reference issues** — if your PR addresses an open issue, link it
 - **Test your changes** — if you're modifying agent definitions, try running the skill to confirm it works as expected
-- **Keep READMEs in sync** — if your change affects user-facing documentation, update `README.md`, `README.zh-CN.md`, `README.zh-TW.md`, `README.ja-JP.md`, and `README.ko-KR.md` when applicable
+- **Keep READMEs in sync** — if your change affects user-facing documentation, update `README.md`, `README.zh-CN.md`, `README.zh-TW.md`, `README.ja-JP.md`, `README.ko-KR.md`, and `README.es-ES.md` when applicable
 
 ---
 
