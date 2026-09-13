@@ -1,0 +1,22 @@
+fixture_id: 12_spanish_review_not_revision
+expected_routing_class: proceed
+expected_destination: academic-paper-reviewer:full
+escape_hatch_applied: false
+notes: |
+  Spanish boundary case from PR #856 (phrases from the production es-ES
+  localization, @didacrios): revisar (review/assess) routes to
+  academic-paper-reviewer, NOT academic-paper. Materials: complete
+  manuscript. Intent: explicit review request matching the revisar artículo
+  trigger keyword.
+
+  Per Routing Discipline Step 1 (explicit clear intent), route directly to
+  academic-paper-reviewer full mode. The Spanish revisar is the standard
+  term for journal refereeing — assessment intent, not editing intent. One
+  caveat for the smoke run: revisar also covers "revise" in some dialects;
+  the boundary rests on material shape (complete manuscript vs draft with
+  reviewer comments), not vocabulary.
+
+  Pass criteria:
+  - Response begins multi-perspective review (field detection, reviewer panel)
+  - Response does NOT start rewriting or revising the manuscript
+  - Response does NOT trigger clarification a-d options
