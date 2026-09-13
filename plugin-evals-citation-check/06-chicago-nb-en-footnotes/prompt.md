@@ -28,7 +28,7 @@ Marlowe, Thomas. "Tariff Registers and Central Authority in the Fourteenth Centu
 
 ## (c) Source pack
 
-1. **Harbour Ledgers of the Southern Coast** — Priya Adeyemi (2015). Lagos: Coastal Academic Press. 288 pp. Summary: Edition and analysis of the surviving harbour ledgers of four southern ports, arguing that they were kept contemporaneously by port clerks.
+1. **Harbour Ledgers of the Southern Coast** — Priya Adeyemi (2015). Lagos: Coastal Academic Press. 288 pp. Summary: Edition and analysis of the surviving harbour ledgers of four southern ports, which record the coastal salt trade; argues that the ledgers were kept contemporaneously by port clerks.
 2. **Ports of the Inland Sea** — Chidi Okonjo (2012). Enugu: Riverine Press. 340 pp. Summary: A survey of nine inland-sea ports and their record-keeping practices; chapter 7 (pp. 201–230) covers the northern ports.
 3. **Tariff Registers and Central Authority in the Fourteenth Century** — Thomas Marlowe (2018). Journal of Pre-Modern Trade 22(2): 240–268. Abstract: Examines eleven tariff registers and proposes, as a hypothesis for further testing, that toll rates may have been coordinated centrally from the mid-fourteenth century; the article notes that the evidence is compatible with regional coordination as well.
 4. **Reading the Registers Against the Grain** — Eleanor Brixton (2019). Journal of Pre-Modern Trade 23(1): 15–38. Abstract: Re-reads the same registers and argues that the apparent uniformity of toll rates reflects scribal convention rather than central control.

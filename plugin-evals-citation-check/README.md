@@ -39,11 +39,11 @@ which is both too small and never to be used here.
 | 01-apa-en-misattribution | yes | APA 7 × en | wrong authors; ref not in pack; orphan in-text; uncited entry; & vs and | content-caught (llm w1.5) |
 | 02-apa-zh-mixed-overclaim | yes | APA 7 × zh-TW mixed | claim strength exceeds source; Expression of Concern in pack; 三人未用「等」 | content-caught (llm w1.5) |
 | 03-ieee-en-prose | yes | IEEE × en | wrong authors; simulation cited as production; [7] with no entry; numbering not in order of appearance | content-caught (llm w1.5) |
-| 04-vancouver-en-terse-retraction | yes | Vancouver × en, style not named | retraction in pack; ref not in pack; et al. misused at 4 authors | content-caught (llm w1.5) + format-detected regex |
+| 04-vancouver-en-terse-retraction | yes | Vancouver × en, style not named | retraction in pack; ref not in pack; year mismatch on one entry | content-caught (llm w1.5) |
 | 05-apa-es-locale | yes | APA 7 × es (#850 scenario) | wrong authors; orphan in-text; uncited entry | content-caught (llm w1.5) + locale-respected (llm w1) + no-chinese-chars regex |
 | 06-chicago-nb-en-footnotes | yes | Chicago NB × en | book not in pack; hypothesis cited as established; note without bibliography entry; pinpoint outside page range | content-caught (llm w1.5) |
 | 07-neg-convert-apa-to-ieee | no (format-convert shape) | — | — | is-conversion (llm) + numbered-in-order regex + not-audit-report regex |
-| 08-neg-python-unused-imports | no | — | — | regex on the two unused imports + Skill must not be called (both arms) |
+| 08-neg-python-unused-imports | no | — | — | regex on the two unused imports co-occurring with an "unused" statement + `tool_used: Skill` with `min: 0, max: 0, arm: both` (scored in both arms, unlike the display-only `skill-fired`) |
 
 Shared graders on 01–06: `content-caught` (w1.5), `format-caught` (w0.5, spec-
 level mechanics), `no-false-positive` (w1), `honest-unverified` (w1),
@@ -51,17 +51,20 @@ level mechanics), `no-false-positive` (w1), `honest-unverified` (w1),
 ablation, never moves Δ). Every llm rubric is written as "work through the checks
 one at a time and quote the evidence"; keep that style when adding graders.
 
-## Side channels and ceilings (pilot 2, 2026-09-13, 1 run × 2 arms, sonnet agents)
+## Side channels and ceilings (pilot 3, 2026-09-13, 1 run × 2 arms, sonnet agents)
 
 | Channel | Ceiling | Observed max |
 |---|---|---|
-| wall-clock per run | 600 s (`timeout_seconds`; over = score 0) | 117 s |
-| turns per run | 20 (`max_turns`) | 8 |
-| agent cost per run | none enforced | $0.43 |
-| full pilot (8 cases × 2 arms × 1 run, incl. opus judge) | — | $3.99 |
+| wall-clock per run | 600 s (`timeout_seconds`; over = score 0) | 142 s |
+| turns per run | 20 (`max_turns`) | 7 |
+| agent cost per run | none enforced | $0.45 |
+| full pilot (8 cases × 2 arms × 1 run, incl. opus judge) | — | $4.65 |
 
-Pilot 1 (same cases before calibration, opus agents) cost $6.89 and peaked at
-155 s / 7 turns / $0.83 per run.
+Pilot 1 (before calibration, opus agents) cost $6.89 and peaked at 155 s / 7
+turns / $0.83 per run; pilot 2 (sonnet agents) cost $3.99. Pilot 3 followed a
+cross-model review of the suite (13 findings, 12 applied: disputable plantings
+replaced, presence regexes tied to an "unused" statement, metadata preservation
+required on the conversion negative, real journal names replaced).
 
 ## Known caveats
 
@@ -96,5 +99,7 @@ Pilot 1 (same cases before calibration, opus agents) cost $6.89 and peaked at
 - **no-overreach** allows per-sentence replacement wording for a misrepresenting
   claim and an *offer* to redraft; a rewritten whole excerpt or design-level
   critique fails it.
+- **Regex presence checks are secondary.** `orphan-named` (w0.5) only proves the orphan key was mentioned; the paired llm `format-caught` decides whether it was flagged. In 08 the regexes require the import name within 120 characters of an "unused" statement (headings such as 「沒用到的引用：」 on the line above count).
+- **04 does not require the style to be named.** Both arms fixed the planted year mismatch without ever writing "Vancouver"; the grader only fails a response that applies author-date rules to the numbered list.
 - **07 and 08 show Δ 0** — the base model already handles them. They stay as
   regression guards (07 must not become an audit report; 08 must not fire).

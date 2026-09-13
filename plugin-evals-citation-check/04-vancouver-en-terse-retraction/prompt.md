@@ -14,7 +14,7 @@ Early mobilisation after elective hip arthroplasty has been associated with shor
 References
 
 1. Okoro AB, Lindstrom H. Early mobilisation after elective hip arthroplasty: a systematic review. J Orthop Recovery. 2020;12(3):145-158. doi:10.5555/jor.2020.1203
-2. Bassett RM, Chaudhry S, Ivanova T, et al. Same-day mobilisation protocol after hip arthroplasty: a randomised trial. Arthroplasty Pract. 2021;8(1):22-31. doi:10.5555/ap.2021.0801
+2. Bassett RM, Chaudhry S, Ivanova T, Molina R. Same-day mobilisation protocol after hip arthroplasty: a randomised trial. Arthroplasty Pract. 2020;8(1):22-31. doi:10.5555/ap.2021.0801
 3. Ferrante L, Nakagawa Y. Pooled analysis of mobilisation timing and length of stay after hip arthroplasty. J Orthop Recovery. 2019;11(4):301-312. doi:10.5555/jor.2019.1104
 4. Delacroix M, Osei K, Brandão P. Six-week functional outcomes after early versus standard mobilisation: two prospective cohorts. Rehabil Surg J. 2021;5(2):77-89. doi:10.5555/rsj.2021.0502
 5. Whitcombe J, Aranda F. Same-day mobilisation and 30-day readmission: a national registry analysis. Arthroplasty Pract. 2022;9(3):140-149. doi:10.5555/ap.2022.0903
