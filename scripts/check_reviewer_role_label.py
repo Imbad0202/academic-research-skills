@@ -40,6 +40,11 @@ REQUIRED = {
         "full 모드 (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)",
         "1차 심사 패널 대 계약 기반 re-review 디스패치 경계",
     ),
+    "README.es-ES.md": (
+        "(Journal-Fit Reviewer + 3 revisores din\u00e1micos + Devil's Advocate)",
+        "full mode (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)",
+        "La frontera entre el panel de la primera ronda y el despacho de re-review regido por contrato",
+    ),
     "MODE_REGISTRY.md": (
         "Journal-Fit Reviewer quick assessment + key issues list",
     ),
