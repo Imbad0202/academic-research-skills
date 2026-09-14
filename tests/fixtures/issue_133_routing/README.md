@@ -38,6 +38,8 @@ If you cannot reach 100% on the current primary model, the routing prose in CLAU
 | 08 | `08_full_draft_plus_abstract_plus_lit/` | Full draft + abstract + literature, no clear intent | **Clarify** (cross-phase, multiple plausible workflows) |
 | 09 | `09_korean_revision_not_review/` | Korean 수정 (revise) request + draft (#452) | **Proceed** → `academic-paper:revision` (not reviewer) |
 | 10 | `10_korean_review_not_revision/` | Korean 심사 (referee) request + manuscript (#452) | **Proceed** → `academic-paper-reviewer:full` (not paper) |
+| 11 | `11_spanish_revision_not_review/` | Spanish enmendar (revise) request + draft (#856 es-ES) | **Proceed** → `academic-paper:revision` (not reviewer) |
+| 12 | `12_spanish_review_not_revision/` | Spanish revisar (referee) request + manuscript (#856 es-ES) | **Proceed** → `academic-paper-reviewer:full` (not paper) |
 
 ## Fixture file format
 

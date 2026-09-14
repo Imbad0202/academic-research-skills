@@ -1089,5 +1089,321 @@ class RebuttalAuditGuardTest(unittest.TestCase):
         self.assertTrue(any("MUST NOT" in e for e in errs), errs)
 
 
+class OutputLanguagePairContractTest(unittest.TestCase):
+    """#862 Phase 1: check_output_language_pair_contract() must fail visibly.
+
+    The four deterministic cases (covered / omitted / unsupported / malformed) are
+    exercised against a minimal contract + Schema-4 + template triple, so a mutation
+    proves the parity check fires instead of passing vacuously.
+    """
+
+    _CONTRACT = """\
+# Output Language Pair
+
+## Registry
+
+<!-- output-language-pair-registry:start -->
+| Token | L1 language | L1 script | L2 language | L2 script | Status |
+|-------|-------------|-----------|-------------|-----------|--------|
+| `zh-tw-en` | Traditional Chinese (`zh-TW`) | CJK | English (`en`) | Latin | default |
+<!-- output-language-pair-registry:end -->
+
+## Field semantics
+
+### Conflicting declarations fail visibly
+
+A handoff whose sites disagree stops and names both values; no site wins silently.
+"""
+
+    _SCHEMA = """\
+# Handoff Schemas
+
+## Schema 4: Paper Draft
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `keywords` | object | `{en: list[string], zh_tw: list[string]}` bilingual keywords; counts per [`shared/output_language_pair.md`](output_language_pair.md) |
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `output_language_pair` | string | Opaque registry token, initially `zh-tw-en`; absent = legacy. |
+
+## Schema 5: Something Else
+
+An unrelated marker, with an up-to-date checklist line.
+"""
+
+    _TEMPLATE = (
+        "# Bilingual Abstract Template\n\n"
+        "## English Abstract\n\n"
+        "## Chinese Abstract (zh-TW)\n\n"
+        "The default entry is `zh-tw-en`.\n"
+    )
+
+    # R9: the scan covers eleven consumer surfaces. The synthetic tree carries all of
+    # them so the fixture harness fails on the mutation under test, never on a missing
+    # surface; `_SCHEMA` and `_TEMPLATE` above are two of the eleven.
+    _OTHER_SURFACES = {
+        "academic-paper/SKILL.md": "The bilingual abstract follows the `zh-tw-en` pair.\n",
+        "academic-paper/agents/intake_agent.md": "Step 6 records the `zh-tw-en` pair.\n",
+        "academic-paper/agents/abstract_bilingual_agent.md": "Labels are derived from `zh-tw-en`.\n",
+        "academic-paper/agents/structure_architect_agent.md": "Allocations follow `zh-tw-en`.\n",
+        "academic-paper/agents/draft_writer_agent.md": (
+            "Serializes `output_language_pair` into Schema 4.\n"
+        ),
+        "academic-paper/references/abstract_writing_guide.md": "Regime rows for `zh-tw-en`.\n",
+        "academic-paper/references/workflow_phase_details.md": "Phase 5b uses `zh-tw-en`.\n",
+        "academic-paper/references/mode_selection_guide.md": (
+            "Bilingual = zh-TW + EN prose; no pair token here.\n"
+        ),
+        "commands/ars-abstract.md": "The command honours `zh-tw-en`.\n",
+    }
+
+    def setUp(self) -> None:
+        self._old_root = csc.ROOT
+        csc.ERRORS.clear()
+        self._tmp = TemporaryDirectory()
+        csc.ROOT = Path(self._tmp.name)
+        (csc.ROOT / "shared").mkdir()
+        (csc.ROOT / "academic-paper/templates").mkdir(parents=True)
+
+    def tearDown(self) -> None:
+        csc.ROOT = self._old_root
+        csc.ERRORS.clear()
+        self._tmp.cleanup()
+
+    def _write(self, contract: str | None = None, schema: str | None = None, template: str | None = None) -> None:
+        (csc.ROOT / "shared/output_language_pair.md").write_text(
+            self._CONTRACT if contract is None else contract, encoding="utf-8"
+        )
+        (csc.ROOT / "shared/handoff_schemas.md").write_text(
+            self._SCHEMA if schema is None else schema, encoding="utf-8"
+        )
+        (csc.ROOT / "academic-paper/templates/bilingual_abstract_template.md").write_text(
+            self._TEMPLATE if template is None else template, encoding="utf-8"
+        )
+        for rel_path, text in self._OTHER_SURFACES.items():
+            target = csc.ROOT / rel_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+
+    def _errors(self, **overrides: str | None) -> list[str]:
+        self._write(**overrides)
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_contract()
+        return list(csc.ERRORS)
+
+    def test_default_state_passes(self) -> None:
+        self.assertEqual(self._errors(), [])
+
+    def test_pack_entry_absent_from_consumers_is_not_an_error(self) -> None:
+        # A pack contributes registry entries as configuration; Schema-4 prose is not
+        # expected to enumerate them, so only the default entry is a required carrier.
+        contract = self._CONTRACT.replace(
+            "| `zh-tw-en` | Traditional Chinese (`zh-TW`) | CJK | English (`en`) | Latin | default |",
+            "| `zh-tw-en` | Traditional Chinese (`zh-TW`) | CJK | English (`en`) | Latin | default |\n"
+            "| `es-en` | Spanish (`es`) | Latin | English (`en`) | Latin | pack |",
+        )
+        self.assertEqual(self._errors(contract=contract), [])
+
+    def test_schema4_omitting_the_default_token_fails(self) -> None:
+        schema = self._SCHEMA.replace("`zh-tw-en`", "the declared pair")
+        errors = self._errors(schema=schema)
+        self.assertTrue(
+            any("does not reference the default registry entry" in e for e in errors), errors
+        )
+
+    def test_default_entry_must_match_the_legacy_pair(self) -> None:
+        contract = self._CONTRACT.replace("`zh-tw-en`", "`en-zh-tw`")
+        schema = self._SCHEMA.replace("`zh-tw-en`", "`en-zh-tw`")
+        errors = self._errors(contract=contract, schema=schema)
+        self.assertTrue(any("default registry entry must be exactly 'zh-tw-en'" in e for e in errors), errors)
+
+    def test_consumer_advertising_an_unsupported_pair_fails(self) -> None:
+        template = self._TEMPLATE + "\nThe run declares the `ja-en` pair.\n"
+        errors = self._errors(template=template)
+        self.assertTrue(any("absent from the registry" in e and "ja-en" in e for e in errors), errors)
+
+    def test_bare_unsupported_token_in_pair_context_fails(self) -> None:
+        template = self._TEMPLATE + "\nThe output_language_pair control accepts zh-tw-ja here.\n"
+        errors = self._errors(template=template)
+        self.assertTrue(any("absent from the registry" in e and "zh-tw-ja" in e for e in errors), errors)
+
+    def test_ordinary_hyphenated_prose_does_not_fire(self) -> None:
+        self.assertEqual(self._errors(), [])
+        self.assertEqual(csc.advertised_output_language_pair_tokens("an up-to-date marker"), set())
+
+    def test_schema4_missing_contract_reference_fails(self) -> None:
+        schema = self._SCHEMA.replace("[`shared/output_language_pair.md`](output_language_pair.md)", "the contract")
+        errors = self._errors(schema=schema)
+        self.assertTrue(any("must reference the output-language-pair contract" in e for e in errors), errors)
+
+    def test_schema4_section_missing_fails(self) -> None:
+        errors = self._errors(schema="# Handoff Schemas\n\n## Schema 5: Elsewhere\n")
+        self.assertTrue(any("Schema 4 section" in e and "is missing" in e for e in errors), errors)
+
+    def test_missing_contract_file_fails(self) -> None:
+        self._write()
+        (csc.ROOT / "shared/output_language_pair.md").unlink()
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_contract()
+        self.assertTrue(any("contract file is missing" in e for e in csc.ERRORS), list(csc.ERRORS))
+
+    def test_missing_consumer_surface_fails(self) -> None:
+        self._write()
+        (csc.ROOT / "academic-paper/templates/bilingual_abstract_template.md").unlink()
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_contract()
+        self.assertTrue(any("consumer surface is missing" in e for e in csc.ERRORS), list(csc.ERRORS))
+
+    def test_unparseable_registry_fails(self) -> None:
+        errors = self._errors(contract="# Output Language Pair\n\nno registry block here\n")
+        self.assertTrue(any("registry block markers are missing" in e for e in errors), errors)
+
+    def test_unary_registry_entry_fails(self) -> None:
+        contract = (
+            "# Output Language Pair\n\n"
+            "<!-- output-language-pair-registry:start -->\n"
+            "| Token | L1 language | L1 script | Status |\n"
+            "|-------|-------------|-----------|--------|\n"
+            "| `zh-tw` | Traditional Chinese (`zh-TW`) | CJK | default |\n"
+            "<!-- output-language-pair-registry:end -->\n"
+        )
+        errors = self._errors(contract=contract)
+        self.assertTrue(any("single-language pairs are not supported" in e for e in errors), errors)
+
+    def test_malformed_value_validation_is_not_vacuous(self) -> None:
+        # (d): if the validator ever accepts a malformed value, the lint itself fails.
+        original = csc.validate_output_language_pair
+        csc.validate_output_language_pair = lambda value, registry: []
+        try:
+            errors = self._errors()
+        finally:
+            csc.validate_output_language_pair = original
+        self.assertTrue(any("must be rejected" in e for e in errors), errors)
+
+    def test_conflict_rule_pin_fires_when_its_literals_are_dropped(self) -> None:
+        # R10: the conflict rule is prose-only, so it is pinned by literal presence.
+        for literal in (
+            "### Conflicting declarations fail visibly",
+            "names both values",
+        ):
+            with self.subTest(literal=literal):
+                errors = self._errors(contract=self._CONTRACT.replace(literal, "dropped"))
+                self.assertTrue(
+                    any("conflict-rule text" in e and literal in e for e in errors), errors
+                )
+
+
+class OutputLanguagePairLiteralPinTest(unittest.TestCase):
+    """#862 Phase 1 (R8): the legacy literals are pinned on the real consumer files.
+
+    `OutputLanguagePairContractTest` rewrites `csc.ROOT`, so its synthetic tree cannot
+    prove that the shipped surfaces still carry the literals Phase 1 holds fixed. These
+    tests copy the real files into a temp tree, drop one literal, and require the pin to
+    fire — the mutation is the only difference from the shipped bytes.
+    """
+
+    def setUp(self) -> None:
+        csc.ERRORS.clear()
+        self._tmp = TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self) -> None:
+        csc.ERRORS.clear()
+        self._tmp.cleanup()
+
+    def _copy_real(self, rel_path: str) -> str:
+        text = (csc.OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT / rel_path).read_text(encoding="utf-8")
+        target = self.root / rel_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        return text
+
+    def _copied_pin_tree(self) -> None:
+        for rel_path, _ in csc.LEGACY_PAIR_LITERALS:
+            self._copy_real(rel_path)
+        self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE)
+
+    def _mutated_errors(self, rel_path: str, literal: str) -> list[str]:
+        self._copied_pin_tree()
+        text = (self.root / rel_path).read_text(encoding="utf-8")
+        self.assertIn(literal, text, "the shipped file must still carry the pinned literal")
+        (self.root / rel_path).write_text(text.replace(literal, ""), encoding="utf-8")
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins(self.root)
+        return list(csc.ERRORS)
+
+    def test_real_tree_pins_hold(self) -> None:
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins()
+        self.assertEqual(list(csc.ERRORS), [])
+
+    def test_abstract_agent_l2_heading_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            "academic-paper/agents/abstract_bilingual_agent.md", "### English Abstract"
+        )
+        self.assertTrue(any("### English Abstract" in e for e in errors), errors)
+
+    def test_abstract_agent_l1_heading_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            "academic-paper/agents/abstract_bilingual_agent.md", "### Chinese Abstract"
+        )
+        self.assertTrue(any("### Chinese Abstract" in e for e in errors), errors)
+
+    def test_template_l2_heading_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            "academic-paper/templates/bilingual_abstract_template.md", "## English Abstract"
+        )
+        self.assertTrue(any("## English Abstract" in e for e in errors), errors)
+
+    def test_template_l1_heading_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            "academic-paper/templates/bilingual_abstract_template.md",
+            "## Chinese Abstract (zh-TW)",
+        )
+        self.assertTrue(any("## Chinese Abstract (zh-TW)" in e for e in errors), errors)
+
+    def test_workflow_l2_heading_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            "academic-paper/references/workflow_phase_details.md", "### English Abstract"
+        )
+        self.assertTrue(any("### English Abstract" in e for e in errors), errors)
+
+    def test_workflow_l1_heading_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            "academic-paper/references/workflow_phase_details.md", "### Chinese Abstract"
+        )
+        self.assertTrue(any("### Chinese Abstract" in e for e in errors), errors)
+
+    def test_schema4_abstract_key_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE, "abstract: {english, chinese}"
+        )
+        self.assertTrue(any("abstract: {english, chinese}" in e for e in errors), errors)
+
+    def test_schema4_keywords_key_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE, "{en: list[string], zh_tw: list[string]}"
+        )
+        self.assertTrue(any("{en: list[string], zh_tw: list[string]}" in e for e in errors), errors)
+
+    def test_schema4_pair_row_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE, csc.LEGACY_SCHEMA4_PAIR_ROW
+        )
+        self.assertTrue(any("row is missing" in e for e in errors), errors)
+
+    def test_missing_pinned_surface_fires(self) -> None:
+        self._copied_pin_tree()
+        (self.root / csc.LEGACY_PAIR_LITERALS[0][0]).unlink()
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins(self.root)
+        errors = list(csc.ERRORS)
+        self.assertTrue(any("consumer surface is missing" in e for e in errors), errors)
+
+
 if __name__ == "__main__":
     unittest.main()

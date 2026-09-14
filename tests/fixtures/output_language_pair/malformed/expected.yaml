@@ -1,0 +1,19 @@
+fixture_id: malformed
+schema_field: output_language_pair
+contract: shared/output_language_pair.md
+cases:
+  - name: null value
+    expected_valid: false
+    expected_status: malformed
+    error_contains:
+      - "value must be a string token"
+      - "shared/output_language_pair.md"
+  - name: non-string value
+    expected_valid: false
+    expected_status: malformed
+    error_contains:
+      - "value must be a string token"
+      - "shared/output_language_pair.md"
+notes: |
+  The validator distinguishes "absent" from "present but unusable". Both malformed shapes
+  abort visibly and name the registry; neither is read as the legacy state.

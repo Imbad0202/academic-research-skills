@@ -1283,6 +1283,337 @@ def check_indirect_prompt_injection_no_call_envelope() -> None:
     check_relative_markdown_links(readme)
 
 
+# --- #862 Phase 1: per-run output_language_pair contract --------------------
+
+OUTPUT_LANGUAGE_PAIR_CONTRACT = "shared/output_language_pair.md"
+OUTPUT_LANGUAGE_PAIR_CONTRACT_BASENAME = "output_language_pair.md"
+OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE = "shared/handoff_schemas.md"
+OUTPUT_LANGUAGE_PAIR_TEMPLATE_SURFACE = "academic-paper/templates/bilingual_abstract_template.md"
+OUTPUT_LANGUAGE_PAIR_SCHEMA_SECTION_START = "## Schema 4: Paper Draft"
+LEGACY_DEFAULT_OUTPUT_LANGUAGE_PAIR = "zh-tw-en"
+
+# The literals Phase 1 holds fixed (design sketch §5): the legacy heading literals on the
+# three surfaces that render them, and the legacy Schema-4 object keys. A pair-derived
+# label is a derivation, never a rename of these.
+LEGACY_PAIR_LITERALS = (
+    ("academic-paper/agents/abstract_bilingual_agent.md", ("### English Abstract", "### Chinese Abstract")),
+    ("academic-paper/templates/bilingual_abstract_template.md", ("## English Abstract", "## Chinese Abstract (zh-TW)")),
+    ("academic-paper/references/workflow_phase_details.md", ("### English Abstract", "### Chinese Abstract")),
+)
+LEGACY_SCHEMA4_LITERALS = (
+    "abstract: {english, chinese}",
+    "{en: list[string], zh_tw: list[string]}",
+)
+LEGACY_SCHEMA4_PAIR_ROW = "`output_language_pair`"
+
+# The literal pins read the shipped files, not the synthetic tree the rest of the #862
+# checks run against (`csc.ROOT` is patched to a temp directory by the unit tests), so a
+# Phase-2 consumer edit that renames a legacy literal fails the lint on the real file.
+OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT = Path(__file__).resolve().parents[1]
+
+_PAIR_REGISTRY_START = "<!-- output-language-pair-registry:start -->"
+_PAIR_REGISTRY_END = "<!-- output-language-pair-registry:end -->"
+_PAIR_REGISTRY_REQUIRED_COLUMNS = ("token", "l1_language", "l2_language")
+_PAIR_TOKEN_PATTERN = re.compile(r"^[a-z]{2,3}(?:-[a-z0-9]{2,4}){1,3}$")
+_PAIR_BACKTICK_SPAN = re.compile(r"`([^`\n]+)`")
+_PAIR_CONTEXT = re.compile(r"output_language_pair|language pair|output pair", re.IGNORECASE)
+_PAIR_BARE_TOKEN = re.compile(r"(?<![\w`-])([a-z]{2,3}(?:-[a-z0-9]{2,4}){2,})(?![\w`-])")
+
+
+class _OutputLanguagePairFieldAbsent:
+    """Sentinel for a handoff that omits `output_language_pair` entirely."""
+
+    def __repr__(self) -> str:  # pragma: no cover - debug affordance
+        return "PAIR_FIELD_ABSENT"
+
+
+PAIR_FIELD_ABSENT = _OutputLanguagePairFieldAbsent()
+
+
+def _split_markdown_table_row(line: str) -> list[str]:
+    stripped = line.strip()
+    if stripped.startswith("|"):
+        stripped = stripped[1:]
+    if stripped.endswith("|"):
+        stripped = stripped[:-1]
+    return [cell.strip() for cell in stripped.split("|")]
+
+
+def _is_markdown_table_separator(cells: list[str]) -> bool:
+    return bool(cells) and all(cell and set(cell) <= set("-: ") for cell in cells)
+
+
+def parse_output_language_pair_registry(text: str) -> dict[str, dict[str, str]]:
+    """Parse the registry table of shared/output_language_pair.md.
+
+    Returns `{token: {column_key: cell}}`. Raises ValueError when the registry
+    block or its table is unusable: missing markers, no table, no token or L2
+    language column (a unary entry), a malformed token, or a duplicate token.
+    """
+    start = text.find(_PAIR_REGISTRY_START)
+    end = text.find(_PAIR_REGISTRY_END)
+    if start == -1 or end == -1:
+        raise ValueError("registry block markers are missing")
+    if end < start:
+        raise ValueError("registry block markers are out of order")
+    block = text[start + len(_PAIR_REGISTRY_START):end]
+    rows = [line for line in block.splitlines() if line.strip().startswith("|")]
+    if len(rows) < 2:
+        raise ValueError("registry block carries no table")
+    columns = [
+        cell.strip().lower().replace(" ", "_") for cell in _split_markdown_table_row(rows[0])
+    ]
+    missing = [column for column in _PAIR_REGISTRY_REQUIRED_COLUMNS if column not in columns]
+    if missing:
+        raise ValueError(
+            "registry table must declare token, L1 language, and L2 language columns "
+            f"(missing: {missing!r}); single-language pairs are not supported"
+        )
+    registry: dict[str, dict[str, str]] = {}
+    for row in rows[1:]:
+        cells = _split_markdown_table_row(row)
+        if _is_markdown_table_separator(cells):
+            continue
+        if len(cells) != len(columns):
+            raise ValueError(
+                f"registry row has {len(cells)} cells, expected {len(columns)}: {row.strip()!r}"
+            )
+        entry = dict(zip(columns, cells))
+        token = entry["token"].strip().strip("`").strip()
+        if not _PAIR_TOKEN_PATTERN.match(token):
+            raise ValueError(f"registry token {token!r} is not a lowercase registry token")
+        if token in registry:
+            raise ValueError(f"duplicate registry token {token!r}")
+        entry["token"] = token
+        registry[token] = entry
+    if not registry:
+        raise ValueError("registry block carries no entries")
+    return registry
+
+
+def _output_language_pair_error(detail: str) -> str:
+    return f"output_language_pair: {detail}; registry: {OUTPUT_LANGUAGE_PAIR_CONTRACT}"
+
+
+def validate_output_language_pair(value: object, registry: dict[str, dict[str, str]]) -> list[str]:
+    """Validate one `output_language_pair` value against the registry.
+
+    `PAIR_FIELD_ABSENT` means the key was omitted: that is the legacy behaviour and
+    it is valid. Any other non-empty return means the caller aborts visibly; every
+    error names the registry so the failure is actionable. No silent fallback.
+    """
+    if value is PAIR_FIELD_ABSENT:
+        return []
+    if not isinstance(value, str):
+        return [
+            _output_language_pair_error(
+                f"value must be a string token, got {type(value).__name__}"
+            )
+        ]
+    token = value.strip()
+    if not token:
+        return [_output_language_pair_error("value must be a non-empty string token")]
+    if token not in registry:
+        supported = ", ".join(sorted(registry))
+        return [
+            _output_language_pair_error(f"unsupported token {value!r} (registry holds: {supported})")
+        ]
+    return []
+
+
+def advertised_output_language_pair_tokens(text: str) -> set[str]:
+    """Collect the pair tokens a consumer surface advertises.
+
+    A backticked span is the canonical spelling, and it is the only way a two-subtag
+    pair (e.g. `es-en`) is detected. A bare token is collected only on a line that
+    talks about the pair field or control and only in the canonical three-subtag
+    shape, so ordinary hyphenated prose ("up-to-date") cannot fire the lint.
+    """
+    tokens = {
+        span.strip()
+        for span in _PAIR_BACKTICK_SPAN.findall(text)
+        if _PAIR_TOKEN_PATTERN.match(span.strip())
+    }
+    for line in text.splitlines():
+        if _PAIR_CONTEXT.search(line):
+            tokens.update(_PAIR_BARE_TOKEN.findall(line))
+    return tokens
+
+
+def _schema4_section(text: str) -> str:
+    start = text.find(OUTPUT_LANGUAGE_PAIR_SCHEMA_SECTION_START)
+    if start == -1:
+        return ""
+    next_section = text.find("\n## ", start + len(OUTPUT_LANGUAGE_PAIR_SCHEMA_SECTION_START))
+    return text[start:] if next_section == -1 else text[start:next_section]
+
+
+def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
+    """Real-tree pins for the literals Phase 1 holds fixed (design sketch §5).
+
+    These assertions target the shipped files, never a fixture tree: the rest of the
+    #862 checks run against a synthetic tree when `csc.ROOT` is patched, so a renamed
+    legacy heading literal, a renamed legacy Schema-4 object key, or a dropped
+    Schema-4 `output_language_pair` row has to fail the lint on the real file.
+    """
+    base = OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT if root is None else root
+    for rel_path, literals in LEGACY_PAIR_LITERALS:
+        try:
+            text = (base / rel_path).read_text(encoding="utf-8")
+        except OSError:
+            fail(f"{rel_path}: output-language-pair consumer surface is missing")
+            continue
+        for literal in literals:
+            if literal not in text:
+                fail(f"{rel_path}: missing legacy pair literal {literal!r}")
+    try:
+        schema = (base / OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE).read_text(encoding="utf-8")
+    except OSError:
+        fail(
+            f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: "
+            "output-language-pair consumer surface is missing"
+        )
+        return
+    section = _schema4_section(schema)
+    if not section:
+        fail(
+            f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: Schema 4 section "
+            f"({OUTPUT_LANGUAGE_PAIR_SCHEMA_SECTION_START!r}) is missing"
+        )
+        return
+    for literal in LEGACY_SCHEMA4_LITERALS:
+        if literal not in section:
+            fail(
+                f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: missing legacy Schema-4 literal "
+                f"{literal!r}"
+            )
+    if LEGACY_SCHEMA4_PAIR_ROW not in section:
+        fail(
+            f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: the Schema-4 "
+            f"{LEGACY_SCHEMA4_PAIR_ROW} row is missing from the same section"
+        )
+
+
+def check_output_language_pair_contract() -> None:
+    """#862 Phase 1: parity between the registry and its consumer surfaces.
+
+    (a) the registry entries are referenced consistently by the Schema-4 field
+        documentation and the bilingual template;
+    (b) the default entry matches the legacy hardcoded pair (zh-tw-en);
+    (c) no consumer advertises a pair absent from the registry;
+    (d) malformed values (non-string, null) are rejected by the validator, which
+        names the registry.
+
+    Every token-carrying consumer surface is scanned for registry membership; the
+    Schema-4 documentation and the bilingual template must also carry the default token
+    (design sketch §5). The check is deliberately structural
+    (per surface) rather than per pack-supplied entry: a pack contributes registry
+    entries as configuration, not new Schema-4 prose.
+    """
+    try:
+        contract = read(OUTPUT_LANGUAGE_PAIR_CONTRACT)
+    except OSError:
+        fail(f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: contract file is missing")
+        return
+    try:
+        registry = parse_output_language_pair_registry(contract)
+    except ValueError as exc:
+        fail(f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: {exc}")
+        return
+
+    # The conflict rule is prose-only, so it is pinned by literal presence, the way #439
+    # pins its omission prose: dropping the heading or the clause has to fail the lint.
+    for literal in (
+        "### Conflicting declarations fail visibly",
+        "names both values",
+    ):
+        if literal not in contract:
+            fail(f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: missing conflict-rule text {literal!r}")
+
+    # (b) exactly one default entry, and it is the legacy hardcoded pair.
+    defaults = [
+        token
+        for token, entry in registry.items()
+        if entry.get("status", "").strip().strip("`").strip() == "default"
+    ]
+    if defaults != [LEGACY_DEFAULT_OUTPUT_LANGUAGE_PAIR]:
+        fail(
+            f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: default registry entry must be exactly "
+            f"{LEGACY_DEFAULT_OUTPUT_LANGUAGE_PAIR!r}, found {defaults!r}"
+        )
+
+    # (a)/(c) the consumer surfaces. Membership is required everywhere; the Schema-4
+    # documentation must also carry the default token and the contract itself.
+    for rel_path, carries_default in (
+        ("academic-paper/SKILL.md", True),
+        ("academic-paper/agents/intake_agent.md", True),
+        ("academic-paper/agents/abstract_bilingual_agent.md", True),
+        ("academic-paper/agents/structure_architect_agent.md", True),
+        ("academic-paper/agents/draft_writer_agent.md", False),   # carries no token
+        ("academic-paper/references/abstract_writing_guide.md", True),
+        ("academic-paper/references/workflow_phase_details.md", True),
+        ("academic-paper/references/mode_selection_guide.md", False),  # "zh-TW + EN" prose, no token
+        ("academic-paper/templates/bilingual_abstract_template.md", True),   # was False — the template now carries the token
+        ("commands/ars-abstract.md", True),
+        ("shared/handoff_schemas.md", True),
+    ):
+        try:
+            surface = read(rel_path)
+        except OSError:
+            fail(f"{rel_path}: output-language-pair consumer surface is missing")
+            continue
+        if rel_path == OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE:
+            surface = _schema4_section(surface)
+            if not surface:
+                fail(
+                    f"{rel_path}: Schema 4 section ({OUTPUT_LANGUAGE_PAIR_SCHEMA_SECTION_START!r}) "
+                    "is missing"
+                )
+                continue
+            if OUTPUT_LANGUAGE_PAIR_CONTRACT_BASENAME not in surface:
+                fail(
+                    f"{rel_path}: Schema 4 must reference the output-language-pair contract "
+                    f"({OUTPUT_LANGUAGE_PAIR_CONTRACT})"
+                )
+        advertised = advertised_output_language_pair_tokens(surface)
+        unknown = sorted(token for token in advertised if token not in registry)
+        if unknown:
+            fail(
+                f"{rel_path}: advertises output language pair(s) absent from the registry "
+                f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: {unknown!r}"
+            )
+        if carries_default and LEGACY_DEFAULT_OUTPUT_LANGUAGE_PAIR not in advertised:
+            fail(
+                f"{rel_path}: does not reference the default registry entry "
+                f"{LEGACY_DEFAULT_OUTPUT_LANGUAGE_PAIR!r}"
+            )
+
+    # (d) the validator rejects malformed values and names the registry. A
+    # regression here has to fail the lint, not only the unit tests.
+    if validate_output_language_pair(PAIR_FIELD_ABSENT, registry):
+        fail(
+            f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: an omitted field must stay valid "
+            "(legacy behaviour)"
+        )
+    if validate_output_language_pair(LEGACY_DEFAULT_OUTPUT_LANGUAGE_PAIR, registry):
+        fail(f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: the default entry must validate")
+    for malformed in (None, 42, [LEGACY_DEFAULT_OUTPUT_LANGUAGE_PAIR], ""):
+        errors = validate_output_language_pair(malformed, registry)
+        if not errors:
+            fail(
+                f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: malformed value {malformed!r} must be rejected"
+            )
+        elif any(OUTPUT_LANGUAGE_PAIR_CONTRACT not in error for error in errors):
+            fail(
+                f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: rejection of {malformed!r} must name the "
+                f"registry: {errors!r}"
+            )
+
+    # (e) the literals Phase 1 holds fixed are pinned on the real tree, never on the
+    # fixture tree the checks above run against, so a rename of a legacy literal fails.
+    check_output_language_pair_literal_pins()
+
+
 def main() -> int:
     check_mode_registry()
     check_claude_md()
@@ -1301,6 +1632,7 @@ def main() -> int:
     check_rebuttal_audit_guard()
     check_ideation_diversity_no_call_contract()
     check_indirect_prompt_injection_no_call_envelope()
+    check_output_language_pair_contract()
 
     if ERRORS:
         print("Spec consistency check failed:")

@@ -126,7 +126,7 @@ User Input →
 **Not Applicable When**:
 - No paper content to summarize (→ full mode or plan mode)
 
-**Expected Output**: Bilingual abstract (zh-TW + EN) + keywords
+**Expected Output**: Bilingual abstract in the run's declared output language pair (`output_language_pair`; default zh-TW + EN) + keywords
 **Expected Duration**: Short
 **Agents Used**: intake → abstract_bilingual
 

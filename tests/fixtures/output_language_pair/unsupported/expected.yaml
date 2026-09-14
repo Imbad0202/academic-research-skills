@@ -1,0 +1,14 @@
+fixture_id: unsupported
+schema_field: output_language_pair
+contract: shared/output_language_pair.md
+cases:
+  - name: pair absent from the registry
+    expected_valid: false
+    expected_status: unsupported
+    error_contains:
+      - "unsupported token 'ja-en'"
+      - "shared/output_language_pair.md"
+notes: |
+  An unsupported value is a visible failure: the step aborts and names the registry. It is
+  never silently coerced to the default pair, and it is not treated as absent. A single
+  language (`zh-tw`, without a second language) is unsupported the same way.
