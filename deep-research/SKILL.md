@@ -52,7 +52,7 @@ Guide my research on the impact of declining birth rates on private universities
 
 **English**: research, deep research, literature review, systematic review, meta-analysis, PRISMA, evidence synthesis, fact-check, methodology, APA report, academic analysis, policy analysis, WHY HOW WHAT papers, 3W literature scan, guide my research, help me think through, monitor this topic, set up alerts
 
-**Español**: investigación profunda, revisión de literatura, revisión sistemática, metaanálisis, síntesis de evidencia, verificación de datos, metodología, informe APA, análisis académico, análisis de políticas, comparación de artículos WHY HOW WHAT, escaneo de tres vías, guía mi investigación, ayúdame a razonar, monitorear este tema, configurar alertas
+**Español**: investigación profunda, revisión de literatura, revisión sistemática, metaanálisis, síntesis de evidencia, verificación de datos, informe APA, comparación de artículos WHY HOW WHAT, escaneo de tres vías, guía mi investigación, ayúdame a razonar, monitorear este tema, configurar alertas
 
 **繁體中文**: 研究, 深度研究, 文獻回顧, 文獻探討, 系統性回顧, 後設分析, 證據綜整, 事實查核, 三段式文獻掃描, WHY HOW WHAT 論文比較, 研究方法, 學術分析, 政策分析, 引導我的研究, 幫我釐清, 監測這個主題, 設定追蹤
 

@@ -5,9 +5,9 @@ escape_hatch_applied: false
 notes: |
   Spanish boundary case from PR #856 (phrases from the production es-ES
   localization, @didacrios): enmendar (amend/revise) routes to academic-paper,
-  NOT academic-paper-reviewer. Materials: single draft (Phase 4). Intent:
-  explicit revision request matching the enmendar mi artículo trigger
-  keyword.
+  NOT academic-paper-reviewer. Materials: single draft (Phase 4); no reviewer
+  comments exist yet (matching fixture 09's shape). Intent: explicit revision
+  request matching the enmendar mi artículo trigger keyword.
 
   Per Routing Discipline Step 1 (explicit clear intent), route directly to
   academic-paper revision mode. The Spanish enmendar is an editing intent,
@@ -15,6 +15,7 @@ notes: |
   documented in the PR.
 
   Pass criteria:
-  - Response begins revision work (applying reviewer comments to the draft)
+  - Response begins revision work (polishing the draft)
+  - Response does NOT apply reviewer comments (none exist in this fixture)
   - Response does NOT start a multi-perspective review panel
   - Response does NOT trigger clarification a-d options
