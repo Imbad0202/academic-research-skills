@@ -354,7 +354,7 @@ row should only be marked or should block finalization:
 | **Format Profile** | [path to declared format_profile YAML — ROW OMITTED ENTIRELY if the Step 5 follow-up was declined/skipped, per Invariant 7] |
 | **Body Language** | [EN / zh-TW / Bilingual] |
 | **Abstract** | [Bilingual / EN-only / zh-TW-only] |
-| **Output Language Pair** | [the volunteered per-run registry token — ROW OMITTED ENTIRELY when the run declares no pair, so a pre-#862 PCR stays byte-identical; absence means the default entry `zh-tw-en` and every consumer then omits the value] |
+| **Output Language Pair** | [the volunteered per-run registry token — ROW OMITTED ENTIRELY when the run declares no pair, so a pre-#862 PCR keeps the same rows; absence means the default entry `zh-tw-en` and every consumer then omits the value] |
 | **Word Count Target** | [number] words |
 | **Existing Materials** | [list of provided materials] |
 | **Co-Authors** | [single-author / number of co-authors + corresponding author + brief contribution notes] |

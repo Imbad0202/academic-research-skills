@@ -1351,6 +1351,16 @@ An unrelated marker, with an up-to-date checklist line.
         errors = self._errors(contract=self._CONTRACT + "\n" + table)
         self.assertTrue(any("must carry no competing copy" in e for e in errors), errors)
 
+    def test_regime_table_unmarked_header_in_contract_fails(self) -> None:
+        # An unmarked copy with the same four regime columns must fail, not only the marked block.
+        table = (
+            "\n| Paper type | L1 abstract | L2 abstract | Keywords per language |\n"
+            "|------------|-------------|-------------|-----------------------|\n"
+            "| Standard | 300-500 characters | 150-250 words | 5-7 |\n"
+        )
+        errors = self._errors(contract=self._CONTRACT + table)
+        self.assertTrue(any("must carry no competing copy" in e for e in errors), errors)
+
     def test_contract_without_guide_pointer_fails(self) -> None:
         contract = self._CONTRACT.replace(
             "[`abstract_writing_guide.md`](../academic-paper/references/abstract_writing_guide.md)",
@@ -1428,7 +1438,7 @@ class OutputLanguagePairLiteralPinTest(unittest.TestCase):
             self._copy_real(rel_path)
         for rel_path, _ in csc.LEGACY_PAIR_QUOTED_LITERALS:
             self._copy_real(rel_path)
-        for rel_path, _, _ in csc.PAIR_CARRIER_STEPS:
+        for rel_path, *_rest in csc.PAIR_CARRIER_STEPS:
             self._copy_real(rel_path)
         self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE)
         self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_GUIDE)
@@ -1436,6 +1446,24 @@ class OutputLanguagePairLiteralPinTest(unittest.TestCase):
     def _mutated_errors(self, rel_path: str, old: str, new: str = "") -> list[str]:
         self._copied_pin_tree()
         return self._mutate_and_run(rel_path, old, new, csc.check_output_language_pair_literal_pins)
+
+    def _mutated_heading_errors(self, rel_path: str, heading: str, new_heading: str = "") -> list[str]:
+        self._copied_pin_tree()
+        path = self.root / rel_path
+        lines = path.read_text(encoding="utf-8").splitlines()
+        found = False
+        new_lines: list[str] = []
+        for line in lines:
+            if line.rstrip() == heading.rstrip():
+                found = True
+                new_lines.append(new_heading)
+            else:
+                new_lines.append(line)
+        self.assertTrue(found, f"the shipped file must still carry the heading {heading!r}")
+        path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins(self.root)
+        return list(csc.ERRORS)
 
     def _mutate_and_run(self, rel_path: str, old: str, new: str, checker) -> list[str]:
         path = self.root / rel_path
@@ -1454,25 +1482,25 @@ class OutputLanguagePairLiteralPinTest(unittest.TestCase):
         self.assertEqual(list(csc.ERRORS), [])
 
     def test_abstract_agent_l2_heading_pin_fires(self) -> None:
-        errors = self._mutated_errors(
+        errors = self._mutated_heading_errors(
             "academic-paper/agents/abstract_bilingual_agent.md", "### English Abstract"
         )
         self.assertTrue(any("### English Abstract" in e for e in errors), errors)
 
     def test_abstract_agent_l1_heading_pin_fires(self) -> None:
-        errors = self._mutated_errors(
+        errors = self._mutated_heading_errors(
             "academic-paper/agents/abstract_bilingual_agent.md", "### Chinese Abstract"
         )
         self.assertTrue(any("### Chinese Abstract" in e for e in errors), errors)
 
     def test_template_l2_heading_pin_fires(self) -> None:
-        errors = self._mutated_errors(
+        errors = self._mutated_heading_errors(
             "academic-paper/templates/bilingual_abstract_template.md", "## English Abstract"
         )
         self.assertTrue(any("## English Abstract" in e for e in errors), errors)
 
     def test_template_l1_heading_pin_fires(self) -> None:
-        errors = self._mutated_errors(
+        errors = self._mutated_heading_errors(
             "academic-paper/templates/bilingual_abstract_template.md",
             "## Chinese Abstract (zh-TW)",
         )
@@ -1541,6 +1569,24 @@ class OutputLanguagePairLiteralPinTest(unittest.TestCase):
         )
         self.assertTrue(any("must keep its legacy typed shape" in e for e in errors), errors)
 
+    def test_schema4_duplicate_abstract_row_unbackticked_fires(self) -> None:
+        rel_path = csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE
+        self._copied_pin_tree()
+        path = self.root / rel_path
+        lines = path.read_text(encoding="utf-8").splitlines()
+        new_lines: list[str] = []
+        for line in lines:
+            new_lines.append(line)
+            if "| `abstract` | object |" in line:
+                new_lines.append(
+                    "| abstract | object | a duplicate row that would shadow the pinned one |"
+                )
+        path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins(self.root)
+        errors = list(csc.ERRORS)
+        self.assertTrue(any("the Schema-4 `abstract` row appears more than once" in e for e in errors), errors)
+
     def test_schema4_pair_row_removed_fires(self) -> None:
         errors = self._mutated_errors(
             csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE,
@@ -1558,6 +1604,51 @@ class OutputLanguagePairLiteralPinTest(unittest.TestCase):
             csc.check_output_language_pair_carrier_steps,
         )
         self.assertTrue(errors)
+
+    def test_intake_pair_row_omission_clause_removed_fires_while_format_profile_row_intact(
+        self,
+    ) -> None:
+        rel_path = "academic-paper/agents/intake_agent.md"
+        row_marker = "| **Output Language Pair** |"
+        self._copied_pin_tree()
+        path = self.root / rel_path
+        lines = path.read_text(encoding="utf-8").splitlines()
+        new_lines: list[str] = []
+        for line in lines:
+            if row_marker in line:
+                new_lines.append(
+                    line.replace(
+                        "ROW OMITTED ENTIRELY when the run declares no pair, so a pre-#862 PCR keeps the same rows; ",
+                        "",
+                    )
+                )
+            else:
+                new_lines.append(line)
+        path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_carrier_steps(self.root)
+        errors = list(csc.ERRORS)
+        self.assertTrue(
+            any("Output Language Pair" in e and "omitted when the field is absent on that row" in e for e in errors),
+            errors,
+        )
+        format_profile_line = next(
+            line for line in path.read_text(encoding="utf-8").splitlines() if "| **Format Profile** |" in line
+        )
+        self.assertIn("ROW OMITTED ENTIRELY", format_profile_line)
+
+    def test_draft_writer_present_value_bullet_removed_fires(self) -> None:
+        self._copied_pin_tree()
+        errors = self._mutate_and_run(
+            "academic-paper/agents/draft_writer_agent.md",
+            "serialize it into the Schema 4 handoff under that exact key",
+            "",
+            csc.check_output_language_pair_carrier_steps,
+        )
+        self.assertTrue(
+            any("present-value branch" in e for e in errors),
+            errors,
+        )
 
     def test_draft_writer_serialization_section_removed_fires(self) -> None:
         self._copied_pin_tree()

@@ -12,8 +12,8 @@ Used by `structure_architect_agent` and `intake_agent` to select the appropriate
 
 ```
 1. Title Page
-2. Abstract (150-250 words)
-   Keywords (5-7)
+2. Abstract (length: the guide's Standard row — academic-paper/references/abstract_writing_guide.md)
+   Keywords (count: the same row)
 3. Introduction
    3.1 Context and Background
    3.2 Problem Statement
@@ -286,7 +286,7 @@ Used by `structure_architect_agent` and `intake_agent` to select the appropriate
 
 ```
 1. Title, Authors, Affiliations
-2. Abstract (100-200 words)
+2. Abstract (length: the guide's Conference row — academic-paper/references/abstract_writing_guide.md)
    Keywords
 3. Introduction
    3.1 Problem and Motivation

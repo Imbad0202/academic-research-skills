@@ -1317,16 +1317,24 @@ LEGACY_SCHEMA4_TYPED_ROWS = (
 )
 LEGACY_SCHEMA4_PAIR_ROW = "output_language_pair"
 # The carrier steps that actually hold and emit the value (design sketch §5 carrier chain;
-# PR body "Carrier chain"). Each is pinned by its operative line, because the advertised-token
-# scan is satisfied by any one backticked token per surface: `intake_agent.md` keeps `zh-tw-en`
-# in its Step 6 bullets when the PCR row is deleted, and `draft_writer_agent.md` is scanned with
-# `carries_default=False`, so deleting its serialization section fails nothing today.
+# PR body "Carrier chain"). Each step is pinned at its operative location: the intake PCR row
+# binds the omission clause to that row's line (Format Profile carries the same marker on its
+# own row), and the draft-writer serialization section binds omission prose and the present-
+# value bullet within the section body.
 PAIR_CARRIER_STEPS = (
-    ("academic-paper/agents/intake_agent.md", "| **Output Language Pair** |", "ROW OMITTED ENTIRELY"),
+    (
+        "academic-paper/agents/intake_agent.md",
+        "row",
+        "| **Output Language Pair** |",
+        "ROW OMITTED ENTIRELY",
+        None,
+    ),
     (
         "academic-paper/agents/draft_writer_agent.md",
+        "section",
         "### Schema 4 Serialization (#862 Phase 1)",
         "omit the serialized key",
+        "serialize it into the Schema 4 handoff under that exact key",
     ),
 )
 
@@ -1510,24 +1518,35 @@ def _markdown_headings(text: str) -> list[str]:
     return [line.rstrip() for line in text.splitlines() if _ATX_HEADING.match(line)]
 
 
-def _schema4_field_rows(section: str) -> dict[str, list[str]]:
-    """Map each Schema-4 field name to the cells of its table row.
+def _schema4_field_name(cell: str) -> str | None:
+    """Normalize a Schema-4 table's first cell into a field name, or None if not a field row."""
+    field = cell.strip().strip("`").strip()
+    if re.match(r"^[a-z][a-z0-9_]*$", field):
+        return field
+    return None
+
+
+def _parse_schema4_table(section: str) -> tuple[dict[str, list[str]], dict[str, int]]:
+    """Map each Schema-4 field name to its first row and count every normalized occurrence.
 
     Only rows whose first cell is a bare field name are collected, so header and
     separator rows are skipped and a prose quotation of a row is never mistaken for the
     row itself.
     """
     rows: dict[str, list[str]] = {}
+    counts: dict[str, int] = {}
     for line in section.splitlines():
         if not line.strip().startswith("|"):
             continue
         cells = _split_markdown_table_row(line)
         if not cells or _is_markdown_table_separator(cells):
             continue
-        field = cells[0].strip().strip("`").strip()
-        if re.match(r"^[a-z][a-z0-9_]*$", field):
-            rows.setdefault(field, cells)
-    return rows
+        field = _schema4_field_name(cells[0])
+        if field is None:
+            continue
+        counts[field] = counts.get(field, 0) + 1
+        rows.setdefault(field, cells)
+    return rows, counts
 
 
 def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
@@ -1585,11 +1604,12 @@ def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
             f"({OUTPUT_LANGUAGE_PAIR_SCHEMA_SECTION_START!r}) is missing"
         )
         return
-    rows = _schema4_field_rows(section)
-    # A duplicate field row would silently shadow the pinned one (`_schema4_field_rows` is
-    # first-wins), so a second `abstract`/`keywords` row is a failure, not a silent override.
+    rows, field_counts = _parse_schema4_table(section)
+    # A duplicate field row would silently shadow the pinned one (the parser is first-wins),
+    # so a second `abstract`/`keywords` row — even with variant backtick/spacing spelling —
+    # is a failure, not a silent override.
     for field, _ in LEGACY_SCHEMA4_TYPED_ROWS:
-        if section.count(f"| `{field}` |") > 1:
+        if field_counts.get(field, 0) > 1:
             fail(
                 f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: the Schema-4 `{field}` row appears "
                 "more than once, so the pinned row can be shadowed"
@@ -1616,32 +1636,106 @@ def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
         )
 
 
+def _atx_heading_level(line: str) -> int | None:
+    if not _ATX_HEADING.match(line):
+        return None
+    return len(line) - len(line.lstrip("#"))
+
+
+def _carrier_row_line(text: str, row_marker: str) -> str | None:
+    for line in text.splitlines():
+        if row_marker in line:
+            return line
+    return None
+
+
+def _section_after_heading(text: str, heading: str) -> str | None:
+    lines = text.splitlines()
+    start_idx = None
+    for index, line in enumerate(lines):
+        if line.rstrip() == heading.rstrip():
+            start_idx = index
+            break
+    if start_idx is None:
+        return None
+    heading_level = _atx_heading_level(lines[start_idx])
+    if heading_level is None:
+        return None
+    section_lines: list[str] = []
+    for line in lines[start_idx + 1:]:
+        level = _atx_heading_level(line)
+        if level is not None and level <= heading_level:
+            break
+        section_lines.append(line)
+    return "\n".join(section_lines)
+
+
 def check_output_language_pair_carrier_steps(root: Path | None = None) -> None:
-    """The carrier chain's two operative steps, pinned by their operative lines.
+    """The carrier chain's two operative steps, scoped to where each rule is operative.
+
+    The intake PCR row binds the omission clause to that row's own line (the Format Profile
+    row carries the same omission marker), and the draft-writer serialization section binds
+    its omission clause and present-value bullet to the section body.
 
     `check_439_format_profile.py` pins the structural PCR `Format Profile` row and its
     omission clause for the same reason: prose that quotes a rule survives the rule's removal.
     """
     base = root if root is not None else OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT
-    for rel_path, row_marker, omission_marker in PAIR_CARRIER_STEPS:
+    for rel_path, scope, marker, omission_marker, present_marker in PAIR_CARRIER_STEPS:
         try:
             text = (base / rel_path).read_text(encoding="utf-8")
         except OSError:
             fail(f"{rel_path}: output-language-pair carrier surface is missing")
             continue
-        if row_marker not in text:
-            fail(f"{rel_path}: the carrier step {row_marker!r} is missing from the surface")
-        elif omission_marker not in text:
-            fail(
-                f"{rel_path}: the carrier step {row_marker!r} must document that the value is "
-                f"omitted when the field is absent (expected {omission_marker!r})"
-            )
+        if scope == "row":
+            row_line = _carrier_row_line(text, marker)
+            if row_line is None:
+                fail(f"{rel_path}: the carrier step {marker!r} is missing from the surface")
+            elif omission_marker not in row_line:
+                fail(
+                    f"{rel_path}: the carrier step {marker!r} must document that the value is "
+                    f"omitted when the field is absent on that row (expected {omission_marker!r})"
+                )
+        elif scope == "section":
+            section = _section_after_heading(text, marker)
+            if section is None:
+                fail(f"{rel_path}: the carrier step {marker!r} is missing from the surface")
+            elif omission_marker not in section:
+                fail(
+                    f"{rel_path}: the carrier step {marker!r} must document that the value is "
+                    f"omitted when the field is absent (expected {omission_marker!r})"
+                )
+            elif present_marker and present_marker not in section:
+                fail(
+                    f"{rel_path}: the carrier step {marker!r} must document the present-value "
+                    f"branch (expected {present_marker!r})"
+                )
+        else:  # pragma: no cover - configuration error
+            fail(f"{rel_path}: unknown carrier step scope {scope!r}")
 
 
 def _regime_cell_key(cell: str) -> str:
     """Normalize a regime-table cell into a key: "Extended abstract" -> "extended_abstract"."""
     text = cell.strip().replace("`", "").split("(")[0]
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+
+
+def _is_regime_table_header(cells: list[str]) -> bool:
+    columns = [_regime_cell_key(cell) for cell in cells]
+    return all(column in columns for column in _REGIME_TABLE_REQUIRED_COLUMNS)
+
+
+def _contract_has_competing_regime_table(text: str) -> bool:
+    """True when an unmarked markdown table header carries all four regime columns."""
+    for line in text.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = _split_markdown_table_row(line)
+        if not cells or _is_markdown_table_separator(cells):
+            continue
+        if _is_regime_table_header(cells):
+            return True
+    return False
 
 
 def parse_abstract_regime_table(text: str) -> dict[str, dict[str, str]]:
@@ -1763,7 +1857,7 @@ def check_output_language_pair_contract() -> None:
     # carry the marked block, and this contract must not carry a competing copy — a second
     # table is how the two figures drifted apart in the first place.
     check_abstract_regime_table(ROOT)
-    if _REGIME_TABLE_START in contract:
+    if _REGIME_TABLE_START in contract or _contract_has_competing_regime_table(contract):
         fail(
             f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: the abstract length / keyword regime table "
             f"lives in {OUTPUT_LANGUAGE_PAIR_GUIDE}; the contract must carry no competing copy"
