@@ -45,33 +45,23 @@ does not redefine the core contract.
 
 ## Regime table
 
-This table is the **single source** for abstract length and keyword counts. Every other
-surface that needs one of these figures references this table; none restates it. The
-previous figures were carried by `academic-paper/references/abstract_writing_guide.md` as
-two per-language bullet lists; reconciliation folds them here (see below).
+The abstract length and keyword regime table is **not** carried here: its single source is
+[`academic-paper/references/abstract_writing_guide.md`](../academic-paper/references/abstract_writing_guide.md),
+whose marked regime block every other surface references. This contract carries the registry,
+the language roles, and the field semantics — not the figures.
 
-Lengths are measured per [`shared/references/word_count_conventions.md`](references/word_count_conventions.md)
-— whitespace splitting, ARS-marker removal, and the 3–5% buffer rule. That reference is
-pointed at, never replaced.
+The figures have one home so that a paper type's length cannot drift between copies: the guide
+carries the reconciled table (Standard / Conference / Extended abstract / Dissertation rows for
+the default entry `zh-tw-en`), and `scripts/check_spec_consistency.py` asserts both that the
+guide carries it and that this contract carries no competing copy.
 
-Regime for the default entry `zh-tw-en`:
+The figures apply whether or not the run declares `output_language_pair`; the field selects which
+two languages the abstract surfaces use, not which figures apply.
 
-| Paper type | L1 abstract (`zh-TW`, CJK) | L2 abstract (`en`) | Keywords per language |
-|------------|---------------------------|--------------------|-----------------------|
-| Standard | 300–500 characters | 150–250 words | 5–7 |
-| Conference | 300–800 characters | 200–500 words | 5–7 |
-| Dissertation | 500–1,000 characters | up to 350 words | 5–7 |
-
-**Reconciliation.** Two figures in the abstract guide's *Bilingual Abstract Quality
-Checklist* conflicted with its own Standard row: English *150–300 words* against
-*150–250 words*, and *keywords 5–7* restated beside a keywords section that already said
-5–7. Neither the checklist line nor the section restatement survives as a competing
-number; the reconciled figures above are Standard English 150–250 words and 5–7 keywords
-per language. A venue-declared limit keeps precedence through the venue profile
-(issue #394), which the submission verifier already checks.
-
-Phase 1 carries the regime table for the default entry only. A pack-supplied entry ships
-its own regime rows with the Phase-2 loader.
+**Known exception (deferred to Phase 2).** `academic-paper/agents/formatter_agent.md` still
+states a generic abstract limit of its own ("typically 150-300 words"). The formatter is
+untouched in Phase 1 by design, so that line is a recorded exception rather than a pointer, and
+it is reconciled with the guide's table when the formatter is next revised.
 
 ---
 
@@ -84,8 +74,8 @@ derived label.
 
 | Value | Result |
 |-------|--------|
-| key omitted | **Legacy behaviour**: exactly today's zh-TW + EN bilingual output. Absence is not an error, and no consumer changes behaviour when the key is missing. |
-| `zh-tw-en` | Valid — the default entry, equivalent to the legacy behaviour. |
+| key omitted | **Legacy behaviour** — the run renders the **default pair** (Traditional Chinese L1 + English L2), as every pre-#862 run did. Phase 1 holds three things fixed and claims exactly those: the legacy Schema-4 object keys, the legacy heading literals, and the omitted serialized key (*Absent field* below lists them). Absence is not an error, and omission *is* the legacy state — not a behaviour-equivalence claim about the rest of the run. |
+| `zh-tw-en` | Valid — the default entry: the pair every pre-#862 run produced, so a run that declares it changes no surface. |
 | any other string | **Visible failure**: the step aborts, naming this registry and the unsupported value. There is no silent fallback to the default. |
 | non-string, `null`, or empty string | **Visible failure**: the same abort, naming this registry. A present-but-unusable value is never treated as absent. |
 
@@ -108,12 +98,22 @@ Every step omits the value when it is absent. The pair-derived labels and headin
 consumer renders reproduce the legacy literals exactly for the default entry; a
 pair-derived label is never a rename of the legacy surface.
 
+No step has to **forward** the token: `academic-paper/agents/draft_writer_agent.md` reads the
+PCR `Output Language Pair` row directly and serializes it into Schema 4, and
+`academic-paper/agents/structure_architect_agent.md` derives its pair-derived labels from the
+pair it is dispatched with and never passes the token on. A missing forwarding step is therefore
+not a gap in the chain, and no agent is required to relay the value for the serialization to
+happen.
+
 ### Absent field: the legacy literals are reproduced exactly
 
-With the key omitted, the Schema-4 legacy object keys (`abstract: {english, chinese}`,
-`keywords: {en, zh_tw}`) and the heading literals (`### English Abstract`,
-`### Chinese Abstract`, `## English Abstract`, `## Chinese Abstract (zh-TW)`) reproduce
-exactly. The migration is additive: absence is a valid legacy state, not a gap to repair.
+With the key omitted, three things reproduce exactly: the Schema-4 legacy object keys
+(`abstract: {english, chinese}`, `keywords: {en, zh_tw}`), the heading literals
+(`### English Abstract`, `### Chinese Abstract`, `## English Abstract`,
+`## Chinese Abstract (zh-TW)`), and the omitted serialized key. That list is the whole of the
+Phase-1 equivalence claim, and it is a **file-level literal** claim about the default pair — not
+a claim that a rendered document is byte-identical, and not a claim about model behaviour. The
+migration is additive: absence is a valid legacy state, not a gap to repair.
 
 ### Conflicting declarations fail visibly
 

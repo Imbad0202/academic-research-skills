@@ -96,7 +96,7 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 **Agent**: `abstract_bilingual_agent`
 **Output**: Bilingual Abstract + Keywords (both languages of the run's declared output language pair)
 
-- L2 abstract (default: English), structured — length from the regime table (`shared/output_language_pair.md`, run's paper type)
+- L2 abstract (default: English), structured — length from the regime table ([`abstract_writing_guide.md`](abstract_writing_guide.md), run's paper type)
 - L1 abstract (default: Traditional Chinese), structured — length from the same regime table
 - L2 keywords, count from the same regime table
 - L1 keywords, same declared count

@@ -29,7 +29,7 @@ Used by `formatter_agent` and `intake_agent`.
 | Cover letter | ✓ | Addressed to Editor-in-Chief |
 | Title page | ✓ | Title, authors, affiliations, corresponding author |
 | Abstract | ✓ | Check word limit (often 150-250) |
-| Keywords | ✓ | Usually 4-7 |
+| Keywords | ✓ | Usually 5-7 |
 | Main text | ✓ | Following journal structure |
 | References | ✓ | In journal's required format |
 | Tables | Often | Separate files or embedded |

@@ -96,6 +96,26 @@ class OutputLanguagePairRegistryTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             csc.parse_output_language_pair_registry(_contract_with_rows(f"{row}\n{row}"))
 
+    def test_entry_without_an_l2_language_raises(self) -> None:
+        # P2-e: a row that fills one language slot and leaves the other empty is not a
+        # pair; it must fail the parse rather than validate as a usable entry.
+        with self.assertRaises(ValueError) as ctx:
+            csc.parse_output_language_pair_registry(
+                _contract_with_rows(
+                    "| `zh-tw-en` | Traditional Chinese | CJK |  | Latin | default |"
+                )
+            )
+        self.assertIn("must declare both an L1 and an L2 language", str(ctx.exception))
+
+    def test_entry_declaring_one_language_twice_raises(self) -> None:
+        with self.assertRaises(ValueError) as ctx:
+            csc.parse_output_language_pair_registry(
+                _contract_with_rows(
+                    "| `en-en` | English (`en`) | Latin | English (`en`) | Latin | default |"
+                )
+            )
+        self.assertIn("declares the same language twice", str(ctx.exception))
+
     def test_empty_registry_raises(self) -> None:
         text = (
             "# Synthetic contract\n\n"
@@ -148,6 +168,22 @@ class OutputLanguagePairValidationTest(unittest.TestCase):
                 for error in errors:
                     self.assertIn(csc.OUTPUT_LANGUAGE_PAIR_CONTRACT, error)
 
+    def test_padded_and_newline_terminated_values_are_unsupported(self) -> None:
+        # P1-3: the comparison is raw. Registry tokens are opaque, so a padded value is a
+        # different value, not the entry it resembles — normalizing it would accept a token
+        # the contract never declared.
+        for padded in (" zh-tw-en", "zh-tw-en ", " zh-tw-en ", "zh-tw-en\n", "\tzh-tw-en"):
+            with self.subTest(value=padded):
+                errors = csc.validate_output_language_pair(padded, self.registry)
+                self.assertEqual(len(errors), 1, msg=f"{padded!r} must be rejected")
+                self.assertIn("unsupported token", errors[0])
+                self.assertIn(csc.OUTPUT_LANGUAGE_PAIR_CONTRACT, errors[0])
+
+    def test_whitespace_only_value_is_an_empty_token_not_an_unsupported_one(self) -> None:
+        errors = csc.validate_output_language_pair("   ", self.registry)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("non-empty string token", errors[0])
+
     def test_null_is_not_treated_as_absent(self) -> None:
         # A present-but-unusable value never collapses into the legacy state.
         self.assertNotEqual(csc.validate_output_language_pair(None, self.registry), [])
@@ -170,16 +206,28 @@ class AdvertisedPairTokenTest(unittest.TestCase):
             set(),
         )
 
-    def test_bare_token_counts_only_in_pair_context(self) -> None:
+    def test_bare_tokens_are_never_collected(self) -> None:
+        # P2-c: the backtick is the contract's own spelling rule, so the scan accepts only
+        # that spelling. The bare-token branch read ordinary hyphenated prose as an
+        # advertised pair on any line that mentioned the field, and it missed a bare
+        # two-subtag pair; one uniform rule replaces both halves of that guesswork.
         self.assertEqual(
             csc.advertised_output_language_pair_tokens(
                 "the output_language_pair token zh-tw-en selects the pair"
             ),
-            {"zh-tw-en"},
+            set(),
         )
         self.assertEqual(
             csc.advertised_output_language_pair_tokens("an up-to-date checklist line"),
             set(),
+        )
+        self.assertEqual(
+            csc.advertised_output_language_pair_tokens("the output_language_pair is es-en here"),
+            set(),
+        )
+        self.assertEqual(
+            csc.advertised_output_language_pair_tokens("the pair is `zh-tw-en`"),
+            {"zh-tw-en"},
         )
 
 

@@ -29,7 +29,7 @@ If downstream work is needed, return control to the caller.
 
 The run declares one **output language pair** — the two languages of its abstract surfaces. Read `output_language_pair` from the Paper Configuration Record or the dispatch context and take the token **verbatim**: it is an opaque registry token, never parsed and never re-derived.
 
-- **Absent** → the default entry `zh-tw-en`. Absence is the legacy state, not a gap: the default pair is exactly the pre-#862 behaviour and no consumer changes when the key is missing.
+- **Absent** → the default pair `zh-tw-en`, the pair every pre-#862 run used. Absence is the legacy state, not a gap, and the claim is exactly this much: with the key omitted the legacy object keys and the heading literals below reproduce exactly and the serialized key is omitted.
 - **Present** → a token that exists in the registry of [`shared/output_language_pair.md`](../../shared/output_language_pair.md). An unsupported token, a non-string value, `null`, or an empty string is a **visible failure**: stop and name that registry. Never fall back to the default silently.
 - **Cardinality is a different control.** Bilingual / EN-only / zh-TW-only is the intake abstract answer; the pair never encodes it.
 
@@ -42,7 +42,7 @@ The registry entry declares the roles; the labels below are derived from it, nev
 
 **Default case reproduces the legacy literals exactly.** For the default entry the headings are `### English Abstract` (L2) and `### Chinese Abstract` (L1) — the same heading literals the pre-#862 surface carried, unchanged. This pins the literals, not the rendered output: no rendered-output equivalence with a pre-#862 run is claimed. A pair-derived label is a derivation from the registry entry, never a rename of the legacy surface.
 
-**Length and keyword regime.** The single source for both figures is the regime table in [`shared/output_language_pair.md`](../../shared/output_language_pair.md), row for the run's paper type. Lengths are measured per [`shared/references/word_count_conventions.md`](../../shared/references/word_count_conventions.md). This agent restates no figure; a venue-declared limit (#394 venue profile) takes precedence over the table.
+**Length and keyword regime.** The single source for both figures is the regime table in [`references/abstract_writing_guide.md`](../references/abstract_writing_guide.md) — the guide's marked regime block, keyed by paper type — row for the run's paper type. Lengths are measured per [`shared/references/word_count_conventions.md`](../../shared/references/word_count_conventions.md). This agent restates no figure; a venue-declared limit (#394 venue profile) takes precedence over the table.
 
 ## Core Principles
 
@@ -75,7 +75,7 @@ Both abstracts follow the same structured format:
 | L2 (default: English) | regime table, L2 column, run's paper type | regime table, keywords-per-language column |
 | L1 (default: Traditional Chinese) | regime table, L1 column, run's paper type | regime table, keywords-per-language column |
 
-Both figures come from the regime table in [`shared/output_language_pair.md`](../../shared/output_language_pair.md); neither is restated here. A venue-declared limit (#394 venue profile) takes precedence.
+Both figures come from the regime table in [`references/abstract_writing_guide.md`](../references/abstract_writing_guide.md); neither is restated here. A venue-declared limit (#394 venue profile) takes precedence.
 
 ## Writing Process
 
@@ -187,7 +187,7 @@ Headings are **pair-derived**: the L2 heading is `<L2 language> Abstract` and th
 ## Quality Criteria
 
 - Both abstracts cover all 5 structural components
-- Abstract length and keyword count come from the regime table for the run's paper type and declared pair (`shared/output_language_pair.md`); no figure is restated here
+- Abstract length and keyword count come from the regime table in `references/abstract_writing_guide.md` for the run's paper type and declared pair; no figure is restated here
 - Independence check: PASS (no mechanical translation markers)
 - Both abstracts are self-contained (readable without the full paper)
 - No citations in abstracts (unless field convention requires it)

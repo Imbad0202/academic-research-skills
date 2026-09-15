@@ -96,7 +96,7 @@ Activate `plan` mode when the user wants guidance, step-by-step planning, or exp
 | 4 | `argument_builder_agent` | Argument construction, claim-evidence chains, logical flow, counter-argument handling; Plan mode argument stress test | Phase 3 / Plan Step 3 |
 | 5 | `draft_writer_agent` | Section-by-section full draft writing, discipline register adjustment, word count tracking | Phase 4 |
 | 6 | `citation_compliance_agent` | Citation format verification, reference list completeness, DOI checking | Phase 5a |
-| 7 | `abstract_bilingual_agent` | Pair-dependent bilingual abstract (default zh-TW + EN), keyword count from the regime table | Phase 5b |
+| 7 | `abstract_bilingual_agent` | Pair-dependent bilingual abstract (default zh-TW + EN), keyword count from the regime table in `references/abstract_writing_guide.md` | Phase 5b |
 | 8 | `peer_reviewer_agent` | Simulated double-blind review, five-perspective categorical assessment, revision suggestions (max 2 rounds) | Phase 6 |
 | 9 | `formatter_agent` | Convert to LaTeX/DOCX (via Pandoc)/PDF/Markdown, journal formatting, cover letter, citation format conversion (APA 7 / Chicago / MLA / IEEE / Vancouver) | Phase 7 |
 | 10 | `socratic_mentor_agent` | Plan mode Socratic mentor: chapter-by-chapter guidance, convergence criteria (4 signals), question taxonomy (4 types), INSIGHT extraction | Plan Step 0-3 |
@@ -477,8 +477,8 @@ Explicit prohibitions to prevent common failure modes:
 ### Bilingual Abstract Quality
 6. **Independent writing** — the two abstracts of the run's declared pair (default zh-TW and EN) are independently composed, NOT mechanical translations
 7. **Structural alignment** — both abstracts cover the same key points in the same order
-8. **Keywords** — count per language from the regime table, reflecting the paper's core concepts
-9. **Word count** — per the regime table for the run's declared pair and paper type (no figure restated here)
+8. **Keywords** — count per language from the regime table in `references/abstract_writing_guide.md`, reflecting the paper's core concepts
+9. **Word count** — per the regime table in `references/abstract_writing_guide.md` for the run's declared pair and paper type (no figure restated here)
 
 ### Citation Quality
 10. **Format compliance** — 100% adherence to selected citation style
@@ -501,7 +501,7 @@ Explicit prohibitions to prevent common failure modes:
 
 ## Output Language
 
-Follows the user's language. Academic terminology is kept in English. The bilingual abstract follows the declared output language pair (`output_language_pair`) — nothing more. The pair selects the two abstract languages; it is not a body-language setting and not an abstract-cardinality setting (Bilingual / EN-only / zh-TW-only is a separate intake answer). The default entry `zh-tw-en` is Traditional Chinese (L1) + English (L2) — exactly the pre-#862 behaviour — and a run that omits the field gets that default. Registry, language roles, and the single abstract length / keyword regime: [`shared/output_language_pair.md`](../shared/output_language_pair.md).
+Follows the user's language. Academic terminology is kept in English. The bilingual abstract follows the declared output language pair (`output_language_pair`) — nothing more. The pair selects the two abstract languages; it is not a body-language setting and not an abstract-cardinality setting (Bilingual / EN-only / zh-TW-only is a separate intake answer). The default entry `zh-tw-en` is Traditional Chinese (L1) + English (L2) — the pre-#862 pair, so a run that omits the field reproduces the legacy object keys and the legacy heading literals and omits the serialized key. Registry and language roles: [`shared/output_language_pair.md`](../shared/output_language_pair.md). Abstract length and keyword counts: the regime table in [`references/abstract_writing_guide.md`](references/abstract_writing_guide.md).
 
 ---
 

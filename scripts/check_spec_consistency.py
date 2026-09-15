@@ -1289,22 +1289,33 @@ OUTPUT_LANGUAGE_PAIR_CONTRACT = "shared/output_language_pair.md"
 OUTPUT_LANGUAGE_PAIR_CONTRACT_BASENAME = "output_language_pair.md"
 OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE = "shared/handoff_schemas.md"
 OUTPUT_LANGUAGE_PAIR_TEMPLATE_SURFACE = "academic-paper/templates/bilingual_abstract_template.md"
+OUTPUT_LANGUAGE_PAIR_GUIDE = "academic-paper/references/abstract_writing_guide.md"
+OUTPUT_LANGUAGE_PAIR_GUIDE_BASENAME = "abstract_writing_guide.md"
 OUTPUT_LANGUAGE_PAIR_SCHEMA_SECTION_START = "## Schema 4: Paper Draft"
 LEGACY_DEFAULT_OUTPUT_LANGUAGE_PAIR = "zh-tw-en"
 
-# The literals Phase 1 holds fixed (design sketch §5): the legacy heading literals on the
-# three surfaces that render them, and the legacy Schema-4 object keys. A pair-derived
-# label is a derivation, never a rename of these.
-LEGACY_PAIR_LITERALS = (
+# The literals Phase 1 holds fixed (design sketch §5), pinned where they are **operative**: the
+# heading lines the two rendering surfaces emit, and the typed Schema-4 rows. A pin that matched
+# the literal anywhere in a file passed while the operative line was renamed, as long as one
+# sentence still quoted the old string (`handoff_schemas.md` keeps quoting
+# `abstract: {english, chinese}`), so each pin now targets the line it claims to hold.
+LEGACY_PAIR_HEADING_BLOCKS = (
     ("academic-paper/agents/abstract_bilingual_agent.md", ("### English Abstract", "### Chinese Abstract")),
     ("academic-paper/templates/bilingual_abstract_template.md", ("## English Abstract", "## Chinese Abstract (zh-TW)")),
+)
+# The workflow reference quotes the literals in prose instead of emitting them, so there is no
+# operative line to target and its pin stays a literal-presence check.
+LEGACY_PAIR_QUOTED_LITERALS = (
     ("academic-paper/references/workflow_phase_details.md", ("### English Abstract", "### Chinese Abstract")),
 )
-LEGACY_SCHEMA4_LITERALS = (
-    "abstract: {english, chinese}",
-    "{en: list[string], zh_tw: list[string]}",
+# (Schema-4 field name, the exact backticked shape that field's own row must keep in its
+# description cell — the field table is | Field | Type | Description |, so the legacy typed
+# shape is documented in the row, not in the "object" type cell)
+LEGACY_SCHEMA4_TYPED_ROWS = (
+    ("abstract", "{english: string, chinese: string}"),
+    ("keywords", "{en: list[string], zh_tw: list[string]}"),
 )
-LEGACY_SCHEMA4_PAIR_ROW = "`output_language_pair`"
+LEGACY_SCHEMA4_PAIR_ROW = "output_language_pair"
 
 # The literal pins read the shipped files, not the synthetic tree the rest of the #862
 # checks run against (`csc.ROOT` is patched to a temp directory by the unit tests), so a
@@ -1316,8 +1327,19 @@ _PAIR_REGISTRY_END = "<!-- output-language-pair-registry:end -->"
 _PAIR_REGISTRY_REQUIRED_COLUMNS = ("token", "l1_language", "l2_language")
 _PAIR_TOKEN_PATTERN = re.compile(r"^[a-z]{2,3}(?:-[a-z0-9]{2,4}){1,3}$")
 _PAIR_BACKTICK_SPAN = re.compile(r"`([^`\n]+)`")
-_PAIR_CONTEXT = re.compile(r"output_language_pair|language pair|output pair", re.IGNORECASE)
-_PAIR_BARE_TOKEN = re.compile(r"(?<![\w`-])([a-z]{2,3}(?:-[a-z0-9]{2,4}){2,})(?![\w`-])")
+
+# The regime table's single home is the guide (design sketch §5; review PR #869 P1-1): the marked
+# block is parsed there, and the contract must not carry a competing copy.
+_REGIME_TABLE_START = "<!-- abstract-regime-table:start -->"
+_REGIME_TABLE_END = "<!-- abstract-regime-table:end -->"
+_REGIME_TABLE_REQUIRED_COLUMNS = (
+    "paper_type",
+    "l1_abstract",
+    "l2_abstract",
+    "keywords_per_language",
+)
+_REGIME_TABLE_REQUIRED_ROWS = ("standard", "conference", "extended_abstract", "dissertation")
+_ATX_HEADING = re.compile(r"^#{1,6}[ \t]+\S")
 
 
 class _OutputLanguagePairFieldAbsent:
@@ -1348,7 +1370,8 @@ def parse_output_language_pair_registry(text: str) -> dict[str, dict[str, str]]:
 
     Returns `{token: {column_key: cell}}`. Raises ValueError when the registry
     block or its table is unusable: missing markers, no table, no token or L2
-    language column (a unary entry), a malformed token, or a duplicate token.
+    language column (a unary entry), a malformed token, a duplicate token, an
+    empty L1 or L2 cell, or a row whose L1 and L2 languages are the same string.
     """
     start = text.find(_PAIR_REGISTRY_START)
     end = text.find(_PAIR_REGISTRY_END)
@@ -1384,6 +1407,21 @@ def parse_output_language_pair_registry(text: str) -> dict[str, dict[str, str]]:
             raise ValueError(f"registry token {token!r} is not a lowercase registry token")
         if token in registry:
             raise ValueError(f"duplicate registry token {token!r}")
+        # A pair needs two declared, different languages: an empty cell is not a
+        # single-language entry, it is an unusable row, and a row that names the same
+        # language twice declares no pair at all.
+        l1 = entry.get("l1_language", "").strip()
+        l2 = entry.get("l2_language", "").strip()
+        if not l1 or not l2:
+            raise ValueError(
+                f"registry row {token!r} must declare both an L1 and an L2 language "
+                "(an empty language cell is not a registry entry)"
+            )
+        if l1 == l2:
+            raise ValueError(
+                f"registry row {token!r} declares the same language twice "
+                f"(L1 == L2 == {l1!r}); a pair needs two different languages"
+            )
         entry["token"] = token
         registry[token] = entry
     if not registry:
@@ -1401,6 +1439,11 @@ def validate_output_language_pair(value: object, registry: dict[str, dict[str, s
     `PAIR_FIELD_ABSENT` means the key was omitted: that is the legacy behaviour and
     it is valid. Any other non-empty return means the caller aborts visibly; every
     error names the registry so the failure is actionable. No silent fallback.
+
+    The token is compared **raw**, with no stripping and no normalization: registry
+    tokens are opaque, so a padded value (" zh-tw-en ") or a newline-terminated one is
+    not the token it resembles. A whitespace-only value is reported as an empty token,
+    never as an unsupported one.
     """
     if value is PAIR_FIELD_ABSENT:
         return []
@@ -1410,13 +1453,15 @@ def validate_output_language_pair(value: object, registry: dict[str, dict[str, s
                 f"value must be a string token, got {type(value).__name__}"
             )
         ]
-    token = value.strip()
-    if not token:
+    if not value.strip():
         return [_output_language_pair_error("value must be a non-empty string token")]
-    if token not in registry:
+    if value not in registry:
         supported = ", ".join(sorted(registry))
         return [
-            _output_language_pair_error(f"unsupported token {value!r} (registry holds: {supported})")
+            _output_language_pair_error(
+                f"unsupported token {value!r} (registry holds: {supported}); a value must "
+                "match a registry token exactly, with no surrounding whitespace"
+            )
         ]
     return []
 
@@ -1424,20 +1469,19 @@ def validate_output_language_pair(value: object, registry: dict[str, dict[str, s
 def advertised_output_language_pair_tokens(text: str) -> set[str]:
     """Collect the pair tokens a consumer surface advertises.
 
-    A backticked span is the canonical spelling, and it is the only way a two-subtag
-    pair (e.g. `es-en`) is detected. A bare token is collected only on a line that
-    talks about the pair field or control and only in the canonical three-subtag
-    shape, so ordinary hyphenated prose ("up-to-date") cannot fire the lint.
+    A token counts only when it is written verbatim in backticks — the spelling rule the
+    contract itself states — and that is the only spelling this scan accepts. The former
+    bare-token branch could not tell an advertised pair from ordinary hyphenated prose
+    ("up-to-date") on any line that mentioned the field, and it silently missed a bare
+    two-subtag pair; the rule is uniform now. A surface that advertises the *default*
+    token without backticks still fails the check that requires the default entry to be
+    advertised.
     """
-    tokens = {
+    return {
         span.strip()
         for span in _PAIR_BACKTICK_SPAN.findall(text)
         if _PAIR_TOKEN_PATTERN.match(span.strip())
     }
-    for line in text.splitlines():
-        if _PAIR_CONTEXT.search(line):
-            tokens.update(_PAIR_BARE_TOKEN.findall(line))
-    return tokens
 
 
 def _schema4_section(text: str) -> str:
@@ -1448,6 +1492,31 @@ def _schema4_section(text: str) -> str:
     return text[start:] if next_section == -1 else text[start:next_section]
 
 
+def _markdown_headings(text: str) -> list[str]:
+    """The ATX heading lines of a markdown document, in order (no trailing space)."""
+    return [line.rstrip() for line in text.splitlines() if _ATX_HEADING.match(line)]
+
+
+def _schema4_field_rows(section: str) -> dict[str, list[str]]:
+    """Map each Schema-4 field name to the cells of its table row.
+
+    Only rows whose first cell is a bare field name are collected, so header and
+    separator rows are skipped and a prose quotation of a row is never mistaken for the
+    row itself.
+    """
+    rows: dict[str, list[str]] = {}
+    for line in section.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = _split_markdown_table_row(line)
+        if not cells or _is_markdown_table_separator(cells):
+            continue
+        field = cells[0].strip().strip("`").strip()
+        if re.match(r"^[a-z][a-z0-9_]*$", field):
+            rows.setdefault(field, cells)
+    return rows
+
+
 def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
     """Real-tree pins for the literals Phase 1 holds fixed (design sketch §5).
 
@@ -1455,9 +1524,31 @@ def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
     #862 checks run against a synthetic tree when `csc.ROOT` is patched, so a renamed
     legacy heading literal, a renamed legacy Schema-4 object key, or a dropped
     Schema-4 `output_language_pair` row has to fail the lint on the real file.
+
+    Each pin targets the location where its literal is **operative** — a heading line, or
+    a Schema-4 type cell — because matching the literal anywhere in the file let a rename
+    of the operative line pass while one sentence still quoted the old string.
     """
     base = OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT if root is None else root
-    for rel_path, literals in LEGACY_PAIR_LITERALS:
+    for rel_path, headings in LEGACY_PAIR_HEADING_BLOCKS:
+        try:
+            text = (base / rel_path).read_text(encoding="utf-8")
+        except OSError:
+            fail(f"{rel_path}: output-language-pair consumer surface is missing")
+            continue
+        present = _markdown_headings(text)
+        positions: list[int] = []
+        for literal in headings:
+            if literal not in present:
+                fail(
+                    f"{rel_path}: missing legacy pair heading literal {literal!r} "
+                    "(it must be emitted as a heading, not only quoted in prose)"
+                )
+                continue
+            positions.append(present.index(literal))
+        if len(positions) == len(headings) and positions != sorted(positions):
+            fail(f"{rel_path}: legacy heading literals are out of order: {headings!r}")
+    for rel_path, literals in LEGACY_PAIR_QUOTED_LITERALS:
         try:
             text = (base / rel_path).read_text(encoding="utf-8")
         except OSError:
@@ -1465,7 +1556,7 @@ def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
             continue
         for literal in literals:
             if literal not in text:
-                fail(f"{rel_path}: missing legacy pair literal {literal!r}")
+                fail(f"{rel_path}: missing quoted legacy pair literal {literal!r}")
     try:
         schema = (base / OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE).read_text(encoding="utf-8")
     except OSError:
@@ -1481,17 +1572,103 @@ def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
             f"({OUTPUT_LANGUAGE_PAIR_SCHEMA_SECTION_START!r}) is missing"
         )
         return
-    for literal in LEGACY_SCHEMA4_LITERALS:
-        if literal not in section:
+    rows = _schema4_field_rows(section)
+    for field, expected in LEGACY_SCHEMA4_TYPED_ROWS:
+        cells = rows.get(field)
+        if cells is None:
             fail(
-                f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: missing legacy Schema-4 literal "
-                f"{literal!r}"
+                f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: the Schema-4 `{field}` row is "
+                "missing from the same section"
             )
-    if LEGACY_SCHEMA4_PAIR_ROW not in section:
+            continue
+        description = " | ".join(cells[2:]) if len(cells) > 2 else ""
+        if f"`{expected}`" not in description:
+            fail(
+                f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: the Schema-4 `{field}` row must "
+                f"keep its legacy typed shape `{expected}` in the row itself, found "
+                f"{description.strip()!r}"
+            )
+    if LEGACY_SCHEMA4_PAIR_ROW not in rows:
         fail(
             f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: the Schema-4 "
-            f"{LEGACY_SCHEMA4_PAIR_ROW} row is missing from the same section"
+            f"`{LEGACY_SCHEMA4_PAIR_ROW}` row is missing from the same section"
         )
+
+
+def _regime_cell_key(cell: str) -> str:
+    """Normalize a regime-table cell into a key: "Extended abstract" -> "extended_abstract"."""
+    text = cell.strip().replace("`", "").split("(")[0]
+    return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+
+
+def parse_abstract_regime_table(text: str) -> dict[str, dict[str, str]]:
+    """Parse the abstract length / keyword regime table of the abstract writing guide.
+
+    Returns `{paper_type_key: {column_key: cell}}`. Raises ValueError when the block or
+    its table is unusable: missing markers, no table, a required column or paper-type row
+    missing, a row with an empty L2 abstract cell, or a duplicate paper-type row.
+
+    The table is the single source for both figures (design sketch §5), so it lives on the
+    guide surface and nowhere else: `check_abstract_regime_table` asserts that the
+    contract carries no competing copy.
+    """
+    start = text.find(_REGIME_TABLE_START)
+    end = text.find(_REGIME_TABLE_END)
+    if start == -1 or end == -1:
+        raise ValueError("regime table markers are missing")
+    if end < start:
+        raise ValueError("regime table markers are out of order")
+    block = text[start + len(_REGIME_TABLE_START):end]
+    rows = [line for line in block.splitlines() if line.strip().startswith("|")]
+    if len(rows) < 2:
+        raise ValueError("regime block carries no table")
+    columns = [_regime_cell_key(cell) for cell in _split_markdown_table_row(rows[0])]
+    missing = [column for column in _REGIME_TABLE_REQUIRED_COLUMNS if column not in columns]
+    if missing:
+        raise ValueError(
+            "regime table must declare the paper type, both abstract lengths, and the "
+            f"keyword count (missing: {missing!r})"
+        )
+    table: dict[str, dict[str, str]] = {}
+    for row in rows[1:]:
+        cells = _split_markdown_table_row(row)
+        if _is_markdown_table_separator(cells):
+            continue
+        if len(cells) != len(columns):
+            raise ValueError(
+                f"regime row has {len(cells)} cells, expected {len(columns)}: {row.strip()!r}"
+            )
+        entry = dict(zip(columns, cells))
+        key = _regime_cell_key(entry["paper_type"])
+        if not key:
+            raise ValueError(f"regime row declares no paper type: {row.strip()!r}")
+        if key in table:
+            raise ValueError(f"duplicate regime row {key!r}")
+        if not entry["l2_abstract"].strip():
+            raise ValueError(f"regime row {key!r} declares no L2 abstract length")
+        table[key] = entry
+    for key in _REGIME_TABLE_REQUIRED_ROWS:
+        if key not in table:
+            raise ValueError(f"regime table is missing the {key!r} row")
+    return table
+
+
+def check_abstract_regime_table(root: Path | None = None) -> None:
+    """The regime table lives in the abstract guide, and only there (PR #869 P1-1).
+
+    `root` is the tree to read, so the synthetic-tree tests exercise this through the
+    patched `ROOT` and the literal-pin tests against a copy of the shipped files.
+    """
+    base = ROOT if root is None else root
+    try:
+        guide = (base / OUTPUT_LANGUAGE_PAIR_GUIDE).read_text(encoding="utf-8")
+    except OSError:
+        fail(f"{OUTPUT_LANGUAGE_PAIR_GUIDE}: abstract writing guide is missing")
+        return
+    try:
+        parse_abstract_regime_table(guide)
+    except ValueError as exc:
+        fail(f"{OUTPUT_LANGUAGE_PAIR_GUIDE}: {exc}")
 
 
 def check_output_language_pair_contract() -> None:
@@ -1502,7 +1679,10 @@ def check_output_language_pair_contract() -> None:
     (b) the default entry matches the legacy hardcoded pair (zh-tw-en);
     (c) no consumer advertises a pair absent from the registry;
     (d) malformed values (non-string, null) are rejected by the validator, which
-        names the registry.
+        names the registry;
+    (e) the abstract length / keyword regime table lives in the abstract guide, not in
+        the contract, and both documents point at each other for their own subject
+        matter (review PR #869 P1-1).
 
     Every token-carrying consumer surface is scanned for registry membership; the
     Schema-4 documentation and the bilingual template must also carry the default token
@@ -1529,6 +1709,30 @@ def check_output_language_pair_contract() -> None:
     ):
         if literal not in contract:
             fail(f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: missing conflict-rule text {literal!r}")
+
+    # (e) the regime table has one home: the guide (review PR #869 P1-1). The guide must
+    # carry the marked block, and this contract must not carry a competing copy — a second
+    # table is how the two figures drifted apart in the first place.
+    check_abstract_regime_table(ROOT)
+    if _REGIME_TABLE_START in contract:
+        fail(
+            f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: the abstract length / keyword regime table "
+            f"lives in {OUTPUT_LANGUAGE_PAIR_GUIDE}; the contract must carry no competing copy"
+        )
+    if OUTPUT_LANGUAGE_PAIR_GUIDE_BASENAME not in contract:
+        fail(
+            f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: the contract must point at the regime table's "
+            f"home ({OUTPUT_LANGUAGE_PAIR_GUIDE}) instead of carrying the figures"
+        )
+    try:
+        guide_text = read(OUTPUT_LANGUAGE_PAIR_GUIDE)
+    except OSError:
+        guide_text = ""
+    if guide_text and OUTPUT_LANGUAGE_PAIR_CONTRACT_BASENAME not in guide_text:
+        fail(
+            f"{OUTPUT_LANGUAGE_PAIR_GUIDE}: the regime table's home must reference the registry "
+            f"contract ({OUTPUT_LANGUAGE_PAIR_CONTRACT})"
+        )
 
     # (b) exactly one default entry, and it is the legacy hardcoded pair.
     defaults = [
@@ -1609,7 +1813,7 @@ def check_output_language_pair_contract() -> None:
                 f"registry: {errors!r}"
             )
 
-    # (e) the literals Phase 1 holds fixed are pinned on the real tree, never on the
+    # (f) the literals Phase 1 holds fixed are pinned on the real tree, never on the
     # fixture tree the checks above run against, so a rename of a legacy literal fails.
     check_output_language_pair_literal_pins()
 
