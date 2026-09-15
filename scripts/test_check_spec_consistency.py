@@ -1428,6 +1428,8 @@ class OutputLanguagePairLiteralPinTest(unittest.TestCase):
             self._copy_real(rel_path)
         for rel_path, _ in csc.LEGACY_PAIR_QUOTED_LITERALS:
             self._copy_real(rel_path)
+        for rel_path, _, _ in csc.PAIR_CARRIER_STEPS:
+            self._copy_real(rel_path)
         self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE)
         self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_GUIDE)
 
@@ -1447,6 +1449,7 @@ class OutputLanguagePairLiteralPinTest(unittest.TestCase):
     def test_real_tree_pins_hold(self) -> None:
         csc.ERRORS.clear()
         csc.check_output_language_pair_literal_pins()
+        csc.check_output_language_pair_carrier_steps()
         csc.check_abstract_regime_table(csc.OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT)
         self.assertEqual(list(csc.ERRORS), [])
 
@@ -1545,6 +1548,26 @@ class OutputLanguagePairLiteralPinTest(unittest.TestCase):
             "| `pair_token` | string |",
         )
         self.assertTrue(any("row is missing" in e for e in errors), errors)
+
+    def test_intake_pcr_row_renamed_fires(self) -> None:
+        self._copied_pin_tree()
+        errors = self._mutate_and_run(
+            "academic-paper/agents/intake_agent.md",
+            "| **Output Language Pair** |",
+            "| Output Language Pair |",
+            csc.check_output_language_pair_carrier_steps,
+        )
+        self.assertTrue(errors)
+
+    def test_draft_writer_serialization_section_removed_fires(self) -> None:
+        self._copied_pin_tree()
+        errors = self._mutate_and_run(
+            "academic-paper/agents/draft_writer_agent.md",
+            "### Schema 4 Serialization (#862 Phase 1)",
+            "",
+            csc.check_output_language_pair_carrier_steps,
+        )
+        self.assertTrue(errors)
 
     def test_missing_pinned_surface_fires(self) -> None:
         self._copied_pin_tree()

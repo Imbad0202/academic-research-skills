@@ -12,7 +12,7 @@ directory, parses the fenced `yaml` block(s) of `input.md`, runs the parsed valu
 
 | Directory | Field value | Expected outcome |
 |---|---|---|
-| `omitted/` | key absent | valid — legacy zh-TW + EN bilingual output |
+| `omitted/` | key absent | valid — today's default pair (`zh-tw-en`) |
 | `default/` | `zh-tw-en` | valid — the default registry entry |
 | `unsupported/` | `ja-en` | visible failure naming the registry |
 | `malformed/` | `null`, then `[zh-tw-en]` | visible failure naming the registry |

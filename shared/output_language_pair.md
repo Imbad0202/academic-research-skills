@@ -82,7 +82,9 @@ derived label.
 Validation is owned by the core contract and enforced by
 `scripts/check_spec_consistency.py` (`check_output_language_pair_contract`). A consumer
 surface that names a pair writes the token verbatim in backticks, so the registry can be
-checked mechanically.
+checked mechanically: the lint treats any backticked span shaped like a token as an advertised pair, so a backticked
+hyphenated English word (`per-run`, `up-to-date`) on one of the scanned surfaces fails as an
+unregistered pair — write such a word unbackticked.
 
 ### Carrier chain
 

@@ -1316,6 +1316,19 @@ LEGACY_SCHEMA4_TYPED_ROWS = (
     ("keywords", "{en: list[string], zh_tw: list[string]}"),
 )
 LEGACY_SCHEMA4_PAIR_ROW = "output_language_pair"
+# The carrier steps that actually hold and emit the value (design sketch §5 carrier chain;
+# PR body "Carrier chain"). Each is pinned by its operative line, because the advertised-token
+# scan is satisfied by any one backticked token per surface: `intake_agent.md` keeps `zh-tw-en`
+# in its Step 6 bullets when the PCR row is deleted, and `draft_writer_agent.md` is scanned with
+# `carries_default=False`, so deleting its serialization section fails nothing today.
+PAIR_CARRIER_STEPS = (
+    ("academic-paper/agents/intake_agent.md", "| **Output Language Pair** |", "ROW OMITTED ENTIRELY"),
+    (
+        "academic-paper/agents/draft_writer_agent.md",
+        "### Schema 4 Serialization (#862 Phase 1)",
+        "omit the serialized key",
+    ),
+)
 
 # The literal pins read the shipped files, not the synthetic tree the rest of the #862
 # checks run against (`csc.ROOT` is patched to a temp directory by the unit tests), so a
@@ -1573,6 +1586,14 @@ def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
         )
         return
     rows = _schema4_field_rows(section)
+    # A duplicate field row would silently shadow the pinned one (`_schema4_field_rows` is
+    # first-wins), so a second `abstract`/`keywords` row is a failure, not a silent override.
+    for field, _ in LEGACY_SCHEMA4_TYPED_ROWS:
+        if section.count(f"| `{field}` |") > 1:
+            fail(
+                f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: the Schema-4 `{field}` row appears "
+                "more than once, so the pinned row can be shadowed"
+            )
     for field, expected in LEGACY_SCHEMA4_TYPED_ROWS:
         cells = rows.get(field)
         if cells is None:
@@ -1593,6 +1614,28 @@ def check_output_language_pair_literal_pins(root: Path | None = None) -> None:
             f"{OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE}: the Schema-4 "
             f"`{LEGACY_SCHEMA4_PAIR_ROW}` row is missing from the same section"
         )
+
+
+def check_output_language_pair_carrier_steps(root: Path | None = None) -> None:
+    """The carrier chain's two operative steps, pinned by their operative lines.
+
+    `check_439_format_profile.py` pins the structural PCR `Format Profile` row and its
+    omission clause for the same reason: prose that quotes a rule survives the rule's removal.
+    """
+    base = root if root is not None else OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT
+    for rel_path, row_marker, omission_marker in PAIR_CARRIER_STEPS:
+        try:
+            text = (base / rel_path).read_text(encoding="utf-8")
+        except OSError:
+            fail(f"{rel_path}: output-language-pair carrier surface is missing")
+            continue
+        if row_marker not in text:
+            fail(f"{rel_path}: the carrier step {row_marker!r} is missing from the surface")
+        elif omission_marker not in text:
+            fail(
+                f"{rel_path}: the carrier step {row_marker!r} must document that the value is "
+                f"omitted when the field is absent (expected {omission_marker!r})"
+            )
 
 
 def _regime_cell_key(cell: str) -> str:
@@ -1682,7 +1725,10 @@ def check_output_language_pair_contract() -> None:
         names the registry;
     (e) the abstract length / keyword regime table lives in the abstract guide, not in
         the contract, and both documents point at each other for their own subject
-        matter (review PR #869 P1-1).
+        matter (review PR #869 P1-1);
+    (f) the two carrier steps are pinned by their operative lines (see
+        PAIR_CARRIER_STEPS);
+    (g) duplicate Schema-4 field rows fail (first-wins shadowing).
 
     Every token-carrying consumer surface is scanned for registry membership; the
     Schema-4 documentation and the bilingual template must also carry the default token
@@ -1709,6 +1755,9 @@ def check_output_language_pair_contract() -> None:
     ):
         if literal not in contract:
             fail(f"{OUTPUT_LANGUAGE_PAIR_CONTRACT}: missing conflict-rule text {literal!r}")
+
+    # the two steps that actually carry and emit the value
+    check_output_language_pair_carrier_steps()
 
     # (e) the regime table has one home: the guide (review PR #869 P1-1). The guide must
     # carry the marked block, and this contract must not carry a competing copy — a second

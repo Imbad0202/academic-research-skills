@@ -8,5 +8,5 @@ cases:
     error_contains: []
 notes: |
   Absence is the legacy state, not a gap: a handoff with no `output_language_pair` key
-  keeps exactly today's zh-TW + EN bilingual output. The legacy object keys
+  keeps exactly today's default pair (`zh-tw-en`). The legacy object keys
   (`abstract: {english, chinese}`, `keywords: {en, zh_tw}`) are reproduced unchanged.
