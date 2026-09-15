@@ -8,7 +8,7 @@ It is licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4
 
 ## What this is not
 
-ARS is not an autonomous paper-writing system. It is not a replacement for the researcher. It does not claim authorship, and its outputs are not submission-ready without human review.
+ARS is not an autonomous paper-writing system. It is not a replacement for the researcher. It does not claim authorship, and its outputs are not submission-ready without human review. On the evaluative-authority ladder that Wang, Li et al. (2026, [arXiv:2609.07713](https://arxiv.org/abs/2609.07713), §4.1) draw for AI in scholarly evaluation, from author-facing feedback through reviewer assistance and official AI reviews to scoring and decision support, ARS's simulated review panel sits on the lowest rung by design: it produces feedback for the author, it carries no publication authority, and its outputs are inputs to human judgment, not substitutes for it.
 
 ## Rejected mechanisms (autonomous-research anti-patterns)
 
