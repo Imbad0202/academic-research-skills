@@ -208,6 +208,9 @@ Auto-suggest based on discipline; user can override.
 - Detect user's language from input
 - Ask about paper body language: EN / zh-TW / bilingual
 - Ask about abstract: Bilingual (default) / EN only / zh-TW only
+- **Do not ask** about the output language pair (`output_language_pair`) in Phase 1: the registry of `shared/output_language_pair.md` holds one entry, so the only answer available is the default `zh-tw-en` (Traditional Chinese L1 + English L2) and a question with one possible answer is not information to gather. Record the PCR row only when the user volunteers a pair unprompted; a volunteered value must be a token in that registry (an unsupported, non-string, or empty value fails visibly naming that registry — never a silent fallback to the default). The question becomes a real ask when the registry holds a second entry.
+- **Pair vs cardinality:** the pair selects *which* two languages; the abstract answer above selects *how many* (Bilingual / EN-only / zh-TW-only). The two controls are independent and neither implies the other.
+- Record the answer in the PCR `Output Language Pair` row. The row is the carrier: dispatch passes the value to `abstract_bilingual_agent` and `structure_architect_agent`, and `draft_writer_agent` serializes it into Schema 4. A run that declares no pair writes **no row at all** (absence = the default entry; the same write-nothing-when-declined pattern as the Step 5 format-profile follow-up, Invariant 7) and every downstream step then omits the value.
 
 ### Step 7: Word Count
 - Auto-suggest based on paper type (see table above)
@@ -351,6 +354,7 @@ row should only be marked or should block finalization:
 | **Format Profile** | [path to declared format_profile YAML — ROW OMITTED ENTIRELY if the Step 5 follow-up was declined/skipped, per Invariant 7] |
 | **Body Language** | [EN / zh-TW / Bilingual] |
 | **Abstract** | [Bilingual / EN-only / zh-TW-only] |
+| **Output Language Pair** | [the volunteered per-run registry token — ROW OMITTED ENTIRELY when the run declares no pair, so a pre-#862 PCR keeps the same rows; absence means the default entry `zh-tw-en` and every consumer then omits the value] |
 | **Word Count Target** | [number] words |
 | **Existing Materials** | [list of provided materials] |
 | **Co-Authors** | [single-author / number of co-authors + corresponding author + brief contribution notes] |

@@ -223,12 +223,18 @@ AI-assisted assessment's primary advantage lies in the immediacy of feedback, re
 | `title` | string | Paper title |
 | `abstract` | object | `{english: string, chinese: string}` (chinese is required only if bilingual) |
 | `authors` | list[Author] | Author information with CRediT roles |
-| `keywords` | object | `{en: list[string], zh_tw: list[string]}` bilingual keywords (3-6 each) |
+| `keywords` | object | `{en: list[string], zh_tw: list[string]}` bilingual keywords; per-language counts follow the regime table in [`academic-paper/references/abstract_writing_guide.md`](../academic-paper/references/abstract_writing_guide.md) (#862 Phase 1 — this row references the guide's regime table instead of restating a count) |
 | `sections` | list[Section] | Ordered paper sections |
 | `references` | list[Reference] | Full reference list with cross-referencing |
 | `total_word_count` | integer | Total word count (excluding references) |
 | `citation_format` | enum | `"APA7"` / `"Chicago"` / `"MLA"` / `"IEEE"` / `"Vancouver"` |
 | `structure_type` | enum | `"IMRaD"` / `"literature_review"` / `"theoretical"` / `"case_study"` / `"policy_brief"` / `"conference"` |
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `output_language_pair` | string | *(optional, #862 Phase 1)* Opaque registry token declaring the run's two abstract languages. Initially only `zh-tw-en` — L1 Traditional Chinese, L2 English. Registry and language roles: [`shared/output_language_pair.md`](output_language_pair.md). Abstract length and keyword counts: the regime table in [`academic-paper/references/abstract_writing_guide.md`](../academic-paper/references/abstract_writing_guide.md). **Omission = the legacy state** = the legacy object keys and the heading literals reproduce exactly and the serialized key is omitted, so a pre-#862 handoff keeps the same keys, headings, and serialized shape. A present value outside the registry, or a non-string / `null` value, fails visibly naming that registry — never a silent fallback to the default. The legacy Schema-4 object keys are untouched: `abstract: {english, chinese}`, `keywords: {en, zh_tw}`. |
 
 ### Section Object
 

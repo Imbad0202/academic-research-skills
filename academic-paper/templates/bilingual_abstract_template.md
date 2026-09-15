@@ -1,7 +1,17 @@
 # Bilingual Abstract Template
 
 ## Usage
-Use this template when writing bilingual abstracts (English + Traditional Chinese). Each version must be independently composed — not a translation of the other.
+Use this template when writing bilingual abstracts in the run's declared output language pair (default `zh-tw-en`: Traditional Chinese L1 + English L2). Each version must be independently composed — not a translation of the other.
+
+---
+
+## Pair Binding (#862 Phase 1)
+
+The headings and column labels below are **pair-derived**: the L2 heading is the second language of the run's `output_language_pair` entry and the L1 heading is its first language. For the default entry `zh-tw-en` they render exactly as written here — `## English Abstract` (L2) and `## Chinese Abstract (zh-TW)` (L1), with the quality-checklist columns labelled `EN` (L2) and `zh-TW` (L1). The derived L1 heading label is the registry entry's short language name (`Chinese` for `Traditional Chinese (zh-TW)`), as in `abstract_bilingual_agent.md`; the registry's full name is never rendered.
+
+For any other registry entry, substitute that entry's declared L2 and L1 language names in the headings and in the checklist column labels. The structure, the five components, and the keyword line do not change. When the field is absent the default entry applies and this template is used unchanged.
+
+Registry and language roles: [`shared/output_language_pair.md`](../../shared/output_language_pair.md). Abstract length and keyword counts: the regime table in [`references/abstract_writing_guide.md`](../references/abstract_writing_guide.md). Enter a token only from that registry; an unsupported value fails visibly and names the registry rather than falling back to the default.
 
 ---
 
@@ -21,7 +31,7 @@ Use this template when writing bilingual abstracts (English + Traditional Chines
 
 **Keywords**: [keyword 1], [keyword 2], [keyword 3], [keyword 4], [keyword 5], [keyword 6] *(optional)*, [keyword 7] *(optional)*
 
-*Target: 150-300 words*
+*Target: the L2 length of this run's row in the regime table of [`abstract_writing_guide.md`](../references/abstract_writing_guide.md)*
 
 ---
 
@@ -41,7 +51,7 @@ Use this template when writing bilingual abstracts (English + Traditional Chines
 
 **Keywords**: [Keyword 1], [Keyword 2], [Keyword 3], [Keyword 4], [Keyword 5], [Keyword 6] (optional), [Keyword 7] (optional)
 
-*Target word count: 300-500 Chinese characters*
+*Target: the L1 length of this run's row in the regime table of [`abstract_writing_guide.md`](../references/abstract_writing_guide.md)*
 
 ---
 
@@ -50,11 +60,11 @@ Use this template when writing bilingual abstracts (English + Traditional Chines
 | Check | EN | zh-TW |
 |-------|:--:|:-----:|
 | Covers all 5 components (Background, Purpose, Method, Findings, Implications) | ☐ | ☐ |
-| Within word count range | ☐ | ☐ |
+| Within the regime table's range (`abstract_writing_guide.md`) for the run's pair and paper type | ☐ | ☐ |
 | Independently composed (not a translation) | ☐ | ☐ |
 | Key findings match between versions | ☐ | ☐ |
 | Quantitative data consistent | ☐ | ☐ |
-| 5-7 keywords provided | ☐ | ☐ |
+| Keyword count per language within the regime table in `abstract_writing_guide.md` | ☐ | ☐ |
 | Keywords complement title (not duplicate) | ☐ | ☐ |
 | No citations in the abstract | ☐ | ☐ |
 | No undefined abbreviations | ☐ | ☐ |
@@ -67,12 +77,13 @@ Use this template when writing bilingual abstracts (English + Traditional Chines
 ### Independence Test
 Your abstracts are truly independent if:
 - Sentence structures differ between languages
-- The Chinese version uses natural Chinese academic phrasing (not translationese)
+- The L1 version uses natural phrasing in its own academic register (default: Chinese, not translationese)
 - Minor details may be grouped or reordered to suit each language's conventions
 - Both versions stand alone as complete summaries
 
 ### Keywords Strategy
-- English and Chinese keywords should cover similar conceptual space
+- The two languages' keywords should cover similar conceptual space
 - Keywords should complement (not duplicate) the title
+- Count per language comes from the regime table in the linked guide (`abstract_writing_guide.md`) — this template restates no figure
 - Mix broad discipline terms with specific research terms
 - Include methodology terms if distinctive

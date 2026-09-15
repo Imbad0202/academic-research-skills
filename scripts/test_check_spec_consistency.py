@@ -1106,5 +1106,612 @@ class RebuttalAuditGuardTest(unittest.TestCase):
         self.assertTrue(any("MUST NOT" in e for e in errs), errs)
 
 
+class OutputLanguagePairContractTest(unittest.TestCase):
+    """#862 Phase 1: check_output_language_pair_contract() must fail visibly.
+
+    The four deterministic cases (covered / omitted / unsupported / malformed) are
+    exercised against a minimal contract + Schema-4 + template triple, so a mutation
+    proves the parity check fires instead of passing vacuously.
+    """
+
+    _CONTRACT = """\
+# Output Language Pair
+
+## Registry
+
+<!-- output-language-pair-registry:start -->
+| Token | L1 language | L1 script | L2 language | L2 script | Status |
+|-------|-------------|-----------|-------------|-----------|--------|
+| `zh-tw-en` | Traditional Chinese (`zh-TW`) | CJK | English (`en`) | Latin | default |
+<!-- output-language-pair-registry:end -->
+
+## Field semantics
+
+### Conflicting declarations fail visibly
+
+A handoff whose sites disagree stops and names both values; no site wins silently.
+
+## Abstract length and keyword regime
+
+The regime table lives in
+[`abstract_writing_guide.md`](../academic-paper/references/abstract_writing_guide.md);
+this contract points at it and does not restate its figures.
+"""
+
+    _SCHEMA = """\
+# Handoff Schemas
+
+## Schema 4: Paper Draft
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `abstract` | object | `{english: string, chinese: string}` (chinese is required only if bilingual) |
+| `keywords` | object | `{en: list[string], zh_tw: list[string]}` bilingual keywords; counts per [`abstract_writing_guide.md`](abstract_writing_guide.md); token per [`shared/output_language_pair.md`](output_language_pair.md) |
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `output_language_pair` | string | Opaque registry token, initially `zh-tw-en`; absent = legacy. Registry: [`shared/output_language_pair.md`](output_language_pair.md). |
+
+## Schema 5: Something Else
+
+An unrelated marker, with an up-to-date checklist line.
+"""
+
+    _TEMPLATE = (
+        "# Bilingual Abstract Template\n\n"
+        "## English Abstract\n\n"
+        "## Chinese Abstract (zh-TW)\n\n"
+        "The default entry is `zh-tw-en`.\n"
+    )
+
+    # The guide is the regime table's single home: the fixture carries the marked block and
+    # a pointer back to the registry contract, so a mutation under test fires on the shape
+    # being mutated rather than on a fixture that was never valid.
+    _GUIDE = (
+        "Regime rows for `zh-tw-en`; registry: "
+        "[`shared/output_language_pair.md`](../shared/output_language_pair.md).\n\n"
+        "<!-- abstract-regime-table:start -->\n"
+        "| Paper type | L1 abstract (`zh-TW`, CJK) | L2 abstract (`en`) | Keywords per language |\n"
+        "|------------|---------------------------|--------------------|-----------------------|\n"
+        "| Standard | 300-500 characters | 150-250 words | 5-7 |\n"
+        "| Conference | 300-800 characters | 200-500 words | 5-7 |\n"
+        "| Extended abstract | not declared | 500-1,000 words | not declared |\n"
+        "| Dissertation | 500-1,000 characters | up to 350 words | 5-7 |\n"
+        "<!-- abstract-regime-table:end -->\n"
+    )
+
+    # R9: the scan covers eleven consumer surfaces. The synthetic tree carries all of
+    # them so the fixture harness fails on the mutation under test, never on a missing
+    # surface; `_SCHEMA` and `_TEMPLATE` above are two of the eleven.
+    _OTHER_SURFACES = {
+        "academic-paper/SKILL.md": "The bilingual abstract follows the `zh-tw-en` pair.\n",
+        "academic-paper/agents/intake_agent.md": "Step 6 records the `zh-tw-en` pair.\n",
+        "academic-paper/agents/abstract_bilingual_agent.md": "Labels are derived from `zh-tw-en`.\n",
+        "academic-paper/agents/structure_architect_agent.md": "Allocations follow `zh-tw-en`.\n",
+        "academic-paper/agents/draft_writer_agent.md": (
+            "Serializes `output_language_pair` into Schema 4.\n"
+        ),
+        "academic-paper/references/abstract_writing_guide.md": _GUIDE,
+        "academic-paper/references/workflow_phase_details.md": "Phase 5b uses `zh-tw-en`.\n",
+        "academic-paper/references/mode_selection_guide.md": (
+            "Bilingual = zh-TW + EN prose; no pair token here.\n"
+        ),
+        "commands/ars-abstract.md": "The command honours `zh-tw-en`.\n",
+    }
+
+    def setUp(self) -> None:
+        self._old_root = csc.ROOT
+        csc.ERRORS.clear()
+        self._tmp = TemporaryDirectory()
+        csc.ROOT = Path(self._tmp.name)
+        (csc.ROOT / "shared").mkdir()
+        (csc.ROOT / "academic-paper/templates").mkdir(parents=True)
+
+    def tearDown(self) -> None:
+        csc.ROOT = self._old_root
+        csc.ERRORS.clear()
+        self._tmp.cleanup()
+
+    def _write(
+        self,
+        contract: str | None = None,
+        schema: str | None = None,
+        template: str | None = None,
+        guide: str | None = None,
+    ) -> None:
+        (csc.ROOT / "shared/output_language_pair.md").write_text(
+            self._CONTRACT if contract is None else contract, encoding="utf-8"
+        )
+        (csc.ROOT / "shared/handoff_schemas.md").write_text(
+            self._SCHEMA if schema is None else schema, encoding="utf-8"
+        )
+        (csc.ROOT / "academic-paper/templates/bilingual_abstract_template.md").write_text(
+            self._TEMPLATE if template is None else template, encoding="utf-8"
+        )
+        for rel_path, text in self._OTHER_SURFACES.items():
+            if guide is not None and rel_path == csc.OUTPUT_LANGUAGE_PAIR_GUIDE:
+                text = guide
+            target = csc.ROOT / rel_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+
+    def _errors(self, **overrides: str | None) -> list[str]:
+        self._write(**overrides)
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_contract()
+        return list(csc.ERRORS)
+
+    def test_default_state_passes(self) -> None:
+        self.assertEqual(self._errors(), [])
+
+    def test_pack_entry_absent_from_consumers_is_not_an_error(self) -> None:
+        # A pack contributes registry entries as configuration; Schema-4 prose is not
+        # expected to enumerate them, so only the default entry is a required carrier.
+        contract = self._CONTRACT.replace(
+            "| `zh-tw-en` | Traditional Chinese (`zh-TW`) | CJK | English (`en`) | Latin | default |",
+            "| `zh-tw-en` | Traditional Chinese (`zh-TW`) | CJK | English (`en`) | Latin | default |\n"
+            "| `es-en` | Spanish (`es`) | Latin | English (`en`) | Latin | pack |",
+        )
+        self.assertEqual(self._errors(contract=contract), [])
+
+    def test_schema4_omitting_the_default_token_fails(self) -> None:
+        schema = self._SCHEMA.replace("`zh-tw-en`", "the declared pair")
+        errors = self._errors(schema=schema)
+        self.assertTrue(
+            any("does not reference the default registry entry" in e for e in errors), errors
+        )
+
+    def test_default_entry_must_match_the_legacy_pair(self) -> None:
+        contract = self._CONTRACT.replace("`zh-tw-en`", "`en-zh-tw`")
+        schema = self._SCHEMA.replace("`zh-tw-en`", "`en-zh-tw`")
+        errors = self._errors(contract=contract, schema=schema)
+        self.assertTrue(any("default registry entry must be exactly 'zh-tw-en'" in e for e in errors), errors)
+
+    def test_consumer_advertising_an_unsupported_pair_fails(self) -> None:
+        template = self._TEMPLATE + "\nThe run declares the `ja-en` pair.\n"
+        errors = self._errors(template=template)
+        self.assertTrue(any("absent from the registry" in e and "ja-en" in e for e in errors), errors)
+
+    def test_bare_token_in_pair_context_is_not_collected(self) -> None:
+        # P2-c: the backtick is the contract's own spelling rule, so it is the only spelling
+        # the scan accepts. The bare-token branch could not tell an advertised pair from
+        # ordinary hyphenated prose on any line that mentioned the field.
+        template = self._TEMPLATE + "\nThe output_language_pair control accepts zh-tw-ja here.\n"
+        self.assertEqual(self._errors(template=template), [])
+        self.assertEqual(
+            csc.advertised_output_language_pair_tokens(
+                "The output_language_pair control accepts zh-tw-ja here."
+            ),
+            set(),
+        )
+        self.assertEqual(
+            csc.advertised_output_language_pair_tokens("The pair is `zh-tw-en`."),
+            {"zh-tw-en"},
+        )
+
+    def test_ordinary_hyphenated_prose_does_not_fire(self) -> None:
+        self.assertEqual(self._errors(), [])
+        self.assertEqual(csc.advertised_output_language_pair_tokens("an up-to-date marker"), set())
+
+    def test_schema4_missing_contract_reference_fails(self) -> None:
+        schema = self._SCHEMA.replace("[`shared/output_language_pair.md`](output_language_pair.md)", "the contract")
+        errors = self._errors(schema=schema)
+        self.assertTrue(any("must reference the output-language-pair contract" in e for e in errors), errors)
+
+    def test_schema4_section_missing_fails(self) -> None:
+        errors = self._errors(schema="# Handoff Schemas\n\n## Schema 5: Elsewhere\n")
+        self.assertTrue(any("Schema 4 section" in e and "is missing" in e for e in errors), errors)
+
+    def test_missing_contract_file_fails(self) -> None:
+        self._write()
+        (csc.ROOT / "shared/output_language_pair.md").unlink()
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_contract()
+        self.assertTrue(any("contract file is missing" in e for e in csc.ERRORS), list(csc.ERRORS))
+
+    def test_missing_consumer_surface_fails(self) -> None:
+        self._write()
+        (csc.ROOT / "academic-paper/templates/bilingual_abstract_template.md").unlink()
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_contract()
+        self.assertTrue(any("consumer surface is missing" in e for e in csc.ERRORS), list(csc.ERRORS))
+
+    def test_unparseable_registry_fails(self) -> None:
+        errors = self._errors(contract="# Output Language Pair\n\nno registry block here\n")
+        self.assertTrue(any("registry block markers are missing" in e for e in errors), errors)
+
+    def test_unary_registry_entry_fails(self) -> None:
+        contract = (
+            "# Output Language Pair\n\n"
+            "<!-- output-language-pair-registry:start -->\n"
+            "| Token | L1 language | L1 script | Status |\n"
+            "|-------|-------------|-----------|--------|\n"
+            "| `zh-tw` | Traditional Chinese (`zh-TW`) | CJK | default |\n"
+            "<!-- output-language-pair-registry:end -->\n"
+        )
+        errors = self._errors(contract=contract)
+        self.assertTrue(any("single-language pairs are not supported" in e for e in errors), errors)
+
+    def test_malformed_value_validation_is_not_vacuous(self) -> None:
+        # (d): if the validator ever accepts a malformed value, the lint itself fails.
+        original = csc.validate_output_language_pair
+        csc.validate_output_language_pair = lambda value, registry: []
+        try:
+            errors = self._errors()
+        finally:
+            csc.validate_output_language_pair = original
+        self.assertTrue(any("must be rejected" in e for e in errors), errors)
+
+    def test_conflict_rule_pin_fires_when_its_literals_are_dropped(self) -> None:
+        # R10: the conflict rule is prose-only, so it is pinned by literal presence.
+        for literal in (
+            "### Conflicting declarations fail visibly",
+            "names both values",
+        ):
+            with self.subTest(literal=literal):
+                errors = self._errors(contract=self._CONTRACT.replace(literal, "dropped"))
+                self.assertTrue(
+                    any("conflict-rule text" in e and literal in e for e in errors), errors
+                )
+    def test_regime_table_copied_into_the_contract_fails(self) -> None:
+        # P1-1: one reconciled table, one home. A second copy in the contract is exactly
+        # how the two figures drifted apart in the first place.
+        table = (
+            "<!-- abstract-regime-table:start -->\n"
+            "| Paper type | L1 abstract | L2 abstract | Keywords per language |\n"
+            "|------------|-------------|-------------|-----------------------|\n"
+            "| Standard | 300-500 characters | 150-250 words | 5-7 |\n"
+            "<!-- abstract-regime-table:end -->\n"
+        )
+        errors = self._errors(contract=self._CONTRACT + "\n" + table)
+        self.assertTrue(any("must carry no competing copy" in e for e in errors), errors)
+
+    def test_regime_table_unmarked_header_in_contract_fails(self) -> None:
+        # An unmarked copy with the same four regime columns must fail, not only the marked block.
+        table = (
+            "\n| Paper type | L1 abstract | L2 abstract | Keywords per language |\n"
+            "|------------|-------------|-------------|-----------------------|\n"
+            "| Standard | 300-500 characters | 150-250 words | 5-7 |\n"
+        )
+        errors = self._errors(contract=self._CONTRACT + table)
+        self.assertTrue(any("must carry no competing copy" in e for e in errors), errors)
+
+    def test_contract_without_guide_pointer_fails(self) -> None:
+        contract = self._CONTRACT.replace(
+            "[`abstract_writing_guide.md`](../academic-paper/references/abstract_writing_guide.md)",
+            "the guide",
+        )
+        errors = self._errors(contract=contract)
+        self.assertTrue(any("must point at the regime table's home" in e for e in errors), errors)
+
+    def test_guide_without_the_marked_table_fails(self) -> None:
+        errors = self._errors(guide="Regime rows for `zh-tw-en`.\n")
+        self.assertTrue(any("regime table markers are missing" in e for e in errors), errors)
+
+    def test_guide_without_registry_reference_fails(self) -> None:
+        guide = self._GUIDE.replace(
+            "[`shared/output_language_pair.md`](../shared/output_language_pair.md)", "the registry"
+        )
+        errors = self._errors(guide=guide)
+        self.assertTrue(any("must reference the registry contract" in e for e in errors), errors)
+
+    def test_regime_table_missing_paper_type_row_fails(self) -> None:
+        guide = self._GUIDE.replace(
+            "| Dissertation | 500-1,000 characters | up to 350 words | 5-7 |\n", ""
+        )
+        errors = self._errors(guide=guide)
+        self.assertTrue(any("missing the 'dissertation' row" in e for e in errors), errors)
+
+    def test_regime_table_missing_required_column_fails(self) -> None:
+        errors = self._errors(guide=self._GUIDE.replace("| Keywords per language |", "| Notes |"))
+        self.assertTrue(any("keyword count" in e for e in errors), errors)
+
+    def test_regime_row_without_an_l2_abstract_length_fails(self) -> None:
+        errors = self._errors(guide=self._GUIDE.replace("| 150-250 words |", "|  |"))
+        self.assertTrue(any("declares no L2 abstract length" in e for e in errors), errors)
+
+    def test_duplicate_regime_row_fails(self) -> None:
+        guide = self._GUIDE.replace(
+            "| Conference | 300-800 characters | 200-500 words | 5-7 |",
+            "| Standard | 300-500 characters | 150-250 words | 5-7 |",
+        )
+        errors = self._errors(guide=guide)
+        self.assertTrue(any("duplicate regime row" in e for e in errors), errors)
+
+class OutputLanguagePairLiteralPinTest(unittest.TestCase):
+    """#862 Phase 1 (R8): the legacy literals are pinned where they are operative.
+
+    `OutputLanguagePairContractTest` rewrites `csc.ROOT`, so its synthetic tree cannot
+    prove that the shipped surfaces still carry the literals Phase 1 holds fixed. These
+    tests copy the real files into a temp tree, mutate one operative location, and require
+    the pin to fire — the mutation is the only difference from the shipped bytes.
+
+    The pins target heading lines and typed Schema-4 rows rather than "the literal appears
+    somewhere in the file": a rename of the operative line has to fail even when a prose
+    sentence still quotes the old string, and the Schema-4 `output_language_pair` row does
+    quote `abstract: {english, chinese}`.
+    """
+
+    def setUp(self) -> None:
+        csc.ERRORS.clear()
+        self._tmp = TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self) -> None:
+        csc.ERRORS.clear()
+        self._tmp.cleanup()
+
+    def _copy_real(self, rel_path: str) -> str:
+        text = (csc.OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT / rel_path).read_text(encoding="utf-8")
+        target = self.root / rel_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        return text
+
+    def _copied_pin_tree(self) -> None:
+        for rel_path, _ in csc.LEGACY_PAIR_HEADING_BLOCKS:
+            self._copy_real(rel_path)
+        for rel_path, _ in csc.LEGACY_PAIR_QUOTED_LITERALS:
+            self._copy_real(rel_path)
+        for rel_path, *_rest in csc.PAIR_CARRIER_STEPS:
+            self._copy_real(rel_path)
+        self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE)
+        self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_GUIDE)
+
+    def _mutated_errors(self, rel_path: str, old: str, new: str = "") -> list[str]:
+        self._copied_pin_tree()
+        return self._mutate_and_run(rel_path, old, new, csc.check_output_language_pair_literal_pins)
+
+    def _mutated_heading_errors(self, rel_path: str, heading: str, new_heading: str = "") -> list[str]:
+        self._copied_pin_tree()
+        path = self.root / rel_path
+        lines = path.read_text(encoding="utf-8").splitlines()
+        found = False
+        new_lines: list[str] = []
+        for line in lines:
+            if line.rstrip() == heading.rstrip():
+                found = True
+                new_lines.append(new_heading)
+            else:
+                new_lines.append(line)
+        self.assertTrue(found, f"the shipped file must still carry the heading {heading!r}")
+        path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins(self.root)
+        return list(csc.ERRORS)
+
+    def _mutate_and_run(self, rel_path: str, old: str, new: str, checker) -> list[str]:
+        path = self.root / rel_path
+        text = path.read_text(encoding="utf-8")
+        self.assertIn(old, text, "the shipped file must still carry the pinned literal")
+        path.write_text(text.replace(old, new), encoding="utf-8")
+        csc.ERRORS.clear()
+        checker(self.root)
+        return list(csc.ERRORS)
+
+    def test_real_tree_pins_hold(self) -> None:
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins()
+        csc.check_output_language_pair_carrier_steps()
+        csc.check_abstract_regime_table(csc.OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT)
+        self.assertEqual(list(csc.ERRORS), [])
+
+    def test_abstract_agent_l2_heading_pin_fires(self) -> None:
+        errors = self._mutated_heading_errors(
+            "academic-paper/agents/abstract_bilingual_agent.md", "### English Abstract"
+        )
+        self.assertTrue(any("### English Abstract" in e for e in errors), errors)
+
+    def test_abstract_agent_l1_heading_pin_fires(self) -> None:
+        errors = self._mutated_heading_errors(
+            "academic-paper/agents/abstract_bilingual_agent.md", "### Chinese Abstract"
+        )
+        self.assertTrue(any("### Chinese Abstract" in e for e in errors), errors)
+
+    def test_template_l2_heading_pin_fires(self) -> None:
+        errors = self._mutated_heading_errors(
+            "academic-paper/templates/bilingual_abstract_template.md", "## English Abstract"
+        )
+        self.assertTrue(any("## English Abstract" in e for e in errors), errors)
+
+    def test_template_l1_heading_pin_fires(self) -> None:
+        errors = self._mutated_heading_errors(
+            "academic-paper/templates/bilingual_abstract_template.md",
+            "## Chinese Abstract (zh-TW)",
+        )
+        self.assertTrue(any("## Chinese Abstract (zh-TW)" in e for e in errors), errors)
+
+    def test_renamed_heading_with_a_prose_quote_still_fires(self) -> None:
+        # A whole-file literal pin passed when the operative heading was renamed but some
+        # sentence still quoted the old string; the pin now targets the heading line.
+        rel_path = "academic-paper/agents/abstract_bilingual_agent.md"
+        self._copied_pin_tree()
+        path = self.root / rel_path
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                "### English Abstract", "### English Abstract Text"
+            )
+            + "\nThe historical heading literal was `### English Abstract`.\n",
+            encoding="utf-8",
+        )
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins(self.root)
+        errors = list(csc.ERRORS)
+        self.assertTrue(any("### English Abstract" in e and "heading" in e for e in errors), errors)
+
+    def test_workflow_l2_heading_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            "academic-paper/references/workflow_phase_details.md", "### English Abstract"
+        )
+        self.assertTrue(any("### English Abstract" in e for e in errors), errors)
+
+    def test_workflow_l1_heading_pin_fires(self) -> None:
+        errors = self._mutated_errors(
+            "academic-paper/references/workflow_phase_details.md", "### Chinese Abstract"
+        )
+        self.assertTrue(any("### Chinese Abstract" in e for e in errors), errors)
+
+    def test_schema4_abstract_typed_row_rename_fires(self) -> None:
+        errors = self._mutated_errors(
+            csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE,
+            "| `abstract` | object | `{english: string, chinese: string}`",
+            "| `abstract` | object | `{en: string, zh_tw: string}`",
+        )
+        self.assertTrue(any("must keep its legacy typed shape" in e for e in errors), errors)
+
+    def test_schema4_abstract_prose_quote_does_not_keep_a_renamed_row(self) -> None:
+        # The Schema-4 `output_language_pair` row still quotes `abstract: {english,
+        # chinese}` in prose, so a whole-file pin would pass after the typed row was
+        # renamed. The pin must key off the typed row itself.
+        rel_path = csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE
+        self._copied_pin_tree()
+        text = (self.root / rel_path).read_text(encoding="utf-8")
+        self.assertIn("abstract: {english, chinese}", text)
+        errors = self._mutate_and_run(
+            rel_path,
+            "| `abstract` | object | `{english: string, chinese: string}`",
+            "| `abstract` | object | `{en: string, zh_tw: string}`",
+            csc.check_output_language_pair_literal_pins,
+        )
+        self.assertIn("abstract: {english, chinese}", (self.root / rel_path).read_text(encoding="utf-8"))
+        self.assertTrue(any("must keep its legacy typed shape" in e for e in errors), errors)
+
+    def test_schema4_keywords_typed_row_rename_fires(self) -> None:
+        errors = self._mutated_errors(
+            csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE,
+            "| `keywords` | object | `{en: list[string], zh_tw: list[string]}`",
+            "| `keywords` | object | `{en: list[string]}`",
+        )
+        self.assertTrue(any("must keep its legacy typed shape" in e for e in errors), errors)
+
+    def test_schema4_duplicate_abstract_row_unbackticked_fires(self) -> None:
+        rel_path = csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE
+        self._copied_pin_tree()
+        path = self.root / rel_path
+        lines = path.read_text(encoding="utf-8").splitlines()
+        new_lines: list[str] = []
+        for line in lines:
+            new_lines.append(line)
+            if "| `abstract` | object |" in line:
+                new_lines.append(
+                    "| abstract | object | a duplicate row that would shadow the pinned one |"
+                )
+        path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins(self.root)
+        errors = list(csc.ERRORS)
+        self.assertTrue(any("the Schema-4 `abstract` row appears more than once" in e for e in errors), errors)
+
+    def test_schema4_pair_row_removed_fires(self) -> None:
+        errors = self._mutated_errors(
+            csc.OUTPUT_LANGUAGE_PAIR_SCHEMA_SURFACE,
+            "| `output_language_pair` | string |",
+            "| `pair_token` | string |",
+        )
+        self.assertTrue(any("row is missing" in e for e in errors), errors)
+
+    def test_intake_pcr_row_renamed_fires(self) -> None:
+        self._copied_pin_tree()
+        errors = self._mutate_and_run(
+            "academic-paper/agents/intake_agent.md",
+            "| **Output Language Pair** |",
+            "| Output Language Pair |",
+            csc.check_output_language_pair_carrier_steps,
+        )
+        self.assertTrue(errors)
+
+    def test_intake_pair_row_omission_clause_removed_fires_while_format_profile_row_intact(
+        self,
+    ) -> None:
+        rel_path = "academic-paper/agents/intake_agent.md"
+        row_marker = "| **Output Language Pair** |"
+        self._copied_pin_tree()
+        path = self.root / rel_path
+        lines = path.read_text(encoding="utf-8").splitlines()
+        new_lines: list[str] = []
+        for line in lines:
+            if row_marker in line:
+                new_lines.append(
+                    line.replace(
+                        "ROW OMITTED ENTIRELY when the run declares no pair, so a pre-#862 PCR keeps the same rows; ",
+                        "",
+                    )
+                )
+            else:
+                new_lines.append(line)
+        path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_carrier_steps(self.root)
+        errors = list(csc.ERRORS)
+        self.assertTrue(
+            any("Output Language Pair" in e and "omitted when the field is absent on that row" in e for e in errors),
+            errors,
+        )
+        format_profile_line = next(
+            line for line in path.read_text(encoding="utf-8").splitlines() if "| **Format Profile** |" in line
+        )
+        self.assertIn("ROW OMITTED ENTIRELY", format_profile_line)
+
+    def test_draft_writer_present_value_bullet_removed_fires(self) -> None:
+        self._copied_pin_tree()
+        errors = self._mutate_and_run(
+            "academic-paper/agents/draft_writer_agent.md",
+            "serialize it into the Schema 4 handoff under that exact key",
+            "",
+            csc.check_output_language_pair_carrier_steps,
+        )
+        self.assertTrue(
+            any("present-value branch" in e for e in errors),
+            errors,
+        )
+
+    def test_draft_writer_serialization_section_removed_fires(self) -> None:
+        self._copied_pin_tree()
+        errors = self._mutate_and_run(
+            "academic-paper/agents/draft_writer_agent.md",
+            "### Schema 4 Serialization (#862 Phase 1)",
+            "",
+            csc.check_output_language_pair_carrier_steps,
+        )
+        self.assertTrue(errors)
+
+    def test_missing_pinned_surface_fires(self) -> None:
+        self._copied_pin_tree()
+        (self.root / csc.LEGACY_PAIR_HEADING_BLOCKS[0][0]).unlink()
+        csc.ERRORS.clear()
+        csc.check_output_language_pair_literal_pins(self.root)
+        errors = list(csc.ERRORS)
+        self.assertTrue(any("consumer surface is missing" in e for e in errors), errors)
+
+    def test_real_tree_regime_table_parses(self) -> None:
+        csc.ERRORS.clear()
+        csc.check_abstract_regime_table(csc.OUTPUT_LANGUAGE_PAIR_LITERAL_ROOT)
+        self.assertEqual(list(csc.ERRORS), [])
+
+    def test_regime_table_marker_removed_fires_on_the_real_guide(self) -> None:
+        self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_GUIDE)
+        errors = self._mutate_and_run(
+            csc.OUTPUT_LANGUAGE_PAIR_GUIDE,
+            csc._REGIME_TABLE_START,
+            "",
+            csc.check_abstract_regime_table,
+        )
+        self.assertTrue(any("markers are missing" in e for e in errors), errors)
+
+    def test_regime_table_required_column_is_pinned_on_the_real_guide(self) -> None:
+        # The guide's own table is what the lint reads: renaming a required column has to
+        # fail on the shipped file, not only on the fixture.
+        self._copy_real(csc.OUTPUT_LANGUAGE_PAIR_GUIDE)
+        errors = self._mutate_and_run(
+            csc.OUTPUT_LANGUAGE_PAIR_GUIDE,
+            "Keywords per language",
+            "Notes",
+            csc.check_abstract_regime_table,
+        )
+        self.assertTrue(any("keywords_per_language" in e for e in errors), errors)
+
+
 if __name__ == "__main__":
     unittest.main()

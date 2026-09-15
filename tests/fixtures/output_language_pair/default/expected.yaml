@@ -1,0 +1,11 @@
+fixture_id: default
+schema_field: output_language_pair
+contract: shared/output_language_pair.md
+cases:
+  - name: explicit default pair
+    expected_valid: true
+    expected_status: default
+    error_contains: []
+notes: |
+  `zh-tw-en` is the default registry entry. Declaring it changes no output relative to the
+  legacy state, and the legacy object keys are untouched.

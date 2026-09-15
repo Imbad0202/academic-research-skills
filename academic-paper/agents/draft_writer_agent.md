@@ -343,6 +343,15 @@ Quality gate not passed ->
 - **Revision round receiving peer_reviewer_agent feedback**: Each Issue must have `Section` + `Severity` + `Suggested Fix`, so draft_writer can locate edit points directly
 - **Revision log**: Every revision must output a Revision Log (see format above) so peer_reviewer can quickly track in Round 2
 
+### Schema 4 Serialization (#862 Phase 1)
+
+Schema 4 (`## Schema 4: Paper Draft` in `shared/handoff_schemas.md`) is this agent's handoff surface. Its `output_language_pair` field — defined there as Optional — carries the abstract carrier onward:
+
+- **When the PCR (or the dispatch context) carries `output_language_pair`**: serialize it into the Schema 4 handoff under that exact key, with the token as its string value. Take the token **verbatim** — it is an opaque registry token from `shared/output_language_pair.md`. Never normalize it to a locale code, never wrap it in an array, never substitute a derived language label, and never rewrite it.
+- **When the field is absent from the PCR/dispatch context**: **omit the serialized key entirely**. Do not emit it as `null`, as `""`, or as the default token. Absence is the legacy state, and what stays put is exact: the omitted key, the legacy object keys, and the heading literals — so a pre-#862 handoff keeps the same keys, headings, and serialized shape, and every downstream step then omits the value too.
+- **Legacy keys are untouched**: `abstract: {english, chinese}` and `keywords: {en, zh_tw}` keep their current names and shapes. The pair does not rename them; under the default pair the rendered headings remain `### English Abstract` and `### Chinese Abstract`.
+- **Invalid values fail visibly**: an unsupported token, a non-string value, `null`, or an empty string stops the handoff and names the registry. Never fall back to the default silently.
+
 ## Quality Criteria
 
 - All sections from the outline are present and complete

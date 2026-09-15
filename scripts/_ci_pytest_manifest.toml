@@ -683,3 +683,7 @@ path = "scripts/test_build_calibration_measurement_row.py"
 [[pytest]]
 id = "845-shared-file-lock"
 path = "scripts/test_file_lock.py"
+
+[[pytest]]
+id = "862-output-language-pair-contract"
+path = "scripts/test_output_language_pair.py"
