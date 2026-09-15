@@ -2419,7 +2419,7 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
 >
 > - **academic-pipeline v2.3**: Stage 5 FINALIZE now prompts for formatting style (APA 7.0 / Chicago / IEEE); PDF must compile from LaTeX via `tectonic` (no HTML-to-PDF); APA 7.0 uses `apa7` document class (`man` mode) with XeCJK for bilingual CJK support; font stack: Times New Roman + Source Han Serif TC VF + Courier New
 
-## [2.2] - 2025-03-05
+## [2.2] - 2026-03-05
 
 > **v2.2 / v1.3**
 >
@@ -2429,12 +2429,12 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
 > - **academic-paper-reviewer v1.3**: DA vs R3 role boundaries, CRITICAL finding criteria, consensus classification (4/3/SPLIT/DA-CRITICAL), confidence score weighting, Asian & Regional Journals reference
 > - **academic-pipeline v2.2**: checkpoint confirmation semantics, mode switching matrix, failure fallback matrix, state ownership protocol, material version control
 
-## [2.0.1] - 2026-03
+## [2.0.1] - 2026-03-01
 
 > - **Simplify 4 SKILL.md** (-371 lines, -16.5%): remove cross-skill duplication, inline templates → file references, redundant routing tables, duplicate mode selection sections
 > - Fix revision loop cap contradiction between academic-paper and academic-pipeline
 
-## [2.0] - 2026-02
+## [2.0] - 2026-02-26
 
 > - **academic-pipeline v2.0**: 5→9 stages, mandatory integrity verification, two-stage review, Socratic revision coaching, reproducibility guarantees
 > - **academic-paper-reviewer v1.1**: +Devil's Advocate Reviewer (7th agent), +re-review mode (verification), +post-review Socratic coaching
@@ -2442,7 +2442,7 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
 > - New agent: `devils_advocate_reviewer_agent` — 8-dimension thesis challenger
 > - Output order: MD → DOCX via Pandoc when available (else instructions) → ask LaTeX → confirm → PDF
 
-## [1.0] - 2026-02
+## [1.0] - 2026-02-26
 
 > - Initial release
 > - deep-research v2.0 (10 agents, 6 modes including socratic)
