@@ -6,6 +6,8 @@ _This file is the frozen copy of the Simplified Chinese release summaries that `
 
 ---
 
+## 版本摘要
+
 ### v3.21.2（2026-09-06）— 模型现况对齐（Fable 5.1 / GPT-6 Astra）、检查点决策来源与 CJK 标题匹配修复
 
 > **对齐现况与决策来源，不是新能力：**v3.21.2 依据两份 2026 年 9 月的厂商 system card 对齐套件。`gpt-6-astra` 以 provisional 身份进入跨模型表（两条传输均如此），并依世代现况政策成为推荐的 OpenAI 验证模型；`gpt-5.6-sol` 保留其在 ChatGPT 订阅引用传输上的 validated 身份，本版不声称任何新的 bakeoff 结果。受限的 Codex 传输 reasoning-effort 集合新增 `ultra`。新增两道 guardrail，均为 prompt 层、由厂商文档而非 ARS 测量驱动：检查点决策来源（只有用户回合算决策；决策逐字转交子代理；风险 R11），以及供应商端监控或安全介入一律视为传输失败、永远不是判定。针对两份卡片的 harness 淘汰审计没有淘汰任何东西（0 条 prompt 文字淘汰；8 条 keep-as-debt 项目补上卡片引注）。修复：CJK 标题不再在四个索引解析器的精确标题门失败（#798），外层引号只在构成单一平衡单位时才剥除（#800）；autolink round-trip 测试明示其依赖（#801）；`check_surface_form_parity` 改为指名坏掉的环境而非 manifest；新增 skill 清单一致性 lint（#809）；R10 残余缺口去过时化（#813）；修正一行 MLA 规则（#805）。套件／pipeline → v3.21.2；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。

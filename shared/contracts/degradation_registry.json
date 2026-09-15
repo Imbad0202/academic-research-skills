@@ -332,7 +332,7 @@
           "anchor": "no permissionDecision => falls back to the normal permission"
         },
         {
-          "file": "README.md",
+          "file": "docs/SETUP.md",
           "anchor": "if no real Python is found it cleanly no-ops and the guard is simply inactive"
         }
       ],
@@ -357,7 +357,7 @@
           "anchor": "the guard is then inactive (accepted degradation"
         },
         {
-          "file": "README.md",
+          "file": "docs/SETUP.md",
           "anchor": "the guard is inactive and the `PreToolUse` hook will log an error per call rather than no-op quietly"
         }
       ],

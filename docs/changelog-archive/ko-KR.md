@@ -6,6 +6,8 @@ _This file is the frozen copy of the Korean release summaries that `README.ko-KR
 
 ---
 
+## 릴리스 요약
+
 ### v3.21.2 (2026-09-06) — 모델 현황 정렬(Fable 5.1 / GPT-6 Astra), 체크포인트 결정 출처, CJK 제목 매칭 수정
 
 > **새 기능이 아니라 현황 정렬과 출처 명시:** v3.21.2는 2026년 9월에 나온 두 벤더 system card에 스위트를 정렬합니다. `gpt-6-astra`는 두 전송 경로 모두에서 provisional로 교차 모델 표에 들어가며, 세대 현황 정책에 따라 권장 OpenAI 검증 모델이 됩니다. `gpt-5.6-sol`은 ChatGPT 구독 인용 전송 경로에서의 validated 상태를 유지하며, 새로운 bakeoff 결과는 주장하지 않습니다. 격리된 Codex 전송 경로의 reasoning-effort 집합에 `ultra`가 추가됩니다. 두 가지 가드레일을 추가하되 둘 다 프롬프트 수준이며 ARS 측정이 아닌 벤더 문서에 근거합니다. 체크포인트 결정 출처(사용자 턴만 결정으로 간주하고, 결정은 서브에이전트에 그대로 재전달. 위험 R11), 그리고 제공자 측 모니터링이나 안전 개입을 전송 실패로 다루고 결코 판정으로 보지 않는 규정입니다. 두 카드에 대한 harness-retirement 감사는 아무것도 폐기하지 않았습니다(프롬프트 문구 폐기 0건. keep-as-debt 8건에 카드 인용 추가). 수정: CJK 제목이 네 인덱스 리졸버의 정확 제목 게이트에서 더 이상 실패하지 않으며(#798), 바깥 괄호는 하나의 균형 잡힌 단위를 이룰 때만 제거합니다(#800). autolink 왕복 테스트가 의존성을 선언하고(#801), `check_surface_form_parity`는 매니페스트 대신 깨진 환경을 지목하며, skill 목록 일치 lint를 추가하고(#809), R10 잔여 격차를 최신화하고(#813), MLA 규칙 한 줄을 바로잡았습니다(#805). 스위트/pipeline → v3.21.2; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.

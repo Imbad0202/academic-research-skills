@@ -12,12 +12,14 @@ if __package__:  # Package import in tests.
     from ._markdown_lint_util import (
         NON_RELATIVE_LINK_PREFIXES,
         extract_link_targets,
+        strip_non_rendering,
     )
     from ._skill_lint import iter_skill_files
 else:  # pragma: no cover - exercised by the CLI smoke path
     from _markdown_lint_util import (
         NON_RELATIVE_LINK_PREFIXES,
         extract_link_targets,
+        strip_non_rendering,
     )
     from _skill_lint import iter_skill_files
 
@@ -314,13 +316,16 @@ def check_readme_changelog_section(
     `paren` is "ascii" (`### v3.21.2 (2026-09-06)`, en / ja / ko / es) or
     "fullwidth" (`### v3.21.2（2026-09-06）`, zh-TW / zh-CN). The section must
     link to CHANGELOG.md and, for translated READMEs, to the frozen archive.
+    Fenced code and HTML comments are stripped first, so a commented-out or
+    fenced copy of the section neither satisfies nor trips the checks.
     """
+    rendered = strip_non_rendering(text)
     marker = "\n" + h2 + "\n"
-    idx = text.find(marker)
+    idx = rendered.find(marker)
     if idx == -1:
         fail(f"{rel_path}: missing changelog heading {h2!r}")
         return
-    section = text[idx + 1 :]
+    section = rendered[idx + 1 :]
     nxt = re.search(r"^## ", section[len(h2) + 1 :], re.M)
     if nxt:
         section = section[: len(h2) + 1 + nxt.start()]
@@ -330,8 +335,11 @@ def check_readme_changelog_section(
         expected = [f"### v{v}（{d}）" for v, d in README_CHANGELOG_KEEP]
     found = [m.group(0) for m in _README_RELEASE_HEADING_RE.finditer(section)]
     for exp in expected:
-        if not any(h.startswith(exp) for h in found):
+        hits = sum(1 for h in found if h.startswith(exp))
+        if hits == 0:
             fail(f"{rel_path}: changelog section missing {exp!r}")
+        elif hits > 1:
+            fail(f"{rel_path}: changelog section repeats {exp!r} {hits} times")
     extra = [h for h in found if not any(h.startswith(e) for e in expected)]
     if extra:
         fail(
@@ -341,8 +349,9 @@ def check_readme_changelog_section(
             + (f" and the frozen {archive}" if archive else "")
             + "."
         )
+    targets = set(extract_link_targets(section))
     for link in (README_CHANGELOG_LINK, archive):
-        if link and f"]({link})" not in section:
+        if link and link not in targets:
             fail(f"{rel_path}: changelog section must link to {link}")
 
 

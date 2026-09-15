@@ -461,6 +461,45 @@ class TestReadmeKoSections(unittest.TestCase):
             )
 
 
+    def test_duplicate_kept_release_heading_fails(self) -> None:
+        """Membership is not enough: a kept release repeated twice is still
+        four headings (codex P2 on #870)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_changelog_targets(root, "ko-KR")
+            doubled = KO_README_TEMPLATE.format(ver="3.21.2") + (
+                "### v3.21.2 (2026-09-06) — pasted twice\n"
+            )
+            (root / "README.ko-KR.md").write_text(doubled, encoding="utf-8")
+
+            csc.check_readme_ko_sections()
+
+            self.assertTrue(
+                any("README.ko-KR.md" in e and "repeats" in e for e in csc.ERRORS),
+                msg=f"expected duplicate-heading error in: {csc.ERRORS!r}",
+            )
+
+    def test_fenced_changelog_section_does_not_count(self) -> None:
+        """A changelog section inside a code fence does not render, so it must
+        not satisfy the heading / link checks (codex P2 on #870)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_changelog_targets(root, "ko-KR")
+            base = KO_README_TEMPLATE.format(ver="3.21.2")
+            head, _, section = base.partition("## 변경 이력\n")
+            fenced = head + "```markdown\n## 변경 이력\n" + section + "```\n\n## 변경 이력\n\n"
+            (root / "README.ko-KR.md").write_text(fenced, encoding="utf-8")
+
+            csc.check_readme_ko_sections()
+
+            self.assertTrue(
+                any("README.ko-KR.md" in e and "### v3.21.2 (2026-09-06)" in e for e in csc.ERRORS),
+                msg=f"expected missing-heading error for the fenced copy in: {csc.ERRORS!r}",
+            )
+
+
 class TestReadmeZhSections(unittest.TestCase):
     """Coverage for the ZH_README_CONFIGS tuple branch added when zh-CN
     joined zh-TW under check_readme_zh_sections. check_readme_zh_sections
