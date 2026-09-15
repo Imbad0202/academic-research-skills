@@ -291,37 +291,68 @@ def check_architecture_component_version() -> None:
             )
 
 
+# README changelog sections keep only the most recent releases; the full history
+# (including the one-paragraph summaries) lives in CHANGELOG.md, and each
+# translated README additionally points at its frozen docs/changelog-archive/
+# copy. Bump README_CHANGELOG_KEEP at every release (prepend the new release,
+# drop the oldest) — the lint fails on any extra `### v` heading so the section
+# cannot silently regrow (2026-09-15 README slimming).
+README_CHANGELOG_KEEP = (
+    ("3.21.2", "2026-09-06"),
+    ("3.21.1", "2026-08-24"),
+    ("3.21.0", "2026-08-18"),
+)
+README_CHANGELOG_LINK = "CHANGELOG.md"
+_README_RELEASE_HEADING_RE = re.compile(r"^### v[^\n]*$", re.M)
+
+
+def check_readme_changelog_section(
+    rel_path: str, text: str, h2: str, paren: str, archive: str | None = None
+) -> None:
+    """The README changelog section carries exactly README_CHANGELOG_KEEP.
+
+    `paren` is "ascii" (`### v3.21.2 (2026-09-06)`, en / ja / ko / es) or
+    "fullwidth" (`### v3.21.2（2026-09-06）`, zh-TW / zh-CN). The section must
+    link to CHANGELOG.md and, for translated READMEs, to the frozen archive.
+    """
+    marker = "\n" + h2 + "\n"
+    idx = text.find(marker)
+    if idx == -1:
+        fail(f"{rel_path}: missing changelog heading {h2!r}")
+        return
+    section = text[idx + 1 :]
+    nxt = re.search(r"^## ", section[len(h2) + 1 :], re.M)
+    if nxt:
+        section = section[: len(h2) + 1 + nxt.start()]
+    if paren == "ascii":
+        expected = [f"### v{v} ({d})" for v, d in README_CHANGELOG_KEEP]
+    else:
+        expected = [f"### v{v}（{d}）" for v, d in README_CHANGELOG_KEEP]
+    found = [m.group(0) for m in _README_RELEASE_HEADING_RE.finditer(section)]
+    for exp in expected:
+        if not any(h.startswith(exp) for h in found):
+            fail(f"{rel_path}: changelog section missing {exp!r}")
+    extra = [h for h in found if not any(h.startswith(e) for e in expected)]
+    if extra:
+        fail(
+            f"{rel_path}: changelog section keeps {len(found)} release headings; only the "
+            f"{len(expected)} most recent belong in the README (unexpected: {extra[:3]!r}). "
+            f"Older summaries live in {README_CHANGELOG_LINK}"
+            + (f" and the frozen {archive}" if archive else "")
+            + "."
+        )
+    for link in (README_CHANGELOG_LINK, archive):
+        if link and f"]({link})" not in section:
+            fail(f"{rel_path}: changelog section must link to {link}")
+
+
 def check_readme_sections() -> None:
     rel_path = "README.md"
     text = read(rel_path)
 
     expect_contains(rel_path, "version-v3.21.2-blue")
     expect_contains(rel_path, "releases/tag/v3.21.2")
-    expect_contains(rel_path, "### v3.12.0 (2026-06-08)")
-    expect_contains(rel_path, "### v3.11.1 (2026-06-06)")
-    expect_contains(rel_path, "### v3.11.0 (2026-06-04)")
-    expect_contains(rel_path, "### v3.10.0 (2026-06-01)")
-    expect_contains(rel_path, "### v3.9.4.2 (2026-05-19)")
-    expect_contains(rel_path, "### v3.9.4.1 (2026-05-19)")
-    expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
-    expect_contains(rel_path, "### v3.9.1 (2026-05-18)")
-    expect_contains(rel_path, "### v3.9.0 (2026-05-17)")
-    expect_contains(rel_path, "### v3.8.0 (2026-05-16)")
-    expect_contains(rel_path, "### v3.7.0 (2026-05-05)")
-    expect_contains(rel_path, "### v3.6.8 (2026-05-03)")
-    expect_contains(rel_path, "### v3.6.7 (2026-04-30)")
-    expect_contains(rel_path, "### v3.6.5 (2026-04-27)")
-    expect_contains(rel_path, "### v3.6.4 (2026-04-25)")
-    expect_contains(rel_path, "### v3.6.3 (2026-04-23)")
-    expect_contains(rel_path, "### v3.6.2 (2026-04-23)")
-    expect_contains(rel_path, "### v3.5.1 (2026-04-22)")
-    expect_contains(rel_path, "### v3.5.0 (2026-04-21)")
-    expect_contains(rel_path, "### v3.4.0 (2026-04-20)")
-    expect_contains(rel_path, "### v3.3.6 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.5 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.4 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
+    check_readme_changelog_section(rel_path, text, "## Changelog", "ascii")
     for heading in (
         "#### Deep Research (8 modes)",
         "#### Academic Paper (11 modes)",
@@ -380,31 +411,7 @@ def check_readme_ja_sections() -> None:
 
     expect_contains(rel_path, "version-v3.21.2-blue")
     expect_contains(rel_path, "releases/tag/v3.21.2")
-    expect_contains(rel_path, "### v3.12.0 (2026-06-08)")
-    expect_contains(rel_path, "### v3.11.1 (2026-06-06)")
-    expect_contains(rel_path, "### v3.11.0 (2026-06-04)")
-    expect_contains(rel_path, "### v3.10.0 (2026-06-01)")
-    expect_contains(rel_path, "### v3.9.4.2 (2026-05-19)")
-    expect_contains(rel_path, "### v3.9.4.1 (2026-05-19)")
-    expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
-    expect_contains(rel_path, "### v3.9.1 (2026-05-18)")
-    expect_contains(rel_path, "### v3.9.0 (2026-05-17)")
-    expect_contains(rel_path, "### v3.8.0 (2026-05-16)")
-    expect_contains(rel_path, "### v3.7.0 (2026-05-05)")
-    expect_contains(rel_path, "### v3.6.8 (2026-05-03)")
-    expect_contains(rel_path, "### v3.6.7 (2026-04-30)")
-    expect_contains(rel_path, "### v3.6.5 (2026-04-27)")
-    expect_contains(rel_path, "### v3.6.4 (2026-04-25)")
-    expect_contains(rel_path, "### v3.6.3 (2026-04-23)")
-    expect_contains(rel_path, "### v3.6.2 (2026-04-23)")
-    expect_contains(rel_path, "### v3.5.1 (2026-04-22)")
-    expect_contains(rel_path, "### v3.5.0 (2026-04-21)")
-    expect_contains(rel_path, "### v3.4.0 (2026-04-20)")
-    expect_contains(rel_path, "### v3.3.6 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.5 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.4 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
+    check_readme_changelog_section(rel_path, text, "## Changelog", "ascii", archive="docs/changelog-archive/ja-JP.md")
     for heading in (
         "#### Deep Research（8 モード）",
         "#### Academic Paper（11 モード）",
@@ -449,32 +456,7 @@ def check_readme_ko_sections() -> None:
 
     expect_contains(rel_path, "version-v3.21.2-blue")
     expect_contains(rel_path, "releases/tag/v3.21.2")
-    expect_contains(rel_path, "### v3.18.0 (2026-07-18)")
-    expect_contains(rel_path, "### v3.12.0 (2026-06-08)")
-    expect_contains(rel_path, "### v3.11.1 (2026-06-06)")
-    expect_contains(rel_path, "### v3.11.0 (2026-06-04)")
-    expect_contains(rel_path, "### v3.10.0 (2026-06-01)")
-    expect_contains(rel_path, "### v3.9.4.2 (2026-05-19)")
-    expect_contains(rel_path, "### v3.9.4.1 (2026-05-19)")
-    expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
-    expect_contains(rel_path, "### v3.9.1 (2026-05-18)")
-    expect_contains(rel_path, "### v3.9.0 (2026-05-17)")
-    expect_contains(rel_path, "### v3.8.0 (2026-05-16)")
-    expect_contains(rel_path, "### v3.7.0 (2026-05-05)")
-    expect_contains(rel_path, "### v3.6.8 (2026-05-03)")
-    expect_contains(rel_path, "### v3.6.7 (2026-04-30)")
-    expect_contains(rel_path, "### v3.6.5 (2026-04-27)")
-    expect_contains(rel_path, "### v3.6.4 (2026-04-25)")
-    expect_contains(rel_path, "### v3.6.3 (2026-04-23)")
-    expect_contains(rel_path, "### v3.6.2 (2026-04-23)")
-    expect_contains(rel_path, "### v3.5.1 (2026-04-22)")
-    expect_contains(rel_path, "### v3.5.0 (2026-04-21)")
-    expect_contains(rel_path, "### v3.4.0 (2026-04-20)")
-    expect_contains(rel_path, "### v3.3.6 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.5 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.4 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
+    check_readme_changelog_section(rel_path, text, "## 변경 이력", "ascii", archive="docs/changelog-archive/ko-KR.md")
     for heading in (
         "#### Deep Research (8개 모드)",
         "#### Academic Paper (11개 모드)",
@@ -515,6 +497,8 @@ ZH_README_CONFIGS = (
         "pipeline_start": "#### Academic Pipeline（全流程調度器）",
         "deep_start": "#### Deep Research（深度研究，8 種模式）",
         "docx_line": "DOCX（Pandoc 可用時）",
+        "changelog_h2": "## 更新紀錄",
+        "archive": "docs/changelog-archive/zh-TW.md",
     },
     {
         "rel_path": "README.zh-CN.md",
@@ -532,6 +516,8 @@ ZH_README_CONFIGS = (
         "pipeline_start": "#### Academic Pipeline（全流程调度器）",
         "deep_start": "#### Deep Research（深度研究，8 种模式）",
         "docx_line": "DOCX（Pandoc 可用时）",
+        "changelog_h2": "## 更新纪录",
+        "archive": "docs/changelog-archive/zh-CN.md",
     },
 )
 
@@ -543,31 +529,9 @@ def check_readme_zh_sections() -> None:
 
         expect_contains(rel_path, "version-v3.21.2-blue")
         expect_contains(rel_path, "releases/tag/v3.21.2")
-        expect_contains(rel_path, "### v3.12.0（2026-06-08）")
-        expect_contains(rel_path, "### v3.11.1（2026-06-06）")
-        expect_contains(rel_path, "### v3.11.0（2026-06-04）")
-        expect_contains(rel_path, "### v3.10.0（2026-06-01）")
-        expect_contains(rel_path, "### v3.9.4.2（2026-05-19）")
-        expect_contains(rel_path, "### v3.9.4.1（2026-05-19）")
-        expect_contains(rel_path, "### v3.9.4（2026-05-18）")
-        expect_contains(rel_path, "### v3.9.1（2026-05-18）")
-        expect_contains(rel_path, "### v3.9.0（2026-05-17）")
-        expect_contains(rel_path, "### v3.8.0（2026-05-16）")
-        expect_contains(rel_path, "### v3.7.0（2026-05-05）")
-        expect_contains(rel_path, "### v3.6.8（2026-05-03）")
-        expect_contains(rel_path, "### v3.6.7（2026-04-30）")
-        expect_contains(rel_path, "### v3.6.5（2026-04-27）")
-        expect_contains(rel_path, "### v3.6.4（2026-04-25）")
-        expect_contains(rel_path, "### v3.6.3（2026-04-23）")
-        expect_contains(rel_path, "### v3.6.2（2026-04-23）")
-        expect_contains(rel_path, "### v3.5.1（2026-04-22）")
-        expect_contains(rel_path, "### v3.5.0（2026-04-21）")
-        expect_contains(rel_path, "### v3.4.0（2026-04-20）")
-        expect_contains(rel_path, "### v3.3.6 (2026-04-15)")
-        expect_contains(rel_path, "### v3.3.5 (2026-04-15)")
-        expect_contains(rel_path, "### v3.3.4 (2026-04-15)")
-        expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
-        expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
+        check_readme_changelog_section(
+            rel_path, text, config["changelog_h2"], "fullwidth", archive=config["archive"]
+        )
         for heading in config["headings"]:
             if heading not in text:
                 fail(f"{rel_path}: missing heading {heading!r}")
@@ -624,32 +588,7 @@ def check_readme_es_sections() -> None:
 
     expect_contains(rel_path, "version-v3.21.2-blue")
     expect_contains(rel_path, "releases/tag/v3.21.2")
-    expect_contains(rel_path, "### v3.18.0 (2026-07-18)")
-    expect_contains(rel_path, "### v3.12.0 (2026-06-08)")
-    expect_contains(rel_path, "### v3.11.1 (2026-06-06)")
-    expect_contains(rel_path, "### v3.11.0 (2026-06-04)")
-    expect_contains(rel_path, "### v3.10.0 (2026-06-01)")
-    expect_contains(rel_path, "### v3.9.4.2 (2026-05-19)")
-    expect_contains(rel_path, "### v3.9.4.1 (2026-05-19)")
-    expect_contains(rel_path, "### v3.9.4 (2026-05-18)")
-    expect_contains(rel_path, "### v3.9.1 (2026-05-18)")
-    expect_contains(rel_path, "### v3.9.0 (2026-05-17)")
-    expect_contains(rel_path, "### v3.8.0 (2026-05-16)")
-    expect_contains(rel_path, "### v3.7.0 (2026-05-05)")
-    expect_contains(rel_path, "### v3.6.8 (2026-05-03)")
-    expect_contains(rel_path, "### v3.6.7 (2026-04-30)")
-    expect_contains(rel_path, "### v3.6.5 (2026-04-27)")
-    expect_contains(rel_path, "### v3.6.4 (2026-04-25)")
-    expect_contains(rel_path, "### v3.6.3 (2026-04-23)")
-    expect_contains(rel_path, "### v3.6.2 (2026-04-23)")
-    expect_contains(rel_path, "### v3.5.1 (2026-04-22)")
-    expect_contains(rel_path, "### v3.5.0 (2026-04-21)")
-    expect_contains(rel_path, "### v3.4.0 (2026-04-20)")
-    expect_contains(rel_path, "### v3.3.6 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.5 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.4 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.3 (2026-04-15)")
-    expect_contains(rel_path, "### v3.3.2 (2026-04-15)")
+    check_readme_changelog_section(rel_path, text, "## Registro de cambios", "ascii", archive="docs/changelog-archive/es-ES.md")
     for heading in (
         "#### Deep Research (8 modos)",
         "#### Academic Paper (11 modos)",
@@ -686,6 +625,8 @@ def check_setup_docs() -> None:
     )
     check_relative_markdown_links("docs/SETUP.md")
     check_relative_markdown_links("docs/SETUP.zh-TW.md")
+    for locale in ("zh-TW", "zh-CN", "ja-JP", "ko-KR", "es-ES"):
+        check_relative_markdown_links(f"docs/changelog-archive/{locale}.md")
     # #758 data-flow map: its outbound relative links (audit doc, SECURITY,
     # THIRD_PARTY, cross_model_verification) must keep resolving.
     check_relative_markdown_links("docs/DATA_FLOWS.md")

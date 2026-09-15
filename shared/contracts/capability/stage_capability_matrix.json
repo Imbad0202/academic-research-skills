@@ -44,7 +44,7 @@
       ],
       "claim_anchors": [
         {
-          "file": "README.md",
+          "file": "CHANGELOG.md",
           "anchor": "held-out miss rate 0.34–0.38 → 0.094 with false-fire 0/16 preserved"
         }
       ]
@@ -148,7 +148,7 @@
       ],
       "claim_anchors": [
         {
-          "file": "README.md",
+          "file": "CHANGELOG.md",
           "anchor": "deterministic citation-existence verification gate"
         }
       ]
@@ -403,7 +403,7 @@
       ],
       "claim_anchors": [
         {
-          "file": "README.md",
+          "file": "CHANGELOG.md",
           "anchor": "a deterministic numeric/citation token-conservation checker"
         }
       ]

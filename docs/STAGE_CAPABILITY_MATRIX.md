@@ -19,7 +19,7 @@ and no consumer may state more than the row's recorded claim ceiling.
 - **External/human outcome evidence**: none
 - **Known exclusions**: wording only: no judgment of idea quality, novelty, feasibility, or contribution; judgments are model- and time-specific; re-run rather than reuse the numbers
 - **Transport limits**: single judge model (claude-sonnet-5), single language (en), one measurement date
-- **Claim anchors**: README.md — "held-out miss rate 0.34–0.38 → 0.094 with false-fire 0/16 preserved"
+- **Claim anchors**: CHANGELOG.md — "held-out miss rate 0.34–0.38 → 0.094 with false-fire 0/16 preserved"
 - **Maximum licensed claim**: On the recorded held-out set and judge model, the advisory's miss rate was 0.094 with zero false fires; no claim beyond that set or model.
 - **Next required evaluation**: re-run the held-out set on the current session model family; extend to zh-TW shells
 
@@ -66,7 +66,7 @@ and no consumer may state more than the row's recorded claim ceiling.
 - **External/human outcome evidence**: none
 - **Known exclusions**: existence-only: verifying that a citation resolves does not verify that it supports the claim citing it; the gold citation_extraction harness pins the reducer's own classification, not an independent ground truth of hallucination catch rate
 - **Transport limits**: resolver coverage varies by field and language; legitimately-unindexed work stays unresolvable by design (precision-over-recall)
-- **Claim anchors**: README.md — "deterministic citation-existence verification gate"
+- **Claim anchors**: CHANGELOG.md — "deterministic citation-existence verification gate"
 - **Maximum licensed claim**: A deterministic lookup gate exists and its classification logic is CI-pinned; no measured hallucinated-citation catch rate is claimed.
 - **Next required evaluation**: an independently-authored ground-truth set (not derived from the reducer) measuring end-to-end catch and false-block rates
 
@@ -189,7 +189,7 @@ and no consumer may state more than the row's recorded claim ceiling.
 - **External/human outcome evidence**: none
 - **Known exclusions**: single replicate baseline retained no raw prompts; cross-row comparison is descriptive; prospective subject-context-isolation protocol (#679) designed, not run
 - **Transport limits**: one subject model, one judge model, en-only pressure set
-- **Claim anchors**: README.md — "a deterministic numeric/citation token-conservation checker"
+- **Claim anchors**: CHANGELOG.md — "a deterministic numeric/citation token-conservation checker"
 - **Maximum licensed claim**: In the recorded window, the condensed guard-block prompt showed 1/16 drift against 7/16 unguarded; no claim transfers to the shipped pipeline wiring as-wired, and no causal or cross-model claim is made.
 - **Next required evaluation**: #679 subject-context-isolation re-run producing a causally interpretable comparison row
 

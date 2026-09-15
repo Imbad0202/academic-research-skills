@@ -12,6 +12,14 @@ Academic Research Skills 的前置需求與選用設定。只需要 Markdown 輸
 
 這樣就夠了。可得到 Markdown 輸出與 DOCX 轉換說明。以下其他內容都是選用。
 
+## Python（選用）
+
+核心 skill（研究、寫作、審查）不需要 Python，它們由 prompt 驅動。只有下列情況需要一個**真正的 Python 直譯器**：`PreToolUse` 寫入範圍 guard（選用的 subagent 強化；找不到真正的 Python 時它會安靜地不作用，核心 skill 不受影響），以及少數會呼叫 Python 的選用功能：revision-patch 模式、submission-package 驗證器、`/ars-cache-invalidate`、`/ars-mark-read`、`/ars-unmark-read` 三個指令。
+
+Windows 使用者請注意：`python3` 常常是 Microsoft Store 的無功能占位程式，不是真正的 Python。請從 python.org 或用 `winget` 安裝，啟動器才找得到可用的直譯器。guard 啟動器是 POSIX shell script，`hooks.json` 透過 `bash` 呼叫它，所以 Windows 需要 **Git Bash**（Git for Windows 內含）。有 Git Bash 而沒有真正的 Python 時，guard 會安靜地不作用。沒有 Git Bash 時，Claude Code 會退回 PowerShell，而 PowerShell 跑不了 `.sh` 啟動器：guard 不作用，且 `PreToolUse` hook 每次呼叫都會記一筆錯誤，不會安靜略過（這是接受的降級：guard 是選用的，永遠不會擋你的寫入，代價是裝好 Git Bash 之前 hook 會有雜訊）。
+
+---
+
 ---
 
 ## 安裝 Claude Code

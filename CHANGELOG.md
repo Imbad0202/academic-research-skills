@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file.
 
+> The blockquote directly under a release heading is that release's one-paragraph summary. Those summaries lived in `README.md` until 2026-09-15 and were moved here verbatim; `README.md` now keeps only the three most recent.
+
 ## [Unreleased]
 
 ### Added
@@ -40,6 +42,8 @@ All notable changes to this project will be documented in this file.
 
 ## [3.21.2] - 2026-09-06 — Model currency for Claude Fable 5.1 and GPT-6 Astra, checkpoint decision provenance, and CJK title-matching repairs
 
+> **Currency and provenance, not new capability:** v3.21.2 aligns the suite to the two September 2026 vendor system cards. `gpt-6-astra` enters the cross-model table as provisional on both transports and becomes the recommended OpenAI verifier under the generation-currency policy; `gpt-5.6-sol` keeps its validated status on the ChatGPT-subscription citation transport, and no new bakeoff result is claimed. The contained Codex transport's reasoning-effort set gains `ultra`. Two guardrails are added, both prompt-level and vendor-motivated rather than ARS-measured: checkpoint decision provenance (only a user turn is a decision; decisions are re-transmitted to subagents verbatim; risk R11) and provider-side monitoring or safety interventions named as a transport failure that is never a verdict. A harness-retirement audit against both cards retires nothing (0 prompt-text retirements; 8 keep-as-debt items now carry a card citation). Fixes: CJK titles no longer fail the exact-title gate in the four index resolvers (#798) and wrapper marks are stripped only as one balanced unit (#800); the autolink round-trip test declares its dependency (#801); `check_surface_form_parity` names a broken environment instead of the manifest; a skill-inventory parity lint (#809); the R10 residual gap de-staled (#813); an MLA key-rules line corrected (#805). Suite/pipeline → v3.21.2; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.
+
 ### Added
 
 - **GPT-6 Astra listed as a provisional cross-model verifier; the OpenAI recommendation moves to the current generation (2026-09 model update).** `gpt-6-astra` (released 2026-09-03) joins the canonical model table in `shared/cross_model_verification.md` as **provisional on both transports** — no bakeoff run exists; the only evidence is an entry-gate smoke on the ChatGPT-subscription citation transport (`scripts/cross_model_smoke_test_codex.sh`, 2026-09-05, codex-cli 0.153.4: `VERIFIED` with one bound source on the Vaswani et al. fixture), which is the precondition for a Promotion Bakeoff, not one. The recommendation moves to `gpt-6-astra` under the existing #783 policy (recommendation follows generation currency; `validated` is earned only by the sealed bakeoff), so the move carries no measurement claim. `gpt-5.6-sol` keeps its validated status on the citation transport and its provisional status on the API route; `gpt-5.5` / `gpt-5.5-pro` / `gemini-3.1-pro-preview` are unchanged. The id-status allowlist, the quick-setup and codex blocks in `docs/SETUP.md` / `docs/SETUP.zh-TW.md` (same example set in both, parity-linted), `.claude/CLAUDE.md`, and the bakeoff section (now naming the per-transport baseline: `gpt-5.5` on the API route, `gpt-5.6-sol` on the citation transport) move together. Two vendor-reported facts are recorded where they bite: high verbalized evaluation awareness (system card §8.6 / §8.8.1) as a caveat on any bakeoff or calibration result, and GPT-6 Astra's unrecorded list pricing in the cost table. The contained Codex citation transport's reasoning-effort vocabulary gains `ultra` (system card §10.1.2.5: the Codex harness ran at Ultra effort) as a named constant with a test pinning turn/start forwarding and fail-closed rejection of unknown values; the app-server schema on 0.153.4 types `ReasoningEffort` as any non-empty string, so this set is ARS's own guard and the provider still rejects what the served model does not advertise.
@@ -71,6 +75,8 @@ All notable changes to this project will be documented in this file.
 - **Autolink round-trip test no longer rides on an undeclared, version-sensitive dependency (#801).** `test_gfm_bare_urls_emails_and_schemes_cannot_autolink` soft-imported markdown-it-py — not listed in `requirements-dev.txt` — and silently returned when it was absent, so its no-`link_open` tail had never actually run in CI, while an ambient markdown-it-py 2.x (whose linkify pass still tokenizes the escaped forms as links; reproduced under 2.2.0 + linkify-it-py 2.0.3, reported by @akshath-raj in #799) failed the test on clean `main`. Verified dividing line: 2.2.0 fails, 3.0.0 and 4.0.0 pass with linkify-it-py 2.0.3 held constant. The tail is split into its own test (`test_escaped_markdown_yields_no_linkify_tokens_on_round_trip`) gated by `pytest.importorskip("markdown_it", minversion="3.0.0")` + `pytest.importorskip("linkify_it", minversion="2.0.3")` — ambient-old environments now skip visibly instead of failing or passing vacuously — and `requirements-dev.txt` declares `markdown-it-py>=3.0` + `linkify-it-py>=2.0.3` with a reverse pointer at the consuming test, so CI exercises the round-trip for the first time. The same declaration also newly activates the identical soft-import tail in `test_renderer_neutralizes_markdown_active_inventory_path` (`scripts/test_build_submission_packet_manifest.py`), which moves to the same `importorskip` idiom (no version floor: it parses default CommonMark without linkify) and gains the inline-children flatten its top-level-only token scan was missing — `link_open` / `image` / `html_inline` nest under `inline` tokens, so the pre-existing assertion could only ever catch `html_block`; its strengthened assertions verified under markdown-it-py 2.2.0, 3.0.0, and 4.0.0. The triplicated hostile-row construction in `test_evidence_rows.py` is consolidated into one `_hostile_row` helper. Renderer behavior and every renderer-side assertion are unchanged.
 
 ## [3.21.1] - 2026-08-24 — Bounded workflow substrates, sealed bakeoffs, and transport hardening
+
+> **Measured where stated; otherwise bounded:** v3.21.1 repairs the contained ChatGPT-subscription citation transport for codex-cli 0.147.0 and records the first Promotion Bakeoff: `gpt-5.6-sol` is validated only for that subscription transport, while it remains provisional on the first-party API route. Future bakeoffs now require sealed preregistration. The release also adds a default-off research-workflow profile substrate (offline deterministic conformance only; no pipeline hook or family-specific shipped profile), an opt-in inquiry-ledger alpha (`ARS_INQUIRY_LEDGER=1`), and a design-only alternative register that is not implemented. Their behavioral evidence remains `NOT_RUN`; no usability, recovery, novelty, correctness, or research-outcome benefit is claimed. The review-criteria registry gains one source-backed illustrative MSR 2027 exact-profile proving set—not venue/discipline coverage, a real-author attestation, or constructive-review evidence—and its required independent-human evaluation remains open. Additional changes align `data_access_level`, consolidate markdown lint grammar, register guard-launcher degradations, and list OrcaRouter as a community integration without endorsement. Suite/pipeline → v3.21.1; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.
 
 ### Fixed
 
@@ -108,6 +114,8 @@ All notable changes to this project will be documented in this file.
 
 ## [3.21.0] - 2026-08-18 — ISO/IEC 42001-spirit transparency, verifiability, and feasibility track
 
+> **Transparency you can check:** v3.21.0 completes the ISO/IEC 42001-spirit audit track (#753–#760). Outward claims are aligned with the evidence record, and four standing artifacts now answer the questions users actually have: which controls operate in your install channel (`docs/CONTROL_AVAILABILITY.md`), what leaves your machine and what is stored (`docs/DATA_FLOWS.md`), how strongly each CI workflow actually enforces (`docs/ARCHITECTURE.md` §7.1), and which risk each mechanism addresses, with what evidence and what residual gap (`docs/RISK_REGISTER.md`) — each defended by its own CI lint. `GOVERNANCE.md` states decision authority, what cross-model review does and does not provide (an error-detection control, not organizational independence), and the end-of-life posture; `SECURITY.md` gains a solo-runnable severity-tiered triage procedure. These are distilled operating principles with informative anchors to ISO/IEC 42001, not a certification claim, and no new effectiveness numbers are claimed. Suite/pipeline → v3.21.0; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.
+
 ### Added
 
 - **Lightweight risk register (#759).** `docs/RISK_REGISTER.md` is the single artifact linking each of ten standing risks (hallucinated citations, silent claim-strength drift, indirect prompt injection, cross-model content exposure, model-version drift, correlated same-family error, user over-reliance, venue-policy staleness, dependency/supply-chain, install-channel enforcement loss) to its existing controls, the evidence status behind them, and the residual gap with its tracking issue where one exists. The register indexes, it never re-authors: matrix-tied evidence statuses mirror `shared/contracts/capability/stage_capability_matrix.json` verbatim, and maintainer assertions are explicitly marked as such. New lint `scripts/check_risk_register.py` (RR-1 pointer integrity incl. repo-containment and anchor checks, RR-2 status mirroring with a malformed-citation guard, an asserted-status ceiling — the matrix stays the sole authority for `MEASURED`/`MIXED` — and an inventory lock on the shipped matrix-row citations, RR-3 resolved-path README discoverability; 22 mutation tests incl. a real-tree pass) is wired into spec-consistency CI and the pytest manifest; it imports the sibling lints' markdown/link helpers and the matrix's loader and status vocabulary rather than keeping third copies (#771). Closes the F-1 finding of the ISO/IEC 42001-spirit gap assessment (`audits/iso42001-spirit-gap-assessment-2026-08-17.md` §7 step 5).
@@ -132,6 +140,8 @@ All notable changes to this project will be documented in this file.
 
 ## [3.20.1] - 2026-08-15 — Contract-honesty hardening and bounded evaluation substrates
 
+> **Hardened and bounded:** v3.20.1 makes review and integrity claims match the evidence the suite can actually replay. Claim coverage is population-bounded with semantic completeness left unknown; revision claim-strength changes require explicit byte-bound author dispositions; new read attestations require scope and fail visibly; live reviewer packages remain `NOT_CALIBRATED`; and six-axis provenance replaces binary independence language. It also ships the offline/unmeasured claim-standing probe substrate and a closed first-round assignment gate for the ideation-diversity bundle, plus an opt-in roadmap for future inquiry branches and alternatives. These contracts do not establish improved scientific outcomes, reviewer correctness, complete semantic detection, authenticated human identity, independent error processes, or live-provider effectiveness. Suite/pipeline → v3.20.1; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.
+
 ### Added
 
 - **v3.20 post-release contract-honesty hardening (#734, #735–#740; PR #747).** Adds a visible, user-requested exit from non-generating Socratic RQ mode without automatic candidate generation; a hash-bound per-finding E6 disposition sidecar with explicit restore / authorize-with-reason / pause routing; exact-span, raw-byte-bound Claim Registry coverage replay with registered-denominator and unknown semantic-completeness disclosure; required read-scope on every new `/ars-mark-read` event with closed fail-visible resolution; criterion-bound categorical reviewer judgements with live packages fixed at `NOT_CALIBRATED`; and replay-valid six-axis review-panel provenance that never reduces personas to a binary independence claim. These changes harden contracts and disclosures; they do not establish improved scientific outcomes, reviewer correctness, complete semantic detection, authenticated human identity, or independent error processes.
@@ -147,6 +157,8 @@ All notable changes to this project will be documented in this file.
 - **Claim-standing stance seed set (#655 §8 seed, v0.1, unmeasured).** New `evals/heldout/claim_standing_probe/` seed for the future stance-classification baseline: 32 repository-owned synthetic claim/candidate items (16 en + 16 zh-TW, one distinct discipline each) covering per language two items for each of the six stance labels plus missing-abstract, metadata-only, irrelevant-candidate, and session-held-full-text slots. Item claims and abstracts were cross-model authored (Codex `gpt-5.6-sol`, reasoning xhigh) so the future subject's model family did not write its own test items; all content is fictional and DOIs use a reserved `10.99999/csp-*` form. The closed §5.1 vocabulary ships as four Draft 2020-12 schemas (seed set, blinded expert label file, hash-bound adjudicated ground truth, strict subject output with deliberately no confidence/score field) plus a criterion-keyed expert `label_guide.md`, and a fifth schema freezes the deterministic score-report shape. `scripts/validate_claim_standing_stance_assets.py` enforces slot coverage, id/DOI binding, design-slot realization, a heuristic simplified-Chinese screen, and a registration guard — the suite is deliberately NOT in `suite_registry.json`, and the validator fails if it appears there while the set is `seed_unmeasured`. `scripts/claim_standing_stance_scorer.py` is the §8 mechanical scorer: it compares the frozen subject enum to adjudicated labels with no model in the loop, reports stance/relevance/check-state confusion and failure-class distribution by language, keeps macro recall and micro accuracy separate, counts blocked/partial rows without imputation, and computes the two-replicate decision-relevance flag. Twenty tests cover the shipped set's invariants (mutation-style), enum synchronization across the four record schemas, and the scorer's confusion accounting and fail-closed input handling — including that an abstention on a gold-performed row lands in an explicit NOT_CHECKED confusion column (abstaining can never inflate recall), that blocked/partial rows keep their failure classes visible (the subject schema now requires a failure state on every blocked/partial row), that full-row accuracy includes evidence scope, and that adjudication must bind two distinct experts with distinct file hashes; a `validate-expert-file` subcommand checks one expert file's complete distinct item coverage. Per-scope and per-failure-class accuracy strata are deferred to the future baseline-row compiler and the report states only counts for those dimensions. Accepted seed boundaries are documented in the suite README: static text realizes only the abstract_missing failure family (runtime failure classes are exercised by fault injection at implementation time), and expert-packet byte sealing belongs to the implementation PR's labeling workflow. `design_target` fields are construction intent only, never ground truth. No probe implementation, expert label, adjudication, subject run, or baseline row exists; every probe surface remains `STANCE CLASSIFICATION UNMEASURED`, and #655 stays open.
 - **Closed first-round assignment-ledger gate for the #659 blind bundle.** The no-call envelope froze 48 arm-blind judge packets but explicitly did not implement the assignment-ledger gate its delivery boundary requires; `scripts/ideation_diversity_assignment_gate.py` now implements it, deliberately outside the no-call runner so the runner's own boundary statement stays true. An operator-authored closed ledger (`judge_assignment_ledger.schema.json`) carries only pseudonymous judge handles, an adjudicator handle that the schema itself excludes from first-round rows, blind session ids, and four exact hash bindings to the finalized run plan, inventory, blind manifest, and private arm map. `verify` replays the complete finalized bundle (including private-map 0700/0600 permission enforcement), requires all 48 packets to carry at least two distinct first-round judges, requires the roster to equal exactly the assigned judges, and forbids any judge from receiving two packets whose cells share a `pair_id` — pair-level blocking subsumes scenario and role-card sharing, including the same scenario appearing in both experiments. Only a fully passing check seals a write-once pass receipt (`assignment_gate_receipt.schema.json`) embedding the exact accepted ledger; a failure writes nothing, and an exposure failure carries no judge or blind identifiers (either would disclose private-map structure once combined with the ledger). `deliver` treats the sealed receipt as evidence rather than authority: it replays the complete bundle validation and every semantic gate check — exactly what `verify` runs — against the embedded ledger (a hand-fabricated receipt cannot authorize a delivery `verify` would refuse, even over a consistently tampered bundle), verifies the packet's sealed inventory hash, and publishes exactly one isolated packet per verified assignment into a destination outside the run and gate directories that the gate itself creates (`mkdir` as the atomic desk claim: a new delivery refuses any pre-existing destination, so two racing deliveries cannot both own one desk). Each assignment is claimed by a write-once schema-validated marker (`first_round_delivery_marker.schema.json`) and closed by a write-once completion marker after publication — an interrupted identical delivery may exact-resume once, but a completed assignment is never re-issued (accepted residual: a crash between publication and the completion marker leaves that assignment resumable with identical bytes for the same judge, affecting no blinding property); the destination is checked before the marker claim so a refused destination never burns an assignment, and a post-publication isolation re-scan remains as defense in depth, so a desk is certified only by a successful exit over exactly one packet. Gate artifacts live in a sibling `<run>-assignment-gate/` directory, so the runner's exact run-inventory validation stays green (pinned by regression). Twenty tests build a genuine finalized 48-packet bundle and cover pass/idempotence/receipt-conflict, pair and cross-experiment exposure (mutation-verified), coverage, roster, binding drift, loosened private-map modes, tampered-bundle replay, delivery duplication/misdirection/drift, and receipt-schema validity. The gate proves structural exposure constraints only: it cannot authenticate that two handles are distinct people, and judge/adjudicator independence remains a procedural responsibility. Two bounded weaknesses under concurrent operator misuse are documented and accepted (a lost atomic desk claim needs manual marker recovery; concurrent identical resumes can both report success — neither affects exposure, certification, or re-issue guarantees). Unlike the no-call runner, the gate is not yet pinned by the suite's spec-consistency contract lint (schema closedness and the offline claim are covered by tests, not CI AST pins); extending that lint is deliberate follow-up work. No subject, actor, judge, adjudicator, model, or network ran; #659 stays open pending externally recorded sessions, human judges, and the per-mechanism baseline.
 ## [3.20.0] - 2026-08-14 — Evidence-bound review and revision, contained transports, hermetic evaluation substrates
+
+> **Added and hardened:** v3.20.0 strengthens evidence and authority boundaries across review, revision, citation, human-subjects, and submission workflows. It adds source-bound evidence rows, author-controlled non-ranking revision roadmaps, replay-bound consistency and content-coverage advisories, unified review criteria, human-subjects authority and pathway traces, deterministic submission and correspondence artifacts, optional post-run adjudication observability, a contained ChatGPT-subscription citation transport, an offline claim-standing candidate ledger, and an opt-in process-isolated PDF text/OCR advisory. Reviewer and re-review contracts gain role-scoped scoring, evidence-before-persuasion gates, and tighter provenance and transport handling; clinical reporting, Chinese-literature resolution, plugin aliases, Pi, and platform guidance are also extended. New evaluation assets include frozen hermetic fixtures and no-call envelopes for revision drift, role topology, ideation diversity, indirect prompt injection, and tortured-phrase screening. Unless a retained measured cohort is explicitly cited in `CHANGELOG.md`, these are protocol or synthetic/offline conformance artifacts, not evidence of safety, efficacy, accuracy, or behavioral improvement. Suite/pipeline → v3.20.0; deep-research → v2.12.0; academic-paper → v3.3.0; academic-paper-reviewer → v1.11.0.
 
 ### Added
 
@@ -303,6 +315,8 @@ All notable changes to this project will be documented in this file.
 
 ## [3.19.0] - 2026-07-22 — Revision-round claim-drift guards, PDF read-integrity preflight, read-scope attestation
 
+> **Added:** three advisory-or-opt-in integrity layers plus a launcher fix. **Revision-round claim-drift guards (#569/#570):** a claim-strength ladder ("no silent move along `is associated with < predicts < causes` without an authorizing roadmap item") wired into revision drafting and a new advisory Phase E6, plus a deterministic numeric/citation token-conservation checker — together they stand watch over the epistemic and token halves of the #390 honest-claim residual (a touched block's interior had no fidelity check; whether the guards reduce the measured drift awaits the #652 re-measurement). Baseline measured on the current frontier model first (`evals/heldout/revision_claim_drift/`), mechanism shape credited to [Yila-AI/sci-ssci-skills](https://github.com/Yila-AI/sci-ssci-skills). **PDF read-integrity preflight (#512):** a three-signal page-count cross-check so a truncated / mispaginated PDF read cannot mint an apparently-valid `page` anchor. **`read_scope` attestation (#513):** an optional honest-coverage declaration on the human-read ledger (`full_text` / `sections` / `abstract_only` / `toc_only`) that makes the finalizer's citation promotion read-scope-aware. **Launcher watchdog fix (#545):** removes a pipe-stall that blocked every healthy PreToolUse write-scope-guard call for the full wall-clock bound. Suite → v3.19.0; the three underlying skill versions are unchanged.
+
 ### Added
 
 - **PDF read-integrity preflight for locally-extracted page anchors (#512).** Closes the local-extraction-channel gap between the v3.7.3 locator-presence rules and the #182 existence gate: PDF readers silently truncate documents with malformed cross-reference tables, so a real, correctly-cited source could acquire an apparently valid `page` anchor from a truncated or mispaginated read and pass every existing gate. New `scripts/pdf_read_preflight.py` (pypdf-backed with the `verify_submission_package.py` ImportError-degradation precedent; not a "grep the first `/Count`" check — xref streams, `/Prev` chains, and object streams ride pypdf's machinery) compares three independent page-count signals — the raw root page-tree `/Count`, the script's own cycle-guarded `/Kids`-walk leaf count, and pypdf's flattened page list — and emits a JSON sidecar (`pdf_read_preflight/1`: verdict + file sha256 + the three counts + captured parser-repair warnings). `PASS` requires all three to agree with zero parser warnings; count disagreement is `FAIL` (the truncation/mispagination signal itself); everything the preflight cannot vouch for — encryption, cycles, repair chatter even with agreeing counts, missing pypdf — is `UNAVAILABLE`. Enforcement sits upstream of the writers per the issue: the three v3.7.3 emitters gain firm rule R-L3-1-D (a locally-read PDF's `page` anchor requires a `PASS` sidecar in context; otherwise `anchor:none` or an independently-visible locator + explicit warning), `claim_ref_alignment_audit_agent` Step 4 gains the precondition bound to the existing `ref_retrieval_method == manual_pdf` discriminator (sidecars join on `ref_slug`; the sha256 is confirmatory until #513 supplies an anchor-side hash field) with the `[pdf_read_integrity_unverified]` advisory rationale tag (never an UNSUPPORTED verdict on this basis alone), and the §3.6 orchestrator — the layer that CAN run Bash — runs the preflight once per locally-read corpus PDF and passes sidecars into audit and drafting context. Cross-model review rounds 1-8 (3 P1 + 2 P2, then 7, 2, 1, 2, 1, 1, 1 P1, all closed): rounds 6-8 finished the header scan's lexer fidelity (ten-digit object numbers; %-comment token separators; signed and zero-padded integer tokens — the scan now implements the full ISO 32000 separator AND numeric-token model, closing the lexical-obfuscation family structurally); round 5 extended the header scan's boundary/separator class to full ISO 32000 whitespace (NUL-preceded replacement headers are seen) and added the compressed-object variant (a direct raw replacement of an object whose active copy lives inside an object stream, appended after its container with a stale startxref, now vetoes PASS; a raw copy before the container is the legitimate superseded-into-objstm case and stays clean); round 4 fixed the object-header scan for ISO-valid bare-CR line endings (Python's multiline anchor does not treat CR as a line start, which blinded both xref-coverage checks on CR-only files); round 3 hardened the stale-startxref check against redefined-object-number variants (the newest raw copy of every directly-stored object must be the copy the active xref chain references, with a calibration guard for offset-shifted files) and switched the trailing-data predicate to ISO 32000 §7.2.2 PDF whitespace (NUL padding passes, vertical tab is data). Round 2 added the stale-startxref xref-coverage cross-check (raw object headers absent from the active xref chain veto PASS), plus a strict integer-object requirement on `/Count` (float/string coercion rejected), the FAIL-vs-UNAVAILABLE split in R-L3-1-D (positive truncation evidence refuses the page anchor; mere absence of verification — standalone dispatch, no-Python installs, unpreflighted files — is an explicit-warning advisory, never a manufactured refusal), the `pdf_preflight_verdict` key on citations handed to `retrieve_fn` (content-based passage selection BEFORE the judge reads a page-scoped passage), the orchestrator sha256 freshness re-check + cross-runtime coverage note, and the tagged-SUPPORTED row in the operational finalizer matrix. Round 1: trailing-data-after-final-`%%EOF` veto (a truncated incremental update otherwise PASSes on the older revision's agreeing counts); preflight moved to Stage 1 corpus intake, independent of the opt-in audit mode (an audit-gated preflight left default-mode runs sidecar-less at R-L3-1-D, gate-refusing valid citations); the executable-path enforcement — `run_audit_pipeline(pdf_preflight_sidecars=...)` tags rows at the Step-6 emission point after cache resolution so cache hits cannot bypass, and the finalizer surfaces `[LOW-WARN-PDF-READ-INTEGRITY-UNVERIFIED]` on SUPPORTED rows so content-based-fallback support does not render the advisory invisible; parser warnings survive early exits (appended in the capture handler's finally). 18-test synthetic-PDF suite + 8 pipeline/3 finalizer tests (no binary fixtures); `agents/` mirrors re-synced; the #528 orchestrator content lock re-pinned per its documented procedure. Provenance: mechanism observed in kengo006/alexandria; ranked P1 of three in the 2026-07-11 dual-track adoption review. Spec: `docs/design/2026-07-20-512-pdf-read-preflight-spec.md`.
@@ -318,6 +332,8 @@ All notable changes to this project will be documented in this file.
 
 ## [3.18.0] - 2026-07-18 — Self-improvement survey integration: advisory quality layers, risk-stratified claim gate, cross-model reviewer & judge tracks, cache re-validation
 
+> **Added:** eight quality mechanisms motivated by Ren et al. (2026, arXiv:2607.13104, *Self-Improvements in Modern Agentic Systems: A Survey*): per-sub-question scope bindings + a Phase E scope-conformance advisory (#547) and search-bounded novelty claims + an E5 novelty classification (#548) — both advisory-only, displayed per-row at the MANDATORY integrity checkpoints; risk-stratified Stage 2.5 claim verification (100% of HIGH-IMPACT claims + a random sentinel, extending the #518 reference tiers to claim level, #549); cache-through wired into the citation-verification gate with an age-based staleness advisory + opt-in live re-validation (#541, closing the v3.11 Delta-2 forward-decl); a consent-gated cross-model reviewer track — one seat of the fixed five-seat panel on the second model family (#540) — and re-review judge independence with a transparent Judge Record (#539); a metamorphic routing/gate robustness eval seed set (#550), which also shipped the reviewer skill's missing zh-TW trigger aliases; and the survey itself as a third human-in-the-loop literature anchor (#542). Independently of the survey track, plugin installs also gain the #544 SessionStart update-available reminder (`/plugin update` announce when behind; `ARS_UPDATE_CHECK=0` kill switch). `academic-pipeline` tracks the suite at v3.18.0; the other three skill versions are unchanged.
+
 ### Added
 
 - **Re-review judge independence + judge record (#539).** The Stage 3' re-review judges revisions on the same model family that drove them — an analogous correlated-judge configuration to the one §8.1.2 warns about. When cross-model verification is active (configured + consented), every Priority 1 roadmap item's addressed-ness verdict gets an independent judgment-specific cross-model pass (provider transport reused, no grounding gate, closed verdict set incl. MADE_WORSE, non-conforming → `unavailable`); results land in the R&R matrix's Cross-model column (`agree` / `diverges: <verdict>` / `unavailable` / `not_configured`) — `diverges` is a Phase 2 synthesis review trigger, never a vote. Single-family runs carry a never-omitted verbatim disclosure line. Both cases emit a Judge Record (verification judge; Round-1 panel provenance copied seat-level from the #540 provenance block — carried into Stage 3' via the Editorial Decision Letter, now named on all handoff surfaces incl. the re-hashed state-machine lock; prompt/rubric surfaces; evidence seen; judging budget separate from generation) — Schema 6 optional `judge_record`, Schema 11 optional Priority-1 row fields. External motivation: Ren et al. (2026, arXiv:2607.13104 §8.1.2).
@@ -331,6 +347,8 @@ All notable changes to this project will be documented in this file.
 - **README motivation + calibration docs: self-improvement survey anchor (#542).** The README / `README.zh-TW.md` "Why human-in-the-loop, not full automation?" sections gain Ren et al. (2026, arXiv:2607.13104, *Self-Improvements in Modern Agentic Systems: A Survey*) as a third, survey-level literature anchor — §7.4 scientific-verification limits, §5.1–§5.2 human-auditing safeguards, §2.2 EURISKO user-as-external-evaluation-signal precedent — framed explicitly as design rationale, not empirical proof. `academic-paper-reviewer/references/calibration_mode_protocol.md` § Why this mode exists cites the survey's §8.1.2 evaluator-independence + calibration-against-a-verifiable-subset safeguards as the external statement of what calibration mode instantiates. The survey's actionable deltas stay tracked as issues (#539–#541, #547–#550). External motivation: Ren et al. arXiv:2607.13104 (2026-07).
 
 ## [3.17.0] - 2026-07-16 — Pipeline boundary semantics, canonical cross-model handoff envelope, executable panel checker
+
+> **Fixed:** two under-specified pipeline boundaries closed (#528) — Stage 5's "before finalization: always MANDATORY" now names exactly one checkpoint (the entry gate between Stage 4.5 PASS and Stage 5 dispatch), and Stage 6 gains a defined terminal-acknowledgement vocabulary (`finish`/`end`/`done`/`confirm`) plus an explicit decline path; all five pipeline surfaces now carry whole-file sha256 content locks (#529) so any further prompt-surface drift fails CI until the hash is updated in the same commit. Blind-checkpoint transport moved to the dispatching layer (#523) — the Bucket A checkpoint owners were being told to execute cross-model transport themselves, which is unexecutable under the runtime Bash deny; the dispatching layer now owns the transport call. **Added:** a canonical `[CROSS-MODEL-HANDOFF v1]` envelope + normative Python grammar (#527) replaces prose-only enforcement of the owner→dispatcher→owner transport path, pinning agreement/divergence/malformed-result routing across all three checkpoint owners. A defrift lock for the #514 tools allowlist (#524, 74 mutation tests) closes the drift path where a symmetric edit to an agent + its mirror could silently re-add Bash. An executable sprint-contract panel checker (#510) recomputes both v3.6.2 decision layers from the primary artifacts and catches a transcription error in the majority-vote formula. A machine-readable degradation registry (#511 Part A) indexes every graceful-degradation mechanism in the suite, plus a hermetic transport-fixture integration test for the citation-verification gate (#511 Part B) exercising all four resolver clients end-to-end against checked-in synthetic API bodies. `academic-pipeline` tracks the suite at v3.17.0; the other three skill versions are unchanged.
 
 ### Security
 
@@ -352,6 +370,8 @@ All notable changes to this project will be documented in this file.
 - **Executable sprint-contract panel checker (#510).** New `scripts/check_panel_synthesis.py` recomputes both v3.6.2 decision layers from the primary artifacts — Layer 1: each reviewer's own scores → declared fired conditions → own `## Editorial Decision`; Layer 2: the panel scoring matrix → quantifier thresholds → precedence → the synthesizer's declared `fired_conditions:` set AND emitted decision — and fails on mismatch (self-consistency gate on LLM output, not a correctness gate). Exit codes are classified by artifact source (1 synthesis-layer → retry synthesizer once; 2 contract/infra → abort; 3 reviewer-report → unusable reviewer ⇒ `[PANEL-SHRUNK]`; precedence 2>3>1), with a `--layer1-only` mode for per-reviewer verification at Phase-2 lint time. The §9 expression vocabulary is implemented as a closed grammar (unknown forms, orphan dimension literals, and empty priority scopes all fail closed — no vacuous truth), report/synthesis output grammars are pinned in the five reviewer agents + synthesizer prompts (role line, `score:`/`fired:` lines, exactly-once decision line, fenced-code stripped, duplicate sections rejected), and cardinality is guarded against duplicate paths/byte-identical reports/role-set forgery. Ships with protocol §8.1 runtime wiring, the zero-fired accept-grade fallback aligned across all surfaces (derived from the contract's F0 action, never hardcoded), and the majority quantifier corrected from a `⌈N/2⌉+1` transcription error to simple majority `⌊N/2⌋+1` (evidence chain in #531 — every concrete threshold in the v3.6.2 design says 3/5, 2/3). Design: `docs/design/2026-07-15-510-panel-synthesis-checker-design.md`; cross-model design review (gpt-5.6-sol xhigh) drove the grammar pinning, fired-set verification, and exit-code classification.
 
 ## [3.16.0] - 2026-07-12 — Model tiering, cross-model gate hardening, WP advisory sharpening
+
+> **Added:** opt-in model tiering (#517) — a new `ARS_MODEL_TIERING` switch with two directions (`economy` dispatches the 13 execution-type agents one tier below the session model, floor Opus-class; `quality-boost` steps the judgment-type agents at the integrity gates and final-review surfaces up to the frontier tier); default unset stays byte-equivalent, with the frozen 39-agent classification pinned by a new manifest + lint. Cross-model gate hardening (#518) — risk-stratified verification sampling (HIGH-IMPACT references verified 100% at both gates), blind disagreement checkpoints at the two irreversible decisions (design freeze + final editorial decision), an id-status allowlist for verifier model ids, and a promotion bakeoff protocol; the once-planned generic 6th reviewer is retired, not deferred. GPT-5.6 Sol listed as a provisional cross-model verifier with explicit reasoning-effort control (#515). Korean trigger keywords + routing boundary fixtures by devCharlotte (#452/#509). A CARS introduction-rhetoric + title-crafting reference for the paper writer (#500). **Changed:** the WP research-question advisory generalizes beyond its 20-shell table via the noun-swap test (#501) and a sharpened exemption clause that catches decorated title-form shells (#505) — held-out miss rate 0.34–0.38 → 0.094 with false-fire 0/16 preserved; reviewer calibration protocol now documents the LLM-as-judge leniency direction (FARS anchor, #484); OpenAlex API-key auth + budget-aware 429 handling + arXiv ToU-aligned backoff (#495/#496). **Docs:** THIRD_PARTY.md community directory (#497/#498). `academic-pipeline` tracks the suite at v3.16.0; the other three skill versions are unchanged.
 
 ### Added
 
@@ -383,6 +403,8 @@ All notable changes to this project will be documented in this file.
 
 ## [3.15.0] - 2026-07-04 — Release-gate hardening, prompt-debt retirement round 2, defrift locks
 
+> A release-discipline-and-hygiene release; no skill-behavior changes. **Added:** three CI gates — the CHANGELOG-covers-merges pre-tag gate (#483), version-consistency invariants 9-11 plus a tag-time re-run gate (#487), and a command-invariants gate pinning the SessionStart announce list to the actual 16-command inventory (#486) — plus two defrift locks: the Phase Boundary enforcement sentence is pinned verbatim across all 23 Bucket A agent blocks, and the SETUP cross-model examples are pinned to each other and to the canonical model tables (#491 → #492). **Changed:** prompt-debt retirement round 2 deep-scans the 17 agents the first pass deferred (#489 → #490): two live self-contradictions fixed in both socratic_mentor agents (stale 15-round quit rules vs the documented typical 20-30-round run), the repo-wide stale enforcement-status sentence corrected at 29 surfaces, few-shot and duplicated-process scaffolds trimmed across 7 agents — verified by a 4-batch parallel audit + independent codex cross-model challenge; audit report under `audits/`. **Fixed:** DOI badge served from shields.io (#482). `academic-pipeline` tracks the suite at v3.15.0; the other three skill versions are unchanged.
+
 ### Added
 
 - **Phase Boundary enforcement-sentence defrift lock + SETUP cross-model parity lint + local-manifest gap closure (#491 → #492).** `scripts/check_v3_9_2_phase_boundary.py` gains invariant 4: every Bucket A block's enforcement paragraph must carry the canonical sentence verbatim (`CANONICAL_ENFORCEMENT`, version-matched v3.9.2/v3.9.4; per-file tails after the sentence stay free). Motivation: the pre-#294 copy of that sentence sat factually stale across 29 surfaces for a month while this very lint iterated those exact blocks pinning only the marker prefix — the drift class now fails CI, with 7 mutation tests including the literal stale sentence as the regression case. New `scripts/check_setup_cross_model_parity.py` (+9 tests, wired into spec-consistency.yml) pins the `docs/SETUP.md` / `docs/SETUP.zh-TW.md` `ARS_CROSS_MODEL` examples to each other and to the canonical model tables in `shared/cross_model_verification.md` — membership is scoped to "API ID" table columns after a codex-review P1 (legacy ids backticked in the accepted-for-existing-setups note must not count as recommended) and excludes glob prefix tokens per the re-review P2, failing closed when extraction finds nothing. The local pytest manifest gains `test_check_v3_9_4_temporal_verification.py` (58 → 60 entries): its CI-only coverage is what made #490 local-green/CI-red on the bibliography_agent sha256 F2 ownership pin. `tests/test_helpers.py` gains `load_module_from_path()`; the enforcement-sentence mechanism is cross-referenced with the `firm_rules.md` canonical-block framework in both directions (deliberately separate: factual status prose vs behavioral firm rules).
@@ -404,6 +426,8 @@ All notable changes to this project will be documented in this file.
 - **DOI badge served from shields.io (#482).** Zenodo's badge endpoint rate-limits GitHub's camo image proxy (HTTP 429), intermittently rendering the README DOI badge as a broken image even though the DOI resolves fine. The badge image is now a static shields.io badge in all five READMEs; the link target stays the concept DOI (`10.5281/zenodo.20696614`), which always resolves to the latest version.
 
 ## [3.14.0] - 2026-07-02 — Claude Science importability, eval-comment rendering, prompt-debt retirement
+
+> A portability-and-polish release; no skill-behavior changes. **Added:** Claude Science importability — the marketplace manifest declares explicit skill paths, so GitHub-API importers that cannot traverse the symlinked `skills/` directory (Claude Science "Import from GitHub", Windows checkouts) now find all four skills; verified end-to-end on Claude Science, with an import guide in README + SETUP (#480). Eval-harness PR comments render as a one-line verdict + per-task table with the raw JSON folded into `<details>`, replacing the raw report dump — display layer only, gate logic byte-identical (#479). **Changed:** expired writing-harness scaffolds retired from four writer-surface agents after the 2026-07 harness-retirement audit (#476/#477 → #478, net −111 prompt lines); a remind-don't-block Platform Port Reminder surfaces the platform-ports policy when a PR adds a new top-level directory (#473). **Docs:** native-reviewed Korean README by devCharlotte (#469/#471); GitHub Copilot repository instructions (#465); auto permission mode recommended over Skip Permissions (#464). The accumulated `[Unreleased]` backlog (16 entries whose code shipped before the v3.13.0 tag — diff/patch revision mode #390, submission-package verifier #394, eval gold sets #215/#216, and more) is rolled into the versioned record; see `CHANGELOG.md`. `academic-pipeline` tracks the suite at v3.14.0; the other three skill versions are unchanged.
 
 ### Added
 
@@ -449,6 +473,8 @@ All notable changes to this project will be documented in this file.
 
 ## [3.13.0] - 2026-06-18 — Hook portability, provider-agnostic verification, guard correctness
 
+> A minor release hardening the install/runtime surface and extending cross-model reach. **Fixes:** the write-scope guard no longer false-denies a user's own `CLAUDE.md` under the git-clone + symlink install layout (#459, closing the residual half of #448/#449 — `CLAUDE.md` is documentation, not a load-bearing enforcement file, so it leaves the infra-protected list while every load-bearing file stays protected); Windows Python hook portability + graceful no-Python degradation via a cross-platform `hooks/run_guard.sh` launcher that rejects the 0-byte Microsoft Store `python3` stub and never spams the hook log (#454); `draft_writer` dual-phase static union documented + POSIX-safe Windows path matching (#451). **Added:** provider-agnostic cross-model verification accepting OpenAI-compatible endpoints (MiMo, DeepSeek, self-hosted) alongside grounded first-party OpenAI, which is never silently downgraded (#455); an opt-in Socratic adjacent-framing probe (STORM-borrowed perspective expansion, `ARS_SOCRATIC_ADJACENT_PROBE=1`, default OFF, prose-layer only — `deep-research` 2.10.0 → 2.11.0) (#461). `academic-pipeline` tracks the suite at v3.13.0; `academic-paper` and `academic-paper-reviewer` are unchanged. See `CHANGELOG.md` for the per-issue detail.
+
 ### Fixed
 
 - **Write-scope guard: `CLAUDE.md` dropped from infra-protected globs (#459).** Closes the residual half of #448/#449. #449 anchored infra self-protection on `plugin_root` (fixing #448 for the plugin install layout), but under the traditional git-clone + symlink-into-`~/.claude/skills` layout there is no `CLAUDE_PLUGIN_ROOT`, the `plugin_root` fallback resolves to the cloned repo root, and a user working IN that repo has `plugin_root == workspace_root` — so the bare `CLAUDE.md` / `.claude/CLAUDE.md` infra globs matched the user's own `CLAUDE.md` and re-denied it (the #448 bug, on a layout #449 cannot distinguish: home turf and clone-as-user are the same runtime condition). Fix (codex-consulted, Option 2): remove `CLAUDE.md` and `.claude/CLAUDE.md` from `INFRA_PROTECTED_GLOBS`. Unlike every other infra entry, `CLAUDE.md` is NOT load-bearing — it documents the guard binding, it is not the binding, so editing it cannot fail the guard open. The load-bearing enforcement files (guard script, manifest, hooks, plugin metadata, agent frontmatter, lint) stay protected on home turf; protecting ARS's own instruction doc from agent edits belongs in review/CI, not the write-scope guard. 3 new tests + 1 retargeted, mutation-verified (re-adding the globs fails the new tests); 73 guard tests pass.
@@ -467,6 +493,8 @@ All notable changes to this project will be documented in this file.
 
 ## [3.12.1] - 2026-06-15 — Reviewer-response triage modes (PR #433 integration)
 
+> A patch release folding the genuinely-novel parts of an external contribution into existing skills as modes, per ARS's mode-based architecture. **New modes:** `deep-research` `three-way-scan` — a lightweight WHY/HOW/WHAT paper-comparison triage between `quick` and `lit-review`, with per-paper shortlists + a cross-paper synthesis (`deep-research` 2.9.4 → 2.10.0); `academic-paper` `rebuttal-audit` — standalone advisory QA of an author's existing rebuttal/response draft against the reviewer comments (per-comment coverage table + gap list + tone/evidence/misread risk flags), which generates nothing and explicitly suppresses Schema 11 / Material Passport writes / `ready_to_submit` when run standalone (enforced by a `check_rebuttal_audit_guard()` lint with mutation coverage); plus a `revision-coach` scope extension to pushback/disagreement posture and non-journal scopes, and `/ars-3w` + `/ars-rebuttal-audit` slash commands. Routed by input shape: reviewer comments AND a draft → `rebuttal-audit`; comments only → `revision-coach`. Integrated from [@Yaobin29](https://github.com/Yaobin29)'s [PR #433](https://github.com/Imbad0202/academic-research-skills/pull/433). Suite mode count 25 → 27 (still 4 skills). See `CHANGELOG.md` for the per-issue detail.
+
 ### Added
 
 - **`deep-research` `three-way-scan` mode** — a lightweight WHY/HOW/WHAT paper-comparison triage that sits between `quick` and `lit-review`. Produces a per-paper WHY/HOW/WHAT shortlist plus a cross-paper synthesis (common WHY, divergent HOW, strongest WHAT, unresolved gap), and escalates to `lit-review` / `systematic-review` for full coverage. (`deep-research` 2.9.4 → 2.10.0)
@@ -479,6 +507,8 @@ All notable changes to this project will be documented in this file.
 Integrated from [@Yaobin29](https://github.com/Yaobin29)'s [PR #433](https://github.com/Imbad0202/academic-research-skills/pull/433). The original PR proposed a standalone `reviewer-response` skill; this release folds its genuinely-novel parts into existing skills as modes, per ARS's mode-based architecture. The `rebuttal-audit` mode rescues that PR's `audit` concept. Suite mode count 25 → 27 (still 4 skills).
 
 ## [3.12.0] - 2026-06-08 — Kong auto-research feature track: experiment provenance, figure fidelity, cross-paper contradiction, partial-evidence decomposition
+
+> A minor release shipping the Kong et al. (2026, arXiv:2605.18661) auto-research feature track plus the partial-evidence-trap decomposition work, each reviewed and merged independently. **New features:** Experiment Provenance Intake + claim→experiment alignment — a schema-first evidence-ledger layer for experiment-backed claims, intake-and-alignment only (the scholar runs experiments externally; ARS never executes them) (#260); a Figure/Table Fidelity Gate that checks whether a caption's interpretation follows from the data and whether the manuscript cites the artifact for a claim it supports (#261); a structured Cross-Paper Contradiction inventory making assessed paper-pairs enumerable for scholar confirmation (#262); and sub-claim decomposition before judgment in both the citation judge (#213) and the editorial synthesizer (#214), closing the §F.3.2 partial-evidence trap on both layers. **Guidance + interpretive layer:** concise-output + pressure-stable boundary reinforcement across the report-producing reviewers (#274); a same-family / rubric-aware calibration epistemic note (#273); the retrieved-content instruction/data boundary stated as a standing principle (#367). **Negative scope:** the Kong META (#255) closed with a "Rejected mechanisms" section in `POSITIONING.md` enumerating the five autonomous mechanisms ARS does not do, plus two Tier D design-lesson docs. **Release-discipline lint:** version-consistency invariants 5–7 (#357) and ARCHITECTURE component-version policing (#345). Plus correctness fixes across the cross-model grounding guards (#346 / #349 / #351), the citation-gate cache key and rationale bounding (#359 / #360 / #361), the eval gold set (#250), and ACL/EMNLP disclosure regrounding (#242). The new schemas, manifest field, and all invariants are additive and backward-compatible. `academic-pipeline` tracks the suite at v3.12.0; the other three skill versions are unchanged. See `CHANGELOG.md` for the per-issue detail.
 
 ### Added
 
@@ -509,6 +539,8 @@ Integrated from [@Yaobin29](https://github.com/Yaobin29)'s [PR #433](https://git
 - **Stale Opus 4.7 primary-model strings retired + repro_lock run-time fields documented as placeholders (#347).** The 2026-06 harness-retirement audit (#301) found the agent prompts carry zero expired scaffolds, but two `shared/` files still pinned Opus 4.7 as the primary model after the 4.7→4.8 migration, and a `repro_lock` example hard-coded run-time snapshot values that readers copy verbatim. `shared/cross_model_verification.md`: primary model → Opus 4.8, with the primary "API ID" cell now reflecting that it is the inherited Claude Code session model rather than asserting an unverified `claude-opus-4-8` id string (cross-verifier ids `gpt-5.4*` / `gemini-3.1-pro-preview` confirmed current and left concrete), plus a note documenting why temperature is 0.1 (deterministic fact-check), closing the "undocumented sampling override" read. `shared/artifact_reproducibility_pattern.md`: the `repro_lock` example block uses placeholders for the three run-time snapshot fields (`ars_version`, `model.id`, `s2_api_protocol_version`) so a copy-paste records the actual run, not a stale literal (feature-introduction labels like `v3.3.5+` stay concrete). `examples/passport_with_repro_lock.yaml` left unchanged — a self-consistent historical snapshot, not a stale current-marker.
 
 ## [3.11.1] - 2026-06-06 — Post-ship correctness, hardening, and provenance fixes (#182 follow-up)
+
+> A patch release rolling up the post-ship fixes surfaced after v3.11.0, each reviewed and merged independently: a cross-model consent-gate extension to the integrity-verification + collaboration-depth paths (#322), a per-entry OpenAlex + Crossref backfill parallelization (#138), and seven correctness/hardening fixes across the citation-existence gate, the v3.10 policy layer, the eval harness, the domain evidence profiles, and the #310 security-boundary edge cases (#323 / #327 / #328 / #329 / #331 / #332 / #333) — including two P1 fixes (#327 domain-profile activation on the no-handoff path, #328 the eval-harness per-class threshold gate). No new features and no breaking schema changes. See `CHANGELOG.md` for the per-issue detail.
 
 A patch release rolling up the post-ship advisory fixes surfaced after v3.11.0: a
 cross-model consent-gate extension to the integrity + collaboration paths (#322), a
@@ -543,6 +575,8 @@ lockstep; see the #332 entry below for the full C-V4 rationale.
 - **Citation-existence advisory visibility + terminal-marker grammar reconciliation (#333).** Two P2 self-consistency issues in the #182 citation-existence gate, neither a gate hole (the formatter's generic `severity=HIGH-BLOCK` refusal catches the strict token regardless). **Item 1 (#342):** the spec was internally self-contradictory — C-V6(b) claimed an advisory `lookup_verified == false` is BOTH "byte-equivalent to v3.9.x" AND "co-emitted in the ref marker", impossible for a firing row, and a second advisory marker token has nowhere to go (the v3.7.3 grammar caps one advisory slot, already taken by contamination's `CONTAMINATED-*` suffix). Resolved by a third path: the marker stays byte-equivalent (no new suffix, no grammar churn), and the advisory's visibility is carried in the **output package** instead — `formatter_agent.md` now requires a mandatory `provenance_summary.md` `Citation Existence Advisories` section listing every advisory `false` row, and `provenance_summary.md` is added to the Output Package Files Delivered table so the carrier can't be dropped. Every "co-emitted in/alongside the advisory annotation" claim was removed from spec §0 / C-V6(b)/(c)/(e) / Rule 12 (the contamination strict clause, which legitimately does co-emit a suffix, is untouched); new C-V6(b) lint in `check_v3_10_policy.py` + 3 mutation tests. **Item 2 (#338):** the canonical "Two marker grammar shapes" terminal enumeration in `pipeline_orchestrator_agent.md` listed `policy=<contamination_triangulation|temporal_integrity>`, omitting `citation_existence` even though the finalizer prose just below emits `policy=citation_existence` tokens; the enumeration is extended and the `mode=` clause reconciled per-policy (`citation_existence` is `strict`-only), + 2 parser fixtures.
 
 ## [3.11.0] - 2026-06-04 — Deterministic citation verification gate (#182)
+
+> Adds a **deterministic citation-existence verification gate** that runs independently of LLM peer review. Every cited reference is cross-checked against up to four bibliographic indexes — Semantic Scholar + OpenAlex + Crossref + the new **arXiv resolver** (`scripts/arxiv_client.py`, no API key needed) — and a per-citation `lookup_verified` status (`{true, false, unresolvable}`) is written to a unified summary, so a fabricated citation with a provably-bogus DOI/arXiv ID is caught by lookup rather than by hoping a reviewer agent notices. The gate **inherits the v3.10 `terminal_policies` opt-in model**: detection always runs, but a `lookup_verified == false` row is terminal **only** when a user opts into `terminal_policies.citation_existence == strict` — default behavior is advisory and `/ars-mark-read`-acknowledgeable. `false` is narrowed to **ID-keyed unmatched** (an exact DOI/arXiv lookup that provably fails), so legitimately-unindexed humanities / non-English / regional citations stay `unresolvable` and never block (a documented precision-over-recall tradeoff). Ships a persistent SQLite verification cache (`~/.cache/ars/verification.db`, 90-day TTL) with an `/ars-cache-invalidate` command, a standalone `verification_gate` API + `verify_passport.py` CLI, and a four-index extension (k=0..4) of the v3.9.0 contamination triangulation matrix (all advisory). `academic-pipeline` tracks the suite at v3.11.0; the other three skill versions are unchanged. Spec: `docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md` (§0 amendment + C-V6).
 
 The v3.11.0 minor release ships **#182 — a deterministic citation-existence verification gate**
 that runs independently of LLM peer review. It cross-checks every cited reference against up to
@@ -614,6 +648,8 @@ INVARIANT C-V6).
 
 ## [3.10.0] - 2026-06-01 — Triangulation policy layer, Kong et al. survey adoptions, eval harness, scoped-write guard
 
+> Minor release bundling: the opt-in contamination-triangulation **terminal policy layer** (#127 — default citation behavior byte-equivalent to v3.9.0); **Kong et al. 2026 survey adoptions** — the Rebuttal Commitment Ledger (#256/#266/#268/#269) and discipline-relative domain evidence profiles (#259); the **v3.10 measurement infrastructure** — a generalized eval gold set + ranking-lift CI gate (#184); the **scoped-write guard MVP** (#134) — a deterministic `PreToolUse` hook that fences the 23 single-phase agents to their own phase directory and denies them Bash (they use the Grep/Glob and structured editing tools instead); the `/ars-mark-read` plugin commands (#190) plus a broken-on-arrival fix (#195); a Simplified-Chinese README (#185); and CI hardening (#156/#155). `academic-paper` → v3.2.0 and `academic-paper-reviewer` → v1.10.0 for the Commitment-Ledger and domain-profile additions; `academic-pipeline` tracks the suite at v3.10.0. Default skill behavior is unchanged unless a strict policy mode is opted into; the one default-on change is the #134 guard, which constrains the fenced subagents, not user-facing outputs.
+
 The v3.10.0 minor release bundles the opt-in contamination-triangulation **terminal policy
 layer** (#127 PR-B — default behavior byte-equivalent to v3.9.0), several **Kong et al. 2026
 survey adoptions** (Rebuttal Commitment Ledger #256/#266/#268/#269, discipline-relative
@@ -672,6 +708,8 @@ this constrains those subagents, not the user-facing skill outputs.
 
 ## [3.9.4.2] - 2026-05-19 — Post-ship hotfix for PR #149 CI discipline gates
 
+> Codex post-ship review of PR #149 (7 CI discipline gates) surfaced 4 P2 findings; v3.9.4.2 hardens 3 of 4. F1: `harness-retirement-monthly.yml` adds `GH_REPO` so scheduled runs have repo context for `gh issue create`. F2: `release-cooldown.yml` filters `PREV_TAG` lookup to `v*` tags so non-release tags cannot bypass cooldown. F3: `release-cooldown.yml` also reads annotated tag subject + accepts `hot-fix` spelling (v3.9.2 was previously a false-negative hotfix). PR #157 follow-up: `[skip-cooldown]` override now read from both commit message AND annotated tag message (self-bootstrapping fix — this tag's cooldown bypass demonstrates F2+F3 work end-to-end). F4 (test-count-monotonic harden) reverted because it surfaced pre-existing `scripts/` package issue, tracked as #154 (since fixed by PR #158) + re-attempt #155. Closes #152. Follow-ups: #155, #156.
+
 **Trigger:** Codex post-ship review of PR #149 (7 CI discipline gates mechanizing the release-cycle review chain) surfaced 4 P2 findings. v3.9.4.2 hardens 3 of 4; the 4th (test-count-monotonic harden) was reverted because it surfaced a pre-existing `scripts/` package issue, tracked as #154 (since fixed by PR #158) and re-attempt #155.
 
 **CI gate hardening (PR #149 + #153):**
@@ -688,6 +726,8 @@ this constrains those subagents, not the user-facing skill outputs.
 ---
 
 ## [3.9.4.1] - 2026-05-19 — Post-ship hotfix for v3.9.4 temporal verification
+
+> Codex post-ship review of v3.9.4 caught 4 real bugs that per-task subagent reviewers missed. Hotfix patches all 4: (1) `audit()` now wires `citation_provenance` through to P2 and P4 — when a ref slug has `confidence: low` or `conflict`, the verifier emits `TEMPORAL-METADATA-MISSING` instead of using timeline dates as ground truth (spec §3.4 first-party safety check was broken). (2) `_date_to_interval` parses all schema-valid date shapes including `YYYY-MM` (Crossref month precision) and `YYYY-MM-DD..YYYY-MM-DD` (interval); v3.9.4 silently `ValueError`'d on these and skipped the check. (3) P4 now binds direct date captures when ref markers are absent — sentences like "The 2026 policy enabled the 2020 rollout" actually trigger now. (4) `citation_provenance.schema.json` `confidence:high` allOf now requires presence (`then.required`) in addition to non-null, closing the absent-property bypass. 1561 passed (+12 new tests vs v3.9.4 baseline, 0 regression). ARCHITECTURE.md aligned to current state (was stale at v3.8.0).
 
 **Trigger:** Codex post-ship review of v3.9.4 squash commit `af09cf5` surfaced 4 real bugs that per-task subagent reviewers missed during v3.9.4 implementation. v3.9.4 tag remains immutable; v3.9.4.1 patches the verifier and schema layer + brings docs in alignment.
 
@@ -706,6 +746,8 @@ this constrains those subagents, not the user-facing skill outputs.
 ---
 
 ## [3.9.4] - 2026-05-18 — Temporal Verification Layer (advisory)
+
+> Deterministic advisory verifier at the Phase 4 → 5 boundary covering 5 temporal failure modes (P1 retrospective arithmetic, P2 anachronistic citation, P3 comparator unmaterialized, P4 causal inversion, P5 deictic present). New Phase 2 sibling `timeline_extraction_agent` owns `phase2_investigation/timeline.yaml` + `phase2_investigation/citation_provenance.yaml`. Verifier script `scripts/temporal_integrity_audit.py` runs 5 passes deterministically. M3 Temporal Integrity Iron Rule added to `report_compiler_agent` + `draft_writer_agent`. M6-minimal: Crossref `issued` + pdftotext cover first-party verification. M7-minimal: date provenance + comparator materialization. M5-stub: user-declared `version_family_id` only. Zero modification to `literature_corpus_entry`, `claim_audit_result`, `claim_intent_manifest`. `bibliography_agent` unmodified (F2 invariant). 3 new sidecar schemas. Coverage estimate: 55-70% baseline / 65-75% with M7 minimal. 1549 passed (+44 new, 0 regression).
 
 **External motivation:** Issue #135 — LLM next-token objectives are systematically blind to deterministic factual classes including temporal ordering. v3.9.4 adds a deterministic advisory verifier at the Phase 4 → 5 boundary covering 5 failure modes.
 
@@ -728,6 +770,8 @@ Spec: `docs/design/2026-05-18-ars-v3.9.4-temporal-verification-spec.md`.
 ---
 
 ## [3.9.3] - 2026-05-18 — Housekeeping (#128 §1-3, §5-6)
+
+> Pure refactor + one latent-bug fix from the v3.9.0 `/simplify` review backlog. Extracts `scripts/_text_similarity.py` (3-way client dedup: normalize / similarity / threshold / retry constants) + `scripts/_passport_yaml.py` (2-way migration tool dedup: ruamel.yaml round-trip config) + private `_resolve_by_doi_then_title` helper (2-way resolver body dedup, §3.4 / §3.5 API surface preserved). Standardizes throttle measurement on `time.monotonic` across OpenAlex + Crossref (was `time.time`, NTP-unsafe), aligning with Semantic Scholar. Dual-path import infrastructure on all 5 module-level cross-imports (sibling-first, namespace-package fallback) preserves class identity for `SemanticScholarUnavailable` and bonus-fixes 2 latent-broken `import scripts.X` paths. 1505 passed (+23 new, 0 regression). #128 §4 (parallelize OA + CR per-entry) carried to #138.
 
 Pure refactor + one latent-bug fix carrying over from the v3.9.0 `/simplify` review backlog. The v3.9.0 cross-index triangulation client family (Semantic Scholar + OpenAlex + Crossref) shipped intentionally byte-equivalent across 3 client modules for code locality; now that the family is stable, the dedup prevents sibling drift when threshold tuning, normalization rules, or throttle measurement need adjustment.
 
@@ -761,6 +805,8 @@ Pure refactor + one latent-bug fix carrying over from the v3.9.0 `/simplify` rev
 ---
 
 ## [3.9.2] - 2026-05-18 — Phase boundary hot-fix (#133)
+
+> #133 closure (hot-fix layer). Long-term architectural fix tracked as v3.10 active conductor in #134. Adds: routing clarification gate in CLAUDE.md (cross-phase materials → clarify with a-d options, not silent dispatch), 22 single-phase agents get prompt hard fence (`## Phase Boundary (v3.9.2)`), 16 multi-phase / phase-orthogonal / cross-phase-meta agents intentionally NOT fenced (honest framing — prose placebo creates false-enforcement illusion), advisory verifier `scripts/check_pipeline_integrity.py` detects #133 pattern post-hoc. Behavioral smoke tests with cross-model spot-check (100% Opus 4.7, ≥75% Sonnet + GPT-5.5).
 
 Hot-fix for issue #133 (phase scope inflation). A user incident showed that ARS auto-dispatched a single-phase agent (`bibliography_agent`) when given ambiguous cross-phase input (pre-written abstract + pre-collected literature), and the dispatched agent then autonomously executed Phases 3-6, skipping mandatory independent crosschecks (DA / EIC / Ethics).
 
@@ -810,6 +856,8 @@ If you see a Bucket B multi-phase agent (devils_advocate, report_compiler, argum
 
 ## [3.9.1] - 2026-05-18 — v3.9.0 client hardening (#129 + #130)
 
+> v3.9.0 hot-fix. Wraps OpenAlex / Crossref response-read failures as `*Unavailable` (#129); guards `check_claim_audit_consistency` against non-string `manifest_id` (#130). No spec change.
+
 Two-bug hotfix surfaced by codex review of `ars-codex` PR #13 (vendor sync to v3.9.0 `74413a4`). Both bugs exist in v3.9.0 main: #129 violates the v3.9.0 §3.7 per-API degradation contract; #130 crashes a defensive lint on malformed input. Neither changes the spec or schema.
 
 ### Fixed
@@ -833,6 +881,12 @@ Two-bug hotfix surfaced by codex review of `ars-codex` PR #13 (vendor sync to v3
 ---
 
 ## [3.9.0] - 2026-05-17
+
+> **#102 cross-index triangulation measurement**
+>
+> #102 closure. v3.7.3 shipped single-index (Semantic Scholar) contamination detection; v3.9.0 extends to three-index triangulation (S2 + OpenAlex + Crossref) as **advisory evidence only**. Two new optional booleans (`openalex_unmatched`, `crossref_unmatched`) on `contamination_signals`; manual-entry not-rule extended symmetrically. Finalizer adds a 4-tier advisory matrix (k=0/1/2/3 over present `*_unmatched` fields) with v3.7.3 legacy `CONTAMINATED-UNMATCHED` preserved for the k=1/k_max=1 S2-only case. Formatter pass-through allowlist extends 3 → 9 suffixes; refusal rules 1-10 unchanged per R-L3-2-E. The policy layer (strict modes, hard-block tier, `venue_type` / `triangulation_policy`) is deferred to v3.10 per spec §2.3. k=3 marker is `CONTAMINATED-TRIANGULATION-UNMATCHED` (describes observable, not inferred cause). 3 new firm rules: R-L3-2-C (k computed over present fields), R-L3-2-D (no API-inferred classification), R-L3-2-E (refusal list unchanged; pass-through allowlist extends).
+>
+> **Migration:** v3.7.3 corpora — run `python scripts/migrate_literature_corpus_to_v3_9_0.py PATH` to backfill the two new fields. Pre-v3.7.3 corpora — run `migrate_literature_corpus_to_v3_7_3.py` FIRST, then v3.9.0 migration (daisy-chained per spec §3.7; the v3.9.0 tool only acts on entries that already carry `contamination_signals.semantic_scholar_unmatched`).
 
 ### Added
 - Cross-index triangulation as v3.7.3 contamination_signals Vector 3 (issue #102). Two new optional boolean fields (`openalex_unmatched`, `crossref_unmatched`) inside `literature_corpus_entry.schema.json`. Manual-entry not-rule extended symmetrically to forbid all three lookup fields (preprint flag remains exempt — heuristic, not lookup).
@@ -863,6 +917,15 @@ Two-bug hotfix surfaced by codex review of `ars-codex` PR #13 (vendor sync to v3
 ---
 
 ## [3.8.2] - 2026-05-17 — #118 uncited audit_tool_failure surface
+
+> #118 closure. The `ARS_CLAIM_AUDIT=1` uncited constraint-judging path used to silently substitute `{"judgment": "NOT_VIOLATED"}` on `JudgeInvocationError`, suppressing HIGH-WARN constraint checks on transient judge outage. v3.8.2 routes those failures through a dedicated `uncited_audit_failures[]` aggregate at MED-WARN advisory tier, mirroring the cited path INV-14 row but using a dedicated schema because `claim_audit_result.ref_slug` is required and the uncited path has no ref to bind. The four option-1..4 trade-offs from the #118 issue body landed on option 2 (new aggregate) — option 4 (re-raise and abort) was rejected for the audit-coverage hit on flaky judge endpoints.
+>
+> - **New `uncited_audit_failure.schema.json` aggregate** (spec §3.6). One entry per uncited sentence × manifest pair where the constraint judge raised `JudgeInvocationError`. Same fault-class enum as cited-path INV-14 (`judge_timeout` / `judge_api_error` / `judge_parse_error` / `cache_corruption` / `retrieval_api_error` / `retrieval_timeout` / `retrieval_network_error`). `rule_version: D4-c-v1-uaf-v1`.
+> - **UAF-INV-1..UAF-INV-6 lint** (spec §6 rule 4d). `finding_id` uniqueness, scoped_manifest_id cross-array integrity, (M, C) pair integrity when manifest_claim_id non-null, per-(sentence, manifest) dedup, rationale fault_class prefix, cross-aggregate exclusivity vs `constraint_violations[]`.
+> - **Finalizer §5 MED-WARN advisory row**: annotation `[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — <fault-class>]`, gate passes (retry-next-pass remediation). Formatter REFUSE list unchanged — UAF is advisory.
+> - **Pipeline integration** (`scripts/claim_audit_pipeline.py`): swallow site at line 1211-1224 removed; `JudgeInvocationError` now emits a UAF row + `continue`s to the next (sentence, manifest) pair. No fake NOT_VIOLATED reaches `constraint_violations[]`.
+> - **Tests**: 18 new (15 schema/lint TSUAFUncitedAuditFailureInvariants + 3 pipeline integration TP23UncitedJudgeOutageEmitsUAF). Baseline 694 → 712 tests, 0 regression.
+> - **Agent doc** (`academic-pipeline/agents/claim_ref_alignment_audit_agent.md`): Output emission table grows seventh row; Error handling table grows from 3 surfaces to 4 surfaces with the uncited-path UAF row.
 
 Fixes the #118 carry-over from #103 R3 codex P2 #5. The `ARS_CLAIM_AUDIT=1` uncited constraint-judging path used to silently substitute `{"judgment": "NOT_VIOLATED", "rationale": "..."}` on `JudgeInvocationError`, suppressing HIGH-WARN constraint checks on transient judge outage (judge timeout, API 5xx, network error, etc.). v3.8.2 routes those failures through a dedicated `uncited_audit_failures[]` aggregate at MED-WARN advisory tier, mirroring INV-14 semantics on the cited path but using a separate schema because `claim_audit_result.ref_slug` is required and the uncited path has no ref to bind.
 
@@ -926,6 +989,16 @@ Closes [#119](https://github.com/Imbad0202/academic-research-skills/issues/119).
 ---
 
 ## [3.8.0] - 2026-05-16 — L3 Claim-Faithfulness Locator + Audit (v3.7.3 + #103 paired milestone)
+
+> v3.7.3 + v3.8 close the L3 (claim-faithfulness) gap end-to-end. v3.7.3 ships the locator infrastructure — every citation carries a three-layer anchor so future audits can fetch the cited passage. v3.8 ships the audit pass that consumes those anchors, judges whether the cited source supports the claim, and gate-refuses HIGH-WARN violations at the formatter terminal hard gate. The release also bundles 5 audit-trail-shipped feature PRs accumulated since v3.7.0 (#104 / #105 / #108 / #111 / #115).
+>
+> - **#103 — `claim_ref_alignment_audit_agent`** (v3.8 PR #121). Opt-in (`ARS_CLAIM_AUDIT=1`, default OFF) Stage 4→5 audit agent. Judges every sampled citation against retrieved excerpt; emits `claim_audit_results[]` + `claim_intent_manifests[]` + `claim_drifts[]` + `uncited_assertions[]` + `constraint_violations[]` aggregates. 8-row finalizer matrix routes HIGH-WARN classes (CLAIM-NOT-SUPPORTED / NEGATIVE-CONSTRAINT-VIOLATION / FABRICATED-REFERENCE / ANCHORLESS / CONSTRAINT-VIOLATION-UNCITED) through the formatter REFUSE rules 6-10. Calibration runner ships with 20-tuple gold set (T-C1 FNR<0.15 + FPR<0.10, T-C2 per-class, T-C3 shape integrity). 8 rounds of dual-track review (R1 codex + Gemini-3.1-pro-preview, R2-R8 codex-only after Gemini quota exhausted); trajectory R1 4P1+2P2 → R8 0P1+4P2 ship gate.
+> - **v3.7.3 — Three-Layer Citation Emission + contamination signals** (PR #98). `synthesis_agent` / `draft_writer_agent` / `report_compiler_agent` gain `## Three-Layer Citation Emission (v3.7.3)` H2. Every `<!--ref:slug-->` carries `<!--anchor:<kind>:<value>-->` with `<kind> ∈ {quote, page, section, paragraph, none}` (quote anchors capped at 25 words, URL-encoded). `pipeline_orchestrator_agent` finalizer becomes 5-cell with precedence-zero NO-LOCATOR check. `formatter_agent` adds explicit hard-gate refusal for `[UNVERIFIED CITATION — NO QUOTE OR PAGE LOCATOR]`. `literature_corpus_entry.schema.json` adds optional `contamination_signals: { preprint_post_llm_inflection, semantic_scholar_unmatched }` object. `bibliography_agent` computes both signals at ingest. 11-round review trajectory (Codex×10 + Gemini cross-model×1) closed 22 findings. Spec: `docs/design/2026-05-12-ars-v3.7.3-claim-faithfulness-and-contaminated-source-spec.md`. External motivation: Zhao et al. arXiv:2605.07723 (2026-05).
+> - **#108 — AI disclosure policy-anchor renderer** (audit-trail-shipped 2026-05-14). Adds PRISMA-trAIce / ICMJE / Nature / IEEE policy-anchor disclosure paths alongside the existing venue-track renderer.
+> - **#111 — `slr_lineage` emission on systematic-review → academic-paper handoff** (2026-05-15). Schema 9 optional boolean `slr_lineage` field; producer `pipeline_orchestrator_agent` writes at every handoff transition; consumer `disclosure` mode dispatches `--policy-anchor=prisma-trAIce` per the §4.3 G2 invariant track gate.
+> - **#104 — README motivation: Zhao et al. corpus-scale evidence anchor** (2026-05-15). README + `README.zh-TW.md` motivation section frames the v3.7.x line against Zhao et al.'s 146,932 hallucinated-citation finding.
+> - **#105 — v3.7.3 contamination_signals backfill migration tool** (2026-05-15). `scripts/migrate_literature_corpus_to_v3_7_3.py` retro-computes both contamination signals across pre-v3.7.3 passports.
+> - **#115 — Semantic Scholar client maturity** (2026-05-15). `scripts/semantic_scholar_client.py` adds 1-req/s throttle (drops to 0.1s when `S2_API_KEY` detected), outage latch on URLError, and `reset_outage_latch()` for long-running cross-passport batches.
 
 v3.7.3 + v3.8 close the L3 (claim-faithfulness) gap end-to-end. v3.7.3 ships the locator infrastructure (every citation carries a three-layer anchor so the audit can fetch the cited passage); v3.8 ships the audit pass that consumes those anchors, judges whether the cited source supports the claim, and gate-refuses HIGH-WARN violations at the formatter terminal hard gate. The release also bundles 5 audit-trail-shipped feature PRs accumulated on main since v3.7.0 (#104 / #105 / #108 / #111 / #115). External motivation: Zhao et al. arXiv:2605.07723 (2026-05) — 146,932 hallucinated citations across arXiv / bioRxiv / SSRN / PMC in 2025.
 
@@ -1263,6 +1336,20 @@ Meta-lesson from this analysis: "we already do something adjacent" is weaker tha
 
 ## [3.7.0] - 2026-05-05
 
+> **Claude Code Plugin Packaging**
+>
+> Plugin packaging upgrade: ARS now installs in one line on Claude Code CLI / VS Code / JetBrains via `/plugin marketplace add Imbad0202/academic-research-skills` + `/plugin install academic-research-skills`. The traditional `git clone + symlink to ~/.claude/skills/` flow continues to work — both tracks are first-class.
+>
+> - **Plugin manifest + marketplace metadata** (Phase 1, PR #68). `.claude-plugin/plugin.json` declares the suite (4 skills auto-discovered from `skills/` directory via relative symlinks). `.claude-plugin/marketplace.json` registers the plugin so a single GitHub-hosted endpoint serves both the marketplace listing and the plugin source. README + `README.zh-TW.md` + `docs/SETUP.md` carry dual-track install instructions.
+> - **10 slash commands** at `commands/ars-*.md` (Phase 2.1, PR #69) mapping `MODE_REGISTRY.md` entries to `/ars-<mode>` triggers. Model routing is pinned in each command's frontmatter — `opus` for `full` and `revision-coach` (architectural / review-interpretation depth), `sonnet` for the other 8. No Haiku per project policy.
+> - **3 plugin-shipped agents** at `agents/*_agent.md` (Phase 2.1, PR #69) as relative symlinks to the v3.6.7-hardened downstream agents in `deep-research/agents/`: `synthesis_agent`, `research_architect_agent`, `report_compiler_agent`. Underscore filenames preserved to keep `scripts/check_v3_6_7_pattern_protection.py` hard-pinned paths and INV-3 manifest-confined Clause 1 invariant intact. Symlinks (not copies) preserve a single source of truth and prevent the Pattern C3 attack surface that v3.6.7 §6 inversion sweep + INV-1/2/3 lint closes. (Materialized to real byte-identical copies in #413 — relative symlinks break Windows checkouts without `core.symlinks` and zip-download installs; the single-source guarantee moved to the `scripts/check_agents_mirror_sync.py` byte-equality CI lint.)
+> - **`model: inherit`** added to those three source agent frontmatters. Inherit chosen over pinning `sonnet` so an opus session running ARS full pipeline keeps opus agents (instead of being capped). The user's `~/.claude/hooks/warn-agent-no-model.sh` PreToolUse hook gates Haiku at the dispatching boundary, so `inherit` resolves through an already-Haiku-free model.
+> - **SessionStart announce hook** at `hooks/hooks.json` + `scripts/announce-ars-loaded.sh` (Phase 2.2, PR #70). When the plugin loads, the hook injects an `additionalContext` listing the 10 slash commands, the 3 plugin agents, and a token-budget pointer into the LLM's first turn. `startup` and `clear` source values get the full announce; `resume` and `compact` get a one-line ack to avoid burning context. Bash 3.2 compatible — runs on macOS stock `/bin/bash` with no `brew install bash` requirement.
+> - **Phase 2.2 scope reduction**: a `SubagentStop → run_codex_audit.sh` codex audit hook was scoped out for v3.7.0 due to a contract gap (the SubagentStop payload carries no stage/deliverable info, so the wrapper would have to half-infer required arguments) and an invoker-class boundary (`run_codex_audit.sh` lines 4–7 forbid same-session in-LLM invocation; PostToolUse fires inside the producing session). Real audit-hook integration deferred to a future release when ARS gains a stage/deliverable propagation contract. See `docs/design/2026-04-30-ars-v3.7.0-plugin-packaging-roadmap.md` Update note 2026-05-05 (Phase 2.2 scope reduction).
+> - **`docs/PERFORMANCE.md` + `.zh-TW.md`** gain a "v3.7.0 Plugin agents and model routing" subsection explaining the inherit semantics and current 3-agent scope boundary.
+> - **Codex review chain across the three PRs**: 8 inline iterative rounds + 3 fresh PR-level rounds, all converging to 0 P0/P1/P2 findings before merge. The Phase 2.2 fresh PR review caught one P2 (unquoted `${CLAUDE_PLUGIN_ROOT}` breaking install paths with spaces) that the inline rounds missed — confirms the value of separating implementation review (inline) from contract review (fresh).
+> - **What did NOT change**: the four skill directories, all 25 modes, agent prompts, schema files, and lint contracts. Plugin packaging only adds new top-level surface (`commands/`, `agents/`, `hooks/`, `.claude-plugin/`, `skills/` symlink dir, three plugin-agent `model: inherit` frontmatter additions). Existing 4.3k clone-install users see no breaking change.
+
 > **Claude Code plugin packaging.** ARS now installs in one line on Claude Code
 > CLI / VS Code / JetBrains via `/plugin marketplace add Imbad0202/academic-research-skills`
 > + `/plugin install academic-research-skills`. The traditional
@@ -1356,6 +1443,21 @@ review (inline) from contract / install-time review (fresh).
 Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 
 ## [3.6.8] - 2026-05-03
+
+> **Generator-Evaluator Contract Gate (v3.6.6 spec ship)**
+>
+> Naming note: this release ships the **v3.6.6 generator-evaluator contract** spec
+> and implementation. The v3.6.6 work landed after v3.6.7 due to project sequencing;
+> the design doc retains the v3.6.6 internal naming for the contract gate version,
+> while the suite release is tagged v3.6.8 to keep the CHANGELOG monotonic.
+>
+> - **Schema 13.1** (`shared/sprint_contract.schema.json`) extends Schema 13 with two new `mode` enum values (`writer_full` + `evaluator_full`), two new optional top-level fields (`pre_commitment_artifacts` writer-only, `disagreement_handling` evaluator-only), and 12 `allOf` branches enforcing reviewer- / writer- / evaluator-conditional gates. Existing reviewer contracts validate byte-equivalent under Schema 13.1 (§3.6 zero-touch promise).
+> - **Two new shipped contract templates** under `shared/contracts/writer/full.json` (D1–D7, F1/F4/F2/F3/F0) and `shared/contracts/evaluator/full.json` (D1–D5, F1/F2/F3/F6/F4/F5/F0). Promoted from design-time artefacts on the spec branch to live shipped status atomically with the Schema 13.1 upgrade.
+> - **Two-phase orchestration** inside `academic-paper full`: Phase 4 splits into Phase 4a (writer paper-blind pre-commitment) + Phase 4b (writer paper-visible drafting + self-scoring); Phase 6 splits into Phase 6a (evaluator paper-blind pre-commitment) + Phase 6b (evaluator paper-visible scoring + decision). Phase-numbered `<phase4a_output>` / `<phase6a_output>` data delimiters mirror the v3.6.2 reviewer pattern. Lint count summary: writer 3+4 / evaluator 5+5 / reviewer 5+6 (reviewer remains zero-touch).
+> - **`academic-paper` SKILL + agent files** gain a verbatim `## v3.6.6 Generator-Evaluator Contract Protocol` block (101 lines in SKILL.md plus 47 lines in `draft_writer_agent.md` + 57 lines in `peer_reviewer_agent.md`). SKILL.md also adds a new `## Known limitations` section carrying graceful-degradation + cross-session resume forward notes for v3.6.7+.
+> - **Validator extensions**: `scripts/check_sprint_contract.py` SC-* mode-gating audit (SC-5 + SC-11 reviewer-only; SC-9 extended across all three mode families). 17 new tests bring the validator unit-test count from 54 to 71 (positive + 5 schema-branch negative + 2 §3.6 reviewer regression + 6 mode-gating tests).
+> - **Manifest CI lint**: `scripts/check_v3_6_6_ab_manifest.py` enforces §6.2 manifest schema + §6.5 git-tracked invariants on `tests/fixtures/v3.6.6-ab/manifest.yaml`. `.github/workflows/spec-consistency.yml` extends the sprint contract validation loop to iterate writer + evaluator template directories alongside the existing reviewer loop, plus runs the new manifest CI lint.
+> - **A/B evidence fixture stub** at `tests/fixtures/v3.6.6-ab/` (30 files): manifest + README + 6 paper-A inputs/baseline + 1 paper-C inputs/baseline + Stage 3 reviewer excerpt + 6 codex-judge baseline placeholders. Real fixture data populates in follow-up commits before the implementation work fully completes.
 
 > **Naming note**: this release ships the **v3.6.6 generator-evaluator contract**
 > spec (`docs/design/2026-04-27-ars-v3.6.6-generator-evaluator-contract-design.md`)
@@ -1490,6 +1592,14 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
   this repo PR.
 
 ## [3.6.7] - 2026-04-30
+
+> **Downstream-Agent Pattern Protection (Step 1+2)**
+>
+> - **Three downstream agents hardened against 13 of 17 documented hallucination/drift patterns**: `synthesis_agent` (A1–A5 narrative-side), the survey-designer mode of `research_architect_agent` (B1–B5 instrument-side), and the abstract-only mode of `report_compiler_agent` (C1–C3 publication-side). Each agent prompt now carries a `PATTERN PROTECTION (v3.6.7)` block.
+> - **Four reference files in `shared/references/`**: `irb_terminology_glossary.md`, `psychometric_terminology_glossary.md`, `protected_hedging_phrases.md`, `word_count_conventions.md`. The reference files carry operational contracts that the agent prompts cite by path.
+> - **Cross-model audit prompt template** at `shared/templates/codex_audit_multifile_template.md` with seven audit dimensions and a mandatory three-part Section 4(f) check for `report_compiler_agent` bundles. Failure of any sub-check is a P1 finding.
+> - **Static lint + 29-test mutation suite**: `scripts/check_v3_6_7_pattern_protection.py` enforces protection-clause presence and obligation-phrase shape; `scripts/test_check_v3_6_7_pattern_protection.py` preserves codex review evidence so future checker regressions surface in CI. Both are wired into `.github/workflows/spec-consistency.yml`.
+> - **Codex review history**: seven rounds of `gpt-5.5` + `xhigh` cross-model review reached SHIP-OK with zero P1+P2 findings. Step 6 (orchestrator runtime hooks) and Step 8 (synthetic eval case) ship in a follow-up PR.
 
 ### Added
 
@@ -1696,6 +1806,16 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 
 ## [3.6.5] - 2026-04-27
 
+> **Material Passport `literature_corpus[]` Consumer Integration**
+>
+> - **Two Phase 1 literature consumers** wired: `deep-research/agents/bibliography_agent.md` and `academic-paper/agents/literature_strategist_agent.md`. Both follow the same five-step **corpus-first, search-fills-gap** flow when the passport carries a non-empty `literature_corpus[]` and the same four Iron Rules (Same criteria / No silent skip / No corpus mutation / Graceful fallback on parse failure).
+> - **PRE-SCREENED reproducibility block** in Search Strategy reports: enumerates included / excluded / skipped corpus entries, with F3 zero-hit note and F4a–F4f provenance reporting that compose around partial declaration of `obtained_via` / `obtained_at`. `final_included = pre_screened_included[] ∪ external_included[]` stays neutral — no provenance tags on bibliography entries or literature matrix rows.
+> - **Consumer protocol reference** at `academic-pipeline/references/literature_corpus_consumers.md` with the canonical PRE-SCREENED template, BAD/GOOD examples, four Iron Rules, and per-consumer reading instructions.
+> - **CI lint** `scripts/check_corpus_consumer_protocol.py` enforcing nine protocol invariants with manifest-driven consumer list (`scripts/corpus_consumer_manifest.json`).
+> - **Schema 9 caveat retired**: `shared/handoff_schemas.md` retired the v3.6.4 "Consumer-side integration deferred to v3.6.5+" caveat; replaced with backpointer to the consumer protocol.
+> - Presence-based, no schema change, no new env flag. Parse failures fall back to external-DB-only flow with a `[CORPUS PARSE FAILURE]` surface. `citation_compliance_agent` corpus integration deferred (target version TBD post-v3.8).
+> - No breaking changes. Existing user adapters work without modification.
+
 ### Added
 
 - Material Passport `literature_corpus[]` consumer integration in Phase 1
@@ -1736,6 +1856,16 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 
 ## [3.6.4] - 2026-04-25
 
+> **Material Passport `literature_corpus[]` Input Port**
+>
+> - **`literature_corpus[]` field** added to Schema 9 as an optional input port for user-owned literature. Each entry conforms to `shared/contracts/passport/literature_corpus_entry.schema.json` (CSL-JSON authors, year, title, source_pointer + private optional `abstract` / `user_notes`).
+> - **Language-neutral adapter contract** at `academic-pipeline/references/adapters/overview.md`: any program (any language) reading a user corpus source can produce conformant `passport.yaml` + `rejection_log.yaml`. Fail-soft entry-level errors, fail-loud adapter-level errors, deterministic ordering.
+> - **Three reference Python adapters** under `scripts/adapters/`: `folder_scan.py` (filesystem of PDFs), `zotero.py` (Better BibTeX JSON export), `obsidian.py` (vault frontmatter). Starting points only; users are expected to write their own adapters for non-reference sources.
+> - **Rejection log contract** at `shared/contracts/passport/rejection_log.schema.json` with closed enum of categorical reason values; always emitted (empty when no rejections).
+> - **CI gates**: `scripts/check_literature_corpus_schema.py` validates schemas + adapter examples; `scripts/sync_adapter_docs.py --check` prevents schema→docs drift; new `pytest.yml` workflow runs `scripts/adapters/tests/` on path-filtered triggers.
+> - **Input-port-only at v3.6.4**: v3.6.4 shipped the schema and adapter contract without consumer integration. `bibliography_agent` and `literature_strategist_agent` were wired in v3.6.5.
+> - No breaking changes.
+
 ### Added
 
 - **Material Passport `literature_corpus[]` input port**. Schema 9 gains an optional `literature_corpus[]` field defined by `shared/contracts/passport/literature_corpus_entry.schema.json`. Each entry carries `citation_key`, CSL-JSON `authors`, `year`, `title`, and a `source_pointer` back to the user's own KB. `abstract` and `user_notes` are private optional fields with copyright caveats.
@@ -1759,6 +1889,15 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 - No PDF parsing, no text extraction, no live API clients, no authenticated library crawling. The reference adapters read filenames or local export files and never make network calls.
 
 ## [3.6.3] - 2026-04-23
+
+> **Opt-in Passport Reset Boundary**
+>
+> - **Opt-in passport reset boundary** (`ARS_PASSPORT_RESET=1`). Promotes every FULL checkpoint to a context-reset boundary. New `resume_from_passport=<hash>` mode lets users resume in a fresh Claude Code session from the Material Passport ledger alone. `systematic-review` mode with the flag ON makes reset mandatory at every FULL checkpoint; other modes treat reset as the flag-gated default. Flag OFF preserves pre-v3.6.3 behavior byte-for-byte.
+> - Schema 9 gains an append-only `reset_boundary[]` ledger with two entry kinds (`kind: boundary` + `kind: resume`). Hash uses JSON Canonical Form + SHA-256 with canonical placeholder for self-reference safety. Optional `pending_decision` handles MANDATORY branch choices.
+> - New `scripts/check_passport_reset_contract.py` CI lint: every mention of the flag must co-locate a pointer to the authoritative protocol doc.
+> - Protocol doc: `academic-pipeline/references/passport_as_reset_boundary.md`.
+> - `docs/PERFORMANCE.md` updated with long-running-session guidance.
+> - No breaking changes. Flag default is OFF.
 
 ### Added
 - **Opt-in passport reset boundary** via `ARS_PASSPORT_RESET=1`. Every FULL checkpoint becomes a context-reset boundary when the flag is set. `systematic-review` mode with the flag ON makes reset mandatory; other modes treat reset as the flag-gated default.
@@ -1784,6 +1923,17 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 - No breaking changes. No existing mode behavior changes when the flag is OFF.
 
 ## [3.6.2] - 2026-04-23
+
+> **Reviewer Sprint Contract Hard Gate**
+>
+> v3.6.2 introduces Schema 13 sprint contracts and a hard-gate orchestration that forces reviewers to pre-commit their scoring plan before reading the paper. Reviewer-only first test case; writer/evaluator deferred to v3.6.4. See CHANGELOG.
+>
+> - **Schema 13 sprint contract** with `panel_size`, `acceptance_dimensions`, `failure_conditions` (with `severity` precedence + panel-relative `cross_reviewer_quantifier`), `measurement_procedure`, optional `override_ladder`, bounded `agent_amendments`. Validator: `scripts/check_sprint_contract.py`.
+> - **Two-call hard gate.** Reviewers run paper-content-blind Phase 1 + paper-visible Phase 2; Phase 1 output is wrapped in `<phase1_output>...</phase1_output>` data delimiter to narrow the self-injection surface.
+> - **Synthesizer three-step mechanical protocol.** Build cross-reviewer matrix → evaluate each `failure_condition` with panel-relative quantifier + recognised expression vocabulary → resolve precedence by `severity`. Forbidden-ops list explicit in `editorial_synthesizer_agent`.
+> - **Two reviewer templates ship** (`shared/contracts/reviewer/full.json` panel 5; `shared/contracts/reviewer/methodology_focus.json` panel 2). `reviewer_re_review`, `reviewer_calibration`, `reviewer_guided` are reserved in the schema enum but ship without contract templates in v3.6.2; they retain pre-v3.6.2 behaviour. `reviewer_quick` is excluded from the enum entirely.
+> - `academic-paper-reviewer` SKILL version: `1.8.1 → 1.9.0`. `academic-pipeline` SKILL version: `3.5.1 → 3.6.2` (suite-version invariant). Suite version bumped to `3.6.2`.
+> - See spec [`docs/design/2026-04-23-ars-v3.6.2-sprint-contract-design.md`](docs/design/2026-04-23-ars-v3.6.2-sprint-contract-design.md) and protocol [`academic-paper-reviewer/references/sprint_contract_protocol.md`](academic-paper-reviewer/references/sprint_contract_protocol.md).
 
 ### Added
 
@@ -1811,6 +1961,13 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 
 ## [3.5.1] - 2026-04-22
 
+> **Opt-in Socratic Reading-Check Probe**
+>
+> v3.5.1 adds an opt-in honesty probe to the Socratic Mentor (`ARS_SOCRATIC_READING_PROBE=1`). Default off. See CHANGELOG.
+>
+> - **Opt-in reading-check probe**: when `ARS_SOCRATIC_READING_PROBE=1` is set, the Socratic Mentor fires a one-time honesty probe during goal-oriented sessions where the user has cited a specific paper. Decline is logged without penalty. Outcome flows into the Research Plan Summary and Stage 6 AI Self-Reflection Report. No new agent, no schema change.
+> - `deep-research` SKILL version: `2.9.0 → 2.9.1`. `academic-pipeline` SKILL version: `3.5.0 → 3.5.1`. Suite version bumped to `3.5.1`.
+
 ### Added
 
 - **Opt-in Socratic reading-check probe.** When `ARS_SOCRATIC_READING_PROBE=1` is set, the Socratic Mentor fires a one-time honesty probe during goal-oriented sessions where the user has cited a specific paper. The probe asks the user to paraphrase one passage. Decline is logged without penalty. Outcome is recorded in the Research Plan Summary and flows into the Stage 6 AI Self-Reflection Report when the pipeline continues. Default OFF. Roadmap slot: v3.7.3. See `deep-research/agents/socratic_mentor_agent.md` §"Optional Reading Probe Layer".
@@ -1826,6 +1983,15 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 - `academic-pipeline` skill: 3.5.0 → 3.5.1 (tracks suite version per `check_version_consistency.py` invariant)
 
 ## [3.5.0] - 2026-04-21
+
+> **Collaboration Depth Observer**
+>
+> - **New agent**: `collaboration_depth_agent` in `academic-pipeline` (Agent Team grows from 3 to 4). Invoked at every FULL/SLIM checkpoint and at pipeline completion; scores user-AI collaboration against a 4-dimension rubric. **Advisory only — never blocks progression.** MANDATORY checkpoints (Stages 2.5 / 4.5 integrity gates) do NOT invoke the observer.
+> - **New rubric**: [`shared/collaboration_depth_rubric.md`](shared/collaboration_depth_rubric.md) v1.0. Dimensions: Delegation Intensity, Cognitive Vigilance, Cognitive Reallocation, Zone Classification (Zone 1 / Zone 2 / Zone 3). Based on Wang, S., & Zhang, H. (2026). "Pedagogical partnerships with generative AI in higher education: how dual cognitive pathways paradoxically enable transformative learning." *International Journal of Educational Technology in Higher Education*, 23:11. DOI [10.1186/s41239-026-00585-x](https://doi.org/10.1186/s41239-026-00585-x).
+> - **Cross-model divergence flagged, not averaged**: when `ARS_CROSS_MODEL` is set the observer runs on both models; dimension disagreement > 2 points is reported rather than silently smoothed. `ARS_CROSS_MODEL_SAMPLE_INTERVAL` escape hatch for cost trade-off.
+> - **Short-stage guard**: stages with fewer than 5 user turns inject a static `insufficient_evidence` block instead of dispatching the full-model observer.
+> - **Anti-sycophancy discipline**: scores ≥ 7 require specific dialogue-turn citations; Zone 3 triggers re-audit; no motivational framing.
+> - `academic-pipeline` SKILL version: `3.3.0 → 3.4.0`. Suite version bumped to `3.5.0`. New lint `scripts/check_collaboration_depth_rubric.py` + 10 tests.
 
 ### Added
 - `shared/collaboration_depth_rubric.md` v1.0 — canonical 4-dimension rubric (Delegation Intensity, Cognitive Vigilance, Cognitive Reallocation, Zone Classification). Based on Wang, S., & Zhang, H. (2026). "Pedagogical partnerships with generative AI in higher education: how dual cognitive pathways paradoxically enable transformative learning." *International Journal of Educational Technology in Higher Education*, 23:11. DOI 10.1186/s41239-026-00585-x. Licensed CC-BY-NC 4.0.
@@ -1849,6 +2015,15 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 - Credit: Wang & Zhang (2026) introduced the dual-pathway SEM and three-zone (Zone 1 / Zone 2 / Zone 3) framework that anchors the rubric's dimension operationalisation and synthesis rule.
 
 ## [3.4.0] - 2026-04-20
+
+> **Compliance Agent + Schema 12**
+>
+> - **Compliance Agent** (shared): single mode-aware agent running PRISMA-trAIce 17 items (SR mode only) + RAISE 4 principles + 8-role matrix. Hooks existing Stage 2.5 / 4.5 Integrity Gates; tier-based block (Mandatory → block, HR → warn, R/O → info). Non-SR entries run principles-only, warn-only.
+> - **Schema 12 compliance_report** appended to Material Passport via `compliance_history[]` (append-only).
+> - **3-round user-override ladder** auto-injects `disclosure_addendum` into manuscript. No detection evasion possible.
+> - **Calibration with transparent reporting**, no hard FNR/FPR gate — self-consistent with `task_type: open-ended`.
+> - **Upstream freshness CI** warns on PRISMA-trAIce drift (non-blocking).
+> - **Long-running session docs**: Material Passport as cross-session resume mechanism.
 
 ### Added
 
@@ -1883,6 +2058,13 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 
 ## [3.3.6] - 2026-04-15
 
+> **README Streamlining + ARCHITECTURE doc**
+>
+> - Added `docs/ARCHITECTURE.md` as the single source of truth for pipeline structure (flow, matrix, data-access, dependency graph, quality gates, modes). Merged into main via PR #18.
+> - Added `docs/SETUP.md` (prerequisites, API keys, Pandoc/tectonic, cross-model verification, installation methods) and `docs/PERFORMANCE.md` (token budgets, recommended Claude Code settings). README links to both instead of inlining them.
+> - Streamlined README: removed the ASCII pipeline diagram and 16-point key-feature list (superseded by ARCHITECTURE.md); Skill Details section now anchors version numbers and points readers to ARCHITECTURE.md §3 for per-agent rosters.
+> - Note: no functional change to any skill. Pure documentation reorganization. Suite version bumped to `3.3.6`.
+
 ### Added
 - `docs/ARCHITECTURE.md` — single source of truth for pipeline structure (flow, stage × dimension matrix, data-access flow, skill dependency graph, quality gates, modes). Merged into main via PR #18.
 - `docs/SETUP.md` + `docs/SETUP.zh-TW.md` — prerequisites, API keys, Pandoc / tectonic setup, cross-model verification (`ARS_CROSS_MODEL`), and four installation methods.
@@ -1897,6 +2079,8 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 - No functional change to any skill. Pure documentation reorganization.
 
 ## [3.3.5] - 2026-04-15
+
+> - Added `benchmark_report.schema.json` + `repro_lock` optional block on Material Passport. Both ship with pattern docs, lints, and examples. First formal Python dev dep manifest (`requirements-dev.txt`).
 
 ### Added
 - `shared/benchmark_report.schema.json` — JSON Schema (draft-2020-12) defining required fields for ARS benchmark reports. Catches the "n=2 author-conducted baseline" failure mode from Anthropic's automated-w2s-researcher paper.
@@ -1915,6 +2099,11 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 
 ## [3.3.4] - 2026-04-15
 
+> **README Changelog Sync Patch**
+>
+> - Synced the embedded changelog sections in `README.md` and `README.zh-TW.md` so they include the missing `v3.3.3` and `v3.3.2` release summaries.
+> - Extended `scripts/check_spec_consistency.py` so future README changelog drift fails CI.
+
 ### Fixed
 - Embedded changelog sections in `README.md` and `README.zh-TW.md` now include the missing `v3.3.3` and `v3.3.2` summaries, so the README history matches the published releases.
 - `scripts/check_spec_consistency.py` now verifies that the README changelog summaries include the latest release entries, so future drift fails CI.
@@ -1923,6 +2112,15 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 - Suite version bumped to `3.3.4` across release-facing docs after the README changelog sync patch release.
 
 ## [3.3.3] - 2026-04-15
+
+> **Release Prep + Lint Hardening**
+>
+> - Hardened SKILL frontmatter linting: missing closing `---` fences now fail cleanly instead of being parsed as valid YAML.
+> - Frontmatter that parses as valid YAML but not as a mapping now reports a readable error instead of crashing.
+> - Fixed the broken showcase link for the post-publication audit report in both READMEs.
+> - Added README relative-link validation to the spec consistency check so dead links fail CI.
+> - Aligned the DOCX output contract across the docs: direct `.docx` generation is Pandoc-dependent, with Markdown + conversion instructions as fallback.
+> - Prepared the `v3.3.3` release: suite version bump, `academic-paper` -> v3.0.2, `academic-pipeline` -> v3.2.2.
 
 ### Fixed
 - `scripts/_skill_lint.py` now rejects SKILL frontmatter that is missing a closing `---` fence instead of silently treating the rest of the file as YAML.
@@ -1936,6 +2134,13 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 - Suite version bumped to `3.3.3` across release-facing docs; `academic-paper` patch-bumped to `3.0.2` and `academic-pipeline` patch-bumped to `3.2.2`.
 
 ## [3.3.2] - 2026-04-15
+
+> **Data Access Levels + Task Type Metadata**
+>
+> - Added `metadata.data_access_level` to all top-level `SKILL.md` files with enforced vocabulary: `raw`, `redacted`, `verified_only`.
+> - Added `metadata.task_type` to all top-level `SKILL.md` files with enforced vocabulary: `open-ended`, `outcome-gradable`.
+> - Added lint scripts and unit tests for both metadata fields, wired into the GitHub Actions spec consistency workflow.
+> - Added `shared/ground_truth_isolation_pattern.md` and linked the new vocabulary from `shared/handoff_schemas.md`.
 
 ### Added
 - `metadata.data_access_level` field on every top-level SKILL.md. Three-tier vocabulary (`raw` | `redacted` | `verified_only`) declaring what kind of data each skill may consume. Inspired by the three-tier isolation pattern in Anthropic's automated-w2s-researcher (2026).
@@ -1956,6 +2161,14 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 
 ## [3.3.1] - 2026-04-14
 
+> **Spec Consistency Patch**
+>
+> - Synced README, `.claude/CLAUDE.md`, `MODE_REGISTRY.md`, and `SKILL.md` files to the current mode counts and published skill versions.
+> - **Historical note (superseded by v3.16):** at this release, integrity sample checks and a blind, separately executed DA critique were implemented, while a sixth reviewer was only planned. That sixth-reviewer design was later retired; current full review remains a fixed five-seat panel.
+> - Clarified adaptive checkpoint semantics so SLIM checkpoints still wait for explicit user confirmation.
+> - Reaffirmed that Stage 2.5 and Stage 4.5 integrity gates cannot be skipped.
+> - Added a lightweight spec consistency check and GitHub Actions workflow to catch future drift.
+
 ### Fixed
 - Public contract drift across `README.md`, `README.zh-TW.md`, `.claude/CLAUDE.md`, `MODE_REGISTRY.md`, and the affected `SKILL.md` files
 - Cross-model wording now matches the implemented scope: integrity sample verification and independent DA critique are shipped; sixth-reviewer peer review remains planned
@@ -1968,6 +2181,17 @@ Reference: `feedback_codex_review_vs_resume_audit_scope.md`.
 - `.github/workflows/spec-consistency.yml` to run the consistency check on pushes and pull requests
 
 ## [3.3] - 2026-04-09
+
+> **PaperOrchestra-Inspired Enhancements**
+>
+> Integrates techniques from [PaperOrchestra](https://arxiv.org/abs/2604.05018) (Song, Song, Pfister & Yoon, 2026, Google).
+>
+> - **Semantic Scholar API Verification** — Tier 0 programmatic reference existence check via S2 API. Levenshtein >= 0.70 title matching, DOI mismatch detection, bibliography deduplication via S2 IDs. Graceful degradation if API unavailable.
+> - **Anti-Leakage Protocol** — Knowledge Isolation Directive prioritizes session materials over LLM parametric memory. Flags `[MATERIAL GAP]` for missing content instead of filling from memory. Reduces Mode 5/6 failure risk.
+> - **VLM Figure Verification** (optional) — Closed-loop verification of rendered figures using vision-capable LLM. 10-point checklist, max 2 refinement iterations.
+> - **Criterion Trajectory Protocol** — Evidence-anchored per-dimension judgement comparisons across revision rounds (7 dimensions). Decision-bearing regressions trigger a mandatory checkpoint; no score delta is calculated.
+> - **Stage 2 Parallelization** — Visualization and argument building can run in parallel after outline completion.
+> - New versions: deep-research v2.8, academic-paper v3.0, academic-pipeline v3.2
 
 ### Added — PaperOrchestra-inspired enhancements
 Integrates techniques from Song et al. (2026, *arXiv:2604.05018*) "PaperOrchestra: A Multi-Agent Framework for Automated AI Research Paper Writing."
@@ -1991,6 +2215,17 @@ Integrates techniques from Song et al. (2026, *arXiv:2604.05018*) "PaperOrchestr
 
 ## [3.2] - 2026-04-09
 
+> **Lu 2026 Nature Integration**
+>
+> Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first end-to-end autonomous AI research system to pass blind peer review.
+>
+> - **7-mode AI Research Failure Mode Checklist** — blocks pipeline at Stage 2.5/4.5 on suspected implementation bugs, hallucinated results, shortcut reliance, bug-as-insight, methodology fabrication, frame-lock. Extends existing 5-type citation hallucination taxonomy.
+> - **Reviewer Calibration Mode** (academic-paper-reviewer v1.8) — opt-in FNR/FPR/balanced-accuracy measurement against user-supplied gold set. 5× ensembling, cross-model default-on, session-scoped confidence disclosure.
+> - **Disclosure Mode** (academic-paper v2.9) — the default venue path returns `REQUIRED`, `ACTION_ONLY`, `NOT_REQUIRED`, or `UNKNOWN` applicability plus an explicit typed halt status when needed; policy-anchor invocations use their separate anchor-specific renderer. v1 covers ICLR, NeurIPS, Nature, Science, ACL, EMNLP. (Since expanded: the v2 database (#596) adds 9 medical-publishing policy targets — ICMJE, NEJM, The Lancet, JAMA, BMJ, PLOS, Frontiers, plus the database's first two Chinese-language policy targets: the publisher-wide 中华护理杂志社 entry and the journal 国际眼科杂志.)
+> - **Early-Stopping Criterion** (academic-pipeline v3.1) — convergence check + budget transparency at pipeline start.
+> - **Fidelity-Originality Mode Spectrum** — classifies all modes across 3 skills per Lu 2026 Fig 1c.
+> - New versions: academic-paper v2.9, academic-paper-reviewer v1.8, academic-pipeline v3.1
+
 ### Added — Lu 2026 integration
 Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first end-to-end autonomous AI research system to pass blind peer review.
 
@@ -2013,12 +2248,56 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
 
 ## [3.1.1] - 2026-04-09
 
+> **IS Senior Scholars' Basket of 11**
+>
+> External contributions: [@mchesbro1](https://github.com/mchesbro1) originally proposed and drafted the IS Basket of 8 journals ([Issue #5](https://github.com/Imbad0202/academic-research-skills/issues/5)); [@cloudenochcsis](https://github.com/cloudenochcsis) extended it to the full Senior Scholars' Basket of 11 ([Issue #7](https://github.com/Imbad0202/academic-research-skills/issues/7), [PR #8](https://github.com/Imbad0202/academic-research-skills/pull/8)). Updated `academic-paper-reviewer/references/top_journals_by_field.md` Section 7, adding *Decision Support Systems*, *Information & Management*, and *Information and Organization*. Source: [AIS Senior Scholars' List of Premier Journals](https://aisnet.org/research/seniorscholarsbasket/).
+
 ### Added
 - **Information Systems — Senior Scholars' Basket of 11** (extending the *Basket of 8* added in v2.9): *Decision Support Systems*, *Information & Management*, *Information and Organization* — completing the AIS College of Senior Scholars' official list of premier IS journals
 - Section heading updated from "Information Systems (Basket of 8)" to "Information Systems (Senior Scholars' Basket of 11)" in `academic-paper-reviewer/references/top_journals_by_field.md`
 - Original IS Basket of 8 proposed and drafted by [@mchesbro1](https://github.com/mchesbro1) — [Issue #5](https://github.com/Imbad0202/academic-research-skills/issues/5). Extended to Basket of 11 by [@cloudenochcsis](https://github.com/cloudenochcsis) — [Issue #7](https://github.com/Imbad0202/academic-research-skills/issues/7), [PR #8](https://github.com/Imbad0202/academic-research-skills/pull/8). Source: [AIS Senior Scholars' List of Premier Journals](https://aisnet.org/research/seniorscholarsbasket/)
 
+## [3.1] - 2026-04-06 — Anti-Context-Rot + Cognitive Frameworks + Lean Size
+
+> Inspired by patterns from [aspi6246/Claude-Code-Skills-for-Academics](https://github.com/aspi6246/Claude-Code-Skills-for-Academics).
+>
+> **Wave 1: Anti-Context-Rot Anchors**
+> - 29 explicit Anti-Patterns across all 4 skills (7-8 per skill, tabular format with "Why It Fails" + "Correct Behavior")
+> - 22 IRON RULE markers on critical rules that must not be violated even in long conversations
+> - Read-only constraint on academic-paper-reviewer (reviewers cannot modify the manuscript)
+>
+> **Wave 2: Traceability + Cognitive Frameworks + Reinforcement**
+> - R&R Traceability Matrix (Schema 11): adds "Author's Claim" and "Verified?" columns to re-review output, enabling independent verification of revision claims
+> - 3 cognitive framework reference files teaching agents "how to think" not just "what to do":
+>   - `argumentation_reasoning_framework.md` — Toulmin model, Bradford Hill causal reasoning, inference to best explanation, epistemic status classification
+>   - `review_quality_thinking.md` — three lenses (internal validity, external validity, contribution), common reviewer traps, calibration questions
+>   - `writing_judgment_framework.md` — clarity test, reader's journey, discipline-specific voice, revision decision matrix
+> - Mid-conversation reinforcement protocol: stage-specific IRON RULE + Anti-Pattern reminders at every pipeline transition
+> - Self-check questions at every FULL checkpoint (citation integrity, sycophantic concession, quality trajectory, scope discipline, completeness)
+>
+> **Wave 3: Lean Skill Size**
+> - SKILL.md total size reduced from 142KB to 85KB (−40%) by extracting detailed protocols to `references/` files
+> - ~15 new reference files created (re-review protocol, guided mode, systematic review, process summary, external review, etc.)
+> - All IRON RULE markers preserved in SKILL.md; detailed content loaded on demand
+> - New versions: deep-research v2.7, academic-paper v2.8, academic-paper-reviewer v1.7, academic-pipeline v3.0
+
+## [3.0] - 2026-04-03 — Anti-Sycophancy + Intent Detection + Dialogue Health
+
+> - **Devil's Advocate Concession Threshold** (deep-research + academic-paper-reviewer): DA must score rebuttals 1-5 before responding. Concession only at ≥4. No consecutive concessions. Concession rate tracking. Frame-lock detection after each checkpoint.
+> - **Attack Intensity Preservation** (academic-paper-reviewer): DA does not soften under pushback. Rebuttal assessment protocol with explicit deflection detection. Anti-sycophancy rules prevent persistent pushback from being treated as valid evidence.
+> - **Intent Detection Layer** (deep-research socratic): Classifies user intent as exploratory vs. goal-oriented. Exploratory mode disables auto-convergence, raises max rounds, prohibits premature closure. Re-assesses every 3 turns.
+> - **Dialogue Health Indicator** (deep-research socratic): Silent self-check every 5 turns for persistent agreement, conflict avoidance, premature convergence. Auto-injects challenges when agreement pattern detected.
+> - **Historical Cross-Model Verification entry (superseded by v3.16):** this release introduced integrity sample cross-checks and a blind, separately executed DA critique. Its planned sixth-reviewer design was later retired; current cross-model review swaps the substrate of one seat within the fixed five-seat panel. See `shared/cross_model_verification.md` for the current consent and routing contract.
+> - **AI Self-Reflection Report** (academic-pipeline Stage 6): Post-pipeline self-assessment of AI behavioral patterns — DA concession rate, checkpoint skip rate, health alerts, sycophancy risk rating (LOW/MEDIUM/HIGH), frame-lock incidents, convergence pattern analysis. Includes irony caveat: "this self-reflection is itself produced by the same AI that may have been sycophantic."
+> - Origin: Discovered through a 4-round dialectic experiment where the DA conceded too quickly, the Socratic Mentor tried to converge prematurely, and the entire debate stayed locked in a frame the human set.
+> - Versions: deep-research v2.5, academic-paper-reviewer v1.5, academic-pipeline v2.8
+
 ## [2.9.1] - 2026-04-03
+
+> **Skill Metadata**
+>
+> - Added `status: active` and `related_skills` cross-references to all 4 SKILL.md frontmatters.
+> - Enables skill discovery tools and cross-skill navigation across `deep-research` ↔ `academic-paper` ↔ `academic-paper-reviewer` ↔ `academic-pipeline`.
 
 ### Added
 - `status` and `related_skills` metadata to all 4 SKILL.md frontmatters
@@ -2026,6 +2305,14 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
   - `deep-research` ↔ `academic-paper` ↔ `academic-paper-reviewer` ↔ `academic-pipeline`
 
 ## [2.9] - 2026-03-27
+
+> **Style Calibration + Writing Quality Check**
+>
+> - **Style Calibration** (academic-paper intake Step 10, optional): Provide 3+ past papers and the pipeline learns your writing voice — sentence rhythm, vocabulary preferences, citation integration style. Applied as a soft guide during drafting; discipline conventions always take priority. Priority system: discipline norms (hard) > journal conventions (strong) > personal style (soft). See `shared/style_calibration_protocol.md`
+> - **Writing Quality Check** (`academic-paper/references/writing_quality_check.md`): Writing quality checklist applied during draft self-review. 5 categories: AI high-frequency term warnings (25 terms), punctuation pattern control (em dash ≤3), throat-clearing opener detection, structural pattern warnings (Rule of Three, uniform paragraphs, synonym cycling), and burstiness checks (sentence length variation). These are good writing rules — not detection evasion
+> - **Style Profile** carried through academic-pipeline Material Passport (Schema 10 in `shared/handoff_schemas.md`)
+> - **deep-research** report compiler also consumes both features optionally
+> - Versions: academic-paper v2.5, deep-research v2.4, academic-pipeline v2.7
 
 ### Added
 - **Style Calibration** — learn the author's writing voice from past papers (optional, intake Step 10)
@@ -2040,6 +2327,17 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
 - Removed last v4.0 reference in CHANGELOG
 
 ## [2.8] - 2026-03-22
+
+> **SCR Loop Phase 1: State-Challenge-Reflect**
+>
+> - **Socratic Mentor Agent** (deep-research + academic-paper): SCR (State-Challenge-Reflect) protocol integration
+>   - **Commitment Gates**: Collect user predictions before presenting evidence at each layer/chapter transition
+>   - **Certainty-Triggered Contradiction**: Detect high-confidence language ("obviously", "clearly") and introduce counterpoints
+>   - **Adaptive Intensity**: Track commitment accuracy, dynamically adjust challenge frequency
+>   - **Self-Calibration Signal (S5)**: New convergence signal tracking user's self-calibration growth across dialogue
+>   - **SCR Switch**: Users can say "skip the predictions" to disable or "turn predictions back on" to re-enable mid-dialogue; Socratic questioning continues normally
+> - `deep-research/references/socratic_questioning_framework.md`: SCR Overlay Protocol mapping SCR phases to Socratic functions
+> - Added `CHANGELOG.md`
 
 ### Added
 - **SCR Loop Phase 1** — State-Challenge-Reflect mechanism integrated into Socratic Mentor Agent
@@ -2070,6 +2368,13 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
 
 ## [2.7] - 2026-03-09
 
+> **Integrity Verification v2.0: Anti-Hallucination Overhaul**
+>
+> - **integrity_verification_agent v2.0**: Anti-Hallucination Mandate (no AI memory verification), eliminated gray-zone classifications (VERIFIED/NOT_FOUND/MISMATCH only), mandatory WebSearch audit trail for every reference, Stage 4.5 fresh independent verification, Gray-Zone Prevention Rule
+> - **Known Hallucination Patterns**: 5-type taxonomy (TF/PAC/IH/PH/SH) from GPTZero × NeurIPS 2025 study, 5 compound deception patterns, real-world case study, literature statistics
+> - **Post-publication audit**: Full WebSearch verification of all 68 references found 21 issues (31% error rate) that passed 3 rounds of integrity checks — proving the necessity of external verification
+> - **Paper corrections**: Removed 4 fabricated references, fixed 6 author errors, corrected 7 metadata errors, fixed 2 format issues
+
 ### Added
 - Integrity Verification v2.0: Anti-Hallucination Overhaul
 - Full academic research skills suite (4 skills, 116 files)
@@ -2077,3 +2382,68 @@ Integrates insights from Lu et al. (2026, *Nature* 651:914-919) — the first en
 - Academic Paper v2.4 — 12-agent paper writing with LaTeX hardening
 - Academic Paper Reviewer v1.4 — Multi-perspective peer review with quality rubrics
 - Academic Pipeline v2.6 — 10-stage orchestrator with integrity verification
+
+## [2.6.2] - 2026-03-09 — Intent-Based Mode Activation
+
+> - **deep-research**: Socratic mode now uses **intent-based activation** instead of keyword matching. Works in any language — detects meaning (e.g., "user wants guided thinking") rather than matching specific strings.
+> - **academic-paper**: Plan mode now uses **intent-based activation**. Detects intent signals like "user is uncertain how to start" or "user wants step-by-step guidance" in any language.
+> - Both modes now have a **default rule**: when intent is ambiguous, prefer `socratic`/`plan` over `full` — safer to guide first.
+> - Two-layer architecture: Layer 1 (skill activation) uses bilingual keywords for matching confidence; Layer 2 (mode routing) uses language-agnostic intent signals.
+
+## [2.6.1] - 2026-03-09 — Bilingual Trigger Keywords
+
+> - **deep-research**: Added Traditional Chinese trigger keywords for general activation and Socratic mode.
+> - **academic-paper**: Added Traditional Chinese trigger keywords and Plan Mode trigger section.
+> - Both mode selection guides now include bilingual examples and Chinese-specific misselection scenarios.
+
+## [2.6] - 2026-03-08 — 15+ Improvements
+
+> **v2.6 / v2.4 / v1.4**
+>
+> - **deep-research v2.3**: New systematic-review / PRISMA mode (7th); 3 new agents (risk_of_bias, meta_analysis, monitoring); PRISMA protocol/report templates; Socratic convergence criteria (4 signals + auto-end); Quick Mode Selection Guide
+> - **academic-paper v2.4**: 2 new agents (visualization, revision_coach); revision tracking template with 4 status types; citation format conversion (APA↔Chicago↔MLA↔IEEE↔Vancouver); statistical visualization standards; Socratic convergence criteria; revision recovery example; **LaTeX output hardening** — mandatory `apa7` document class, text justification fix (`ragged2e` + `etoolbox`), table column width formula, bilingual abstract centering, standardized font stack (Times New Roman + Source Han Serif TC VF + Courier New), PDF via tectonic only
+> - **academic-paper-reviewer v1.4 (historical)**: Introduced the former numerical rubric and decision mapping. Current releases have retired that mechanism in favor of criterion-bound narrative judgements; live reviews remain `NOT_CALIBRATED`, while measured-profile application is not yet wired. Quick Mode Selection Guide retained.
+> - **academic-pipeline v2.6**: Adaptive checkpoint system (FULL/SLIM/MANDATORY); Phase E Claim Verification in integrity checks; Material Passport for mid-entry provenance; cross-skill mode advisor (14 scenarios); team collaboration protocol; enhanced handoff schemas (9 schemas); integrity failure recovery example
+
+## [2.4] - 2026-03-08
+
+> **v2.4 / v1.3**
+>
+> - **academic-pipeline v2.4**: New Stage 6 PROCESS SUMMARY — auto-generates structured paper creation process record (MD → LaTeX → PDF, bilingual); mandatory final chapter: **Collaboration Quality Evaluation** with 6 dimensions scored 1–100 (Direction Setting, Intellectual Contribution, Quality Gatekeeping, Iteration Discipline, Delegation Efficiency, Meta-Learning), honest feedback, and improvement recommendations; pipeline expanded from 9 to 10 stages
+
+## [2.3] - 2026-03-08
+
+> **v2.3 / v1.3**
+>
+> - **academic-pipeline v2.3**: Stage 5 FINALIZE now prompts for formatting style (APA 7.0 / Chicago / IEEE); PDF must compile from LaTeX via `tectonic` (no HTML-to-PDF); APA 7.0 uses `apa7` document class (`man` mode) with XeCJK for bilingual CJK support; font stack: Times New Roman + Source Han Serif TC VF + Courier New
+
+## [2.2] - 2025-03-05
+
+> **v2.2 / v1.3**
+>
+> - **Cross-Agent Quality Alignment**: unified definitions (peer-reviewed, currency rule, CRITICAL severity, source tier) across all agents
+> - **deep-research v2.2**: synthesis anti-patterns, Socratic auto-end conditions, DOI+WebSearch verification, enhanced ethics integrity check, mode transition matrix
+> - **academic-paper v2.2**: 4-level argument scoring, plagiarism screening, 2 new failure paths (F11 Desk-Reject Recovery, F12 Conference-to-Journal), Plan→Full mode conversion
+> - **academic-paper-reviewer v1.3**: DA vs R3 role boundaries, CRITICAL finding criteria, consensus classification (4/3/SPLIT/DA-CRITICAL), confidence score weighting, Asian & Regional Journals reference
+> - **academic-pipeline v2.2**: checkpoint confirmation semantics, mode switching matrix, failure fallback matrix, state ownership protocol, material version control
+
+## [2.0.1] - 2026-03
+
+> - **Simplify 4 SKILL.md** (-371 lines, -16.5%): remove cross-skill duplication, inline templates → file references, redundant routing tables, duplicate mode selection sections
+> - Fix revision loop cap contradiction between academic-paper and academic-pipeline
+
+## [2.0] - 2026-02
+
+> - **academic-pipeline v2.0**: 5→9 stages, mandatory integrity verification, two-stage review, Socratic revision coaching, reproducibility guarantees
+> - **academic-paper-reviewer v1.1**: +Devil's Advocate Reviewer (7th agent), +re-review mode (verification), +post-review Socratic coaching
+> - New agent: `integrity_verification_agent` — 100% reference/data verification with audit trail
+> - New agent: `devils_advocate_reviewer_agent` — 8-dimension thesis challenger
+> - Output order: MD → DOCX via Pandoc when available (else instructions) → ask LaTeX → confirm → PDF
+
+## [1.0] - 2026-02
+
+> - Initial release
+> - deep-research v2.0 (10 agents, 6 modes including socratic)
+> - academic-paper v2.0 (10 agents, 8 modes including plan)
+> - academic-paper-reviewer v1.0 (6 agents, 4 modes including guided)
+> - academic-pipeline v1.0 (orchestrator)

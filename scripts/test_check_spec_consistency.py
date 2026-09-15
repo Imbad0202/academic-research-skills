@@ -62,8 +62,8 @@ class TestRelativeMarkdownLinkGrammar(unittest.TestCase):
 
 
 # Minimal ja-JP README capturing the version-bearing surfaces the lint needs
-# to police: badge, release tag link, three release blocks (current + two
-# prior so the symmetric structure with check_readme_zh_sections is visible),
+# to police: badge, release tag link, the CHANGELOG/archive links plus the three
+# kept release blocks (README_CHANGELOG_KEEP),
 # four localized mode headings, four skill-detail headings, and the DOCX line.
 JA_README_TEMPLATE = """\
 # Academic Research Skills
@@ -96,38 +96,28 @@ JA_README_TEMPLATE = """\
 
 ## Changelog
 
-### v3.12.0 (2026-06-08) — latest entry
-### v3.11.1 (2026-06-06) — prior patch
-### v3.11.0 (2026-06-04) — prior patch
-### v3.10.0 (2026-06-01) — prior minor
-### v3.9.4.2 (2026-05-19) — CI discipline hotfix
-### v3.9.4.1 (2026-05-19) — previous hotfix
-### v3.9.4 (2026-05-18) — temporal verification
-### v3.9.1 (2026-05-18) — client hardening
-### v3.9.0 (2026-05-17) — triangulation
-### v3.8.0 (2026-05-16) — L3 audit
-### v3.7.0 (2026-05-05) — plugin packaging
-### v3.6.8 (2026-05-03) — generator-evaluator
-### v3.6.7 (2026-04-30) — pattern protection
-### v3.6.5 (2026-04-27) — corpus consumer
-### v3.6.4 (2026-04-25) — corpus input port
-### v3.6.3 (2026-04-23) — passport reset
-### v3.6.2 (2026-04-23) — reviewer sprint
-### v3.5.1 (2026-04-22) — reading-check probe
-### v3.5.0 (2026-04-21) — collaboration depth
-### v3.4.0 (2026-04-20) — compliance agent
-### v3.3.6 (2026-04-15) — README streamlining
-### v3.3.5 (2026-04-15)
-### v3.3.4 (2026-04-15) — changelog sync
-### v3.3.3 (2026-04-15) — release prep
-### v3.3.2 (2026-04-15) — data access levels
+[CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/ja-JP.md](docs/changelog-archive/ja-JP.md)
+
+### v3.21.2 (2026-09-06) — current release
+### v3.21.1 (2026-08-24) — prior patch
+### v3.21.0 (2026-08-18) — prior minor
 
 ## Version Info
 - **Suite version**: {ver}
 """
 
 
+def _write_changelog_targets(root: Path, locale: str) -> None:
+    """The README changelog section links to CHANGELOG.md and the frozen
+    locale archive; check_relative_markdown_links needs both to exist."""
+    (root / "CHANGELOG.md").write_text("# Changelog\n", encoding="utf-8")
+    archive = root / "docs" / "changelog-archive" / f"{locale}.md"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    archive.write_text("# frozen\n", encoding="utf-8")
+
+
 def _write_ja_readme(root: Path, version: str) -> None:
+    _write_changelog_targets(root, "ja-JP")
     (root / "README.ja-JP.md").write_text(
         JA_README_TEMPLATE.format(ver=version), encoding="utf-8"
     )
@@ -169,37 +159,16 @@ KO_README_TEMPLATE = """\
 
 ## 변경 이력
 
+[CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)
+
 ### v3.21.2 (2026-09-06) — current release
-### v3.18.0 (2026-07-18) — prior minor
-### v3.12.0 (2026-06-08) — prior release
-### v3.11.1 (2026-06-06) — prior patch
-### v3.11.0 (2026-06-04) — prior patch
-### v3.10.0 (2026-06-01) — prior minor
-### v3.9.4.2 (2026-05-19) — CI discipline hotfix
-### v3.9.4.1 (2026-05-19) — previous hotfix
-### v3.9.4 (2026-05-18) — temporal verification
-### v3.9.1 (2026-05-18) — client hardening
-### v3.9.0 (2026-05-17) — triangulation
-### v3.8.0 (2026-05-16) — L3 audit
-### v3.7.0 (2026-05-05) — plugin packaging
-### v3.6.8 (2026-05-03) — generator-evaluator
-### v3.6.7 (2026-04-30) — pattern protection
-### v3.6.5 (2026-04-27) — corpus consumer
-### v3.6.4 (2026-04-25) — corpus input port
-### v3.6.3 (2026-04-23) — passport reset
-### v3.6.2 (2026-04-23) — reviewer sprint
-### v3.5.1 (2026-04-22) — reading-check probe
-### v3.5.0 (2026-04-21) — collaboration depth
-### v3.4.0 (2026-04-20) — compliance agent
-### v3.3.6 (2026-04-15) — README streamlining
-### v3.3.5 (2026-04-15)
-### v3.3.4 (2026-04-15) — changelog sync
-### v3.3.3 (2026-04-15) — release prep
-### v3.3.2 (2026-04-15) — data access levels
+### v3.21.1 (2026-08-24) — prior patch
+### v3.21.0 (2026-08-18) — prior minor
 """
 
 
 def _write_ko_readme(root: Path, version: str) -> None:
+    _write_changelog_targets(root, "ko-KR")
     (root / "README.ko-KR.md").write_text(
         KO_README_TEMPLATE.format(ver=version), encoding="utf-8"
     )
@@ -238,35 +207,16 @@ ZH_CN_README_TEMPLATE = """\
 
 ## 更新纪录
 
-### v3.12.0（2026-06-08）— latest entry
-### v3.11.1（2026-06-06）— prior patch
-### v3.11.0（2026-06-04）— prior patch
-### v3.10.0（2026-06-01）— prior minor
-### v3.9.4.2（2026-05-19）— CI discipline hotfix
-### v3.9.4.1（2026-05-19）— previous hotfix
-### v3.9.4（2026-05-18）— temporal verification
-### v3.9.1（2026-05-18）— client hardening
-### v3.9.0（2026-05-17）— triangulation
-### v3.8.0（2026-05-16）— L3 audit
-### v3.7.0（2026-05-05）— plugin packaging
-### v3.6.8（2026-05-03）— generator-evaluator
-### v3.6.7（2026-04-30）— pattern protection
-### v3.6.5（2026-04-27）— corpus consumer
-### v3.6.4（2026-04-25）— corpus input port
-### v3.6.3（2026-04-23）— passport reset
-### v3.6.2（2026-04-23）— reviewer sprint
-### v3.5.1（2026-04-22）— reading-check probe
-### v3.5.0（2026-04-21）— collaboration depth
-### v3.4.0（2026-04-20）— compliance agent
-### v3.3.6 (2026-04-15) — README streamlining
-### v3.3.5 (2026-04-15)
-### v3.3.4 (2026-04-15) — changelog sync
-### v3.3.3 (2026-04-15) — release prep
-### v3.3.2 (2026-04-15) — data access levels
+[CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)
+
+### v3.21.2（2026-09-06） — current release
+### v3.21.1（2026-08-24） — prior patch
+### v3.21.0（2026-08-18） — prior minor
 """
 
 
 def _write_zh_cn_readme(root: Path, version: str) -> None:
+    _write_changelog_targets(root, "zh-CN")
     (root / "README.zh-CN.md").write_text(
         ZH_CN_README_TEMPLATE.format(ver=version), encoding="utf-8"
     )
@@ -305,35 +255,16 @@ ZH_TW_README_TEMPLATE = """\
 
 ## 更新紀錄
 
-### v3.12.0（2026-06-08）— latest entry
-### v3.11.1（2026-06-06）— prior patch
-### v3.11.0（2026-06-04）— prior patch
-### v3.10.0（2026-06-01）— prior minor
-### v3.9.4.2（2026-05-19）— CI discipline hotfix
-### v3.9.4.1（2026-05-19）— previous hotfix
-### v3.9.4（2026-05-18）— temporal verification
-### v3.9.1（2026-05-18）— client hardening
-### v3.9.0（2026-05-17）— triangulation
-### v3.8.0（2026-05-16）— L3 audit
-### v3.7.0（2026-05-05）— plugin packaging
-### v3.6.8（2026-05-03）— generator-evaluator
-### v3.6.7（2026-04-30）— pattern protection
-### v3.6.5（2026-04-27）— corpus consumer
-### v3.6.4（2026-04-25）— corpus input port
-### v3.6.3（2026-04-23）— passport reset
-### v3.6.2（2026-04-23）— reviewer sprint
-### v3.5.1（2026-04-22）— reading-check probe
-### v3.5.0（2026-04-21）— collaboration depth
-### v3.4.0（2026-04-20）— compliance agent
-### v3.3.6 (2026-04-15) — README streamlining
-### v3.3.5 (2026-04-15)
-### v3.3.4 (2026-04-15) — changelog sync
-### v3.3.3 (2026-04-15) — release prep
-### v3.3.2 (2026-04-15) — data access levels
+[CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/zh-TW.md](docs/changelog-archive/zh-TW.md)
+
+### v3.21.2（2026-09-06） — current release
+### v3.21.1（2026-08-24） — prior patch
+### v3.21.0（2026-08-18） — prior minor
 """
 
 
 def _write_zh_tw_readme(root: Path, version: str) -> None:
+    _write_changelog_targets(root, "zh-TW")
     (root / "README.zh-TW.md").write_text(
         ZH_TW_README_TEMPLATE.format(ver=version), encoding="utf-8"
     )
@@ -466,8 +397,8 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             broken = KO_README_TEMPLATE.format(ver="3.21.2").replace(
-                "### v3.18.0 (2026-07-18)",
-                "### v3.18.0（2026-07-18）",
+                "### v3.21.2 (2026-09-06)",
+                "### v3.21.2（2026-09-06）",
             )
             (root / "README.ko-KR.md").write_text(broken, encoding="utf-8")
 
@@ -476,10 +407,57 @@ class TestReadmeKoSections(unittest.TestCase):
             self.assertTrue(
                 any(
                     "README.ko-KR.md" in e
-                    and "### v3.18.0 (2026-07-18)" in e
+                    and "### v3.21.2 (2026-09-06)" in e
                     for e in csc.ERRORS
                 ),
                 msg=f"expected Korean parenthesis-style error in: {csc.ERRORS!r}",
+            )
+
+
+    def test_fourth_release_heading_fails(self) -> None:
+        """The README keeps only README_CHANGELOG_KEEP; a fourth `### v`
+        heading (the pre-2026-09-15 regrowth pattern) must fail."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_changelog_targets(root, "ko-KR")
+            regrown = KO_README_TEMPLATE.format(ver="3.21.2") + (
+                "### v3.20.1 (2026-08-15) — stale fourth entry\n"
+            )
+            (root / "README.ko-KR.md").write_text(regrown, encoding="utf-8")
+
+            csc.check_readme_ko_sections()
+
+            self.assertTrue(
+                any(
+                    "README.ko-KR.md" in e
+                    and "only the 3 most recent" in e
+                    and "v3.20.1" in e
+                    for e in csc.ERRORS
+                ),
+                msg=f"expected extra-heading error in: {csc.ERRORS!r}",
+            )
+
+    def test_missing_archive_link_fails(self) -> None:
+        """The translated README must point at its frozen archive."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_changelog_targets(root, "ko-KR")
+            unlinked = KO_README_TEMPLATE.format(ver="3.21.2").replace(
+                " · [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)", ""
+            )
+            (root / "README.ko-KR.md").write_text(unlinked, encoding="utf-8")
+
+            csc.check_readme_ko_sections()
+
+            self.assertTrue(
+                any(
+                    "README.ko-KR.md" in e
+                    and "must link to docs/changelog-archive/ko-KR.md" in e
+                    for e in csc.ERRORS
+                ),
+                msg=f"expected missing-archive-link error in: {csc.ERRORS!r}",
             )
 
 
