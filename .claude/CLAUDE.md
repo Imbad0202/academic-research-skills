@@ -9,7 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.21.2 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.22.0 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.22.0 Key Additions (output-language-pair contract + locale track + plugin eval suites + Windows / transport repairs)
+
+- **A run can declare its output language pair; absence is the legacy state (#862 Phase 1, PR #869 by @didacrios).** `shared/output_language_pair.md` is the registry-keyed contract (initial entry `zh-tw-en`); Schema 4 gains the optional `output_language_pair` field; ten consumer surfaces name it and omit the value when absent; the abstract length / keyword regime table has one home in `academic-paper/references/abstract_writing_guide.md`. `check_output_language_pair_contract()` pins registry membership, the default token, the table's location, and a malformed-value self-check. The values held fixed are file-level literals; no rendered-output or model-behaviour equivalence is claimed.
+- **Locale track around it.** es-ES README (#855) and conservative trigger phrases (#856, #867) by @didacrios; locale packs are community-maintained, with a provisional single-owner application route recorded in `CONTRIBUTING.md` (#861, #862).
+- **Evaluation substrates, no measured claims.** `claude plugin eval` suites for revision-coach (`plugin-evals/`) and citation-check (`plugin-evals-citation-check/`, #859) run as with/without-plugin ablations; the reviewer-calibration harness (#835) adds isolated dispatch, audited scoring, and a credential preflight. Each is a regression guard or dispatch substrate; none ships an uplift figure or a calibration value.
+- **Repairs.** Windows file locks through one shared `msvcrt`-backed helper (#843 / #844 by @dajiaohuang, #845); the OpenAI request builders drop Astra-rejected parameters and validate the effort set (#823); the contained Codex transport rejects `effort=ultra` (#824); audit provenance records the actual judge identity (#826); Socratic path F6 lists directions unranked (#834); unsupported claims route to a source, an omission, or `[MATERIAL GAP]`, never a hedge (#825); revision-coach triggers reach the frontmatter description (#851).
+- **Docs.** READMEs keep the three most recent releases (#870); Gartenberg et al. (#833) and Wang, Li et al. (#873) join the human-in-the-loop anchors. Roadmap Phase 4 (stage-level evidence ceilings) is not delivered in this release.
 
 ## v3.21.2 Key Additions (model currency + checkpoint provenance + CJK title-matching repairs)
 
@@ -372,7 +380,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.21.2 (per CHANGELOG.md)
-- **Last Updated**: 2026-09-06
+- **Suite version**: 3.22.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-09-16
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

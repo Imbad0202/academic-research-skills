@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.21.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.2)
+[![Version](https://img.shields.io/badge/version-v3.22.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.22.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -258,7 +258,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 7 個 Agent 的多視角審查，採 **逐準則、證據錨定的敘事判斷**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 與 Schema 6 package 一律為 `NOT_CALIBRATED`；完整 calibration 可產生有界候選 profile，但尚未接上 live review。不得以固定總分對照接受、小修、大修或退稿。第一輪審查面板 vs. 契約治理再審派送的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.21.2)
+### Academic Pipeline (v3.22.0)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）為 MANDATORY 且沒有不留紀錄的繞過路徑（所有覆寫都須記錄使用者理由、供 Stage 6 使用）；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -326,6 +326,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 這裡只列最近三個版本。完整更新紀錄在英文版 [CHANGELOG.md](CHANGELOG.md)。到 v3.21.2 為止的繁體中文版本摘要已凍結存放於 [docs/changelog-archive/zh-TW.md](docs/changelog-archive/zh-TW.md)，之後不再更新。
 
+### v3.22.0（2026-09-16）— 輸出語言對契約、語系軌、plugin eval 套件與 Windows／傳輸修復
+
+> **加的是結構，證據維持有界：**v3.22.0 讓一次執行可以透過登錄表鍵控的 Schema 4 欄位宣告輸出語言對，欄位缺席時舊有檔案逐字重現（#862 Phase 1、PR #869），並圍繞它建立語系軌：@didacrios 貢獻的 es-ES README 與保守的觸發詞、社群維護的語系包政策，以及單一 owner 的暫定申請路徑。兩套 `claude plugin eval` 套件（revision-coach、citation-check）與 reviewer-calibration harness 只作為回歸防線與派送基底出貨，皆不宣稱量測到的提升或校準值。修復：`/ars-mark-read` 與其餘五個鎖點透過一個共用的 `msvcrt` 後端在 Windows 可用、OpenAI 請求不再送出 GPT-6 Astra 拒收的參數、受限的 Codex 傳輸拒絕 `effort=ultra`、稽核來源記錄實際的判官身分、蘇格拉底路徑 F6 不再預選方向、無來源支撐的宣稱不能再靠 hedge 過關。README 只留最近三版；Gartenberg 等人與 Wang、Li 等人加入 human-in-the-loop 錨點。Roadmap Phase 4（階段級證據天花板）本版未交付，視窗順延。
+
 ### v3.21.2（2026-09-06）— 模型現況對齊（Fable 5.1 / GPT-6 Astra）、檢查點決策來源與 CJK 標題比對修復
 
 > **對齊現況與決策來源，不是新能力：**v3.21.2 依兩份 2026 年 9 月的廠商 system card 對齊套件。`gpt-6-astra` 以 provisional 身分進入跨模型表（兩條傳輸皆然），並依世代現況政策成為建議的 OpenAI 驗證模型；`gpt-5.6-sol` 保留其在 ChatGPT 訂閱引用傳輸上的 validated 身分，本版不宣稱任何新的 bakeoff 結果。受限的 Codex 傳輸 reasoning-effort 集合新增 `ultra`。新增兩道 guardrail，皆為 prompt 層、由廠商文件而非 ARS 量測所驅動：檢查點決策來源（只有使用者回合算決策；決策逐字轉交子代理；風險 R11），以及供應商端監控或安全介入一律視為傳輸失敗、永遠不是判定。針對兩份卡片的 harness 汰除審計沒有汰除任何東西（0 條 prompt 文字汰除；8 條 keep-as-debt 項目補上卡片引註）。修復：CJK 標題不再在四個索引解析器的精確標題閘失敗（#798），外層引號只在構成單一平衡單位時才剝除（#800）；autolink round-trip 測試明示其相依套件（#801）；`check_surface_form_parity` 改為指名壞掉的環境而非 manifest；新增 skill 清單一致性 lint（#809）；R10 殘餘缺口去過時化（#813）；修正一行 MLA 規則（#805）。套件／pipeline → v3.21.2；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
@@ -333,7 +337,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.21.1（2026-08-24）— 有界工作流程基礎、封存式 bakeoff 與傳輸強化
 
 > **有明示量測才視為量測，其餘維持有界：**v3.21.1 修復 codex-cli 0.147.0 下受限的 ChatGPT 訂閱引用傳輸，並記錄第一次 Promotion Bakeoff：`gpt-5.6-sol` 僅在該訂閱傳輸上取得 validated，first-party API 路徑仍為 provisional；往後的 bakeoff 則必須採用封存式預註冊。本版也新增 default-off 的研究工作流程 profile 基礎（只有離線、確定性的 conformance；沒有 pipeline hook，也未提供特定研究家族的成品 profile）、opt-in 的 inquiry-ledger alpha（`ARS_INQUIRY_LEDGER=1`），以及尚未實作、僅凍結設計的 alternative register。其行為證據維持 `NOT_RUN`，不宣稱可用性、復原、創新性、正確性或研究成果效益。審查準則 registry 新增一組有來源支持、僅供示範的 MSR 2027 exact-profile proving set；這不代表投稿期刊／會議與學科覆蓋、真實作者 attest，亦非 constructive-review 證據，所需的獨立人類評估仍未完成。其他變更包含對齊 `data_access_level`、整併 markdown lint 文法、登錄 guard launcher 的降級路徑，以及在不背書的前提下把 OrcaRouter 列為社群整合。套件／pipeline → v3.21.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
-
-### v3.21.0（2026-08-18）— ISO/IEC 42001 精神軌：透明、可驗證、可行
-
-> **可被檢驗的透明：**v3.21.0 完成 ISO/IEC 42001 精神稽核軌（#753–#760）。對外宣稱對齊證據紀錄，並新增四份常設文件回答使用者真正想問的問題：你的安裝管道有哪些控制實際運作（`docs/CONTROL_AVAILABILITY.md`）、哪些資料離開你的機器與存放多久（`docs/DATA_FLOWS.md`）、每個 CI workflow 實際的強制力等級（`docs/ARCHITECTURE.md` §7.1）、每個機制對應哪個風險與其證據狀態、殘餘缺口（`docs/RISK_REGISTER.md`），每份都由專屬 CI lint 防漂移。`GOVERNANCE.md` 言明決策權限、cross-model 審查提供與不提供什麼（error-detection control、非組織獨立性）與 end-of-life 姿態；`SECURITY.md` 新增一人可運轉的分級 triage 程序。這些是附 ISO/IEC 42001 資訊性錨點的操作原則、不是驗證宣稱，本版也不新增任何成效數字。套件／pipeline → v3.21.0；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。

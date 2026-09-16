@@ -29,6 +29,8 @@ The roadmap deliberately separates four things:
 
 Dates are intentionally not promised for human-participant evaluation. Release order and gates take precedence over calendar targets.
 
+Status at v3.22.0 (2026-09-16): Phase 4 is not delivered in v3.22.0; its window carries forward. Per-phase shipping status is recorded in `CHANGELOG.md`, not here.
+
 ## Phase 0 — next-patch contract-honesty hardening
 
 Parent: #734.

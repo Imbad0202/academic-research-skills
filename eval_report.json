@@ -1,0 +1,145 @@
+{
+  "harness_version": "1.0.0",
+  "run_id": "20260916T021403Z-0c2697ef",
+  "gold_set_version": "1.0.0",
+  "generated_at": "2026-09-16T02:14:03Z",
+  "mode": "single",
+  "per_task": [
+    {
+      "task_name": "citation_extraction",
+      "manifest_version": "1.0.0",
+      "status": "measured",
+      "sample_n": 51,
+      "aggregate_metric": {
+        "metric": "accuracy",
+        "value": 1.0,
+        "direction": "higher_is_better",
+        "threshold_value": 0.9,
+        "comparison": ">=",
+        "passed": true
+      },
+      "per_class": [
+        {
+          "class_name": "true",
+          "metric": "accuracy",
+          "value": 1.0,
+          "direction": "higher_is_better",
+          "support": 30,
+          "threshold_value": 0.85,
+          "comparison": ">=",
+          "passed": true
+        },
+        {
+          "class_name": "false",
+          "metric": "accuracy",
+          "value": 1.0,
+          "direction": "higher_is_better",
+          "support": 15,
+          "threshold_value": 0.85,
+          "comparison": ">=",
+          "passed": true
+        },
+        {
+          "class_name": "unresolvable",
+          "metric": "accuracy",
+          "value": 1.0,
+          "direction": "higher_is_better",
+          "support": 6,
+          "threshold_value": 0.85,
+          "comparison": ">=",
+          "passed": true
+        }
+      ],
+      "expert_concordance": [
+        {
+          "class_name": "true",
+          "agreement_rate": 1.0,
+          "labeled_count": 6,
+          "agreements": 6
+        },
+        {
+          "class_name": "false",
+          "agreement_rate": 1.0,
+          "labeled_count": 3,
+          "agreements": 3
+        },
+        {
+          "class_name": "unresolvable",
+          "agreement_rate": 1.0,
+          "labeled_count": 2,
+          "agreements": 2
+        }
+      ]
+    },
+    {
+      "task_name": "field_norm_severity",
+      "manifest_version": "1.0.0",
+      "status": "pending",
+      "notice": "no native measurer for task 'field_norm_severity'; entrypoint not yet wired",
+      "aggregate_metric": {
+        "metric": "accuracy",
+        "value": 0.0,
+        "direction": "higher_is_better"
+      }
+    },
+    {
+      "task_name": "rq_framing_patterns",
+      "manifest_version": "1.0.0",
+      "status": "measured",
+      "sample_n": 40,
+      "aggregate_metric": {
+        "metric": "balanced_accuracy",
+        "value": 1.0,
+        "direction": "higher_is_better",
+        "threshold_value": 0.75,
+        "comparison": ">=",
+        "passed": true
+      },
+      "per_class": [
+        {
+          "class_name": "fnr",
+          "metric": "fnr",
+          "value": 0.0,
+          "direction": "lower_is_better",
+          "threshold_value": 0.3,
+          "comparison": "<",
+          "passed": true
+        },
+        {
+          "class_name": "fpr",
+          "metric": "fpr",
+          "value": 0.0,
+          "direction": "lower_is_better",
+          "threshold_value": 0.2,
+          "comparison": "<",
+          "passed": true
+        },
+        {
+          "class_name": "balanced_accuracy",
+          "metric": "balanced_accuracy",
+          "value": 1.0,
+          "direction": "higher_is_better",
+          "threshold_value": 0.75,
+          "comparison": ">=",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "task_name": "surface_form_parity",
+      "manifest_version": "1.0.0",
+      "status": "pending",
+      "notice": "no native measurer for task 'surface_form_parity'; entrypoint not yet wired",
+      "aggregate_metric": {
+        "metric": "accuracy",
+        "value": 0.0,
+        "direction": "higher_is_better"
+      }
+    }
+  ],
+  "caveats": [
+    "Synthetic gold set; expert_concordance is advisory and never gates (E-V3).",
+    "citation_extraction predicted labels are computed by the #182 Delta 4 reducer (the single source of truth) from each tuple's pre-recorded resolver_outcomes; verification_gate.verify_citation feeds the same reducer live, so harness and API agree by construction.",
+    "Tasks not measured (entrypoint/gold-set pending): ['field_norm_severity', 'surface_form_parity']."
+  ]
+}

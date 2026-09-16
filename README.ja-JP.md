@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.21.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.2)
+[![Version](https://img.shields.io/badge/version-v3.22.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.22.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -252,7 +252,7 @@ You: "status"
 
 基準ごとの証拠に紐づく **ナラティブ判断** を行う 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。現在の live review と Schema 6 package は常に `NOT_CALIBRATED` で、full calibration は有界な候補 profile のみを生成し、live review への適用は未実装です。固定総得点を Accept / Minor Revision / Major Revision / Reject に対応させません。初回レビューパネル vs. 契約管理された再レビューディスパッチの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.21.2）
+### Academic Pipeline（v3.22.0）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）は MANDATORY であり、記録されないバイパス経路は存在しない（すべてのオーバーライドは Stage 6 のためにユーザーの理由の記録を要する）。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -337,6 +337,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 ここには直近 3 リリースのみを掲載しています。完全な更新履歴は英語版の [CHANGELOG.md](CHANGELOG.md) を参照してください。v3.21.2 までの日本語版リリース要約は [docs/changelog-archive/ja-JP.md](docs/changelog-archive/ja-JP.md) に凍結保存され、以後更新されません。
 
+### v3.22.0 (2026-09-16) — 出力言語ペア契約、ロケール・トラック、plugin eval スイート、Windows／トランスポート修正
+
+> **加わるのは構造、証拠は境界付きのまま:** v3.22.0 では、レジストリをキーとする Schema 4 フィールドで 1 回の実行が出力言語ペアを宣言でき、フィールドが無い場合は従来のファイルがそのまま再現されます（#862 Phase 1、PR #869）。その周囲にロケール・トラックを整えました: @didacrios による es-ES README と保守的なトリガー語、コミュニティ管理のロケールパック方針と単独オーナーの暫定申請ルートです。2 つの `claude plugin eval` スイート（revision-coach、citation-check）と reviewer-calibration harness は回帰ガードと dispatch 基盤としてのみ出荷され、測定された向上や校正値は主張しません。修正: `/ars-mark-read` と残り 5 つのロック箇所が共通の `msvcrt` バックエンドで Windows 上で動作、OpenAI リクエストは GPT-6 Astra が拒否するパラメータを送らない、隔離された Codex トランスポートは `effort=ultra` を拒否、監査の出所に実際のジャッジの識別を記録、ソクラテス経路 F6 は方向を事前選択しない、根拠のない主張は hedge では救済されない。README は直近 3 リリースのみ保持し、Gartenberg ら、Wang・Li らが human-in-the-loop アンカーに加わりました。Roadmap Phase 4（ステージ別の証拠上限）は本リリースでは未提供で、期間は繰り越されます。
+
 ### v3.21.2 (2026-09-06) — モデル現況の整合（Fable 5.1 / GPT-6 Astra）、チェックポイント決定の出所、CJK タイトル照合の修正
 
 > **新機能ではなく、現況整合と出所の明示：** v3.21.2 は 2026 年 9 月の 2 つのベンダー system card にスイートを整合させます。`gpt-6-astra` は両トランスポートで provisional としてクロスモデル表に入り、世代現況ポリシーに基づき推奨 OpenAI 検証モデルになります。`gpt-5.6-sol` は ChatGPT サブスクリプション引用トランスポートでの validated を維持し、新たな bakeoff 結果は主張しません。封じ込め型 Codex トランスポートの reasoning-effort 集合に `ultra` が加わります。2 つのガードレールを追加しますが、いずれもプロンプト層であり、ARS の測定ではなくベンダー文書に基づきます。チェックポイント決定の出所（ユーザーのターンのみが決定であり、決定はサブエージェントへ逐語的に再送される。リスク R11）と、プロバイダー側の監視・安全介入をトランスポート失敗として扱い、決して判定としない規定です。両カードに対する harness-retirement 監査は何も廃止しません（プロンプト文の廃止 0 件。keep-as-debt 8 件にカード引用を付与）。修正：CJK タイトルが 4 つのインデックスリゾルバの完全一致タイトルゲートで失敗しなくなり（#798）、外側の括弧は 1 つの均衡した単位を成す場合のみ除去します（#800）。autolink ラウンドトリップテストが依存関係を宣言し（#801）、`check_surface_form_parity` はマニフェストではなく壊れた環境を名指しし、skill 一覧の整合 lint を追加し（#809）、R10 の残存ギャップを最新化し（#813）、MLA 規則の 1 行を修正しました（#805）。スイート／pipeline → v3.21.2、deep-research → v2.12.1、academic-paper → v3.3.1、academic-paper-reviewer → v1.11.1。
@@ -344,7 +348,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.21.1 (2026-08-24) — 境界付きワークフロー基盤、封印済み bakeoff、トランスポート強化
 
 > **明記された箇所のみ測定済み、それ以外は境界付き:** v3.21.1 は codex-cli 0.147.0 向けの隔離された ChatGPT サブスクリプション引用 transport を修復し、最初の Promotion Bakeoff を記録します。`gpt-5.6-sol` が validated なのはこのサブスクリプション transport に限られ、first-party API 経路では provisional のままです。今後の bakeoff には封印済みの事前登録が必須となります。また、default-off の研究ワークフロー profile 基盤（オフラインの決定論的 conformance のみ。pipeline hook も、研究ファミリー固有の出荷済み profile もなし）、opt-in の inquiry-ledger alpha（`ARS_INQUIRY_LEDGER=1`）、および未実装の design-only alternative register を追加します。これらの行動的証拠は `NOT_RUN` のままであり、ユーザビリティ、回復、novelty、正確性、研究成果の改善を主張しません。レビュー基準 registry には、出典に裏付けられた例示用の MSR 2027 exact-profile proving set を 1 件追加しますが、投稿先（会議・ジャーナル）／分野の網羅性、実在著者による attest、constructive-review の証拠を意味せず、必要な独立した人間による評価も未完了です。その他、`data_access_level` の整合、markdown lint 文法の統合、guard launcher の degradation 登録、非推奨・非保証のコミュニティ統合としての OrcaRouter 掲載を含みます。スイート／pipeline → v3.21.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
-
-### v3.21.0 (2026-08-18) — ISO/IEC 42001 スピリット・トラック: 透明性・検証可能性・実行可能性
-
-> **検証できる透明性:** v3.21.0 は ISO/IEC 42001 スピリット監査トラック（#753–#760）を完了します。対外的な主張を証拠記録に整合させ、ユーザーが実際に知りたい問いに答える 4 つの常設文書を追加しました: あなたのインストールチャネルでどの制御が実際に動作するか（`docs/CONTROL_AVAILABILITY.md`）、何がマシンの外に出て何が保存されるか（`docs/DATA_FLOWS.md`）、各 CI workflow の実際の強制力クラス（`docs/ARCHITECTURE.md` §7.1）、各メカニズムがどのリスクに対応し、その証拠状態と残余ギャップは何か（`docs/RISK_REGISTER.md`）。いずれも専用の CI lint がドリフトを防ぎます。`GOVERNANCE.md` は意思決定権限、cross-model レビューが提供するもの・しないもの（error-detection control であり組織的独立性ではない）、end-of-life の姿勢を明記し、`SECURITY.md` は一人で運用可能な重大度別 triage 手順を得ました。これらは ISO/IEC 42001 への情報的アンカーを持つ蒸留された運用原則であり、認証の主張ではなく、新しい有効性の数値も主張しません。スイート／pipeline → v3.21.0；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。

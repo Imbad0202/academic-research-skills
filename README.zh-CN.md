@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.21.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.21.2)
+[![Version](https://img.shields.io/badge/version-v3.22.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.22.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -252,7 +252,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，采用 **逐准则、证据锚定的叙事判断**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 与 Schema 6 package 一律为 `NOT_CALIBRATED`；完整 calibration 可产生有界候选 profile，但尚未接入 live review。不得以固定总分映射接受、小修、大修或退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.21.2)
+### Academic Pipeline (v3.22.0)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -320,6 +320,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 这里只列最近三个版本。完整更新记录在英文版 [CHANGELOG.md](CHANGELOG.md)。到 v3.21.2 为止的简体中文版本摘要已冻结存放于 [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)，之后不再更新。
 
+### v3.22.0（2026-09-16）— 输出语言对契约、语系轨、plugin eval 套件与 Windows／传输修复
+
+> **加的是结构，证据保持有界：**v3.22.0 让一次运行可以通过注册表键控的 Schema 4 字段声明输出语言对，字段缺席时旧有文件逐字重现（#862 Phase 1、PR #869），并围绕它建立语系轨：@didacrios 贡献的 es-ES README 与保守的触发词、社区维护的语系包政策，以及单一 owner 的暂定申请路径。两套 `claude plugin eval` 套件（revision-coach、citation-check）与 reviewer-calibration harness 仅作为回归防线与派发基底发布，均不声称测得的提升或校准值。修复：`/ars-mark-read` 与其余五个锁点通过一个共用的 `msvcrt` 后端在 Windows 可用、OpenAI 请求不再发送 GPT-6 Astra 拒收的参数、受限的 Codex 传输拒绝 `effort=ultra`、审计来源记录实际的裁判身份、苏格拉底路径 F6 不再预选方向、无来源支撑的声明不能再靠 hedge 过关。README 只保留最近三版；Gartenberg 等人与 Wang、Li 等人加入 human-in-the-loop 锚点。Roadmap Phase 4（阶段级证据上限）本版未交付，窗口顺延。
+
 ### v3.21.2（2026-09-06）— 模型现况对齐（Fable 5.1 / GPT-6 Astra）、检查点决策来源与 CJK 标题匹配修复
 
 > **对齐现况与决策来源，不是新能力：**v3.21.2 依据两份 2026 年 9 月的厂商 system card 对齐套件。`gpt-6-astra` 以 provisional 身份进入跨模型表（两条传输均如此），并依世代现况政策成为推荐的 OpenAI 验证模型；`gpt-5.6-sol` 保留其在 ChatGPT 订阅引用传输上的 validated 身份，本版不声称任何新的 bakeoff 结果。受限的 Codex 传输 reasoning-effort 集合新增 `ultra`。新增两道 guardrail，均为 prompt 层、由厂商文档而非 ARS 测量驱动：检查点决策来源（只有用户回合算决策；决策逐字转交子代理；风险 R11），以及供应商端监控或安全介入一律视为传输失败、永远不是判定。针对两份卡片的 harness 淘汰审计没有淘汰任何东西（0 条 prompt 文字淘汰；8 条 keep-as-debt 项目补上卡片引注）。修复：CJK 标题不再在四个索引解析器的精确标题门失败（#798），外层引号只在构成单一平衡单位时才剥除（#800）；autolink round-trip 测试明示其依赖（#801）；`check_surface_form_parity` 改为指名坏掉的环境而非 manifest；新增 skill 清单一致性 lint（#809）；R10 残余缺口去过时化（#813）；修正一行 MLA 规则（#805）。套件／pipeline → v3.21.2；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
@@ -327,7 +331,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.21.1（2026-08-24）— 有界工作流基础、封存式 bakeoff 与传输强化
 
 > **有明确测量才视为已测量，其余保持有界：**v3.21.1 修复 codex-cli 0.147.0 下受限的 ChatGPT 订阅引用传输，并记录首次 Promotion Bakeoff：`gpt-5.6-sol` 仅在该订阅传输上取得 validated，first-party API 路径仍为 provisional；今后的 bakeoff 则必须采用封存式预注册。本版还新增 default-off 的研究工作流 profile 基础（只有离线、确定性的 conformance；没有 pipeline hook，也未提供特定研究家族的成品 profile）、opt-in 的 inquiry-ledger alpha（`ARS_INQUIRY_LEDGER=1`），以及尚未实现、仅冻结设计的 alternative register。其行为证据保持 `NOT_RUN`，不声明可用性、恢复、创新性、正确性或研究结果收益。评审标准 registry 新增一组有来源支持、仅用于示范的 MSR 2027 exact-profile proving set；这不代表投稿期刊／会议与学科覆盖、真实作者 attest，也不是 constructive-review 证据，所需的独立人类评估仍未完成。其他变更包括对齐 `data_access_level`、合并 markdown lint 语法、登记 guard launcher 的降级路径，以及在不背书的前提下将 OrcaRouter 列为社区集成。套件／pipeline → v3.21.1；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
-
-### v3.21.0（2026-08-18）— ISO/IEC 42001 精神轨：透明、可验证、可行
-
-> **可被检验的透明：**v3.21.0 完成 ISO/IEC 42001 精神审计轨（#753–#760）。对外声明对齐证据记录，并新增四份常设文件回答用户真正想问的问题：你的安装渠道有哪些控制实际运作（`docs/CONTROL_AVAILABILITY.md`）、哪些数据离开你的机器与存放多久（`docs/DATA_FLOWS.md`）、每个 CI workflow 实际的强制力等级（`docs/ARCHITECTURE.md` §7.1）、每个机制对应哪个风险及其证据状态、残余缺口（`docs/RISK_REGISTER.md`），每份都由专属 CI lint 防漂移。`GOVERNANCE.md` 言明决策权限、cross-model 评审提供与不提供什么（error-detection control、非组织独立性）与 end-of-life 姿态；`SECURITY.md` 新增一人可运转的分级 triage 程序。这些是附 ISO/IEC 42001 信息性锚点的操作原则、不是认证声明，本版也不新增任何效果数字。套件／pipeline → v3.21.0；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。
