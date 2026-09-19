@@ -199,3 +199,33 @@ test("/ars-pi-start and /ars-pi-stop toggle automatic invocation", async () => {
     assert.equal(runBeforeAgentStart(harness).includes(location), false);
   }
 });
+
+test("array prompts hide only ARS XML entries without flattening or mutating blocks", () => {
+  const prompt = Object.freeze(["Keep this first block, including its comma.", baseSystemPrompt, "Keep the final block."]);
+  const result = runBeforeAgentStart(createHarness(), prompt);
+
+  assert.equal(Array.isArray(result), true);
+  assert.equal(result[0], prompt[0]);
+  assert.equal(result[2], prompt[2]);
+  for (const location of arsSkillLocations) {
+    assert.equal(result[1].includes(location), false);
+    assert.equal(prompt[1].includes(location), true);
+  }
+  assert.equal(result[1].includes(externalSkillLocation), true);
+  assert.equal(result.join("\n").includes(compatibilityMarker), false);
+});
+
+test("array prompts append compatibility as a separate block and stop cleanly", async () => {
+  const harness = createHarness();
+  const prompt = Object.freeze(["First block, with a comma.", "Second block\nwith a newline."]);
+  harness.handlers.get("input")({ text: "/skill:academic-pipeline topic" });
+
+  const active = runBeforeAgentStart(harness, prompt);
+  assert.equal(Array.isArray(active), true);
+  assert.deepEqual(active.slice(0, -1), prompt);
+  assert.equal(active.at(-1).includes(compatibilityMarker), true);
+  assert.deepEqual(runBeforeAgentStart(harness, prompt), active);
+
+  await harness.commands.get("ars-pi-stop").handler("", harness.commandContext);
+  assert.deepEqual(runBeforeAgentStart(harness, prompt), prompt);
+});

@@ -130,11 +130,17 @@ To hide the ARS skills again and continue unrelated work without the compatibili
 
 ## Wrapper regression test
 
+The wrapper accepts both upstream Pi's single-string system prompt and a string-array prompt (as observed in OMP 18.2.6). Array inputs remain arrays: the inactive XML filter runs per block, and activation appends the compatibility note as a separate block without mutating the host's array.
+
+This is prompt-container compatibility, not a full OMP port. Skill hiding still recognizes Pi's XML `<skill>` entries; it does not hide OMP's different `<skills>` text listing. Package discovery and complete research workflows in other hosts are outside this change.
+
 ```bash
 node --test pi/wrapper.test.mjs
 ```
 
 The test covers idle-prompt skill hiding through canonical and symlink-spelled load paths, XML-escaped locations, preservation of missing and adjacent unrelated skills across alternate block formatting, same-request `/ars-*` and direct `/skill:*` activation while idle, manual start/stop toggling, `/tree` state restoration, argument-safe script-path rewriting, and single-pass argument-placeholder substitution.
+
+The array regressions additionally cover selective XML filtering, preservation of block boundaries and frozen input arrays, activation, repeated preparation, and deactivation.
 
 ## What the wrapper translates
 

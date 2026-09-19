@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Pi wrapper: accept string-array system prompts without flattening blocks or mutating host input, while preserving the upstream Pi string path. Add array regression coverage and document the XML-only skill-hiding scope ([#880](https://github.com/Imbad0202/academic-research-skills/pull/880)).
+
 ## [3.22.0] - 2026-09-16 — Output-language-pair contract, locale track, plugin eval suites, and Windows / transport repairs
 
 > **Additive structure, bounded evidence:** v3.22.0 lets a run declare its output language pair through a registry-keyed Schema 4 field whose absence reproduces the legacy files exactly (#862 Phase 1, PR #869), and stands up the locale track around it: an es-ES README and conservative trigger phrases contributed by @didacrios, and a community-maintained locale-pack policy with a provisional single-owner route. Two `claude plugin eval` suites (revision-coach, citation-check) and the reviewer-calibration harness ship as regression guards and dispatch substrates only; none claims a measured uplift or calibration value. Repairs: `/ars-mark-read` and the other five lock sites run on Windows through one shared helper with an `msvcrt` backend, the OpenAI request builders stop sending parameters GPT-6 Astra rejects, the contained Codex transport refuses `effort=ultra`, audit provenance records the actual judge identity, Socratic path F6 no longer preselects a direction, and an unsupported claim can no longer be rescued by hedging. READMEs keep three releases; Gartenberg et al. and Wang, Li et al. join the human-in-the-loop anchors. Roadmap Phase 4 (stage-level evidence ceilings) is not delivered in this release; its window carries forward.
