@@ -69,7 +69,8 @@ Claude Code 2.1.278, `--ablation none --model sonnet --judge-model opus
   skill invoked but failed `format-caught` and `no-false-positive` (score 0.75).
   It omitted the three-author 「等」 correction and incorrectly called the
   correctly stroke-ordered Chinese references misordered. These output-quality
-  failures remain unresolved; the routing acceptance is not a suite-wide pass.
+  failures were the motivation for #882 below; the routing acceptance was not a
+  suite-wide pass.
 - A separate manual `/academic-research-skills:ars-citation-check` smoke,
   using case 03's synthetic material, called the core skill and read
   `citation_compliance_agent.md`. This is runtime evidence for citation-check,
@@ -81,6 +82,38 @@ nested Skill instructions still allowed command-only execution; hiding mode
 commands without updating the SessionStart announcement led to attempted
 calls to user-only commands. The announcement now names the core Skill-tool
 targets for natural-language requests, including resume/compact events.
+
+## Chinese format repair verification (#882, 2026-09-21)
+
+The same case-02 prompt and **all original quality rubrics remain unchanged**.
+Additional `agent-loaded` / `locale-guide-loaded` indicators record Read calls;
+trace inspection checks that those reads succeeded. They are not quality scores.
+
+The first repair candidate caught the missing three-author abbreviation and
+accepted the correct stroke order in all three outputs. One output still
+failed `no-false-positive` by promoting a DOI-prefix heuristic into a required
+reference correction. The final candidate adds a general evidence boundary:
+visible DOI syntax can be checked, but resolution/source claims require actual
+resolver/source evidence. No fixture prefix or fixture author names are added
+to the operative rules.
+
+Final candidate, Claude Code 2.1.278, observed agent `claude-sonnet-5`, requested
+judge `opus`, `--ablation none --no-publish`:
+
+| Run | Result |
+|---|---|
+| Case 02, three attempts | Two completed outputs passed every original quality rubric and both loading indicators; one timed out after loading both files. |
+| Full citation suite, one attempt per case | Cases 01 and 03–08 passed; case 02 timed out after loading both files (7/8 overall). |
+
+Timeouts remain failures and are not omitted from denominators. No completed
+final-candidate output reproduced either reported defect or the DOI-prefix
+false positive. This is bounded synthetic evidence, not a claim of universal
+accuracy, a clean full-suite run, or measured with/without uplift.
+
+The separate [Chinese boundary suite](../plugin-evals-citation-locale/README.md)
+checks that the repair still detects real ordering errors, preserves two-author
+and disambiguation cases, and honors an explicit venue romanization override. All three boundary cases
+passed on the final candidate (one run each).
 
 ## Side channels and ceilings (pilot 3, 2026-09-13, 1 run × 2 arms, sonnet agents)
 

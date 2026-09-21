@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Chinese APA 7 citation checks now test for missing in-text author abbreviation as well as improper abbreviation, preserve ambiguity exceptions and complete reference-list author fields, and require evidence of a stroke-order inversion before proposing a reorder (#882). Citation-check explicitly loads the Chinese guide; Latin alphabetical defaults no longer override the supplied Taiwan/venue ordering rule. Synthetic regression cases cover true inversions, two-author citations, disambiguation, and a romanization override. The same regression run exposed a DOI-prefix heuristic being promoted to a mandatory correction; citation checks now distinguish visible syntax errors from unverified resolution/source claims.
+
 - Citation-check routing: add intent-specific English, Traditional Chinese, and Korean phrases to the academic-paper description, retaining its Spanish trigger. CI now checks each of the four parsed skill descriptions against the 1,024 Unicode-code-point limit (#858, #864).
 
 - Plugin mode commands now explicitly invoke their namespaced core skill and use plugin-root paths for bundled references (#857). The 13 mode commands remain user-invocable; automatic routing selects the core skills directly, avoiding a command stub that can skip its nested skill call. Session-start and resume announcements now give the core Skill-tool targets alongside the user command list. The stubs require a visible stop on loading failure, and a command-dispatch lint guards their frontmatter, target skills, and rooted references. Runtime loading evidence covers citation-check through both slash-command and natural-language entry points; other modes receive static coverage.

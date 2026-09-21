@@ -29,11 +29,16 @@ Wang, Da-Ming, & Li, Xiao-Hua (2024). The evolution and prospects of Taiwan's hi
 Wang, Da-Ming, Li, Xiao-Hua, Zhang, San-Feng, Chen, Si-Hai, & Lin, Wu-Zhou (2023). A meta-analysis of blended learning models on university student learning outcomes. Bulletin of Educational Psychology, 55(2), 201-228. https://doi.org/10.6251/BEP.202312_55(2).0002
 ```
 
-**In-text citations**:
-- Single author: Wang (2024) states... / ...(Wang, 2024)
-- Two authors: Wang and Li (2024)... / ...(Wang & Li, 2024)
-- Three or more (first time): Wang et al. (2023)... / ...(Wang et al., 2023)
-- Three or more (subsequent): Wang et al. (2023)...
+**In-text citations (Chinese names)**:
+- Single author: 許雅雯（2024）指出…… / ……（許雅雯，2024）。
+- Two authors: 許雅雯與周怡君（2024）…… / ……（許雅雯、周怡君，2024）。
+- Three or more, including first use: 許雅雯等（2024）…… / ……（許雅雯等，2024）；「等人」 is also used when required by the venue. Explicitly flag a full 3+ author list in an in-text citation when this shortening rule applies.
+- Disambiguation exception: if same-year works share the shortened citation, retain enough names to distinguish them. If only the final author differs, list all authors; never shorten into an ambiguous citation.
+- This abbreviation rule does not apply to the reference-list author field: APA 7 lists all authors up to 20 there, using its separate 21+ author rule beyond that.
+
+The examples above preserve Chinese names rather than treating an English
+transliteration as the Chinese citation format. Latin-script citations retain
+`et al.` and their applicable connectors.
 
 ---
 
@@ -191,15 +196,27 @@ University TW (2024, March 15). Analysis of Academic Year 113 university admissi
 
 ### Reference List Ordering
 
-**Option A (Recommended): Separate Chinese and English**
-- Chinese references listed first, ordered by author surname stroke count
-- English references listed after, ordered alphabetically by author surname
-- Separated by two headings: "Chinese References" and "English References"
+Apply a supplied journal or author style requirement first. With a request
+for Taiwan APA 7 and no more specific rule:
 
-**Option B: Mixed Chinese-English Ordering**
-- All Chinese and English references listed together
-- Chinese ordered by stroke count, English by alphabetical order
-- Chinese entries placed at the corresponding phonetic/pinyin letter position (or all Chinese first)
+- Check Chinese entries by the first author's surname stroke count, and
+  Latin-script entries alphabetically by surname, within each script group.
+- Chinese-first and English-first group placement are venue-dependent choices;
+  group placement alone is not a format error without a specified rule.
+- Do not romanize Chinese names or switch a stroke-ordered list to pinyin order
+  without an explicit venue requirement. If romanization is required, use the
+  supplied/verified romanized names and that venue's ordering rule.
+- Before flagging a stroke-order error, identify an adjacent inversion and
+  support it with verified counts or an authoritative collation source. Do not
+  guess stroke counts, tie-breaks, or say a list "looks wrong." When the relevant
+  counts or tie-break cannot be verified, leave the order unchanged and state
+  that the ordering check is unresolved.
+
+Primary style references: [NTNU journal writing instructions](https://www.he.ntnu.edu.tw/index.php/1-5/)
+for Chinese surname stroke ordering and three-author abbreviation, and
+[Journal of Research in Education Sciences APA 7 guide](https://jntnu.ord.ntnu.edu.tw/Uploads/Stu/637480523164218482.pdf)
+for the same-year disambiguation exception. These are Taiwan venue conventions,
+not a claim that every APA journal requires the same Chinese/English grouping.
 
 ### In-Text Citation Format Differences
 
@@ -207,7 +224,7 @@ University TW (2024, March 15). Analysis of Academic Year 113 university admissi
 |------|------|------|
 | Parentheses | Full-width () | Half-width () |
 | Multiple author connector | Enumeration comma | & |
-| Three or more authors | et al. (Chinese equivalent) | et al. |
+| Three or more authors | First author’s full name + 等 / 等人, including first use; preserve disambiguation | et al., including first use; preserve disambiguation |
 | Year format | CE year | CE year |
 | Direct quote page | p. (Chinese format) | p. 45 |
 | Multi-page quote | pp. (Chinese format) | pp. 45-48 |
@@ -219,7 +236,7 @@ In recent years, the impact of declining birthrates on Taiwan's higher education
 Smith et al. (2024) and Wang et al. (2023) both indicated that private universities face particularly severe enrollment pressure.
 ```
 
-### Mixed Reference List Example (Option A)
+### Mixed Reference List Example (Chinese-first venue)
 
 ```
 References

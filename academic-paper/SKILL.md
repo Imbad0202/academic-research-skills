@@ -342,6 +342,16 @@ peer-review Schema 11.
 
 ---
 
+## Citation-Check Mode
+
+Before auditing, load `agents/citation_compliance_agent.md`. For APA 7 with
+Chinese citations, also read `references/apa7_chinese_citation_guide.md`; use
+its locale-specific abbreviation and ordering checks rather than applying
+the Latin-script alphabetical checklist to Chinese names. Preserve supplied
+venue overrides and the guide's disambiguation exceptions.
+
+---
+
 ## Rebuttal-Audit Mode
 
 `rebuttal-audit` evaluates an author's **existing** rebuttal / response-to-reviewers draft for coverage, tone, and evidence. It is advisory QA — it does **not** write or rewrite the response.
