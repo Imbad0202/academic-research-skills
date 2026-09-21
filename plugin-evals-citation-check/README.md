@@ -65,6 +65,11 @@ Claude Code 2.1.278, `--ablation none --model sonnet --judge-model opus
 - The full eight-case run passed six cases. Cases 01 and 02 hit the 600-second
   timeout **after** calling the core skill; their output-quality failures
   remain failures, not successful end-to-end runs.
+- Isolated reruns: case 01 passed all rubrics; case 02 completed with the core
+  skill invoked but failed `format-caught` and `no-false-positive` (score 0.75).
+  It omitted the three-author 「等」 correction and incorrectly called the
+  correctly stroke-ordered Chinese references misordered. These output-quality
+  failures remain unresolved; the routing acceptance is not a suite-wide pass.
 - A separate manual `/academic-research-skills:ars-citation-check` smoke,
   using case 03's synthetic material, called the core skill and read
   `citation_compliance_agent.md`. This is runtime evidence for citation-check,
