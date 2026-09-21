@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Citation-check routing: add intent-specific English, Traditional Chinese, and Korean phrases to the academic-paper description, retaining its Spanish trigger. CI now checks each of the four parsed skill descriptions against the 1,024 Unicode-code-point limit (#858, #864).
+
+- Plugin mode commands now explicitly invoke their namespaced core skill and use plugin-root paths for bundled references (#857). The 13 mode commands remain user-invocable; automatic routing selects the core skills directly, avoiding a command stub that can skip its nested skill call. Session-start and resume announcements now give the core Skill-tool targets alongside the user command list. The stubs require a visible stop on loading failure, and a command-dispatch lint guards their frontmatter, target skills, and rooted references. Runtime loading evidence covers citation-check through both slash-command and natural-language entry points; other modes receive static coverage.
+
 - Pi wrapper: accept string-array system prompts without flattening blocks or mutating host input, while preserving the upstream Pi string path. Add array regression coverage and document the XML-only skill-hiding scope ([#880](https://github.com/Imbad0202/academic-research-skills/pull/880)).
 
 ## [3.22.0] - 2026-09-16 — Output-language-pair contract, locale track, plugin eval suites, and Windows / transport repairs

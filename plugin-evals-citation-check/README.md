@@ -47,9 +47,35 @@ which is both too small and never to be used here.
 
 Shared graders on 01–06: `content-caught` (w1.5), `format-caught` (w0.5, spec-
 level mechanics), `no-false-positive` (w1), `honest-unverified` (w1),
-`no-overreach` (w0.5), plus `skill-fired` (`tool_used: Skill`, display-only under
-ablation, never moves Δ). Every llm rubric is written as "work through the checks
+`no-overreach` (w0.5), plus `skill-fired` (`tool_used: Skill`, matching
+`academic-research-skills:academic-paper`, display-only under ablation, never
+moves Δ). The exact core-skill match excludes command-stub-only invocation.
+With `--ablation none`, this grader contributes to the score; report loading
+coverage separately from output-quality grades. Every llm rubric is written as "work through the checks
 one at a time and quote the evidence"; keep that style when adding graders.
+
+## Routing verification (2026-09-21)
+
+Claude Code 2.1.278, `--ablation none --model sonnet --judge-model opus
+--runs 1 --no-publish`, from a working directory outside the plugin checkout:
+
+- All six positive cases called `academic-research-skills:academic-paper`.
+  Cases 07 (format conversion) and 08 (unused Python imports) passed their
+  negative-case rubrics; 08 made no Skill call.
+- The full eight-case run passed six cases. Cases 01 and 02 hit the 600-second
+  timeout **after** calling the core skill; their output-quality failures
+  remain failures, not successful end-to-end runs.
+- A separate manual `/academic-research-skills:ars-citation-check` smoke,
+  using case 03's synthetic material, called the core skill and read
+  `citation_compliance_agent.md`. This is runtime evidence for citation-check,
+  not a runtime coverage claim for all 13 mode commands.
+
+These are loading/routing checks, not a with/without ablation or a measured
+quality uplift. Earlier candidates are not pooled with this run: simply adding
+nested Skill instructions still allowed command-only execution; hiding mode
+commands without updating the SessionStart announcement led to attempted
+calls to user-only commands. The announcement now names the core Skill-tool
+targets for natural-language requests, including resume/compact events.
 
 ## Side channels and ceilings (pilot 3, 2026-09-13, 1 run × 2 arms, sonnet agents)
 
@@ -68,20 +94,17 @@ required on the conversion negative, real journal names replaced).
 
 ## Known caveats
 
-- **The with-plugin arm cannot load the mode's own prompt in the eval sandbox.**
-  `/ars-citation-check` is a command stub that tells the model to read
-  `MODE_REGISTRY.md` and `academic-paper/SKILL.md`; the plugin directory is
-  outside the sandbox cwd, `Glob`/`Read` there are denied under `dontAsk`, and the
-  model never falls back to invoking the `academic-paper` skill itself
-  (`--allow-tools 'Read(<plugin>/**)'` does not help: the model does not know the
-  path). So in this suite the with arm ≈ command text + base model, and
-  `citation_compliance_agent.md` never runs. Δ ≈ 0 across the suite is the
-  honest current reading, not a calibration failure. Fix belongs in the plugin
-  (command should invoke the skill, or carry `${CLAUDE_PLUGIN_ROOT}` paths): #857.
-- **Trigger rate with sonnet is 3 of 6 fire cases** (01, 02, 06 fired; 03 prose
-  "check the citations", 04 terse "look over the refs", 05 Spanish did not).
-  05 is exactly the #850 gap: the skill description carries no Spanish
-  triggers. Display-only; tracked in #858 (triggers) and #850 (locale).
+- **Historical loading failure (2026-09-13 pilot).** The with-plugin arm
+  invoked a command stub but could not find the mode prompt outside its cwd;
+  `citation_compliance_agent.md` never loaded. Its near-zero Δ measured the
+  stub plus base model, not the complete mode. #857 adds an explicit core-skill
+  invocation and plugin-root references, and makes mode command stubs
+  user-invocable only so automatic routing selects the core skill directly.
+- **Historical trigger rate was 3 of 6 fire cases.** The old loose
+  `input_match: academic` counted a command-stub invocation as firing. That
+  number is not comparable to the stronger core-skill indicator now used.
+  The Spanish trigger `verificar citas` subsequently arrived with #856;
+  #858 adds English, Traditional Chinese, and Korean citation-check phrases.
 - **03 was a `/ars-citation-check` slash-command case in pilot 1.** The
   without-plugin arm answered "Unknown command" and Δ was +0.70 for the wrong
   reason (command existence). Switched to a prose trigger.

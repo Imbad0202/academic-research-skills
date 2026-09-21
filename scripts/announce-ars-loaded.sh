@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# version: 1.2.0
+# version: 1.3.0
 #
 # SessionStart hook script for the ARS Claude Code plugin (v3.7.0+).
 #
@@ -104,6 +104,12 @@ Other ARS agents (bibliography_agent, literature_strategist_agent, field_analyst
 Token budget reference: docs/PERFORMANCE.md (a single full pipeline run ≈ \$4–6, order-of-magnitude; measured on Opus 4.x)."
     ;;
 esac
+
+# Mode commands are manual entry points; announce the actual Skill-tool
+# targets too, including after compaction, so the list above does not send
+# automatic routing into a disable-model-invocation command (#857).
+ROUTING="ARS routing: the mode slash commands above are for the user to type. For a matching natural-language request, invoke the core Skill before answering: academic-research-skills:academic-paper for paper planning, writing, revision, reviewer-response coaching, rebuttal audit, abstracts, literature reviews, format conversion, citation checks, and AI disclosure; academic-research-skills:academic-paper-reviewer for simulated peer review; academic-research-skills:deep-research for research and three-way scans; academic-research-skills:academic-pipeline for the full research-to-finalize pipeline. Pass the requested mode and user request as arguments, then read the selected mode's supporting prompt files from the loaded skill directory. Requests outside academic research and writing do not invoke ARS."
+ANNOUNCE+=$'\n\n'"${ROUTING}"
 
 # ---------------------------------------------------------------------------
 # Emit the JSON. We assemble it with a here-doc and a sentinel substitution

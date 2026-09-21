@@ -36,6 +36,22 @@ Add `--no-publish` to keep the HTML report local. Headline number is Δ
 `skill-fired` (`tool_used: Skill`) on 01–05 is display-only under ablation and
 never moves Δ.
 
+## Routing retest (2026-09-21, #854)
+
+After the #857 command-loading and SessionStart routing changes, case 03 was
+run three times with Claude Code 2.1.278, `--ablation none --model opus
+--judge-model opus --runs 3 --case '03-*' --no-publish` from outside the plugin
+checkout. All three called `academic-research-skills:academic-paper`, read
+`revision_coach_agent.md`, and passed the existing no-fabrication and pushback
+rubrics. Trace/output inspection found **0 of 3** applying the committee
+variant. That branch assessment is manual, not an assertion made by the
+existing graders; the same-family judge is not independent validation.
+
+The observed model ID was `claude-opus-5`. This small synthetic retest does
+not rule out the intermittent failure or close #854. Earlier intermediate
+candidates included timeouts and are not counted as completed passing runs
+here. No committee guard or agent definition changed.
+
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 
 | Channel | Ceiling | Observed max |

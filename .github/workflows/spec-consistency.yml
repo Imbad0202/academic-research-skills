@@ -46,6 +46,9 @@ jobs:
       - name: Run spec consistency check
         run: python3 scripts/check_spec_consistency.py
 
+      - name: Check skill description length (#864)
+        run: python3 scripts/check_skill_description_length.py
+
       - name: Lint CI pytest manifest (#156)
         # Drift guard for scripts/_ci_pytest_manifest.toml — verifies entry
         # path existence, id/(path,args) uniqueness, args shape, and that

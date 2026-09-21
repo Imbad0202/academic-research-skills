@@ -20,6 +20,7 @@ on:
       - 'commands/**'
       - 'scripts/announce-ars-loaded.sh'
       - 'scripts/check_command_frontmatter_name.py'
+      - 'scripts/check_command_skill_dispatch.py'
       - '.command-invariants.toml'
       - '.claude-plugin/plugin.json'
       - 'CHANGELOG.md'
@@ -49,3 +50,5 @@ jobs:
             --manifest .command-invariants.toml
       - name: Validate command frontmatter name (bare-alias exposure, #633)
         run: python scripts/check_command_frontmatter_name.py
+      - name: Validate skill dispatch and plugin-root references (#857)
+        run: python scripts/check_command_skill_dispatch.py

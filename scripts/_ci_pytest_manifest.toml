@@ -25,6 +25,14 @@
 #      locally before opening a PR.
 
 [[pytest]]
+id = "857-command-skill-dispatch"
+path = "scripts/test_check_command_skill_dispatch.py"
+
+[[pytest]]
+id = "864-skill-description-length"
+path = "scripts/test_check_skill_description_length.py"
+
+[[pytest]]
 id = "v3.7.1-sha-gate"
 path = "scripts/test_check_v3_6_8_pattern_protection.py"
 
