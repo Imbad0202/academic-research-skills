@@ -104,7 +104,9 @@ judge `opus`, `--ablation none --no-publish`:
 |---|---|
 | Case 02, three attempts | Two completed outputs passed every original quality rubric and both loading indicators; one timed out after loading both files. |
 | Full citation suite, one attempt per case | Cases 01 and 03–08 passed; case 02 timed out after loading both files (7/8 overall). |
+| One isolated case-02 follow-up after other runs finished | Completed and passed every original quality rubric and both loading indicators. |
 
+Across those final-candidate case-02 attempts: **3 passed, 2 timed out**.
 Timeouts remain failures and are not omitted from denominators. No completed
 final-candidate output reproduced either reported defect or the DOI-prefix
 false positive. This is bounded synthetic evidence, not a claim of universal
