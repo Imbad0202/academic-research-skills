@@ -49,6 +49,7 @@ AUTHORITATIVE_REL = "shared/ground_truth_isolation_pattern.md"
 HOTSPOT_AGENTS = (
     "deep-research/agents/source_verification_agent.md",
     "deep-research/agents/bibliography_agent.md",
+    "academic-paper/agents/revision_coach_agent.md",  # #883
 )
 
 MARKER = "instruction-data-boundary"

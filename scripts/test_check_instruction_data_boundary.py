@@ -23,6 +23,10 @@ CHECKER = REPO_ROOT / "scripts" / "check_instruction_data_boundary.py"
 AUTHORITATIVE_REL = "shared/ground_truth_isolation_pattern.md"
 AGENT_REL = "deep-research/agents/source_verification_agent.md"
 AGENT2_REL = "deep-research/agents/bibliography_agent.md"
+AGENT3_REL = "academic-paper/agents/revision_coach_agent.md"
+# Listed here, not imported from the checker, so dropping an agent from the
+# checker's HOTSPOT_AGENTS makes its parametrized cases below fail.
+HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL)
 
 OPEN_MARKER = "<!-- canonical:instruction-data-boundary -->"
 CLOSE_MARKER = "<!-- /canonical:instruction-data-boundary -->"
@@ -45,7 +49,7 @@ def _run2(root: Path):
 def _mirror(tmp_path: Path) -> Path:
     """Copy the files the checker reads into an isolated tree it can lint."""
     root = tmp_path / "repo"
-    for rel in (AUTHORITATIVE_REL, AGENT_REL, AGENT2_REL):
+    for rel in (AUTHORITATIVE_REL, *HOTSPOT_RELS):
         dst = root / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(REPO_ROOT / rel, dst)
@@ -190,14 +194,26 @@ def test_m11_backpoint_only_inside_fence(tmp_path):
     assert "backpoint missing" in err
 
 
-# --- second agent symmetry ---------------------------------------------------
+# --- every hot-spot agent, not only the first ---------------------------------
 
-def test_m8_second_agent_gutted(tmp_path):
-    """The same gutting on bibliography_agent must also fail."""
+@pytest.mark.parametrize("rel", HOTSPOT_RELS, ids=lambda rel: Path(rel).stem)
+def test_m8_hotspot_agent_gutted(tmp_path, rel):
+    """Gutting any hot-spot agent's inlined principle must fail, naming that agent."""
     root = _mirror(tmp_path)
-    _edit(root, AGENT2_REL,
-          lambda t: t.replace(_first_block_body(t), "\nTODO\n"))
-    assert _run(root) == 1
+    _edit(root, rel, lambda t: t.replace(_first_block_body(t), "\nTODO\n"))
+    code, err = _run2(root)
+    assert code == 1
+    assert rel in err
+
+
+@pytest.mark.parametrize("rel", HOTSPOT_RELS, ids=lambda rel: Path(rel).stem)
+def test_m12_hotspot_agent_backpoint_label_removed(tmp_path, rel):
+    """Dropping any hot-spot agent's backpoint label must fail, naming that agent."""
+    root = _mirror(tmp_path)
+    _edit(root, rel, lambda t: t.replace("Authoritative source:", "Source:"))
+    code, err = _run2(root)
+    assert code == 1
+    assert "backpoint missing" in err and rel in err
 
 
 if __name__ == "__main__":

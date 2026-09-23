@@ -1,6 +1,10 @@
 # ARS 效能說明
 
-> **建議模型：當前最新一代 Claude 模型**（撰寫當下為 Fable 5.1），搭配 **Max plan**（或同等配置）。現行 Claude 模型採用 adaptive thinking，不需要手動指定 thinking budget。
+> **建議模型：Claude Fable 5.1 或 Claude Opus 5.5**（以撰寫當下為準），搭配 **Max plan**（或同等配置）。Claude Code 預設使用 Opus 5.5；要用 Fable 5.1，請執行 `/model fable`。兩個模型沒有誰全面勝出：Opus 5.5 system card 的能力總表上，每一列 Opus 5.5 都高於 Fable 5.1；但在 DRACO 深度研究與 OfficeQA 文件推理兩項測驗，Opus 5.5 較低（card 第 174、187、208 頁）。現行 Claude 模型採用 adaptive thinking，不需要手動指定 thinking budget。
+>
+> **用 Opus 5.5 時請調整推理強度（effort）。** Claude Code 讓 Opus 5.5 以 `medium` 起跑，Fable 5.1 則以 `high` 起跑。card 有兩項研究測驗：DRACO（深度研究）與 WANDR（廣域搜尋）。Fable 5.1 在預設的 `high` 分別得 86.5 與 66.7；Opus 5.5 在 `xhigh` 為 86.7／71.3，`medium` 為 83.9／62.8，`low` 為 72.5／31.2（card 第 187-188 頁）。在 Opus 5.5 上跑重度任務前（`/ars-full`、`/ars-reviewer`、`/ars-revision-coach`，或直接用文字啟動的 `deep-research`），請先執行 `/effort high` 或 `/effort xhigh`，避免用 `low`。ARS 刻意不在指令 frontmatter 固定推理強度：固定之後，自己選了 `xhigh` 或 `max` 的使用者也會被壓回來。
+>
+> **第三方文字盡量存成檔案再交給 ARS。** 你貼進自己訊息裡的文字如果藏了指令，Opus 5.5 比先前的模型更容易照做（card §6.5.1）。在 card 的測試中，同一段文字若經由工具進來（例如讀檔），105 次中 0 次被照做。Claude Code 只在會抓取 feature flag 的 session 標記大段貼上文字，所以用第三方雲端平台或關閉遙測時不會標記（[貼上文字說明](https://code.claude.com/docs/en/terminal-config#how-claude-treats-pasted-text)）。
 >
 > 完整學術 pipeline（10 階段）會消耗**大量 token** — 單次完整執行可能超過 200K 輸入 + 100K 輸出 token，視論文長度和修訂輪數而定。請依預算斟酌使用。
 >
@@ -22,7 +26,7 @@
 
 *以 ~15,000 字論文、~60 篇引用為基準估算。實際消耗隨論文長度、修訂輪數、對話深度而異。費用以 Opus 4.x 實測、Anthropic API 2026 年 4 月定價計算；換用更新模型時請當成數量級參考，不是精確報價。*
 
-> **Fable 5.1 換算（2026-09）。**以 Claude Fable 5.1 在 2026-09 的牌價（每百萬輸入／輸出 token 各 US$10／US$50）換算，上表完整 pipeline 的 token 數（約 200K 輸入 + 100K 輸出）每次約 **~$7**。這是用 token 欄位算出來的數字，不是重新實測：沒有任何 pipeline 在 Fable 5.1 上重跑計時。Fable 5.1 一律會推理（thinking 無法關閉），所以對話密集的模式可能比 Opus 4.x 列多用一些輸出 token。
+> **2026-09 牌價換算。**以 2026-09 的牌價換算，上表完整 pipeline 的 token 數（約 200K 輸入 + 100K 輸出）每次約為：Claude Fable 5.1 **~$7**（每百萬輸入／輸出 token 各 US$10／US$50）；Claude Opus 5.5 **~$2.80**（各 US$4／US$20，cache 讀取每百萬 US$0.20；Opus 5.5 system card 第 180 頁）。兩者都尚未計入 cache 折扣。這是用 token 欄位算出來的數字，不是重新實測：沒有任何 pipeline 在這兩個模型上重跑計時。兩個模型都一律會推理（thinking 無法關閉），所以對話密集的模式可能比 Opus 4.x 列多用一些輸出 token；推理強度越高，用得越多。
 
 > **v3.11 引用查驗（#182）。** 確定性引用存在性 gate 呼叫的是外部書目 API（Semantic Scholar / OpenAlex / Crossref / arXiv），不是 LLM，因此**不增加上表的 Claude token 成本**——只在首次查詢時有網路延遲。持久化 SQLite cache（`~/.cache/ars/verification.db`，90 天 TTL）讓每篇論文只查驗一次、跨草稿重用；對已 cache 的書目重跑不做任何網路請求。見 [SETUP](SETUP.zh-TW.md#引用查驗-cachev3.11182)。
 
@@ -49,6 +53,8 @@
 意涵：**plugin agent 的 token 成本完全跟著上表各模式估算走，沒有額外加減**（`ARS_MODEL_TIERING` 未設定時）。dispatched agent 跟主 session 同一個模型，主 session 已經付的成本沒有再多一層 plugin agent 收費。設定 `ARS_MODEL_TIERING=economy` 時，plugin 暴露的 execution 型 agent（如 `report_compiler_agent`）改走分層規則——比 session model 低一階、樓地板 Opus 級（見 `shared/model_tiering.md`）。如果 pipeline 中途換模型（例如 revision pass 改用 Sonnet 省成本），下一輪 agent 派工自動跟上。
 
 其他 ARS agent（`bibliography_agent`、`literature_strategist_agent` 等）在 v3.7.0 不暴露為 plugin agent；它們仍是 in-skill prompt template，由主 session 內聯執行，**預設**沒有獨立的模型路由層。Opt-in 的 `ARS_MODEL_TIERING`（#517）在其上加了一層 dispatch 時的路由規則：當分層方向適用於某角色時，session 會把該角色以子代理形式派發、鎖定目標層級（內聯角色也一樣——「派發為子代理」正是其機制）；flag 未設定時，本段描述的行為完全不變。見 `shared/model_tiering.md`。更廣的 plugin agent 覆蓋留到後續版本。
+
+**Fable 5.1 與 Opus 5.5 的分層（2026-09）。**分層階梯把 Fable 5.1 排在 Opus 5.5 之上，是因為原廠的產品排序如此，不是因為 Fable 5.1 每項任務都比較強（見本頁開頭的模型說明）。在 Opus 5.5 session 上，`quality-boost` 會把檢核點的呼叫送到 Fable 5.1，每個 token 的牌價是 2.5 倍，換來的效益 ARS 沒有量測過；先調高 session 的推理強度比較便宜。在 Fable 5.1 session 上，`economy` 會把執行型 agent 送到 Opus 級，Claude Code 在 Anthropic API 上會解析成 Opus 5.5（部分雲端平台會把 `opus` 別名解析成較舊的 Opus）；這筆取捨對品質的影響，ARS 同樣沒有量測過。
 
 ## 長時間 session 管理
 

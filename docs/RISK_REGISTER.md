@@ -47,11 +47,14 @@ does not support.
 - **Residual gap**: no measured hallucinated-citation catch rate — that needs an
   independently-authored ground-truth set, not one derived from the gate's own
   reducer; the Claim Registry's semantic completeness is unknown by contract. No
-  open issue schedules either measurement yet. The vendor's own evaluation of the
-  current session model reports fabricated references as rare and misrepresented
-  findings or conclusions as the residual error class that needs domain
-  familiarity to catch (Claude Fable 5.1 system card §2.2.4), which moves the
-  weight of this row onto the supports-the-claim half — exactly the unmeasured
+  open issue schedules either measurement yet. The vendor evaluations of both
+  supported session models point the same way. The Claude Fable 5.1 system card
+  (§2.2.4) reports fabricated references as rare and misrepresented findings or
+  conclusions as the residual error class that needs domain familiarity to catch;
+  the Claude Opus 5.5 system card reports reliance on abstracts over full papers
+  and partial checks described as full reads (mapped in
+  `audits/harness-retirement-2026-09-opus-5-5.md` DM-015). Both move the weight of
+  this row onto the supports-the-claim half — exactly the unmeasured
   claim-verification row above.
 
 ### R2 — Silent claim-strength drift in revision
@@ -68,11 +71,16 @@ A revision round strengthens or weakens a claim without an authorizing roadmap i
 
 ### R3 — Indirect prompt injection via retrieved content
 
-Text retrieved from a source carries instructions that an agent follows as if they
-came from the user.
+Third-party text, whether an agent retrieves it or the user pastes it, carries
+instructions that an agent follows as if they came from the user.
 
 - **Existing controls**: the retrieved-content instruction/data boundary as a
-  standing principle (#367); the offline structural probe
+  standing principle (#367), inlined verbatim in the deep-research retrieval
+  agents and, since #883, in the revision coach that ingests pasted reviewer
+  comments and decision letters (`scripts/check_instruction_data_boundary.py`);
+  the reviewer-side untrusted-materials rule (`academic-paper-reviewer/SKILL.md`)
+  and its manuscript fence in the five panel agents (pinned by
+  `scripts/check_reviewer_data_fences.py`); the offline structural probe
   (`scripts/run_indirect_prompt_injection_probe.py`), which by design never
   dispatches a model.
 - **Evidence status**: `DESIGNED` (asserted here; no capability-matrix row) — the
@@ -81,6 +89,13 @@ came from the user.
   ([#675](https://github.com/Imbad0202/academic-research-skills/issues/675));
   structural instruction/data isolation at the task-envelope boundary is design work
   ([#676](https://github.com/Imbad0202/academic-research-skills/issues/676)).
+  The Claude Opus 5.5 system card reports a regression on the pasted channel: the
+  model acts on instructions planted in text the user pasted into their own
+  message, but acted on them in 0 of 105 attempts when the same text arrived as a
+  tool result (§6.5.1; rates and product-side caveats in
+  `audits/harness-retirement-2026-09-opus-5-5.md` DG-1). The #675 scenarios
+  include pasted reviewer and committee comments. The prompt-level boundary is
+  trust-based; its effect on this regression is unmeasured.
 
 ### R4 — Unpublished-content exposure via cross-model transport
 
@@ -108,18 +123,21 @@ described.
 
 - **Existing controls**: commit-frozen measurement rows re-measured per change; the
   matrix staleness rule (`stale_after_days`); periodic harness-retirement audits
-  (`audits/harness-retirement-2026-09-model-update.md` is the most recent
-  completed report, run on the Fable 5 → Fable 5.1 and GPT-5.6 Sol → GPT-6 Astra
-  change).
+  (`audits/harness-retirement-2026-09-opus-5-5.md` is the most recent completed
+  report, run when Claude Opus 5.5 joined Claude Fable 5.1 as a supported session
+  model; `audits/harness-retirement-2026-09-model-update.md` covers the Fable 5 →
+  Fable 5.1 and GPT-5.6 Sol → GPT-6 Astra change).
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — no
   measurement of cross-version drift itself exists.
 - **Residual gap**: measured rows are model- and time-specific by contract;
   re-running them on a model change is a manual maintainer action, not automated.
-  The session model can also change per request without a version change: the
-  runtime's classifier-triggered fallback is invisible to the suite
-  (`shared/model_tiering.md`, the declared-model note under Resolving a tier at
-  dispatch time), so every "session model" in a provenance record is the declared
-  model, not a per-call attestation.
+  The session model can also change mid-run without a version change: a
+  classifier-triggered fallback moves a Claude Code session onto the fallback
+  model until the user runs `/model`, with a transcript notice the user sees and
+  the suite never reads (`shared/model_tiering.md`, the declared-model note under
+  Resolving a tier at dispatch time; vendor specifics in
+  `audits/harness-retirement-2026-09-opus-5-5.md` DM-005), so every "session
+  model" in a provenance record is the declared model, not a per-call attestation.
 
 ### R6 — Correlated same-family model error
 
@@ -212,5 +230,6 @@ subagent as a broader authorization than was given.
   deterministic authorization inputs are CI-pinned; the prompt-level rule is not
   measured on any session model.
 - **Residual gap**: the failure class is vendor-documented, not ARS-measured
-  (evidence mapped in `audits/harness-retirement-2026-09-model-update.md` G-1);
-  the prompt rule is trust-based.
+  (evidence mapped in `audits/harness-retirement-2026-09-model-update.md` G-1 for
+  Fable 5.1 and `audits/harness-retirement-2026-09-opus-5-5.md` DM-013 for Opus
+  5.5); the prompt rule is trust-based.

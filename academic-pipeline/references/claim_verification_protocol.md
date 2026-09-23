@@ -201,7 +201,7 @@ event artifact is unavailable, replay fails closed. An empty finding set is
 therefore “none detected by the recorded review,” never a deterministic
 no-drift certificate.
 
-External motivation: DELEGATE-52 (arXiv:2604.15597) — round-trip editing corrupts content by subtle modification; the #390 patch confines exposure to touched blocks but does not check their epistemic interior. Baseline evidence that the drift is real on the current frontier model: `evals/heldout/revision_claim_drift/` (2026-07-22: 2/8 under hedge-drop / null-reframe pressure). Mechanism shape borrowed from Yila-AI/sci-ssci-skills (@MissOrangePeel).
+External motivation: DELEGATE-52 (arXiv:2604.15597) — round-trip editing corrupts content by subtle modification; the #390 patch confines exposure to touched blocks but does not check their epistemic interior. Baseline evidence that the drift is real on the frontier model of that date (`claude-fable-5`): `evals/heldout/revision_claim_drift/` (2026-07-22: 2/8 under hedge-drop / null-reframe pressure). Mechanism shape borrowed from Yila-AI/sci-ssci-skills (@MissOrangePeel).
 
 ## Claim-Standing Probe Offer (#655 — opt-in, advisory-only)
 

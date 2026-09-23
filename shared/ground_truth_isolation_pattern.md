@@ -142,10 +142,16 @@ text (submission policies, reviewer comments, methods instructions), and none of
 that is blocked. The principle distinguishes *whose* instruction is authoritative,
 not *whether imperative text may appear*.
 
-The retrieval-class agents with the largest external-content surface
-(`source_verification_agent`, `bibliography_agent`) inline this principle into
-their own context, because an agent does not read a file merely named in its
-prompt — the principle has to be present where the fetch happens to matter.
+Agents whose main input is third-party text inline this principle into their own
+context, because an agent does not read a file merely named in its prompt: the
+principle has to be present where that text arrives to matter. The
+retrieval-class agents with the largest external-content surface
+(`source_verification_agent`, `bibliography_agent`) do so, and so does the
+revision coach (`revision_coach_agent`, #883), whose reviewer and committee text
+usually arrives pasted into the user's own message, a channel the Claude Opus 5.5
+system card reports as more susceptible to planted instructions than tool results
+(§6.5.1). `HOTSPOT_AGENTS` in `scripts/check_instruction_data_boundary.py` is the
+authoritative list.
 
 ---
 
