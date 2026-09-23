@@ -108,7 +108,7 @@ and no Skill argument carried the `[direct-mode]` token.
 | 01 cross-phase | clarify | pass: a-d workflow options, no Skill call | pass: a-d workflow options, no Skill call |
 | 02 literature only | `academic-paper:lit-review` | pass: Skill `academic-paper`, "lit-review"; asked for folder access and for the paper configuration to be confirmed | pass: Skill `academic-paper`, "mode=lit-review" |
 | 03 no materials | clarify | pass: stage options a-d | pass: stage options a-d |
-| 04 slash command | `academic-paper:lit-review` | pass, on `claude-sonnet-5` | pass, on `claude-sonnet-5` |
+| 04 slash command | `academic-paper:lit-review` | **fail (RC)**, on `claude-sonnet-5`: Skill `academic-paper` "lit-review", then offered to route to `deep-research` lit-review instead ("Say the word and I'll invoke it") and asked "Which would you like?" | pass, on `claude-sonnet-5`: Skill `academic-paper` "lit-review"; asked for the papers or for leave to search within the same mode, and mentioned `deep-research` lit-review only as a recommendation (scored pass because both offered paths stay in the invoked mode; a second reviewer read it as a workflow choice) |
 | 05 direct mode | `bibliography_agent` | **fail (D)**: "I haven't started `bibliography_agent` yet because the 30 PDFs didn't come through"; the agent was named, never dispatched or read | pass: read the headings of `deep-research/agents/bibliography_agent.md` (Grep); "route straight to the deep-research `bibliography_agent`" |
 | 06 token mid-message | clarify | pass: said the token was ignored; a-d options | pass: said the token was ignored; a-d options |
 | 07 token, capitalized | `academic-paper:abstract` (the `abstract-only` mode) | pass: Skill `academic-paper`, "abstract-only" | pass: Skill `academic-paper`, "abstract-only" |
@@ -117,7 +117,7 @@ and no Skill argument carried the `[direct-mode]` token.
 | 10 Korean review | `academic-paper-reviewer:full` | pass: Skill reviewer, "full mode" | pass: Skill reviewer, "mode: full" |
 | 11 Spanish revise | `academic-paper:revision` | **fail (RC, D)**: "necesito que elijas cómo pulirlo", four routes; read revision mode as needing reviewer comments; the Skill call named no mode | **fail (RC)**: "Indica también qué ruta prefieres", two routes, neither of them revision mode alone; the Skill call named `revision`, so D passes by the rule's wording |
 | 12 Spanish review | `academic-paper-reviewer:full` | **fail (RC)**: Skill reviewer "full", then "Confírmame cuál quieres": review, edit, or citations | pass: Skill reviewer "full"; asked only for the manuscript |
-| **Total** | | **9 of 12** (8 of 11 without 04) | **11 of 12** (10 of 11 without 04) |
+| **Total** | | **8 of 12** (8 of 11 without 04) | **11 of 12** (10 of 11 without 04) |
 
 ### Change after pass 1 (`46a563a9`)
 
@@ -135,9 +135,16 @@ it requires, and no other workflows are offered.
 
 | Fixture | Expected | Claude Opus 5.5 | Claude Fable 5.1 |
 |---|---|---|---|
-| 01-04, 07-10 | as in pass 1 | pass (04 on `claude-sonnet-5`) | pass (04 on `claude-sonnet-5`) |
+| 01 cross-phase | clarify | pass: a-d workflow options, no Skill call | pass: a-d workflow options, no Skill call |
+| 02 literature only | `academic-paper:lit-review` | pass: Skill `academic-paper`, "mode=lit-review"; asked for folder access and for the setup to be confirmed | pass: Skill `academic-paper`, "lit-review"; "Routing is settled"; asked for folder access |
+| 03 no materials | clarify | pass: stage options a-d | pass: stage options a-d |
+| 04 slash command | `academic-paper:lit-review` | pass, on `claude-sonnet-5`: Skill `academic-paper`, "mode: lit-review"; asked only for the papers | pass, on `claude-sonnet-5`: Skill `academic-paper`, "mode: lit-review"; asked for the papers or for leave to search within the same mode |
 | 05 direct mode | `bibliography_agent` | pass: read `deep-research/agents/bibliography_agent.md`, then asked for the files | pass: read the agent file; asked for the folder and the research question, with criteria optional |
 | 06 token mid-message | clarify | **fail (RC, D)**: read `deep-research/agents/bibliography_agent.md`; "Once I have them, I'll run bibliography_agent directly, with no workflow questions"; the token was not mentioned | pass: said the token was ignored; a-d options |
+| 07 token, capitalized | `academic-paper:abstract` (the `abstract-only` mode) | pass: Skill `academic-paper`, "abstract-only mode" with the stripped message | pass: Skill `academic-paper`, "abstract-only" with the stripped message |
+| 08 draft + abstract + literature + reviews | clarify | pass: a-d workflow options | pass: a-d workflow options |
+| 09 Korean revise | `academic-paper:revision` | pass: Skill `academic-paper`, "mode: revision"; "revision 모드로 진행할게요" | pass: Skill `academic-paper`, "mode: revision" |
+| 10 Korean review | `academic-paper-reviewer:full` | pass: Skill reviewer, "full" | pass: Skill reviewer, "full" |
 | 11 Spanish revise | `academic-paper:revision` | pass: "Voy a trabajar en modo revisión", which "también sirve cuando aún no hay comentarios" | pass: "He enrutado la petición al modo `revision`" |
 | 12 Spanish review | `academic-paper-reviewer:full` | pass: proceeds with the full review; closes with an offer to switch if an edit was meant | pass: routed to `full` directly |
 | **Total** | | **11 of 12** (10 of 11 without 04) | **12 of 12** (11 of 11 without 04) |
@@ -146,8 +153,8 @@ it requires, and no other workflows are offered.
 
 In pass 2, Opus 5.5 treated an agent named without the byte-0 token as explicit intent
 (fixture 06). The pass-1 Step 0 sentence ended "do not offer other workflows" without
-tying it to an honored token, which is the likely cause; one session per fixture cannot
-show it. Step 0 now applies the missing-input rule only when the token is honored, and
+tying it to an honored token. That may explain the failure; one session per fixture
+cannot establish it. Step 0 now applies the missing-input rule only when the token is honored, and
 says that without the token, naming an agent is not explicit intent, so cross-phase
 materials still get Step 2 clarification. The protocol's escape-hatch section says the
 same.
@@ -166,7 +173,7 @@ still fails goes to a follow-up issue with the deciding quote.
 | 01 cross-phase | clarify | pass: a-d workflow options, no Skill call | pass: a-d workflow options, no Skill call |
 | 02 literature only | `academic-paper:lit-review` | pass: Skill `academic-paper`, "lit-review"; asked for folder access and the intake settings | pass: Skill `academic-paper`, "lit-review"; asked for folder access and the intake settings |
 | 03 no materials | clarify | pass: stage options a-d | pass: stage options a-d |
-| 04 slash command | `academic-paper:lit-review` | pass, on `claude-sonnet-5` | pass, on `claude-sonnet-5` |
+| 04 slash command | `academic-paper:lit-review` | **fail (RC)**, on `claude-sonnet-5`: Skill `academic-paper`, "mode: lit-review", then "should I hand this to `deep-research lit-review` to search and build the bibliography from scratch?" | pass, on `claude-sonnet-5`: Skill `academic-paper`, "mode: lit-review"; offered the papers or a search "under `lit-review` mode" |
 | 05 direct mode | `bibliography_agent` | pass: read the agent file; "I'll run `bibliography_agent` directly, as `[direct-mode]` asks"; asked for the PDFs, the research question, and the criteria | pass: read the agent file; "The `[direct-mode]` token is honored"; asked for the PDFs and the research question |
 | 06 token mid-message | clarify | pass: "`[direct-mode]` only skips this question when it's the very first thing in your message"; a-d options | pass: said the token does not apply mid-sentence; a-d options |
 | 07 token, capitalized | `academic-paper:abstract` (the `abstract-only` mode) | pass: Skill `academic-paper`, "abstract-only mode" with the stripped message | pass: Skill `academic-paper`, "abstract-only" with the stripped message |
@@ -175,13 +182,19 @@ still fails goes to a follow-up issue with the deciding quote.
 | 10 Korean review | `academic-paper-reviewer:full` | pass: Skill reviewer, "mode: full" | pass: Skill reviewer, "mode=full" |
 | 11 Spanish revise | `academic-paper:revision` | pass: Skill `academic-paper`, "mode=revision"; "No hace falta cambiar de flujo" | pass: Skill `academic-paper`, "mode: revision"; "Este modo no exige comentarios de revisores" |
 | 12 Spanish review | `academic-paper-reviewer:full` | pass: Skill reviewer "full"; offers to switch to revision mode if an edit was meant | pass: Skill reviewer "full" |
-| **Total** | | **12 of 12** (11 of 11 without 04) | **12 of 12** (11 of 11 without 04) |
+| **Total** | | **11 of 12** (11 of 11 without 04) | **12 of 12** (11 of 11 without 04) |
 
 ### What the three passes show
 
-- On the final prose (`147222de`), each fixture passed on every field once per model,
-  and fixture 04 passed once on `claude-sonnet-5`. No fixture failed, so the stop rule
-  opens no follow-up issue.
+- On the final prose (`147222de`), both session models passed every fixture that runs
+  on them (11 of 11), on every field, in one session each.
+- Fixture 04 runs on `claude-sonnet-5` through its command's model pin, so it measures
+  neither session model. With no papers attached, two of its six sessions (pass 1 and
+  pass 3, both in the Opus 5.5 arm) offered to hand the request to `deep-research`
+  lit-review and asked the user to choose, which fails the routing class. The command
+  file itself recommends `deep-research` lit-review for a research-side review
+  (`commands/ars-lit-review.md`). Under the stop rule, fixture 04 goes to a follow-up
+  issue; this change makes no further prose edit.
 - Pass 3 is not held out. The prose was changed twice after failures on these same
   fixtures, and one session per fixture cannot separate a prose effect from run-to-run
   variation: fixture 06 on Opus 5.5 passed, failed, and passed across the three passes.

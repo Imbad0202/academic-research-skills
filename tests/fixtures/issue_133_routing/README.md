@@ -67,7 +67,7 @@ notes: <optional free-text>
 
 Until v3.10 conductor brings deterministic dispatch, these fixtures are run **manually against a live ARS session**:
 
-1. Start a fresh Claude Code session for each fixture in a standalone clone of this repository, with no user-level configuration (an empty `CLAUDE_CONFIG_DIR`, and the clone outside your home directory; `CALIBRATION_LOG.md` records why both are needed)
+1. Start a fresh Claude Code session for each fixture in a standalone clone of this repository, outside your home directory, with ARS loaded from that clone through `--plugin-dir`, no user-level configuration (an empty `CLAUDE_CONFIG_DIR` and an environment allowlist), and the write and network tools disallowed; `CALIBRATION_LOG.md` (the 2026-09-23 Condition section) lists each setting and why it is needed
 2. Paste the `input.md` content as the first message
 3. Score every field of `expected.yaml`: routing class, destination, escape-hatch behavior, and the stripped message where one is expected (scoring rules in `CALIBRATION_LOG.md`)
 4. Record the model id, effort, date, the deciding part of each response, and pass or fail per field in `CALIBRATION_LOG.md`
