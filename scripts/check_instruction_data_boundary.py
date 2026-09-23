@@ -44,6 +44,17 @@ import re
 import sys
 from pathlib import Path
 
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+# The judge prompt region is the one #361 hashes; reusing its definition keeps
+# the copy required exactly where the hash applies.
+from check_judge_prompt_version import (  # noqa: E402
+    _AGENT_REL as JUDGE_PROMPT_REL,
+    _SECTION_RE as JUDGE_PROMPT_RE,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 AUTHORITATIVE_REL = "shared/ground_truth_isolation_pattern.md"
@@ -72,19 +83,18 @@ HOTSPOT_AGENTS = (
 
 # #890: prompts sent to a model as written, without the agent file around them.
 # Each copy carries the canonical sentences without the HTML markers or the
-# backpoint. Entries: (file, name, start anchor, end anchor); the check takes
-# the text between the anchors, strips blockquote prefixes, and requires the
-# canonical body verbatim.
+# backpoint. Entries: (file, name, pattern); group 1 of the pattern is the text
+# the model receives. The check strips blockquote prefixes and requires the
+# canonical body verbatim inside that text.
 PROMPT_TEMPLATES = (
-    # The judge call may receive only this blockquote. The markers are the ones
-    # scripts/check_judge_prompt_version.py hashes.
-    ("academic-pipeline/agents/claim_ref_alignment_audit_agent.md",
-     "unified judge prompt",
-     "<!-- JUDGE-PROMPT-CANONICAL-START", "<!-- JUDGE-PROMPT-CANONICAL-END"),
-    # The cross-model receives this prompt and the reviewed material only.
-    ("shared/cross_model_verification.md",
-     "cross-model devil's advocate prompt",
-     "a simplified DA prompt to the cross-model:", "2. Compare cross-model findings"),
+    # The judge call may receive only this blockquote.
+    (JUDGE_PROMPT_REL, "unified judge prompt", JUDGE_PROMPT_RE),
+    # The cross-model receives this prompt and the reviewed material only; the
+    # pattern spans the code block from the prompt's first line to its
+    # `Material:` slot.
+    ("shared/cross_model_verification.md", "cross-model devil's advocate prompt",
+     re.compile(r"You are a devil's advocate reviewing this(.*?)"
+                r"Material: \[the reviewed content\]", re.DOTALL)),
 )
 _QUOTE_PREFIX_RE = re.compile(r"^[ \t]*>[ \t]?", re.MULTILINE)
 
@@ -199,18 +209,17 @@ def check_backpoint(text: str, rel: str, violations: list[str]) -> None:
         )
 
 
-def check_prompt_template(text: str, rel: str, name: str, start: str, end: str,
+def check_prompt_template(text: str, rel: str, name: str, pattern: re.Pattern,
                           violations: list[str]) -> None:
     """A prompt sent without its agent file must carry the canonical sentences."""
-    i = text.find(start)
-    j = text.find(end, i + len(start)) if i != -1 else -1
-    if j == -1:
+    m = pattern.search(text)
+    if m is None:
         violations.append(
             f"{rel}: {name} not found (start or end anchor missing) — the "
             f"principle inside it cannot be checked"
         )
         return
-    template = _QUOTE_PREFIX_RE.sub("", text[i + len(start):j])
+    template = _QUOTE_PREFIX_RE.sub("", m.group(1))
     if _norm(CANONICAL_BODY) not in _norm(template):
         violations.append(
             f"{rel}: the {name} does not carry the canonical principle verbatim "
@@ -278,13 +287,13 @@ def main() -> int:
                                violations=violations)
         check_backpoint(text, rel, violations)
 
-    for rel, name, start, end in PROMPT_TEMPLATES:
+    for rel, name, pattern in PROMPT_TEMPLATES:
         path = root / rel
         if not path.exists():
             print(f"ERROR: prompt template file not found: {path}", file=sys.stderr)
             return 2
         check_prompt_template(path.read_text(encoding="utf-8"), rel, name,
-                              start, end, violations)
+                              pattern, violations)
 
     if violations:
         print("instruction-vs-data boundary lint FAILED:", file=sys.stderr)

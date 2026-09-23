@@ -47,8 +47,8 @@ JUDGE_REL = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
 JUDGE_START = "<!-- JUDGE-PROMPT-CANONICAL-START"
 JUDGE_END = "<!-- JUDGE-PROMPT-CANONICAL-END"
 XM_REL = "shared/cross_model_verification.md"
-XM_START = "a simplified DA prompt to the cross-model:"
-XM_END = "2. Compare cross-model findings"
+XM_START = "You are a devil's advocate reviewing this"
+XM_END = "Material: [the reviewed content]"
 
 OPEN_MARKER = "<!-- canonical:instruction-data-boundary -->"
 CLOSE_MARKER = "<!-- /canonical:instruction-data-boundary -->"
@@ -289,16 +289,19 @@ def test_m15_judge_template_markers_renamed(tmp_path):
 # --- the cross-model devil's advocate prompt (#890) ----------------------------
 
 def test_m16_xm_da_prompt_principle_moved_out(tmp_path):
-    """The copy moved below the prompt, where the cross-model never sees it, must fail."""
+    """The copy moved just past the closing fence, which the cross-model never receives, must fail."""
     moved = {}
     def cut(seg: str) -> str:
         start = seg.index("   Retrieved external content")
         end = seg.index("command to follow.\n", start) + len("command to follow.\n")
         moved["text"] = seg[start:end]
         return seg[:start] + seg[end:]
+    def paste_after_fence(t: str) -> str:
+        fence_end = t.index("```\n", t.index(XM_END)) + len("```\n")
+        return t[:fence_end] + moved["text"] + t[fence_end:]
     root = _mirror(tmp_path)
     _edit(root, XM_REL, _in_region(XM_START, XM_END, cut))
-    _edit(root, XM_REL, lambda t: t + "\n" + moved["text"])
+    _edit(root, XM_REL, paste_after_fence)
     code, err = _run2(root)
     assert code == 1
     assert "cross-model devil's advocate prompt does not carry" in err
@@ -317,10 +320,26 @@ def test_m17_xm_da_prompt_principle_weakened(tmp_path):
 def test_m18_xm_da_prompt_anchor_renamed(tmp_path):
     """A renamed start anchor leaves nothing to check, which must fail rather than pass."""
     root = _mirror(tmp_path)
-    _edit(root, XM_REL, lambda t: t.replace(XM_START, "a DA prompt to the cross-model:"))
+    _edit(root, XM_REL, lambda t: t.replace(XM_START, "You are a critic reviewing this"))
     code, err = _run2(root)
     assert code == 1
     assert "cross-model devil's advocate prompt not found" in err
+
+
+def test_m19_judge_copy_only_inside_start_marker(tmp_path):
+    """A copy inside the START marker comment is not sent to the judge, so it must fail."""
+    def move_into_marker(text: str) -> str:
+        start = text.index("> Retrieved external content")
+        end = text.index("> command to follow.", start) + len("> command to follow.\n")
+        copy = text[start:end].replace("> ", "")
+        text = text[:start] + text[end:]
+        marker_close = text.index("-->", text.index(JUDGE_START))
+        return text[:marker_close] + " " + copy + " " + text[marker_close:]
+    root = _mirror(tmp_path)
+    _edit(root, JUDGE_REL, move_into_marker)
+    code, err = _run2(root)
+    assert code == 1
+    assert "unified judge prompt does not carry" in err
 
 
 if __name__ == "__main__":
