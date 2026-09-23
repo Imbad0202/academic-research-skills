@@ -2,7 +2,7 @@
 
 | | |
 |-|-|
-| Repo path | `~/Projects/academic-research-skills` |
+| Repository | `Imbad0202/academic-research-skills` (GitHub) |
 | Branch / commit audited | Read at `main @ 1515a21`; changes branch from `main @ a1819d8` (#881 changed command bodies, not their `model:` lines) |
 | Date | 2026-09-23 |
 | Target model (before → after) | Session: Claude Fable 5.1 only → **Claude Fable 5.1 and Claude Opus 5.5** as co-supported session models. Claude Code 2.1.280 (2026-09-22) made Opus 5.5 the account default and the target of the `opus` alias; Fable 5.1 remains opt-in (`/model fable`). Cross-model lineup unchanged |
@@ -15,7 +15,7 @@
 
 - **Findings: 0 P0; 6 applied changes (DM-001 – DM-006); 1 guardrail added (DG-1); 0 prompt-text retirements; 9 keep rows now also backed by an Opus 5.5 citation (DM-012 – DM-018, DM-020, DM-021); 3 rows kept or declined for stated reasons (DM-007 – DM-009); 1 record row (DM-011); 2 deferred (DM-010, DM-019); 5 candidate follow-ups.**
 - **No agent prompt sentence expired.** The card describes the failure classes ARS's remaining scaffolds guard against as still present in Opus 5.5: asserting unverified inferences as established fact (the top flagged subcategory) and describing a partial check as a full read (p. 36); relying on abstracts rather than full papers while presenting that information confidently (pp. 19, 33); answering directly when the task required a tool or code (p. 99); a fabricated user approval relayed to a subagent (p. 102). Two behaviors are named regressions: acting on instructions inside text the user pasted into their own message (§6.5.1) and accepting unverifiable claims of authorization (pp. 3, 105, 108). The card names multi-agent runs, very long trajectories, and non-English sessions as blind spots of its alignment audit (pp. 93, 122), and ARS runs under all three.
-- **Neither model is better for ARS at everything.** At max effort Opus 5.5 is ahead of Fable 5.1 on every row of the card's capability summary table (p. 174). Fable 5.1 is ahead on DRACO deep research at every effort level (p. 187) and on OfficeQA grounded document reasoning (p. 208). Opus 5.5 costs 40% of Fable 5.1 per token (p. 180; Fable 5.1 price per `docs/PERFORMANCE.md`). Effort is the swing factor: Claude Code starts Opus 5.5 at `medium`, where it trails Fable 5.1 on both research benchmarks, and at `low` its research scores collapse (DRACO 72.5, WANDR 31.2) while Fable 5.1 holds (84.2, 63.3; pp. 187-188).
+- **Neither model is better for ARS at everything.** Opus 5.5 is ahead of Fable 5.1 on every row of the card's capability summary table, run at max effort except Terminal-Bench 4.0 at `xhigh` (p. 174). Fable 5.1 is ahead on DRACO deep research at every effort level (p. 187) and on OfficeQA grounded document reasoning (p. 208). Opus 5.5 costs 40% of Fable 5.1 per token (p. 180; Fable 5.1 price per `docs/PERFORMANCE.md`). Effort is the swing factor: Claude Code starts Opus 5.5 at `medium`, where it trails Fable 5.1 on both research benchmarks, and at `low` its research scores collapse (DRACO 72.5, WANDR 31.2) while Fable 5.1 holds (84.2, 63.3; pp. 187-188).
 - **What expired is currency and precision, not protection.** The docs named only Fable 5.1. The tiering doc's word "family" collides with Claude Code's own "model family alias" (`opus`, `fable`), which can read an Opus session as its own frontier tier. The declared-model note said a classifier fallback happens "without notice", while Claude Code shows a transcript notice and keeps the session on the fallback model.
 - **Maintainer decisions (2026-09-23):** keep the tier ladder and document that its order is a lineup order, not a capability order (DM-004, option A of three); add the instruction/data boundary to the revision coach (DG-1, option A of three).
 
@@ -29,7 +29,7 @@ Sources: **card** = *System Card: Claude Opus 5.5* page; **docs** = Claude Code 
 |---|---|---|---|
 | List price per million tokens (input / output) | US$10 / US$50 | US$4 / US$20; cache reads US$0.20; five-minute cache writes US$5 | Fable: `docs/PERFORMANCE.md` (2026-09 list); Opus: card p. 180 |
 | Full-pipeline arithmetic (~200K in / ~100K out, no cache) | ~$7 | ~$2.80 | arithmetic on `docs/PERFORMANCE.md` token rows, not a re-measurement |
-| Claude Code default | never the account default; `/model fable`; may bill to usage credits (consent prompt in interactive sessions, none under `-p`) | account default on Pro, Max, Team, Enterprise, and the API; target of the `opus` alias | docs (model configuration) |
+| Claude Code default | never the account default; `/model fable` (`/model claude-fable-5-1` in Claude apps gateway sessions); may bill to usage credits depending on plan and seat (interactive sessions ask once before billing, except under Enterprise organization billing; `-p` and the Agent SDK bill without asking) | account default on Pro, Max, Team, Enterprise, and the API; target of the `opus` alias | docs (model configuration) |
 | Default effort in Claude Code | `high` | `medium` | docs |
 | Content-classifier fallback | biology → Opus 5; cybersecurity → Opus 4.8 | same; frontier-LLM development → Opus 5; weapons and distillation → block with no fallback | card pp. 12-13; docs |
 
@@ -39,7 +39,7 @@ Same for both: effort levels `low` – `max` (docs); thinking always on (docs; c
 
 | Evidence | Result | Source |
 |---|---|---|
-| Capability summary (Opus 5.5 at max effort) | Opus 5.5 higher on every row, e.g. HLE with tools 67.7 vs 65.6, GDPval-AA 1846 vs 1735, AA-Briefcase 1822 vs 1678 | card p. 174 |
+| Capability summary (Opus 5.5 at max effort; Terminal-Bench 4.0 at `xhigh`) | Opus 5.5 higher on every row, e.g. HLE with tools 67.7 vs 65.6, GDPval-AA 1846 vs 1735, AA-Briefcase 1822 vs 1678 | card p. 174 |
 | DRACO deep research, low / medium / high / xhigh / max | Opus 5.5: 72.5 / 83.9 / 85.0 / 86.7 / 87.4. Fable 5.1: 84.2 / 85.7 / 86.5 / 86.9 / 87.7. Fable 5.1 higher at every level; Opus 5.5 cheaper per task at every level | card p. 187 (chart) |
 | WANDR wide search, same levels | Opus 5.5: 31.2 / 62.8 / 67.3 / 71.3 / 72.3. Fable 5.1: 63.3 / 64.5 / 66.7 / 67.7 / 68.7. Opus 5.5 higher from `high` up, far lower at `low` | card p. 188 (chart) |
 | OfficeQA / OfficeQA Pro (grounded numerical reasoning over documents) | Opus 5.5 78.9 / 67.7; Fable 5.1 80.2 / 69.0 | card p. 208 |
@@ -73,7 +73,7 @@ Card pages for the Opus 5.5 column are in the finding row named in the last colu
 - **`deep-research`.** The most effort-sensitive skill: on Opus 5.5 run it at `high` or above (DM-001). The abstract-over-full-paper failure is what the read-scope attestations and locator-bearing citations exist to expose (DM-015).
 - **`academic-paper`.** Opus 5.5 leads the professional-document benchmarks (GDPval-AA, AA-Briefcase), but its creativity and its honesty under pressure are below Opus 5 (capability table above). The revision claim-drift guards stay as written (DM-016).
 - **`academic-paper-reviewer`.** The `<paper_content>` fence matters more on Opus 5.5, because a manuscript pasted into the chat is user-turn text (DM-012). Reviewer calibration evidence remains model-specific: no Opus 5.5 run exists, and live packages stay `NOT_CALIBRATED`.
-- **Light slash commands.** The 13 commands that pin `model: sonnet` run on Sonnet 5 on the Anthropic API whichever session model the user picked; they are unaffected (docs).
+- **Light slash commands.** The 13 commands that pin `model: sonnet` request Sonnet, which resolves to Sonnet 5 on the Anthropic API unless `ANTHROPIC_DEFAULT_SONNET_MODEL` overrides the alias. The session model does not affect them, except where an organization's model allowlist blocks `sonnet`: the command then runs on the session model (docs).
 
 ## Findings
 
@@ -87,7 +87,8 @@ Rationale: Opus 5.5 is co-current and is the Claude Code default; the card shows
   Fable 5.1 on both research benchmarks, and it collapses at `low` (pp. 187-188).
 Applied: both models named, with how to select Fable 5.1; an effort paragraph (heavy
   runs, including a `deep-research` run started in plain language, at `high` or
-  `xhigh` on Opus 5.5, avoid `low`, and why ARS pins no effort);
+  above on Opus 5.5 without lowering a higher level the user chose; avoid `low`; why
+  ARS pins no effort);
   a paragraph recommending files over pasting third-party text (card §6.5.1; the
   paste marking depends on feature-flag fetching per the Claude Code docs).
 ```
