@@ -109,6 +109,10 @@ def _text(max_len: int) -> Check:
     def check(value: Any) -> str | None:
         if not isinstance(value, str) or not 1 <= len(value) <= max_len:
             return f"must be a string of 1-{max_len} characters"
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:  # a lone surrogate, e.g. from a \ud800 escape
+            return "must be valid Unicode text"
         return None
 
     return check
@@ -606,6 +610,7 @@ def main(argv: list[str] | None = None) -> int:
             if problems:
                 raise LedgerRefused("; ".join(problems))
         result = build_report(args.passport_path, claims)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     except (LedgerRefused, LedgerUnreadable) as exc:
         outcome = "nothing written" if args.command == "append" else "no report"
         print(_err(f"{outcome}: {exc}"), file=sys.stderr)
@@ -618,7 +623,9 @@ def main(argv: list[str] | None = None) -> int:
                 else "cannot read a file the ledger names")
         print(_err(f"{what}: {exc}"), file=sys.stderr)
         return 2
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    except Exception as exc:  # exit 1 means "has items", so no crash may exit 1
+        print(_err(f"unexpected error: {exc!r}"), file=sys.stderr)
+        return 2
     return 1 if has_items(result) else 0
 
 

@@ -298,6 +298,7 @@ class AppendValidationTest(_LedgerCase):
             "unknown status": {**RECEIPT, "status": "skipped"},
             "unknown checkpoint type": {**OPENED, "checkpoint_type": "OPTIONAL"},
             "empty words": {"kind": "initial_instructions", "user_words": ""},
+            "lone surrogate": {"kind": "initial_instructions", "user_words": "x\ud800"},
             "words too long": {"kind": "initial_instructions",
                                "user_words": "x" * (run_ledger.WORDS_MAX + 1)},
             "empty options": {**OPENED, "options": []},
@@ -424,6 +425,14 @@ class ReadingTest(_LedgerCase):
         report = self.report()
         self.assertEqual((report["ledger_status"], report["untrusted_from_seq"]), ("chain_broken", 1))
 
+    def test_hand_edited_lone_surrogate_is_untrusted_not_a_crash(self) -> None:
+        self.open_checkpoint()
+        text = self.ledger.read_text(encoding="utf-8").replace(
+            "question: Close the Stage 2.5 gate?", 'question: "Close \\ud800"')
+        self.ledger.write_text(text, encoding="utf-8")
+        report = self.report()
+        self.assertEqual((report["ledger_status"], report["untrusted_from_seq"]), ("chain_broken", 1))
+
     def test_relative_file_reference_resolves_beside_the_ledger(self) -> None:
         (self.root / "raw.bin").write_bytes(b"x")
         self.append(kind="file_reference", path="raw.bin",
@@ -517,6 +526,7 @@ class CliTest(_LedgerCase):
             "entry not JSON": "{kind",
             "entry with a duplicate key":
                 '{"kind": "initial_instructions", "user_words": "A", "user_words": "B"}',
+            "entry with a lone surrogate": '{"kind": "initial_instructions", "user_words": "\\ud800"}',
         }
         cases = {
             label: ("append", "--passport-path", str(self.passport),
@@ -538,6 +548,13 @@ class CliTest(_LedgerCase):
                 self.assertEqual(result.returncode, 2, result.stdout)
                 self.assertTrue(result.stderr.startswith(run_ledger.ERR_PREFIX), result.stderr)
                 self.assertFalse(self.ledger.exists())
+
+    def test_unexpected_errors_exit_2_never_1(self) -> None:
+        claims = self.root / "claims.json"
+        claims.write_text('{"expected_steps": ["\\ud800"]}', encoding="utf-8")
+        result = self.run_cli("report", "--passport-path", str(self.passport), "--claims", str(claims))
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("unexpected error", result.stderr)
 
     def test_report_names_an_unreadable_file_as_a_read_error(self) -> None:
         self.append(kind="file_reference", path="raw.bin", sha256="a" * 64, role="raw")
