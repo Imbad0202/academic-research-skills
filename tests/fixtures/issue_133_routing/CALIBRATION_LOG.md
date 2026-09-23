@@ -8,6 +8,9 @@ A pass is a smoke-test observation on one session per fixture, not a measured ra
 
 ### Condition
 
+- **Date and models**: 2026-09-23, all three passes; `claude-opus-5-5` and
+  `claude-fable-5-1` through `--model` on Claude Code 2.1.280. The init event of every
+  session confirms the model id, except fixture 04 (see the notes below).
 - **Subject**: a fixed checkout of this repository at `95929c00`, never modified during
   the run.
 - **Subject amendment (after the first probes, before any fixture ran).** The first
@@ -80,18 +83,23 @@ A fixture passes only when every field below passes.
   and every read of a path named in a message was refused by the session's permission
   check. A session that names its route and asks for the missing files passes the
   routing class under the rules above.
-- **No session read the answers.** No tool call or tool result in passes 1 and 2
-  contains `issue_133_routing`, `expected.yaml`, `rationale.md`, or `CALIBRATION_LOG`
-  (checked over the full stream-json of every session).
-- **Cost.** The CLI reported 19.27 USD (pass 1) and 19.19 USD (pass 2) of
-  API-equivalent cost for both models together; the runs used a subscription token.
+- **No session read the answers.** No tool call or tool result in any pass contains
+  `issue_133_routing`, `expected.yaml`, `rationale.md`, or `CALIBRATION_LOG` (checked
+  over the full stream-json of every session).
+- **Probes.** Before each pass, the probe on each model ran in that pass's clone and
+  reported the project `.claude/CLAUDE.md` as the only instruction file, the routing
+  heading's version (3.9.2), no output style, and no user-level instruction; its init
+  event showed the requested model, output style `default`, and no API key source.
+- **Cost.** The CLI reported 19.27 USD (pass 1), 19.19 USD (pass 2), and 19.02 USD
+  (pass 3) of API-equivalent cost for both models together; the runs used a
+  subscription token.
 
 Field abbreviations: RC routing class, D destination. A failure names every
 independent field that failed; the other fields passed. `escape_hatch_applied: false`
 passes only when the other fields pass, so it fails with them and is not listed again.
-In passes 1 and 2, `direct_mode_stripped_message` passed on fixture 07 (the Skill
-arguments carry the stripped message) and was not observable on fixture 05 (nothing
-forwarded), and no Skill argument carried the `[direct-mode]` token.
+In every pass, `direct_mode_stripped_message` passed on fixture 07 (the Skill arguments
+carry the stripped message) and was not observable on fixture 05 (nothing forwarded),
+and no Skill argument carried the `[direct-mode]` token.
 
 ### Pass 1: subject `95929c00`, routing prose as shipped
 
@@ -151,4 +159,32 @@ condition and scoring rules. It is the last pass in this change. Its results are
 recorded as observed; no further routing-prose change is made here, and a fixture that
 still fails goes to a follow-up issue with the deciding quote.
 
-(Pass 3 results are filled in after the run.)
+### Pass 3: subject `147222de`
+
+| Fixture | Expected | Claude Opus 5.5 | Claude Fable 5.1 |
+|---|---|---|---|
+| 01 cross-phase | clarify | pass: a-d workflow options, no Skill call | pass: a-d workflow options, no Skill call |
+| 02 literature only | `academic-paper:lit-review` | pass: Skill `academic-paper`, "lit-review"; asked for folder access and the intake settings | pass: Skill `academic-paper`, "lit-review"; asked for folder access and the intake settings |
+| 03 no materials | clarify | pass: stage options a-d | pass: stage options a-d |
+| 04 slash command | `academic-paper:lit-review` | pass, on `claude-sonnet-5` | pass, on `claude-sonnet-5` |
+| 05 direct mode | `bibliography_agent` | pass: read the agent file; "I'll run `bibliography_agent` directly, as `[direct-mode]` asks"; asked for the PDFs, the research question, and the criteria | pass: read the agent file; "The `[direct-mode]` token is honored"; asked for the PDFs and the research question |
+| 06 token mid-message | clarify | pass: "`[direct-mode]` only skips this question when it's the very first thing in your message"; a-d options | pass: said the token does not apply mid-sentence; a-d options |
+| 07 token, capitalized | `academic-paper:abstract` (the `abstract-only` mode) | pass: Skill `academic-paper`, "abstract-only mode" with the stripped message | pass: Skill `academic-paper`, "abstract-only" with the stripped message |
+| 08 draft + abstract + literature + reviews | clarify | pass: a-d workflow options | pass: a-d workflow options |
+| 09 Korean revise | `academic-paper:revision` | pass: Skill `academic-paper`, "mode: revision" | pass: Skill `academic-paper`, "revision" |
+| 10 Korean review | `academic-paper-reviewer:full` | pass: Skill reviewer, "mode: full" | pass: Skill reviewer, "mode=full" |
+| 11 Spanish revise | `academic-paper:revision` | pass: Skill `academic-paper`, "mode=revision"; "No hace falta cambiar de flujo" | pass: Skill `academic-paper`, "mode: revision"; "Este modo no exige comentarios de revisores" |
+| 12 Spanish review | `academic-paper-reviewer:full` | pass: Skill reviewer "full"; offers to switch to revision mode if an edit was meant | pass: Skill reviewer "full" |
+| **Total** | | **12 of 12** (11 of 11 without 04) | **12 of 12** (11 of 11 without 04) |
+
+### What the three passes show
+
+- On the final prose (`147222de`), each fixture passed on every field once per model,
+  and fixture 04 passed once on `claude-sonnet-5`. No fixture failed, so the stop rule
+  opens no follow-up issue.
+- Pass 3 is not held out. The prose was changed twice after failures on these same
+  fixtures, and one session per fixture cannot separate a prose effect from run-to-run
+  variation: fixture 06 on Opus 5.5 passed, failed, and passed across the three passes.
+- Not covered: plugin and skills-copy installs, where the routing prose does not load
+  (#892); any effort setting other than the CLI default; and the README's secondary
+  targets, which no pass ran.
