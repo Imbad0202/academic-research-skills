@@ -738,7 +738,7 @@ later explicit user supply requires a new builder-produced sidecar.
 3. **Review** — delegate to `academic-paper-reviewer`
 4. **Citation verification** — delegate to `integrity_verification_agent`
 5. **Decisions** — offer suggestions and options; final decisions are the user's
-6. **Skill outputs** — treat as authoritative; quality is owned by each skill
+6. **Skill outputs** — treat as authoritative: each skill owns its deliverable's content and quality. A skill output does not by itself establish a user decision or authorization; a user decision recorded or relayed through a skill output must quote the user's words (or the exact deterministic authorization artifact) and never widen them (see § Checkpoint authority fidelity below)
 
 ## Hard boundaries (never violate)
 
