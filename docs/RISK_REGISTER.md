@@ -78,12 +78,12 @@ instructions that an agent follows as if they came from the user.
   standing principle (#367), inlined verbatim in the deep-research retrieval
   agents; since #883, in the revision coach that ingests pasted reviewer
   comments and decision letters; and since #890, in twelve agents on the
-  dispatch and passport-import paths (the pipeline orchestrator; the integrity
-  verification, claim-reference alignment audit, and compliance agents; the
-  literature strategist; the field analyst and editorial synthesizer; the
-  risk-of-bias and timeline extraction agents; and the three agents of
-  deep-research `review` mode) plus the claim-audit judge prompt
-  (`scripts/check_instruction_data_boundary.py`);
+  dispatch and passport-import paths (the pipeline orchestrator, the integrity
+  gates, literature intake, reviewer Phase 0 and the editorial synthesis,
+  systematic-review risk of bias, temporal extraction, and deep-research
+  `review` mode) and in two prompts a model receives without the agent file,
+  the claim-audit judge prompt and the cross-model devil's advocate prompt
+  (`scripts/check_instruction_data_boundary.py` lists each);
   the reviewer-side untrusted-materials rule (`academic-paper-reviewer/SKILL.md`)
   and its manuscript fence in the five panel agents (pinned by
   `scripts/check_reviewer_data_fences.py`); the offline structural probe
@@ -100,20 +100,27 @@ instructions that an agent follows as if they came from the user.
   message, but acted on them in 0 of 105 attempts when the same text arrived as a
   tool result (§6.5.1; rates and product-side caveats in
   `audits/harness-retirement-2026-09-opus-5-5.md` DG-1). The #675 scenarios
-  include pasted reviewer and committee comments. The prompt-level boundary is
-  trust-based; its effect on this regression is unmeasured. The #890 inventory,
-  ranking, and placement are in
+  include pasted reviewer and committee comments. The prompt-level boundary,
+  including the interim #890 extension, is trust-based; its effect on this
+  regression is unmeasured, and #676 stays open with its structural requirements
+  unmet. The #890 inventory, ranking, and placement are in
   `docs/design/2026-09-23-890-instruction-data-boundary-extension.md`. Surfaces
-  it leaves uncovered: agents that see third-party text only as quotations
-  inside artifacts from covered agents (for example `synthesis_agent`,
-  `draft_writer_agent`, `meta_analysis_agent`); agents whose input is the
-  user's own text or dialogue; the advisory collaboration-depth observer; the
-  cross-model result at the design-freeze checkpoint; and requests a fallback
-  model serves. The #675 seed runs one generic guided prompt rather than any
-  agent's prompt, so as seeded it evaluates none of the #890 paths; a measured
-  claim for a path needs a #675 scenario that loads that agent's assembled
-  prompt. The #890 layer is an interim, prompt-level extension; #676 stays
-  open with its structural requirements unmet.
+  it leaves uncovered: agents whose dispatch carries third-party text only as
+  quotations inside artifacts from covered agents (for example
+  `synthesis_agent`, `draft_writer_agent`, `meta_analysis_agent`); agents whose
+  input is the user's own text or dialogue; the advisory collaboration-depth
+  observer; the cross-model result at the design-freeze checkpoint; requests a
+  fallback model serves; receivers whose third-party text arrives only through
+  their own tool calls (the formatter's journal-guideline lookup, citation
+  compliance's Retraction Watch and DOI checks, a citation emitter's local PDF
+  read, and the cross-model reference check's own search), the retrieval surface
+  the #272 design left as future scope; and the main session of a skill run,
+  which reads text the user pastes before it loads any agent file (of the four
+  `SKILL.md` files, only the reviewer's carries an untrusted-materials rule).
+  The #675 seed runs one generic guided prompt
+  rather than any agent's prompt, so as seeded it evaluates none of the #890
+  paths; a measured claim for a path needs a #675 scenario that loads that
+  agent's assembled prompt.
 
 ### R4 — Unpublished-content exposure via cross-model transport
 

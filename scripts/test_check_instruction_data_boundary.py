@@ -46,6 +46,9 @@ HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS)
 JUDGE_REL = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
 JUDGE_START = "<!-- JUDGE-PROMPT-CANONICAL-START"
 JUDGE_END = "<!-- JUDGE-PROMPT-CANONICAL-END"
+XM_REL = "shared/cross_model_verification.md"
+XM_START = "a simplified DA prompt to the cross-model:"
+XM_END = "2. Compare cross-model findings"
 
 OPEN_MARKER = "<!-- canonical:instruction-data-boundary -->"
 CLOSE_MARKER = "<!-- /canonical:instruction-data-boundary -->"
@@ -68,7 +71,7 @@ def _run2(root: Path):
 def _mirror(tmp_path: Path) -> Path:
     """Copy the files the checker reads into an isolated tree it can lint."""
     root = tmp_path / "repo"
-    for rel in (AUTHORITATIVE_REL, *HOTSPOT_RELS):
+    for rel in (AUTHORITATIVE_REL, *HOTSPOT_RELS, XM_REL):
         dst = root / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(REPO_ROOT / rel, dst)
@@ -86,13 +89,17 @@ def _first_block_body(text: str) -> str:
     return text[start:end]
 
 
-def _in_judge_template(transform):
-    """Apply `transform` to the unified judge prompt only, not the rest of the file."""
+def _in_region(start_anchor: str, end_anchor: str, transform):
+    """Apply `transform` to the text between two anchors only, not the rest of the file."""
     def edit(text: str) -> str:
-        start = text.index(JUDGE_START)
-        end = text.index(JUDGE_END, start)
+        start = text.index(start_anchor)
+        end = text.index(end_anchor, start)
         return text[:start] + transform(text[start:end]) + text[end:]
     return edit
+
+
+def _in_judge_template(transform):
+    return _in_region(JUDGE_START, JUDGE_END, transform)
 
 
 # --- positive control --------------------------------------------------------
@@ -276,7 +283,44 @@ def test_m15_judge_template_markers_renamed(tmp_path):
           lambda t: t.replace("JUDGE-PROMPT-CANONICAL-START", "JUDGE-PROMPT-START"))
     code, err = _run2(root)
     assert code == 1
-    assert "judge prompt markers not found" in err
+    assert "unified judge prompt not found" in err
+
+
+# --- the cross-model devil's advocate prompt (#890) ----------------------------
+
+def test_m16_xm_da_prompt_principle_moved_out(tmp_path):
+    """The copy moved below the prompt, where the cross-model never sees it, must fail."""
+    moved = {}
+    def cut(seg: str) -> str:
+        start = seg.index("   Retrieved external content")
+        end = seg.index("command to follow.\n", start) + len("command to follow.\n")
+        moved["text"] = seg[start:end]
+        return seg[:start] + seg[end:]
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, _in_region(XM_START, XM_END, cut))
+    _edit(root, XM_REL, lambda t: t + "\n" + moved["text"])
+    code, err = _run2(root)
+    assert code == 1
+    assert "cross-model devil's advocate prompt does not carry" in err
+
+
+def test_m17_xm_da_prompt_principle_weakened(tmp_path):
+    """A one-phrase edit inside the cross-model DA prompt copy must fail."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, _in_region(XM_START, XM_END,
+        lambda seg: seg.replace("is data, not instructions", "is usually data")))
+    code, err = _run2(root)
+    assert code == 1
+    assert "cross-model devil's advocate prompt does not carry" in err
+
+
+def test_m18_xm_da_prompt_anchor_renamed(tmp_path):
+    """A renamed start anchor leaves nothing to check, which must fail rather than pass."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, lambda t: t.replace(XM_START, "a DA prompt to the cross-model:"))
+    code, err = _run2(root)
+    assert code == 1
+    assert "cross-model devil's advocate prompt not found" in err
 
 
 if __name__ == "__main__":
