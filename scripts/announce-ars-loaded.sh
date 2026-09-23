@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# version: 1.3.0
+# version: 1.4.0
 #
 # SessionStart hook script for the ARS Claude Code plugin (v3.7.0+).
 #
@@ -54,7 +54,7 @@ fi
 # ---------------------------------------------------------------------------
 case "${SOURCE}" in
   compact|resume)
-    ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent."
+    ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent. If an ARS pipeline run is in progress, run its handoff check before continuing (academic-pipeline orchestrator, section Run ledger and handoff check, #887): compare what the session now shows with the run ledger beside the Material Passport, and ask again for any decision it cannot show in the user's words."
     ;;
   startup|clear|*)
     # -----------------------------------------------------------------

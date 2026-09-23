@@ -258,3 +258,30 @@ subagent as a broader authorization than was given.
   (evidence mapped in `audits/harness-retirement-2026-09-model-update.md` G-1 for
   Fable 5.1 and `audits/harness-retirement-2026-09-opus-5-5.md` DM-013 for Opus
   5.5); the prompt rule is trust-based.
+
+### R12 — Handoff loss across compaction and subagent returns
+
+Context compaction or a subagent return drops a pending checkpoint decision, the
+researcher's exact words, a partly collected answer, a step's outcome, or a transient
+input, and the run continues as if its record were complete. Loss and fabrication fail
+differently: fabricating a decision is R11's risk; this row covers losing one.
+
+- **Existing controls**: the run ledger beside the passport and its deterministic
+  report (`scripts/run_ledger.py`, schema
+  `shared/contracts/passport/run_ledger.schema.json`); the orchestrator's run-ledger
+  and handoff-check rules (`academic-pipeline/agents/pipeline_orchestrator_agent.md`)
+  and the state machine's run-ledger rule
+  (`academic-pipeline/references/pipeline_state_machine.md`); the SessionStart
+  reminder after a compaction or resume (`scripts/announce-ars-loaded.sh`); the opt-in
+  passport reset for MANDATORY decisions
+  (`academic-pipeline/references/passport_as_reset_boundary.md`).
+- **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — how the
+  report reads a ledger is CI-pinned by six synthetic scenarios
+  (`scripts/test_run_ledger.py`); whether the orchestrator writes the entries is not
+  measured on any session model.
+- **Residual gap**: anything lost before its entry is written cannot be recovered; the
+  hashes catch accidental damage, not deliberate edits, a lost tail, or a restored older
+  copy of the ledger
+  (`docs/design/2026-09-23-887-handoff-integrity-design.md`, section 6); the
+  collaboration observer still needs the original turns; outside the plugin channel the
+  reminder runs only if the user wires the hook (`docs/CONTROL_AVAILABILITY.md`, note 3).

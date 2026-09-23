@@ -20,7 +20,7 @@ This protocol defines:
 | Condition | Routing class | Action |
 |---|---|---|
 | User invokes `/ars-*` slash command | Explicit | Route directly to named skill; no clarification |
-| User uses unambiguous trigger keyword (e.g., "lit-review this", "review my paper") | Explicit | Route directly to matching skill; no clarification |
+| User uses unambiguous trigger keyword (e.g., "lit-review this", "review my paper") | Explicit | Route directly to matching skill; no clarification. The request stays explicit when the mode's usual input is absent (a revision request with no reviewer comments) or a word in it has other everyday senses ("revisar artículo" is the reviewer's trigger); the mode handles what is missing |
 | User provides materials spanning ≥ 2 pipeline phases (e.g., abstract + literature, draft + reviewer comments + bibliography) | Cross-phase ambiguous | **Clarify** with a-d options |
 | User provides no materials and no clear request | No materials ambiguous | **Clarify** with a-d options |
 | User's first message begins with `[direct-mode]` (byte-0, case-insensitive) | Escape hatch | Strip prefix, skip clarification, route to whatever single agent matches the literal trigger; if no match, fall back to Explicit handling on the stripped message |
@@ -75,6 +75,8 @@ Pick a-d, or describe the target deliverable. If you want me to dispatch a speci
 - **Bracket form:** Only the literal `[direct-mode]` (square brackets, hyphen between words) is recognized. Variants like `(direct-mode)`, `<direct-mode>`, `[direct mode]` (space instead of hyphen), or `[directmode]` (no separator) are NOT recognized.
 - **Strip:** The literal `[direct-mode]` token (with surrounding whitespace) is stripped before any downstream agent sees the message. Dispatched agents receive only the post-strip content.
 - **Effect:** Bypasses Routing Discipline Step 2 (cross-phase clarification). Main session routes the stripped message via Step 1 (explicit-intent handling).
+- **Missing inputs:** When the token is honored and the named agent or skill needs inputs the message does not supply, read that agent's or skill's file and ask for what it requires, in its terms.
+- **No token, no agent route:** Without the byte-0 token, naming an agent is not explicit intent. The message is classified like any other, so cross-phase materials still get clarification.
 - **Fallback:** If the stripped message itself has no clear skill named, Step 1 falls through to Step 3 clarification. (`[direct-mode]` is NOT a magic "always dispatch" flag — it bypasses cross-phase clarification, not all routing. If you want to bypass even ambiguous-intent clarification, you must name a specific skill or agent in the stripped message.)
 
 **Examples:**

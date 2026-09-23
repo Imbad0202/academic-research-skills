@@ -208,6 +208,14 @@ LINE_BUDGET_743_INQUIRY_LEDGER = 60
 # leaves 5 lines of headroom.
 LINE_BUDGET_G1_CHECKPOINT_AUTHORITY = 18
 
+# #887 adds one H2 section, `## Run ledger and handoff check (#887)`, the
+# orchestrator's operational rules for the run ledger kept beside the passport
+# (design docs/design/2026-09-23-887-handoff-integrity-design.md). It is an
+# independent extension, so it is subtracted from the historical v3.6.7 budget
+# and receives its own bounded test. Measured at landing: 14 lines; budget 19
+# leaves 5 lines of headroom.
+LINE_BUDGET_887_RUN_LEDGER = 19
+
 # #890 adds one H2 section, `## Third-party text in dispatches (#890)`, which
 # inlines the canonical instruction/data boundary (risk register R3) where the
 # orchestrator reads pasted or resumed third-party text and embeds it in
@@ -815,6 +823,25 @@ def _measure_g1_checkpoint_authority_lines(text: str) -> int:
     return len(text[match.start():end].splitlines())
 
 
+def _measure_887_run_ledger_lines(text: str) -> int:
+    """Return the line count of the `## Run ledger and handoff check (#887)` section.
+
+    Measures from the H2 heading to the next heading of any level (H1-H4),
+    the same convention as the other extension-section helpers above.
+    """
+    import re as _re
+
+    anchor = _re.compile(r"(?m)^[ \t]*##[ \t]+Run ledger and handoff check \(#887\)[ \t]*$")
+    match = anchor.search(text)
+    if match is None:
+        return 0
+    heading_end = text.find("\n", match.end())
+    search_start = heading_end + 1 if heading_end >= 0 else len(text)
+    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
+    end = search_start + next_heading.start() if next_heading else len(text)
+    return len(text[match.start():end].splitlines())
+
+
 def _measure_890_third_party_text_lines(text: str) -> int:
     """Return the line count of the `## Third-party text in dispatches (#890)` section.
 
@@ -946,6 +973,26 @@ class CheckpointAuthorityG1LineBudgetTest(unittest.TestCase):
         )
 
 
+class RunLedger887LineBudgetTest(unittest.TestCase):
+    """#887 run-ledger and handoff-check section stays independently bounded."""
+
+    def test_887_run_ledger_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_887_run_ledger_lines(text)
+        self.assertGreater(
+            block_lines,
+            0,
+            "`## Run ledger and handoff check (#887)` section missing from "
+            "pipeline_orchestrator_agent.md",
+        )
+        self.assertLessEqual(
+            block_lines,
+            LINE_BUDGET_887_RUN_LEDGER,
+            f"run-ledger section is {block_lines} lines, over its "
+            f"{LINE_BUDGET_887_RUN_LEDGER}-line budget",
+        )
+
+
 class ThirdPartyText890LineBudgetTest(unittest.TestCase):
     """#890 third-party-text dispatch section stays independently bounded."""
 
@@ -1052,6 +1099,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
         criteria_684_lines = _measure_684_review_criteria_binding_lines(text)
         inquiry_743_lines = _measure_743_inquiry_ledger_lines(text)
         authority_g1_lines = _measure_g1_checkpoint_authority_lines(text)
+        run_ledger_887_lines = _measure_887_run_ledger_lines(text)
         third_party_890_lines = _measure_890_third_party_text_lines(text)
         # v3.6.7-only line count: total minus v3.7.1 Step 3b, v3.7.3
         # finalizer extension, v3.8 §3.6 audit-gate, v3.9.0 triangulation
@@ -1063,16 +1111,16 @@ class Phase66LineBudgetTest(unittest.TestCase):
         # the #672 cross-document advisory dispatch, AND the #673
         # adjudication-activity wiring, the #684 review-criteria binding
         # lifecycle, the #743 inquiry-ledger/sidecar extension, the
-        # 2026-09 checkpoint-authority fidelity section, AND the #890
-        # third-party-text dispatch section (each has its own dedicated
-        # budget test).
+        # 2026-09 checkpoint-authority fidelity section, the #887
+        # run-ledger section, AND the #890 third-party-text dispatch
+        # section (each has its own dedicated budget test).
         v367_line_count = (
             total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
             - v3_9_0_lines - v3_10_lines - gate_394_lines - seq_390_lines
             - authority_670_lines - dispatch_576_lines - evidence_656_lines
             - advisory_660_lines - advisory_672_lines - advisory_673_lines
             - criteria_684_lines - inquiry_743_lines - authority_g1_lines
-            - third_party_890_lines
+            - run_ledger_887_lines - third_party_890_lines
         )
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(
@@ -1098,6 +1146,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
             f"binding lifecycle, and {inquiry_743_lines} are in the #743 "
             f"inquiry-ledger/sidecar extension, and {authority_g1_lines} are in "
             f"the 2026-09 checkpoint-authority fidelity section, and "
+            f"{run_ledger_887_lines} are in the #887 run-ledger section, and "
             f"{third_party_890_lines} are in the #890 third-party-text "
             f"dispatch section; "
             f"v3.6.7-attributed lines = "
