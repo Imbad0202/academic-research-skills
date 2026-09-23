@@ -9,7 +9,14 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.22.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.22.1 | Full pipeline orchestrator | (coordinates all above) |
+
+## v3.22.1 Key Additions (Opus 5.5 model currency + mode-loading and citation-check repairs + Pi wrapper fix)
+
+- **Claude Opus 5.5 joins Claude Fable 5.1 as a supported session model (#883).** A two-reader audit of the Opus 5.5 system card (`audits/harness-retirement-2026-09-opus-5-5.md`, DM-001 to DM-021) retires no guardrail. `docs/PERFORMANCE.md` (en / zh-TW) adds effort guidance (heavy runs at `high` or above, since Claude Code starts Opus 5.5 at `medium`), one 2026-09 list-price re-derivation for both models, tiering guidance for the pair, and a files-over-pastes recommendation; `shared/model_tiering.md` defines family and tier (tier order is lineup order, not a capability ranking) and corrects the classifier-fallback note. No command `model:` or `effort:` setting changes.
+- **The revision coach treats pasted third-party text as data (DG-1).** It inlines the canonical instruction/data boundary, pinned by `scripts/check_instruction_data_boundary.py`, whose mutation tests are now parametrized over every hot-spot agent; `docs/RISK_REGISTER.md` R3 names pasted text. The guard is prompt-level and its effect is unmeasured.
+- **Mode-loading and citation-check repairs (#857, #882, #858, #864).** The 13 plugin mode commands invoke their namespaced core skill and use plugin-root reference paths; Chinese APA 7 checks cover missing author abbreviation, ambiguity exceptions, reference-list author fields, and ordering evidence; citation checks distinguish visible syntax errors from unverified resolution or source claims; English, Traditional Chinese, and Korean trigger phrases route citation-check, with a CI bound of 1,024 code points per skill description.
+- **Pi wrapper (#880).** String-array system prompts are accepted without flattening blocks or mutating host input.
 
 ## v3.22.0 Key Additions (output-language-pair contract + locale track + plugin eval suites + Windows / transport repairs)
 
@@ -380,7 +387,7 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
 
 ## Version Info
-- **Suite version**: 3.22.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-09-16
+- **Suite version**: 3.22.1 (per CHANGELOG.md)
+- **Last Updated**: 2026-09-23
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

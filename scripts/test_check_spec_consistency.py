@@ -98,9 +98,9 @@ JA_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/ja-JP.md](docs/changelog-archive/ja-JP.md)
 
-### v3.22.0 (2026-09-16) — current release
+### v3.22.1 (2026-09-23) — current release
+### v3.22.0 (2026-09-16) — prior minor
 ### v3.21.2 (2026-09-06) — prior patch
-### v3.21.1 (2026-08-24) — prior minor
 
 ## Version Info
 - **Suite version**: {ver}
@@ -161,9 +161,9 @@ KO_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)
 
-### v3.22.0 (2026-09-16) — current release
+### v3.22.1 (2026-09-23) — current release
+### v3.22.0 (2026-09-16) — prior minor
 ### v3.21.2 (2026-09-06) — prior patch
-### v3.21.1 (2026-08-24) — prior minor
 """
 
 
@@ -209,9 +209,9 @@ ZH_CN_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)
 
-### v3.22.0（2026-09-16） — current release
+### v3.22.1（2026-09-23） — current release
+### v3.22.0（2026-09-16） — prior minor
 ### v3.21.2（2026-09-06） — prior patch
-### v3.21.1（2026-08-24） — prior minor
 """
 
 
@@ -257,9 +257,9 @@ ZH_TW_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/zh-TW.md](docs/changelog-archive/zh-TW.md)
 
-### v3.22.0（2026-09-16） — current release
+### v3.22.1（2026-09-23） — current release
+### v3.22.0（2026-09-16） — prior minor
 ### v3.21.2（2026-09-06） — prior patch
-### v3.21.1（2026-08-24） — prior minor
 """
 
 
@@ -289,7 +289,7 @@ class TestReadmeJaSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ja_readme(root, version="3.22.0")
+            _write_ja_readme(root, version="3.22.1")
 
             csc.check_readme_ja_sections()
 
@@ -309,17 +309,17 @@ class TestReadmeJaSections(unittest.TestCase):
             # Write the "current" v3.9.4.2 release block but downgrade only
             # the badge and tag link to v3.9.4.0. This is the realistic shape
             # of drift when one place gets forgotten during a release.
-            stale = JA_README_TEMPLATE.format(ver="3.22.0").replace(
-                "version-v3.22.0-blue", "version-v3.9.4.0-blue"
+            stale = JA_README_TEMPLATE.format(ver="3.22.1").replace(
+                "version-v3.22.1-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.22.0", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.22.1", "releases/tag/v3.9.4.0"
             )
             (root / "README.ja-JP.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_ja_sections()
 
             self.assertTrue(
-                any("README.ja-JP.md" in e and "v3.22.0" in e for e in csc.ERRORS),
+                any("README.ja-JP.md" in e and "v3.22.1" in e for e in csc.ERRORS),
                 msg=f"expected ja-JP drift error in: {csc.ERRORS!r}",
             )
 
@@ -343,7 +343,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ko_readme(root, version="3.22.0")
+            _write_ko_readme(root, version="3.22.1")
 
             csc.check_readme_ko_sections()
 
@@ -358,17 +358,17 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            stale = KO_README_TEMPLATE.format(ver="3.22.0").replace(
-                "version-v3.22.0-blue", "version-v3.9.4.0-blue"
+            stale = KO_README_TEMPLATE.format(ver="3.22.1").replace(
+                "version-v3.22.1-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.22.0", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.22.1", "releases/tag/v3.9.4.0"
             )
             (root / "README.ko-KR.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_ko_sections()
 
             self.assertTrue(
-                any("README.ko-KR.md" in e and "v3.22.0" in e for e in csc.ERRORS),
+                any("README.ko-KR.md" in e and "v3.22.1" in e for e in csc.ERRORS),
                 msg=f"expected ko-KR drift error in: {csc.ERRORS!r}",
             )
 
@@ -379,7 +379,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            broken = KO_README_TEMPLATE.format(ver="3.22.0").replace(
+            broken = KO_README_TEMPLATE.format(ver="3.22.1").replace(
                 "#### Deep Research (8개 모드)", "#### Deep Research (8 modes)"
             )
             (root / "README.ko-KR.md").write_text(broken, encoding="utf-8")
@@ -396,9 +396,9 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            broken = KO_README_TEMPLATE.format(ver="3.22.0").replace(
-                "### v3.22.0 (2026-09-16)",
-                "### v3.22.0（2026-09-16）",
+            broken = KO_README_TEMPLATE.format(ver="3.22.1").replace(
+                "### v3.22.1 (2026-09-23)",
+                "### v3.22.1（2026-09-23）",
             )
             (root / "README.ko-KR.md").write_text(broken, encoding="utf-8")
 
@@ -407,7 +407,7 @@ class TestReadmeKoSections(unittest.TestCase):
             self.assertTrue(
                 any(
                     "README.ko-KR.md" in e
-                    and "### v3.22.0 (2026-09-16)" in e
+                    and "### v3.22.1 (2026-09-23)" in e
                     for e in csc.ERRORS
                 ),
                 msg=f"expected Korean parenthesis-style error in: {csc.ERRORS!r}",
@@ -421,7 +421,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            regrown = KO_README_TEMPLATE.format(ver="3.22.0") + (
+            regrown = KO_README_TEMPLATE.format(ver="3.22.1") + (
                 "### v3.20.1 (2026-08-15) — stale fourth entry\n"
             )
             (root / "README.ko-KR.md").write_text(regrown, encoding="utf-8")
@@ -444,7 +444,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            unlinked = KO_README_TEMPLATE.format(ver="3.22.0").replace(
+            unlinked = KO_README_TEMPLATE.format(ver="3.22.1").replace(
                 " · [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)", ""
             )
             (root / "README.ko-KR.md").write_text(unlinked, encoding="utf-8")
@@ -468,8 +468,8 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            doubled = KO_README_TEMPLATE.format(ver="3.22.0") + (
-                "### v3.22.0 (2026-09-16) — pasted twice\n"
+            doubled = KO_README_TEMPLATE.format(ver="3.22.1") + (
+                "### v3.22.1 (2026-09-23) — pasted twice\n"
             )
             (root / "README.ko-KR.md").write_text(doubled, encoding="utf-8")
 
@@ -487,7 +487,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            base = KO_README_TEMPLATE.format(ver="3.22.0")
+            base = KO_README_TEMPLATE.format(ver="3.22.1")
             head, _, section = base.partition("## 변경 이력\n")
             fenced = head + "```markdown\n## 변경 이력\n" + section + "```\n\n## 변경 이력\n\n"
             (root / "README.ko-KR.md").write_text(fenced, encoding="utf-8")
@@ -495,7 +495,7 @@ class TestReadmeKoSections(unittest.TestCase):
             csc.check_readme_ko_sections()
 
             self.assertTrue(
-                any("README.ko-KR.md" in e and "### v3.22.0 (2026-09-16)" in e for e in csc.ERRORS),
+                any("README.ko-KR.md" in e and "### v3.22.1 (2026-09-23)" in e for e in csc.ERRORS),
                 msg=f"expected missing-heading error for the fenced copy in: {csc.ERRORS!r}",
             )
 
@@ -521,8 +521,8 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.22.0")
-            _write_zh_cn_readme(root, version="3.22.0")
+            _write_zh_tw_readme(root, version="3.22.1")
+            _write_zh_cn_readme(root, version="3.22.1")
 
             csc.check_readme_zh_sections()
 
@@ -538,18 +538,18 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.22.0")
-            stale = ZH_CN_README_TEMPLATE.format(ver="3.22.0").replace(
-                "version-v3.22.0-blue", "version-v3.9.4.0-blue"
+            _write_zh_tw_readme(root, version="3.22.1")
+            stale = ZH_CN_README_TEMPLATE.format(ver="3.22.1").replace(
+                "version-v3.22.1-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.22.0", "releases/tag/v3.9.4.0"
+                "releases/tag/v3.22.1", "releases/tag/v3.9.4.0"
             )
             (root / "README.zh-CN.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_zh_sections()
 
             self.assertTrue(
-                any("README.zh-CN.md" in e and "v3.22.0" in e for e in csc.ERRORS),
+                any("README.zh-CN.md" in e and "v3.22.1" in e for e in csc.ERRORS),
                 msg=f"expected zh-CN drift error in: {csc.ERRORS!r}",
             )
 
