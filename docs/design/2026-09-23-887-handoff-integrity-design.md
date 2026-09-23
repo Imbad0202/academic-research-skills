@@ -1,9 +1,10 @@
 # #887: Handoff integrity across context compaction and subagent returns (design)
 
-**Status**: design draft. On 2026-09-23 the maintainer chose option D and keeping the
-user's exact words (§7); decisions 3 and 4 and the implementation are pending. Nothing
-here is implemented. The vendor observations below are not an ARS reproduction on
-Claude Code.
+**Status**: design, decisions complete. On 2026-09-23 the maintainer chose option D,
+keeping the user's exact words, a deterministic fixture, a separate risk-register row,
+and a handoff check that appears only when it has something to report (§7). The
+implementation follows §8 in the same change. The vendor observations below are not an
+ARS reproduction on Claude Code.
 
 **Issue**: #887, a follow-up from #883 (`audits/harness-retirement-2026-09-opus-5-5.md`,
 candidate follow-ups).
@@ -158,9 +159,32 @@ option §6 picks.
   collected multi-item answer, the items already recorded in a typed artifact stand; the
   rest are asked again.
 
+- **R-HI-5, the handoff check speaks only when it has something to report.** After
+  compaction, on resume, and after each subagent return, the orchestrator compares what
+  the session shows with the record (§5, when one exists). When at least one item needs
+  the user, it shows one handoff check with four groups: awaiting your answer (an open
+  checkpoint or a partly collected answer), cannot confirm (a summary or report states a
+  decision the record cannot show in the user's words), not run (a required step with
+  no artifact, receipt, or fresh run), and missing (a referenced file that is absent or
+  changed). Items the record already backs are not asked again, and the check ends with
+  the number of such items. With nothing to report it shows nothing, so silence cannot
+  distinguish a check that found nothing from a check that did not run; the alternative
+  was a one-line status every time.
+
 Without a storage change these rules are prompt-level. They can only act on what the
 session still shows: if compaction removed every trace of a pending checkpoint, no
 prompt rule can recover it.
+
+**Noticing a compaction.** The rules also depend on the orchestrator noticing that a
+compaction happened. On plugin installs, the SessionStart hook (`hooks/hooks.json`,
+`scripts/announce-ars-loaded.sh`) receives the event's `source`, and its `compact`
+branch already sends a short announcement; one sentence there can tell the session to
+run the handoff check before continuing an ARS pipeline run. The hook cannot tell
+whether a run is in progress, so the sentence is conditional and appears after every
+compaction on plugin installs (on Windows only with Git Bash, as for the rest of the
+hook). No other install path runs the hook (`docs/CONTROL_AVAILABILITY.md`, the
+SessionStart row and note 3); there the rules rely on the orchestrator recognizing the
+summary.
 
 ## 5. What a storage change has to hold
 
@@ -270,14 +294,20 @@ were spent, so a retry limit could be passed without asking the user.
    D (2026-09-23; the alternatives were A, B, and C).
 2. **Exact words** (D only): chosen, keep the user's exact words in the local ledger
    (part of option D as presented; the alternative was option values only).
-3. **Evidence**: a deterministic fixture for the validator (recommended with A, B, or D),
-   or the explicit prompt-level-and-unmeasured statement (required with C).
-4. **Risk register**: a new row for handoff loss that cross-references R11 (recommended,
-   because loss and fabrication fail differently), or an extension of R11.
+3. **Evidence**: chosen, a deterministic fixture for the validator (2026-09-23; six
+   synthetic scenarios, §8 step 3). The alternative, required only with C, was the
+   explicit prompt-level-and-unmeasured statement. The fixture shows the validator
+   reads a ledger correctly; whether the orchestrator writes the entries stays
+   prompt-level and unmeasured.
+4. **Risk register**: chosen, a new row for handoff loss that cross-references R11
+   (2026-09-23; loss and fabrication fail differently, and the ledger addresses only
+   loss). The alternative was an extension of R11.
+5. **When the handoff check shows**: chosen, only when it has something to report
+   (R-HI-5, 2026-09-23). The alternative was a one-line status every time.
 
 ## 8. Implementation outline (after the decisions, not in this change)
 
-For Option D with the recommended answers:
+For Option D with the chosen answers:
 
 1. Schema: the local ledger's entry schema (§5's five kinds, each entry carrying the
    previous entry's hash); the file is named after the passport, as the read log is.
@@ -289,13 +319,17 @@ For Option D with the recommended answers:
    are missing or changed. Synthetic fixtures: a summary that drops a pending decision, a
    summary that claims approval, a step reported as passed with no receipt, a missing E6
    raw event file, a broken chain, and a normal close.
-4. Prompt edits: the orchestrator writes entries as events happen and applies §4 on
-   resume, after compaction, and after each subagent return; the state machine names
-   the ledger beside checkpoint decision provenance and the reset coordination rule; the
-   state tracker's structure names the ledger. Content locks are re-pinned in the same
-   commit. Required tool steps are enumerated from the skills' text, not from §2.
-5. Docs: `docs/RISK_REGISTER.md` (new row), `docs/DATA_FLOWS.md` (the new local store,
+4. Prompt edits: the orchestrator writes entries as events happen and applies §4,
+   including the R-HI-5 display, on resume, after compaction, and after each subagent
+   return; the state machine names the ledger beside checkpoint decision provenance and
+   the reset coordination rule; the state tracker's structure names the ledger. Content
+   locks are re-pinned in the same commit. Required tool steps are enumerated from the
+   skills' text, not from §2.
+5. Hook: one conditional sentence in the `compact` branch of
+   `scripts/announce-ars-loaded.sh` (plugin installs only; §4, noticing a compaction).
+6. Docs: `docs/RISK_REGISTER.md` (new row), `docs/DATA_FLOWS.md` (the new local store,
    its deletion note, and the advice not to pass it to the audit wrapper),
+   `docs/CONTROL_AVAILABILITY.md` (the compaction reminder is plugin-only),
    `CHANGELOG.md`.
 
 The rules stay prompt-level where they rely on the orchestrator writing and reading the
