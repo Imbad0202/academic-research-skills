@@ -349,6 +349,33 @@ def test_m20_xm_copy_in_comment_before_fence(tmp_path):
     assert XM_REL in err
 
 
+def _nest_example_fence(t: str) -> str:
+    """Widen the DA prompt's fence to four backticks and add a fenced example inside it."""
+    open_at = t.index("   ```\n", t.index(XM_INTRO))
+    t = t[:open_at] + "   ````\n" + t[open_at + len("   ```\n"):]
+    close_at = t.index("   ```\n", t.index(XM_END))
+    t = t[:close_at] + "   ````\n" + t[close_at + len("   ```\n"):]
+    example = "   Answer format:\n   ```text\n   1. <weakness>\n   ```\n\n"
+    at = t.index("   Retrieved external content", t.index(XM_START))
+    return t[:at] + example + t[at:]
+
+
+def test_m21_xm_nested_fence_copy_removed(tmp_path):
+    """With a nested example fence, removing the copy must still fail."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, lambda t: _cut_xm_copy(_nest_example_fence(t))[0])
+    code, err = _run2(root)
+    assert code == 1
+    assert "cross-model devil's advocate prompt does not carry" in err
+
+
+def test_xm_nested_example_fence_passes(tmp_path):
+    """Placement control: a nested example fence does not end the DA code block."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, _nest_example_fence)
+    assert _run(root) == 0
+
+
 def test_xm_copy_elsewhere_in_the_fence_passes(tmp_path):
     """Placement control: the copy after the `Material:` line, still inside the fence, passes."""
     def edit(t: str) -> str:
