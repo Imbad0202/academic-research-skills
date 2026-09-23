@@ -75,7 +75,7 @@
         "reset_boundary_hash": {
           "type": "string",
           "pattern": "^[0-9a-f]{12}$",
-          "description": "Under ARS_PASSPORT_RESET=1, the hash of the reset_boundary[] boundary entry whose pending_decision this checkpoint mirrors; the resume entry that consumes this hash and this checkpoint's closing entry record the same answer."
+          "description": "Under ARS_PASSPORT_RESET=1 (academic-pipeline/references/passport_as_reset_boundary.md), the hash of the reset_boundary[] boundary entry whose pending_decision this checkpoint mirrors; the resume entry that consumes this hash and this checkpoint's closing entry record the same answer."
         },
         "prev_hash": { "$ref": "#/$defs/prev_hash" },
         "hash": { "$ref": "#/$defs/sha256" }
