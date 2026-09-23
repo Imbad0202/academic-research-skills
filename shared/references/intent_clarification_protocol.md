@@ -75,7 +75,8 @@ Pick a-d, or describe the target deliverable. If you want me to dispatch a speci
 - **Bracket form:** Only the literal `[direct-mode]` (square brackets, hyphen between words) is recognized. Variants like `(direct-mode)`, `<direct-mode>`, `[direct mode]` (space instead of hyphen), or `[directmode]` (no separator) are NOT recognized.
 - **Strip:** The literal `[direct-mode]` token (with surrounding whitespace) is stripped before any downstream agent sees the message. Dispatched agents receive only the post-strip content.
 - **Effect:** Bypasses Routing Discipline Step 2 (cross-phase clarification). Main session routes the stripped message via Step 1 (explicit-intent handling).
-- **Missing inputs:** If the named agent or skill needs inputs the message does not supply, read that agent's or skill's file and ask for what it requires, in its terms. Do not offer other workflows.
+- **Missing inputs:** When the token is honored and the named agent or skill needs inputs the message does not supply, read that agent's or skill's file and ask for what it requires, in its terms.
+- **No token, no agent route:** Without the byte-0 token, naming an agent is not explicit intent. The message is classified like any other, so cross-phase materials still get clarification.
 - **Fallback:** If the stripped message itself has no clear skill named, Step 1 falls through to Step 3 clarification. (`[direct-mode]` is NOT a magic "always dispatch" flag — it bypasses cross-phase clarification, not all routing. If you want to bypass even ambiguous-intent clarification, you must name a specific skill or agent in the stripped message.)
 
 **Examples:**
