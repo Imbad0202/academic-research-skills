@@ -47,6 +47,7 @@ JUDGE_REL = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
 JUDGE_START = "<!-- JUDGE-PROMPT-CANONICAL-START"
 JUDGE_END = "<!-- JUDGE-PROMPT-CANONICAL-END"
 XM_REL = "shared/cross_model_verification.md"
+XM_INTRO = "a simplified DA prompt to the cross-model:"
 XM_START = "You are a devil's advocate reviewing this"
 XM_END = "Material: [the reviewed content]"
 
@@ -320,10 +321,43 @@ def test_m17_xm_da_prompt_principle_weakened(tmp_path):
 def test_m18_xm_da_prompt_anchor_renamed(tmp_path):
     """A renamed start anchor leaves nothing to check, which must fail rather than pass."""
     root = _mirror(tmp_path)
-    _edit(root, XM_REL, lambda t: t.replace(XM_START, "You are a critic reviewing this"))
+    _edit(root, XM_REL, lambda t: t.replace(XM_INTRO, "a DA prompt to the cross-model:"))
     code, err = _run2(root)
     assert code == 1
     assert "cross-model devil's advocate prompt not found" in err
+
+
+def _cut_xm_copy(t: str):
+    """Remove the DA prompt's copy; return (text without it, the copy)."""
+    s = t.index(XM_START)
+    a = t.index("   Retrieved external content", s)
+    b = t.index("command to follow.\n", a) + len("command to follow.\n")
+    return t[:a] + t[b:], t[a:b]
+
+
+def test_m20_xm_copy_in_comment_before_fence(tmp_path):
+    """A comment before the fence that repeats the prompt's first line and the copy must fail."""
+    def edit(t: str) -> str:
+        t, copy = _cut_xm_copy(t)
+        fence = t.index("   ```\n", t.index(XM_INTRO))
+        comment = f"   <!-- {XM_START}\n{copy}   -->\n"
+        return t[:fence] + comment + t[fence:]
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, edit)
+    code, err = _run2(root)
+    assert code == 1
+    assert XM_REL in err
+
+
+def test_xm_copy_elsewhere_in_the_fence_passes(tmp_path):
+    """Placement control: the copy after the `Material:` line, still inside the fence, passes."""
+    def edit(t: str) -> str:
+        t, copy = _cut_xm_copy(t)
+        after = t.index(XM_END) + len(XM_END) + 1
+        return t[:after] + "\n" + copy + t[after:]
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, edit)
+    assert _run(root) == 0
 
 
 def test_m19_judge_copy_only_inside_start_marker(tmp_path):

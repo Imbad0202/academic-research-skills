@@ -90,11 +90,11 @@ PROMPT_TEMPLATES = (
     # The judge call may receive only this blockquote.
     (JUDGE_PROMPT_REL, "unified judge prompt", JUDGE_PROMPT_RE),
     # The cross-model receives this prompt and the reviewed material only; the
-    # pattern spans the code block from the prompt's first line to its
-    # `Material:` slot.
+    # pattern captures the whole code block that directly follows the step
+    # naming the prompt.
     ("shared/cross_model_verification.md", "cross-model devil's advocate prompt",
-     re.compile(r"You are a devil's advocate reviewing this(.*?)"
-                r"Material: \[the reviewed content\]", re.DOTALL)),
+     re.compile(r"a simplified DA prompt to the cross-model:[ \t]*\n"
+                r"[ \t]*```[^\n]*\n(.*?)\n[ \t]*```", re.DOTALL)),
 )
 _QUOTE_PREFIX_RE = re.compile(r"^[ \t]*>[ \t]?", re.MULTILINE)
 

@@ -168,11 +168,12 @@ are copied into both: as blockquote lines in the judge prompt, and as plain line
 the DA prompt's code block. Each prompt is sent as written, so neither copy carries HTML
 markers or a backpoint. The lint's `PROMPT_TEMPLATES` gives each prompt a pattern that
 spans only the text the model receives: for the judge prompt, the region #361 hashes,
-reused from `scripts/check_judge_prompt_version.py`; for the DA prompt, the code block
-from its first line to its `Material:` slot. The check strips blockquote prefixes and
-requires the canonical body verbatim inside that text. Mutation tests cover a removed
-copy, a copy moved just outside the transmitted text, a weakened copy, and a renamed
-anchor.
+reused from `scripts/check_judge_prompt_version.py`; for the DA prompt, the whole code
+block that directly follows the step naming it. The check strips blockquote prefixes
+and requires the canonical body verbatim inside that text. Mutation tests cover a
+removed copy, a copy moved just outside the transmitted text, a copy hidden in a
+comment before the DA code block, a weakened copy, and a renamed anchor; a control
+confirms that a copy elsewhere inside the DA code block passes.
 
 The judge edit changes the template hash. `JUDGE_PROMPT_SHA256` and the label
 `JUDGE_PROMPT_VERSION` (now `step0-decomp-v2-data-boundary`) in
@@ -260,7 +261,8 @@ retained evidence and a measurement row.
 - `shared/ground_truth_isolation_pattern.md` § 2A: the hot-spot paragraph names the
   extension.
 - `scripts/check_instruction_data_boundary.py`, `scripts/test_check_instruction_data_boundary.py`:
-  twelve agents, the prompt-template check, and seven mutation tests.
+  twelve agents, the prompt-template check, eight mutation tests, and one placement
+  control.
 - `scripts/_claim_audit_constants.py`: judge prompt hash and label.
 - `scripts/check_pipeline_boundary_semantics.py`, `scripts/test_v3_6_7_phase_6_6.py`:
   orchestrator lock and section budget.
