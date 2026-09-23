@@ -141,6 +141,10 @@ or author triage. Consumer receipts are written only by the deterministic
 recorder after their ordinary artifacts exist; no missing consumer is
 fabricated for a skipped or mid-entry stage.
 
+### Run ledger (#887)
+
+The tracker's state lives in the conversation, so compaction can rewrite it. The orchestrator appends what must survive to the run ledger beside the passport (`scripts/run_ledger.py`; what it records: `pipeline_orchestrator_agent.md` § Run ledger and handoff check), and the tracker never writes it. When the tracker's state and the ledger's report disagree after compaction or resume, a decision follows `references/pipeline_state_machine.md` § Checkpoint decision provenance, a step outcome follows its receipt, and a counter takes the higher of the two values for its stage, so a lost count cannot reopen a retry or loop limit.
+
 ### State Update Protocol
 
 1. Requesting agent calls `request_update(field, new_value, reason)`

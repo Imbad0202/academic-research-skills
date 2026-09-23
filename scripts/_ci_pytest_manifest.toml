@@ -695,3 +695,7 @@ path = "scripts/test_file_lock.py"
 [[pytest]]
 id = "862-output-language-pair-contract"
 path = "scripts/test_output_language_pair.py"
+
+[[pytest]]
+id = "887-run-ledger"
+path = "scripts/test_run_ledger.py"

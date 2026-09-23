@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/passport/run_ledger.schema.json",
+  "title": "ARS pipeline run ledger (peer file of the Material Passport)",
+  "description": "Schema for <passport-stem>_run_ledger.yaml, written and checked by scripts/run_ledger.py (#887; design docs/design/2026-09-23-887-handoff-integrity-design.md). It keeps what compaction and subagent returns can drop: the initial instructions, checkpoint questions and the user's exact answers, partly collected answers, receipts for stdout-only tool steps, progress counters, and fingerprints of transient input files. Append-only; the writer assigns seq, at, prev_hash, and hash. Each hash is SHA-256 over the canonical JSON of the entry without its hash field (sorted keys, no whitespace, UTF-8). The hashes detect accidental damage, not deliberate edits, a lost tail, or an older copy of the whole file. The ledger stays beside the passport and is never carried whole into a dispatch; deleting it clears the record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ledger", "created_at", "entries"],
+  "properties": {
+    "ledger": { "const": "ars-run-ledger/1.0" },
+    "created_at": { "$ref": "#/$defs/utc" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/initial_instructions" },
+          { "$ref": "#/$defs/checkpoint_opened" },
+          { "$ref": "#/$defs/checkpoint_closed" },
+          { "$ref": "#/$defs/partial_answer" },
+          { "$ref": "#/$defs/tool_receipt" },
+          { "$ref": "#/$defs/progress" },
+          { "$ref": "#/$defs/file_reference" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "utc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "short": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "words": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000,
+      "description": "The user's exact words, never a paraphrase."
+    },
+    "short_list": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/short" }
+    },
+    "seq": { "type": "integer", "minimum": 1 },
+    "prev_hash": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/sha256" }],
+      "description": "Null only on the first entry; otherwise the previous entry's hash."
+    },
+    "initial_instructions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "kind", "at", "user_words", "prev_hash", "hash"],
+      "properties": {
+        "seq": { "const": 1 },
+        "kind": { "const": "initial_instructions" },
+        "at": { "$ref": "#/$defs/utc" },
+        "user_words": { "$ref": "#/$defs/words" },
+        "prev_hash": { "type": "null" },
+        "hash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "checkpoint_opened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "kind", "at", "checkpoint_id", "stage", "checkpoint_type", "question", "prev_hash", "hash"],
+      "properties": {
+        "seq": { "$ref": "#/$defs/seq" },
+        "kind": { "const": "checkpoint_opened" },
+        "at": { "$ref": "#/$defs/utc" },
+        "checkpoint_id": { "$ref": "#/$defs/short" },
+        "stage": { "$ref": "#/$defs/short" },
+        "checkpoint_type": { "enum": ["FULL", "SLIM", "MANDATORY"] },
+        "question": { "$ref": "#/$defs/text" },
+        "options": { "$ref": "#/$defs/short_list" },
+        "reset_boundary_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{12}$",
+          "description": "Under ARS_PASSPORT_RESET=1, the hash of the reset_boundary[] boundary entry whose pending_decision this checkpoint mirrors; the resume entry that consumes this hash and this checkpoint's closing entry record the same answer."
+        },
+        "prev_hash": { "$ref": "#/$defs/prev_hash" },
+        "hash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "checkpoint_closed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "kind", "at", "checkpoint_id", "answer", "user_words", "prev_hash", "hash"],
+      "properties": {
+        "seq": { "$ref": "#/$defs/seq" },
+        "kind": { "const": "checkpoint_closed" },
+        "at": { "$ref": "#/$defs/utc" },
+        "checkpoint_id": { "$ref": "#/$defs/short" },
+        "answer": { "$ref": "#/$defs/short" },
+        "user_words": { "$ref": "#/$defs/words" },
+        "prev_hash": { "$ref": "#/$defs/prev_hash" },
+        "hash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "partial_answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "kind", "at", "checkpoint_id", "item_id", "answer", "user_words", "prev_hash", "hash"],
+      "properties": {
+        "seq": { "$ref": "#/$defs/seq" },
+        "kind": { "const": "partial_answer" },
+        "at": { "$ref": "#/$defs/utc" },
+        "checkpoint_id": { "$ref": "#/$defs/short" },
+        "item_id": { "$ref": "#/$defs/short" },
+        "answer": { "$ref": "#/$defs/short" },
+        "user_words": { "$ref": "#/$defs/words" },
+        "prev_hash": { "$ref": "#/$defs/prev_hash" },
+        "hash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "tool_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "kind", "at", "step", "command", "status", "exit_status", "retries_used", "prev_hash", "hash"],
+      "properties": {
+        "seq": { "$ref": "#/$defs/seq" },
+        "kind": { "const": "tool_receipt" },
+        "at": { "$ref": "#/$defs/utc" },
+        "step": { "$ref": "#/$defs/short" },
+        "command": { "$ref": "#/$defs/text" },
+        "status": { "enum": ["passed", "failed", "not_run"] },
+        "exit_status": { "type": ["integer", "null"] },
+        "retries_used": { "type": "integer", "minimum": 0 },
+        "input_sha256": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 50,
+          "propertyNames": { "minLength": 1, "maxLength": 4096 },
+          "additionalProperties": { "$ref": "#/$defs/sha256" }
+        },
+        "output_sha256": { "$ref": "#/$defs/sha256" },
+        "gate_tokens": { "$ref": "#/$defs/short_list" },
+        "prev_hash": { "$ref": "#/$defs/prev_hash" },
+        "hash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "kind", "at", "counters", "prev_hash", "hash"],
+      "properties": {
+        "seq": { "$ref": "#/$defs/seq" },
+        "kind": { "const": "progress" },
+        "at": { "$ref": "#/$defs/utc" },
+        "counters": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 50,
+          "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "stage": { "$ref": "#/$defs/short" },
+        "prev_hash": { "$ref": "#/$defs/prev_hash" },
+        "hash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "file_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq", "kind", "at", "path", "sha256", "role", "prev_hash", "hash"],
+      "properties": {
+        "seq": { "$ref": "#/$defs/seq" },
+        "kind": { "const": "file_reference" },
+        "at": { "$ref": "#/$defs/utc" },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "description": "Absolute, or relative to the ledger's directory."
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "role": { "$ref": "#/$defs/short" },
+        "prev_hash": { "$ref": "#/$defs/prev_hash" },
+        "hash": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

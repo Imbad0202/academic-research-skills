@@ -37,7 +37,7 @@ applying your channel's channel-wide limitation above.
 | Methodology layer (the four skills' `SKILL.md` protocols) | Active | Active | Active | Active | Conditional | Active | Active |
 | Skill auto-routing (trigger keywords → skill activation) | Active | Active | Active | Active | Absent | Conditional | Conditional |
 | `/ars-*` slash commands | Active ⁽¹⁾ | Absent | Absent | Absent | Absent | Absent | Conditional |
-| SessionStart announce + update reminder | Conditional ⁽⁸⁾ | Absent ⁽³⁾ | Absent ⁽³⁾ | Absent | Absent | Absent | Absent |
+| SessionStart announce, update reminder, and compaction handoff reminder | Conditional ⁽⁸⁾ | Absent ⁽³⁾ | Absent ⁽³⁾ | Absent | Absent | Absent | Absent |
 | Write-scope guard (`PreToolUse` hook) | Conditional ⁽²⁾ | Absent ⁽³⁾ | Absent ⁽³⁾ | Absent | Absent | Absent | Absent |
 | Plugin agents with tools allowlist (#514) ⁽⁴⁾ | Active | Absent ⁽³⁾ | Absent ⁽³⁾ | Absent | Absent | Absent | Absent |
 | Subagent orchestration (Task-tool multi-agent dispatch) | Active | Active | Active | Absent | Absent | Absent | Conditional |
@@ -82,6 +82,8 @@ runtime graceful-degradation mechanisms is
    the plugin channel (the plugin root is the repo snapshot) and repo clones; for a
    skills-copy install, keep the original clone — the copied skill folders alone cannot
    run them. On Pi, they work if Python and the repo are present (`pi/README.md`).
+   The pipeline's run ledger (`scripts/run_ledger.py`, #887) has the same conditions;
+   where they are not met, the orchestrator says that no ledger is kept.
 6. Note-5 conditions, plus a transport: provider API credentials and `curl` for the
    general transports, or — for the citation-only calls — a Codex CLI
    ChatGPT-subscription login (`ARS_CROSS_MODEL_TRANSPORT=codex`). All transports sit
@@ -101,7 +103,9 @@ runtime graceful-degradation mechanisms is
 8. The SessionStart hook is launched through `bash`, so on Windows it needs Git Bash
    (the same PowerShell limitation as the guard launcher); its update-reminder path
    additionally needs `curl`, stays silent on any failure, and is disabled entirely by
-   `ARS_UPDATE_CHECK=0` (SETUP Method 0).
+   `ARS_UPDATE_CHECK=0` (SETUP Method 0). After a compaction or a resume, the announce
+   adds one sentence asking the session to run the pipeline's handoff check against the
+   run ledger (#887); the sentence is a reminder and runs no check itself.
 
 ## Environment degradations within a channel
 

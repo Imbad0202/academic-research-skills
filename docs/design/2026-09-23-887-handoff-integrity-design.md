@@ -210,8 +210,9 @@ Whichever file holds it, a record that closes the gap in §2 needs five kinds of
 **Coordination with the reset ledger.** Under `ARS_PASSPORT_RESET=1`, `pending_decision`
 on a boundary entry stays authoritative for the reset path, and the reset protocol
 governs its re-prompt. The new record's open checkpoint entry points at that boundary
-hash, and the answer closes both: the reset protocol's resume entry records it, and the
-new record's closing entry points at that resume entry. One pending state, two views.
+hash, and the answer closes both: the reset protocol's resume entry, which consumes that
+hash, records it, and so does the new record's closing entry for the same checkpoint. One
+pending state, two views.
 
 ## 6. Storage options
 
@@ -260,18 +261,19 @@ field, so there is no second record to keep in step.
   follow the read log: under the shared file lock (`flock` on POSIX, and on Windows a
   best-effort `msvcrt` backend that has no CI coverage, the same standing as the read
   log today), each write replaces the whole file atomically, so an interrupted write
-  leaves the previous ledger intact. Each entry carries the hash of the previous one.
-  That catches a changed or deleted entry that has a later entry, such as a line lost in
-  a sync conflict. It does not catch a change to the final entry, a lost tail, or an
-  edit that recomputes the later hashes, so the chain detects accidental damage, not
-  deliberate edits.
+  leaves the previous ledger intact. Each entry carries its own hash and the hash of the
+  previous one. That catches an accidental change to any entry, the final one included,
+  and a deleted entry that has a later entry, such as a line lost in a sync conflict. It
+  does not catch a lost tail or an edit that recomputes the hashes, so the chain detects
+  accidental damage, not deliberate edits.
 - **What it cannot detect.** A missing ledger fails closed: every checkpoint whose
   answer the session cannot show in the user's words is asked again. A broken chain
   fails closed for the entries from the break onward. But the passport records nothing
   about the ledger, so a restored older copy of the ledger alone keeps a valid chain and
   looks current; the rollback limit below applies. The alternative, binding the
   ledger's current hash into the passport on every write, would catch that case and an
-  edit to the final entry, but needs an atomic two-file update; the machinery ARS has
+  edit that recomputes the hashes (unless the passport is edited too), but needs an
+  atomic two-file update; the machinery ARS has
   for that (the inquiry branch ledger, `scripts/inquiry_branch_ledger.py`) refuses to
   run on any lock backend but POSIX `fcntl`, so it would exclude native Windows.
 - **On the Pi port**, the ledger would be written by the same orchestrator prompt; the
@@ -310,8 +312,9 @@ were spent, so a retry limit could be passed without asking the user.
 
 For Option D with the chosen answers:
 
-1. Schema: the local ledger's entry schema (§5's five kinds, each entry carrying the
-   previous entry's hash); the file is named after the passport, as the read log is.
+1. Schema: the local ledger's entry schema (§5's five kinds, each entry carrying its own
+   hash and the previous entry's hash); the file is named after the passport, as the read
+   log is.
 2. Writes: the shared file lock and an atomic whole-file replace, as
    `scripts/ars_mark_read.py` uses them; fail closed on a missing ledger, and from the
    break onward on a broken chain.
