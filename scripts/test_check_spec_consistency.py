@@ -61,10 +61,14 @@ class TestRelativeMarkdownLinkGrammar(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
-# The README fixtures follow the lint's own README_CHANGELOG_KEEP, so a release
-# edits only check_spec_consistency.py. The first kept entry is the current
-# release. The text after each heading's dash is free: the lint matches the
-# `### vX.Y.Z (YYYY-MM-DD)` prefix.
+# The README fixtures follow the lint's own version pins, so a version bump
+# edits only check_spec_consistency.py. The suite version and the three kept
+# changelog headings come from README_CHANGELOG_KEEP, whose first entry is the
+# current release. The sub-skill versions come from the zh-TW heading list;
+# the ja and ko checkers pin the same versions inline. The fixtures spell the
+# heading formats themselves, so the tests share the lint's data but not its
+# formatting. The text after each changelog heading's dash is free: the lint
+# matches the `### vX.Y.Z (YYYY-MM-DD)` prefix.
 CUR_VER, CUR_DATE = csc.README_CHANGELOG_KEEP[0]
 CUR_HEADING = f"### v{CUR_VER} ({CUR_DATE})"
 CUR_HEADING_FULLWIDTH = f"### v{CUR_VER}（{CUR_DATE}）"
@@ -76,14 +80,25 @@ FULLWIDTH_KEPT = "".join(
 )
 
 
+def _pinned_skill_version(name: str) -> str:
+    prefix = f"### {name} (v"
+    (heading,) = (h for h in csc.ZH_README_CONFIGS[0]["headings"] if h.startswith(prefix))
+    return heading[len(prefix):-1]
+
+
+DR_VER = _pinned_skill_version("Deep Research")
+AP_VER = _pinned_skill_version("Academic Paper")
+APR_VER = _pinned_skill_version("Academic Paper Reviewer")
+
+
 # Minimal ja-JP README capturing the version-bearing surfaces the lint needs
 # to police: badge, release tag link, the CHANGELOG/archive links plus the three
 # kept release blocks (README_CHANGELOG_KEEP),
 # four localized mode headings, four skill-detail headings, and the DOCX line.
-JA_README_TEMPLATE = """\
+JA_README = f"""\
 # Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v{ver}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{ver})
+[![Version](https://img.shields.io/badge/version-v{CUR_VER}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{CUR_VER})
 
 ## クイックスタート
 
@@ -100,10 +115,10 @@ JA_README_TEMPLATE = """\
 
 #### Academic Pipeline（オーケストレーター）
 
-### Deep Research（v2.12.1）
-### Academic Paper（v3.3.1）
-### Academic Paper Reviewer（v1.11.1）
-### Academic Pipeline（v{ver}）
+### Deep Research（v{DR_VER}）
+### Academic Paper（v{AP_VER}）
+### Academic Paper Reviewer（v{APR_VER}）
+### Academic Pipeline（v{CUR_VER}）
 
 ### サポートされる出力フォーマット
 
@@ -113,9 +128,9 @@ JA_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/ja-JP.md](docs/changelog-archive/ja-JP.md)
 
-""" + ASCII_KEPT + """
+{ASCII_KEPT}
 ## Version Info
-- **Suite version**: {ver}
+- **Suite version**: {CUR_VER}
 """
 
 
@@ -128,11 +143,9 @@ def _write_changelog_targets(root: Path, locale: str) -> None:
     archive.write_text("# frozen\n", encoding="utf-8")
 
 
-def _write_ja_readme(root: Path, version: str) -> None:
+def _write_ja_readme(root: Path) -> None:
     _write_changelog_targets(root, "ja-JP")
-    (root / "README.ja-JP.md").write_text(
-        JA_README_TEMPLATE.format(ver=version), encoding="utf-8"
-    )
+    (root / "README.ja-JP.md").write_text(JA_README, encoding="utf-8")
 
 
 # Minimal ko-KR README capturing the version-bearing surfaces check_readme_ko_sections
@@ -140,10 +153,10 @@ def _write_ja_readme(root: Path, version: str) -> None:
 # four localized mode headings ("N개 모드" with ASCII parens — Korean typographic norm
 # matching English/ja, NOT the full-width zh form), four skill-detail headings (English
 # ASCII-paren form reused verbatim), and the Korean DOCX line.
-KO_README_TEMPLATE = """\
+KO_README = f"""\
 # Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v{ver}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{ver})
+[![Version](https://img.shields.io/badge/version-v{CUR_VER}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{CUR_VER})
 
 ## 빠른 시작
 
@@ -160,10 +173,10 @@ KO_README_TEMPLATE = """\
 
 #### Academic Pipeline (오케스트레이터)
 
-### Deep Research (v2.12.1)
-### Academic Paper (v3.3.1)
-### Academic Paper Reviewer (v1.11.1)
-### Academic Pipeline (v{ver})
+### Deep Research (v{DR_VER})
+### Academic Paper (v{AP_VER})
+### Academic Paper Reviewer (v{APR_VER})
+### Academic Pipeline (v{CUR_VER})
 
 ### 지원되는 출력 형식
 
@@ -173,24 +186,22 @@ KO_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)
 
-""" + ASCII_KEPT
+{ASCII_KEPT}"""
 
 
-def _write_ko_readme(root: Path, version: str) -> None:
+def _write_ko_readme(root: Path) -> None:
     _write_changelog_targets(root, "ko-KR")
-    (root / "README.ko-KR.md").write_text(
-        KO_README_TEMPLATE.format(ver=version), encoding="utf-8"
-    )
+    (root / "README.ko-KR.md").write_text(KO_README, encoding="utf-8")
 
 
 # Minimal zh-CN README capturing the version-bearing surfaces the lint needs
 # to police via ZH_README_CONFIGS[1]: badge, release tag link, the same
 # release-block list as zh-TW, four Simplified-Chinese localized mode
 # headings, four skill-detail headings, and the Simplified-Chinese DOCX line.
-ZH_CN_README_TEMPLATE = """\
+ZH_CN_README = f"""\
 # Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v{ver}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{ver})
+[![Version](https://img.shields.io/badge/version-v{CUR_VER}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{CUR_VER})
 
 #### Deep Research（深度研究，8 种模式）
 - review mode
@@ -205,10 +216,10 @@ ZH_CN_README_TEMPLATE = """\
 
 #### Academic Pipeline（全流程调度器）
 
-### Deep Research (v2.12.1)
-### Academic Paper (v3.3.1)
-### Academic Paper Reviewer (v1.11.1)
-### Academic Pipeline (v{ver})
+### Deep Research (v{DR_VER})
+### Academic Paper (v{AP_VER})
+### Academic Paper Reviewer (v{APR_VER})
+### Academic Pipeline (v{CUR_VER})
 
 ### 支持的输出格式
 
@@ -218,24 +229,22 @@ ZH_CN_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)
 
-""" + FULLWIDTH_KEPT
+{FULLWIDTH_KEPT}"""
 
 
-def _write_zh_cn_readme(root: Path, version: str) -> None:
+def _write_zh_cn_readme(root: Path) -> None:
     _write_changelog_targets(root, "zh-CN")
-    (root / "README.zh-CN.md").write_text(
-        ZH_CN_README_TEMPLATE.format(ver=version), encoding="utf-8"
-    )
+    (root / "README.zh-CN.md").write_text(ZH_CN_README, encoding="utf-8")
 
 
 # zh-TW fixture matching ZH_README_CONFIGS[0]. check_readme_zh_sections
 # iterates BOTH configs, so to test the zh-CN branch in isolation we still
 # need a passing zh-TW companion (or vice versa). The minimal zh-TW fixture
 # below uses the same shape with Traditional-Chinese localized strings.
-ZH_TW_README_TEMPLATE = """\
+ZH_TW_README = f"""\
 # Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v{ver}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{ver})
+[![Version](https://img.shields.io/badge/version-v{CUR_VER}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{CUR_VER})
 
 #### Deep Research（深度研究，8 種模式）
 - review mode
@@ -250,10 +259,10 @@ ZH_TW_README_TEMPLATE = """\
 
 #### Academic Pipeline（全流程調度器）
 
-### Deep Research (v2.12.1)
-### Academic Paper (v3.3.1)
-### Academic Paper Reviewer (v1.11.1)
-### Academic Pipeline (v{ver})
+### Deep Research (v{DR_VER})
+### Academic Paper (v{AP_VER})
+### Academic Paper Reviewer (v{APR_VER})
+### Academic Pipeline (v{CUR_VER})
 
 ### 支援的輸出格式
 
@@ -263,14 +272,12 @@ ZH_TW_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/zh-TW.md](docs/changelog-archive/zh-TW.md)
 
-""" + FULLWIDTH_KEPT
+{FULLWIDTH_KEPT}"""
 
 
-def _write_zh_tw_readme(root: Path, version: str) -> None:
+def _write_zh_tw_readme(root: Path) -> None:
     _write_changelog_targets(root, "zh-TW")
-    (root / "README.zh-TW.md").write_text(
-        ZH_TW_README_TEMPLATE.format(ver=version), encoding="utf-8"
-    )
+    (root / "README.zh-TW.md").write_text(ZH_TW_README, encoding="utf-8")
 
 
 class TestReadmeJaSections(unittest.TestCase):
@@ -292,7 +299,7 @@ class TestReadmeJaSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ja_readme(root, version=CUR_VER)
+            _write_ja_readme(root)
 
             csc.check_readme_ja_sections()
 
@@ -312,7 +319,7 @@ class TestReadmeJaSections(unittest.TestCase):
             # Write the current release block but downgrade only
             # the badge and tag link to v3.9.4.0. This is the realistic shape
             # of drift when one place gets forgotten during a release.
-            stale = JA_README_TEMPLATE.format(ver=CUR_VER).replace(
+            stale = JA_README.replace(
                 f"version-v{CUR_VER}-blue", "version-v3.9.4.0-blue"
             ).replace(
                 f"releases/tag/v{CUR_VER}", "releases/tag/v3.9.4.0"
@@ -346,7 +353,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ko_readme(root, version=CUR_VER)
+            _write_ko_readme(root)
 
             csc.check_readme_ko_sections()
 
@@ -361,7 +368,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            stale = KO_README_TEMPLATE.format(ver=CUR_VER).replace(
+            stale = KO_README.replace(
                 f"version-v{CUR_VER}-blue", "version-v3.9.4.0-blue"
             ).replace(
                 f"releases/tag/v{CUR_VER}", "releases/tag/v3.9.4.0"
@@ -382,7 +389,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            broken = KO_README_TEMPLATE.format(ver=CUR_VER).replace(
+            broken = KO_README.replace(
                 "#### Deep Research (8개 모드)", "#### Deep Research (8 modes)"
             )
             (root / "README.ko-KR.md").write_text(broken, encoding="utf-8")
@@ -399,7 +406,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            broken = KO_README_TEMPLATE.format(ver=CUR_VER).replace(
+            broken = KO_README.replace(
                 CUR_HEADING,
                 CUR_HEADING_FULLWIDTH,
             )
@@ -424,7 +431,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            regrown = KO_README_TEMPLATE.format(ver=CUR_VER) + (
+            regrown = KO_README + (
                 "### v3.20.1 (2026-08-15) — stale fourth entry\n"
             )
             (root / "README.ko-KR.md").write_text(regrown, encoding="utf-8")
@@ -447,7 +454,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            unlinked = KO_README_TEMPLATE.format(ver=CUR_VER).replace(
+            unlinked = KO_README.replace(
                 " · [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)", ""
             )
             (root / "README.ko-KR.md").write_text(unlinked, encoding="utf-8")
@@ -471,7 +478,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            doubled = KO_README_TEMPLATE.format(ver=CUR_VER) + (
+            doubled = KO_README + (
                 f"{CUR_HEADING} — pasted twice\n"
             )
             (root / "README.ko-KR.md").write_text(doubled, encoding="utf-8")
@@ -490,7 +497,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            base = KO_README_TEMPLATE.format(ver=CUR_VER)
+            base = KO_README
             head, _, section = base.partition("## 변경 이력\n")
             fenced = head + "```markdown\n## 변경 이력\n" + section + "```\n\n## 변경 이력\n\n"
             (root / "README.ko-KR.md").write_text(fenced, encoding="utf-8")
@@ -524,8 +531,8 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version=CUR_VER)
-            _write_zh_cn_readme(root, version=CUR_VER)
+            _write_zh_tw_readme(root)
+            _write_zh_cn_readme(root)
 
             csc.check_readme_zh_sections()
 
@@ -541,8 +548,8 @@ class TestReadmeZhSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version=CUR_VER)
-            stale = ZH_CN_README_TEMPLATE.format(ver=CUR_VER).replace(
+            _write_zh_tw_readme(root)
+            stale = ZH_CN_README.replace(
                 f"version-v{CUR_VER}-blue", "version-v3.9.4.0-blue"
             ).replace(
                 f"releases/tag/v{CUR_VER}", "releases/tag/v3.9.4.0"
