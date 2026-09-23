@@ -11,7 +11,7 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
 | `academic-pipeline` v3.22.1 | Full pipeline orchestrator | (coordinates all above) |
 
-## v3.22.1 Key Additions (Opus 5.5 model currency + mode-loading and citation-check repairs + Pi wrapper fix)
+## v3.22.1 Key Additions (Opus 5.5 model currency + citation-check loading and Chinese APA 7 repairs + Pi wrapper fix)
 
 - **Claude Opus 5.5 joins Claude Fable 5.1 as a supported session model (#883).** A two-reader audit of the Opus 5.5 system card (`audits/harness-retirement-2026-09-opus-5-5.md`, DM-001 to DM-021) retires no guardrail. `docs/PERFORMANCE.md` (en / zh-TW) adds effort guidance (heavy runs at `high` or above, since Claude Code starts Opus 5.5 at `medium`), one 2026-09 list-price re-derivation for both models, tiering guidance for the pair, and a files-over-pastes recommendation; `shared/model_tiering.md` defines family and tier (tier order is lineup order, not a capability ranking) and corrects the classifier-fallback note. No command `model:` or `effort:` setting changes.
 - **The revision coach treats pasted third-party text as data (DG-1).** It inlines the canonical instruction/data boundary, pinned by `scripts/check_instruction_data_boundary.py`, whose mutation tests are now parametrized over every hot-spot agent; `docs/RISK_REGISTER.md` R3 names pasted text. The guard is prompt-level and its effect is unmeasured.

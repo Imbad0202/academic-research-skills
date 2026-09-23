@@ -313,8 +313,8 @@ def check_readme_changelog_section(
 ) -> None:
     """The README changelog section carries exactly README_CHANGELOG_KEEP.
 
-    `paren` is "ascii" (`### v3.22.1 (2026-09-23)`, en / ja / ko / es) or
-    "fullwidth" (`### v3.22.1（2026-09-23）`, zh-TW / zh-CN). The section must
+    `paren` is "ascii" (`### vX.Y.Z (YYYY-MM-DD)`, en / ja / ko / es) or
+    "fullwidth" (`### vX.Y.Z（YYYY-MM-DD）`, zh-TW / zh-CN). The section must
     link to CHANGELOG.md and, for translated READMEs, to the frozen archive.
     Fenced code and HTML comments are stripped first, so a commented-out or
     fenced copy of the section neither satisfies nor trips the checks.
