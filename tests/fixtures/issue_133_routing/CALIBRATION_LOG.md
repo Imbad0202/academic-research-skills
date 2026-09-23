@@ -194,7 +194,7 @@ still fails goes to a follow-up issue with the deciding quote.
   lit-review and asked the user to choose, which fails the routing class. The command
   file itself recommends `deep-research` lit-review for a research-side review
   (`commands/ars-lit-review.md`). Under the stop rule, fixture 04 goes to a follow-up
-  issue; this change makes no further prose edit.
+  issue (#897); this change makes no further prose edit.
 - Pass 3 is not held out. The prose was changed twice after failures on these same
   fixtures, and one session per fixture cannot separate a prose effect from run-to-run
   variation: fixture 06 on Opus 5.5 passed, failed, and passed across the three passes.
