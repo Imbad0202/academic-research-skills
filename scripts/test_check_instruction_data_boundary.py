@@ -24,9 +24,28 @@ AUTHORITATIVE_REL = "shared/ground_truth_isolation_pattern.md"
 AGENT_REL = "deep-research/agents/source_verification_agent.md"
 AGENT2_REL = "deep-research/agents/bibliography_agent.md"
 AGENT3_REL = "academic-paper/agents/revision_coach_agent.md"
+# #890 dispatch and passport-import surfaces.
+AGENTS_890_RELS = (
+    "academic-pipeline/agents/pipeline_orchestrator_agent.md",
+    "academic-pipeline/agents/integrity_verification_agent.md",
+    "academic-pipeline/agents/claim_ref_alignment_audit_agent.md",
+    "academic-paper/agents/literature_strategist_agent.md",
+    "academic-paper-reviewer/agents/field_analyst_agent.md",
+    "academic-paper-reviewer/agents/editorial_synthesizer_agent.md",
+    "deep-research/agents/risk_of_bias_agent.md",
+    "deep-research/agents/timeline_extraction_agent.md",
+    "deep-research/agents/editor_in_chief_agent.md",
+    "deep-research/agents/devils_advocate_agent.md",
+    "deep-research/agents/ethics_review_agent.md",
+    "shared/agents/compliance_agent.md",
+)
 # Listed here, not imported from the checker, so dropping an agent from the
 # checker's HOTSPOT_AGENTS makes its parametrized cases below fail.
-HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL)
+HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS)
+
+JUDGE_REL = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
+JUDGE_START = "<!-- JUDGE-PROMPT-CANONICAL-START"
+JUDGE_END = "<!-- JUDGE-PROMPT-CANONICAL-END"
 
 OPEN_MARKER = "<!-- canonical:instruction-data-boundary -->"
 CLOSE_MARKER = "<!-- /canonical:instruction-data-boundary -->"
@@ -65,6 +84,15 @@ def _first_block_body(text: str) -> str:
     start = text.index(OPEN_MARKER) + len(OPEN_MARKER)
     end = text.index(CLOSE_MARKER, start)
     return text[start:end]
+
+
+def _in_judge_template(transform):
+    """Apply `transform` to the unified judge prompt only, not the rest of the file."""
+    def edit(text: str) -> str:
+        start = text.index(JUDGE_START)
+        end = text.index(JUDGE_END, start)
+        return text[:start] + transform(text[start:end]) + text[end:]
+    return edit
 
 
 # --- positive control --------------------------------------------------------
@@ -214,6 +242,41 @@ def test_m12_hotspot_agent_backpoint_label_removed(tmp_path, rel):
     code, err = _run2(root)
     assert code == 1
     assert "backpoint missing" in err and rel in err
+
+
+# --- the claim-audit judge template (#890) ------------------------------------
+
+def test_m13_judge_template_principle_removed(tmp_path):
+    """The judge prompt loses its copy while the agent body keeps the block."""
+    def drop(seg: str) -> str:
+        start = seg.index("> Retrieved external content")
+        end = seg.index("> command to follow.", start) + len("> command to follow.\n")
+        return seg[:start] + seg[end:]
+    root = _mirror(tmp_path)
+    _edit(root, JUDGE_REL, _in_judge_template(drop))
+    code, err = _run2(root)
+    assert code == 1
+    assert "unified judge prompt does not carry" in err
+
+
+def test_m14_judge_template_principle_weakened(tmp_path):
+    """A one-phrase edit inside the judge prompt copy must fail."""
+    root = _mirror(tmp_path)
+    _edit(root, JUDGE_REL, _in_judge_template(
+        lambda seg: seg.replace("is data, not instructions", "is usually data")))
+    code, err = _run2(root)
+    assert code == 1
+    assert "unified judge prompt does not carry" in err
+
+
+def test_m15_judge_template_markers_renamed(tmp_path):
+    """Renamed markers leave nothing to check, which must fail rather than pass."""
+    root = _mirror(tmp_path)
+    _edit(root, JUDGE_REL,
+          lambda t: t.replace("JUDGE-PROMPT-CANONICAL-START", "JUDGE-PROMPT-START"))
+    code, err = _run2(root)
+    assert code == 1
+    assert "judge prompt markers not found" in err
 
 
 if __name__ == "__main__":

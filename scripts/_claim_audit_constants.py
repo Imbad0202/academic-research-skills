@@ -131,7 +131,7 @@ UAF_RULE_VERSION = "D4-c-v1-uaf-v1"
 # the cache key tracks JUDGE_PROMPT_SHA256 below (the prompt fingerprint), which
 # the lint keeps in lockstep with the prompt text. Decoupling the two means a
 # forgotten label bump can never leave stale cache entries valid.
-JUDGE_PROMPT_VERSION = "step0-decomp-v1"
+JUDGE_PROMPT_VERSION = "step0-decomp-v2-data-boundary"
 
 # #361 backstop: SHA-256 of the canonical judge-prompt section (the text between
 # the JUDGE-PROMPT-CANONICAL-START/END markers in
@@ -143,7 +143,7 @@ JUDGE_PROMPT_VERSION = "step0-decomp-v1"
 # prompt_version to this value, so because the lint pins the hash to the prompt
 # text, any prompt edit automatically changes the cache key and invalidates stale
 # entries — no reliance on a separate human-readable label bump.
-JUDGE_PROMPT_SHA256 = "cdd5ba2d681ea6d6422a017fb122f36a9d62edb32f9d27bd98dbaad1f807b058"
+JUDGE_PROMPT_SHA256 = "bb67174bb664bc7a668de790012562cdc4f1410fbc35847531732699792d0ed2"
 
 # Constraint id parse rules (spec §3.2 + INV-17 canonical form).
 RE_NC_CONSTRAINT = re.compile(r"^NC-C([0-9]{3,})-([0-9]+)$")

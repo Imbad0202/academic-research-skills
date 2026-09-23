@@ -17,6 +17,9 @@ What it asserts, without any semantic analysis:
    itself must be present).
 3. Each hot-spot agent carries a backpoint citing the authoritative anchor
    (the file path + "§ 2A"), outside any code fence.
+4. The claim-audit unified judge prompt (the text between the
+   JUDGE-PROMPT-CANONICAL markers) carries the canonical sentences verbatim,
+   because a judge call may receive only that prompt (#890).
 
 Presence + a pointer alone is not enough: keeping the anchor while gutting the
 body must FAIL. So the lint compares the block body to a verbatim constant, and a
@@ -50,7 +53,36 @@ HOTSPOT_AGENTS = (
     "deep-research/agents/source_verification_agent.md",
     "deep-research/agents/bibliography_agent.md",
     "academic-paper/agents/revision_coach_agent.md",  # #883
+    # #890: dispatch and passport-import surfaces; the inventory, ranking, and
+    # uncovered surfaces are in
+    # docs/design/2026-09-23-890-instruction-data-boundary-extension.md.
+    "academic-pipeline/agents/pipeline_orchestrator_agent.md",
+    "academic-pipeline/agents/integrity_verification_agent.md",
+    "academic-pipeline/agents/claim_ref_alignment_audit_agent.md",
+    "academic-paper/agents/literature_strategist_agent.md",
+    "academic-paper-reviewer/agents/field_analyst_agent.md",
+    "academic-paper-reviewer/agents/editorial_synthesizer_agent.md",
+    "deep-research/agents/risk_of_bias_agent.md",
+    "deep-research/agents/timeline_extraction_agent.md",
+    "deep-research/agents/editor_in_chief_agent.md",
+    "deep-research/agents/devils_advocate_agent.md",
+    "deep-research/agents/ethics_review_agent.md",
+    "shared/agents/compliance_agent.md",
 )
+
+# #890: the claim-audit judge call may receive only the unified judge prompt,
+# so the principle must also sit inside that template. The template is a
+# Markdown blockquote sent to the judge as written, so it carries the canonical
+# sentences without the HTML markers or the backpoint; the check strips the
+# blockquote prefixes and requires the canonical body verbatim. The marker
+# pattern mirrors scripts/check_judge_prompt_version.py, which pins the
+# template's hash.
+JUDGE_TEMPLATE_AGENT = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
+JUDGE_TEMPLATE_RE = re.compile(
+    r"<!-- JUDGE-PROMPT-CANONICAL-START.*?-->(?P<body>.*?)<!-- JUDGE-PROMPT-CANONICAL-END",
+    re.DOTALL,
+)
+_QUOTE_PREFIX_RE = re.compile(r"^[ \t]*>[ \t]?", re.MULTILINE)
 
 MARKER = "instruction-data-boundary"
 
@@ -163,6 +195,23 @@ def check_backpoint(text: str, rel: str, violations: list[str]) -> None:
         )
 
 
+def check_judge_template(text: str, rel: str, violations: list[str]) -> None:
+    """The unified judge prompt must carry the canonical sentences verbatim."""
+    m = JUDGE_TEMPLATE_RE.search(text)
+    if m is None:
+        violations.append(
+            f"{rel}: judge prompt markers not found — the principle inside the "
+            f"judge template cannot be checked"
+        )
+        return
+    template = _QUOTE_PREFIX_RE.sub("", m.group("body"))
+    if _norm(CANONICAL_BODY) not in _norm(template):
+        violations.append(
+            f"{rel}: the unified judge prompt does not carry the canonical "
+            f"principle verbatim (a judge call may receive only that prompt)"
+        )
+
+
 def check_auth_section(text: str, rel: str, violations: list[str]) -> None:
     """Authoritative file must carry exactly one '§ 2A' H2, with the canonical
     block inside it (between that heading and the next H2)."""
@@ -222,6 +271,11 @@ def main() -> int:
         check_canonical_blocks(text, rel, require_exactly_one=False,
                                violations=violations)
         check_backpoint(text, rel, violations)
+
+    # JUDGE_TEMPLATE_AGENT is a hot spot, so the loop above already confirmed
+    # the file exists.
+    check_judge_template((root / JUDGE_TEMPLATE_AGENT).read_text(encoding="utf-8"),
+                         JUDGE_TEMPLATE_AGENT, violations)
 
     if violations:
         print("instruction-vs-data boundary lint FAILED:", file=sys.stderr)

@@ -150,8 +150,18 @@ retrieval-class agents with the largest external-content surface
 revision coach (`revision_coach_agent`, #883), whose reviewer and committee text
 usually arrives pasted into the user's own message, a channel the Claude Opus 5.5
 system card reports as more susceptible to planted instructions than tool results
-(§6.5.1). `HOTSPOT_AGENTS` in `scripts/check_instruction_data_boundary.py` is the
-authoritative list.
+(§6.5.1). #890 extends the list to the dispatch and passport-import paths, where
+third-party text reaches an agent inside a user turn or a task prompt rather than
+as a tool result: the pipeline orchestrator; the integrity verification,
+claim-reference alignment audit, and compliance agents at the integrity gates;
+the literature strategist; the field analyst and the editorial synthesizer; the
+risk-of-bias and timeline extraction agents; and the editor-in-chief, devil's
+advocate, and ethics review agents that deep-research `review` mode runs on a
+paper the user provides. The claim-audit judge prompt carries the same
+sentences, because a judge call may receive only that prompt. `HOTSPOT_AGENTS` in
+`scripts/check_instruction_data_boundary.py` is the authoritative list;
+`docs/design/2026-09-23-890-instruction-data-boundary-extension.md` records the
+inventory and the surfaces left uncovered.
 
 ---
 

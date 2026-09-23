@@ -1608,10 +1608,10 @@ def test_an_unreadable_agent_file_leaves_a_blocked_record(
 def test_the_synthesis_boundary_covers_every_delimited_block():
     """Iron Rule #7 at the call boundary, for ALL the delimited data.
 
-    The synthesizer's agent file carries no untrusted-material rule, and a
-    manuscript directive can be echoed into a reviewer card or the field
-    analysis, so a boundary sentence that names only the paper leaves the
-    other blocks fenced by nothing.
+    The synthesizer's agent file states only the general principle (#890)
+    and names none of these blocks, and a manuscript directive can be echoed
+    into a reviewer card or the field analysis, so a boundary sentence that
+    names only the paper leaves the other blocks fenced by nothing.
     """
     builder = harness.PromptBuilder(CONTRACT_JSON, json.dumps(METADATA))
     call = builder.synthesis({"eic": "card text"}, "analysis text",
