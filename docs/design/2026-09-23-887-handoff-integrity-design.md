@@ -176,15 +176,16 @@ session still shows: if compaction removed every trace of a pending checkpoint, 
 prompt rule can recover it.
 
 **Noticing a compaction.** The rules also depend on the orchestrator noticing that a
-compaction happened. On plugin installs, the SessionStart hook (`hooks/hooks.json`,
+compaction happened. The SessionStart hook (`hooks/hooks.json`,
 `scripts/announce-ars-loaded.sh`) receives the event's `source`, and its `compact`
-branch already sends a short announcement; one sentence there can tell the session to
-run the handoff check before continuing an ARS pipeline run. The hook cannot tell
-whether a run is in progress, so the sentence is conditional and appears after every
-compaction on plugin installs (on Windows only with Git Bash, as for the rest of the
-hook). No other install path runs the hook (`docs/CONTROL_AVAILABILITY.md`, the
-SessionStart row and note 3); there the rules rely on the orchestrator recognizing the
-summary.
+branch, which it shares with `resume`, already sends a short announcement; one sentence
+there can tell the session to run the handoff check before continuing an ARS pipeline
+run. The hook cannot tell whether a run is in progress, so the sentence is conditional
+and appears after every compaction or resume where the hook runs (on Windows only with
+Git Bash, as for the rest of the hook). Plugin installs wire the hook by default; other
+install paths do not, unless the user wires it into their own Claude Code settings
+(`docs/CONTROL_AVAILABILITY.md`, the SessionStart row and note 3). Without the hook, the
+rules rely on the orchestrator recognizing the summary.
 
 ## 5. What a storage change has to hold
 
@@ -305,7 +306,7 @@ were spent, so a retry limit could be passed without asking the user.
 5. **When the handoff check shows**: chosen, only when it has something to report
    (R-HI-5, 2026-09-23). The alternative was a one-line status every time.
 
-## 8. Implementation outline (after the decisions, not in this change)
+## 8. Implementation outline
 
 For Option D with the chosen answers:
 
@@ -325,11 +326,13 @@ For Option D with the chosen answers:
    the reset coordination rule; the state tracker's structure names the ledger. Content
    locks are re-pinned in the same commit. Required tool steps are enumerated from the
    skills' text, not from §2.
-5. Hook: one conditional sentence in the `compact` branch of
-   `scripts/announce-ars-loaded.sh` (plugin installs only; §4, noticing a compaction).
+5. Hook: one conditional sentence in the `compact` branch (shared with `resume`) of
+   `scripts/announce-ars-loaded.sh`, which plugin installs wire by default (§4, noticing
+   a compaction).
 6. Docs: `docs/RISK_REGISTER.md` (new row), `docs/DATA_FLOWS.md` (the new local store,
    its deletion note, and the advice not to pass it to the audit wrapper),
-   `docs/CONTROL_AVAILABILITY.md` (the compaction reminder is plugin-only),
+   `docs/CONTROL_AVAILABILITY.md` (the compaction reminder rides the SessionStart hook,
+   which only plugin installs wire by default),
    `CHANGELOG.md`.
 
 The rules stay prompt-level where they rely on the orchestrator writing and reading the
