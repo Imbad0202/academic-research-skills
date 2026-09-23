@@ -74,7 +74,7 @@ SHORT_MAX = 200
 PATH_MAX = 4096
 LIST_MAX = 50
 
-_UTC_Z = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+_UTC_Z = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
 _COUNTER_NAME = re.compile(r"[a-z][a-z0-9_]{0,63}")
 
 Check = Callable[[Any], "str | None"]
@@ -249,6 +249,7 @@ def _stored_entry_ok(entry: Any, index: int, prev_hash: str | None) -> bool:
         and all(name in entry for name in BASE_FIELDS)
         and not _kind_field_errors(entry, extra_allowed=BASE_FIELDS)
         and entry["seq"] == index and not isinstance(entry["seq"], bool)
+        and (entry["kind"] != "initial_instructions" or index == 1)
         and isinstance(entry["at"], str) and _UTC_Z.fullmatch(entry["at"]) is not None
         and entry["prev_hash"] == prev_hash
         and entry["hash"] == entry_hash(entry)
@@ -283,7 +284,7 @@ def load_ledger(path: Path) -> dict[str, Any] | None:
     try:
         text = path.read_bytes().decode("utf-8")
         data = yaml.load(text, Loader=_UniqueKeySafeLoader)
-    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
+    except (OSError, ValueError, yaml.YAMLError) as exc:  # ValueError: bad bytes, impossible dates
         raise LedgerUnreadable(f"cannot parse {path.name}: {exc}") from exc
     if (
         not isinstance(data, dict)
@@ -440,6 +441,16 @@ def _claims_errors(claims: Any) -> list[str]:
     return errors
 
 
+def _group(claims: list[dict[str, str]], key: str, value: str) -> dict[str, list[str]]:
+    """Every distinct claimed value per id, in order, so contradictions stay visible."""
+    grouped: dict[str, list[str]] = {}
+    for claim in claims:
+        values = grouped.setdefault(claim[key], [])
+        if claim[value] not in values:
+            values.append(claim[value])
+    return grouped
+
+
 def _file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -475,11 +486,11 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
     missing: list[dict[str, Any]] = []
     backed = 0
 
-    claimed = {d["checkpoint_id"]: d["answer"] for d in claims.get("decisions", [])}
+    claimed = _group(claims.get("decisions", []), "checkpoint_id", "answer")
     for checkpoint, opened in state["opened"].items():
         closed = state["closed"].get(checkpoint)
-        claim = claimed.pop(checkpoint, None)
-        if closed is None and claim is None:
+        answers = claimed.pop(checkpoint, [])
+        if closed is None and not answers:
             item = {
                 "checkpoint_id": checkpoint,
                 "stage": opened["stage"],
@@ -491,42 +502,43 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
                 item["reset_boundary_hash"] = opened["reset_boundary_hash"]
             awaiting.append(item)
         elif closed is None:
-            cannot_confirm.append({
-                "item": "decision", "checkpoint_id": checkpoint, "claimed": claim,
+            cannot_confirm += [{
+                "item": "decision", "checkpoint_id": checkpoint, "claimed": answer,
                 "reason": "the checkpoint is still open in the ledger",
-            })
-        elif claim is not None and claim != closed["answer"]:
-            cannot_confirm.append({
-                "item": "decision", "checkpoint_id": checkpoint, "claimed": claim,
+            } for answer in answers]
+        else:
+            differing = [answer for answer in answers if answer != closed["answer"]]
+            cannot_confirm += [{
+                "item": "decision", "checkpoint_id": checkpoint, "claimed": answer,
                 "recorded": closed["answer"],
                 "reason": "the ledger records a different answer",
-            })
-        else:
-            backed += 1
-    for checkpoint, claim in claimed.items():
-        cannot_confirm.append({
-            "item": "decision", "checkpoint_id": checkpoint, "claimed": claim,
+            } for answer in differing]
+            if not differing:
+                backed += 1
+    for checkpoint, answers in claimed.items():
+        cannot_confirm += [{
+            "item": "decision", "checkpoint_id": checkpoint, "claimed": answer,
             "reason": "no answer in the user's words is recorded",
-        })
+        } for answer in answers]
 
-    claimed_steps = {s["step"]: s["status"] for s in claims.get("steps", [])}
+    claimed_steps = _group(claims.get("steps", []), "step", "status")
     expected = set(claims.get("expected_steps", []))
     for step in sorted(set(state["receipts"]) | set(claimed_steps) | expected):
         receipt = state["receipts"].get(step)
-        claim = claimed_steps.get(step)
+        statuses = claimed_steps.get(step, [])
         if receipt is None or receipt["status"] == "not_run":
-            not_run.append({
-                "step": step, "claimed": claim,
-                "reason": "no receipt" if receipt is None else "the receipt records not_run",
-            })
-        elif claim is not None and claim != receipt["status"]:
-            cannot_confirm.append({
-                "item": "step", "step": step, "claimed": claim,
+            reason = "no receipt" if receipt is None else "the receipt records not_run"
+            not_run += [{"step": step, "claimed": status, "reason": reason}
+                        for status in statuses or [None]]
+        else:
+            differing = [status for status in statuses if status != receipt["status"]]
+            cannot_confirm += [{
+                "item": "step", "step": step, "claimed": status,
                 "recorded": receipt["status"],
                 "reason": "the receipt records a different outcome",
-            })
-        else:
-            backed += 1
+            } for status in differing]
+            if not differing:
+                backed += 1
 
     for recorded_path, ref in state["files"].items():
         target = path.parent / recorded_path  # an absolute path replaces the parent

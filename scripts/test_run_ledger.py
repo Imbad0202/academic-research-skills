@@ -118,11 +118,6 @@ class HandoffScenarioTest(_LedgerCase):
         self.assertEqual(awaiting["answered_items"], ["E6-1"])
         self.assertTrue(run_ledger.has_items(report))
 
-    def test_reset_pending_decision_names_its_boundary(self) -> None:
-        self.open_checkpoint(reset_boundary_hash=BOUNDARY)
-        [awaiting] = self.report()["awaiting_answer"]
-        self.assertEqual(awaiting["reset_boundary_hash"], BOUNDARY)
-
     def test_summary_claims_an_approval_the_ledger_cannot_show(self) -> None:
         self.open_checkpoint("stage-3-branch", stage="3", question="Revise, restructure, or abort?")
         report = self.report({"decisions": [{"checkpoint_id": "stage-3-branch", "answer": "revise"}]})
@@ -218,6 +213,38 @@ class HandoffScenarioTest(_LedgerCase):
         self.assertFalse(run_ledger.has_items(report))
         self.assertEqual(report["backed"], 3)  # the decision, the step, the file
         self.assertEqual(report["counters"], {"2.5": {"retry_count": 0}, "run": {"loop_count": 1}})
+
+
+class ReportDetailTest(_LedgerCase):
+    def test_reset_pending_decision_names_its_boundary(self) -> None:
+        self.open_checkpoint(reset_boundary_hash=BOUNDARY)
+        [awaiting] = self.report()["awaiting_answer"]
+        self.assertEqual(awaiting["reset_boundary_hash"], BOUNDARY)
+
+    def test_contradictory_claims_stay_visible(self) -> None:
+        self.open_checkpoint()
+        self.close_checkpoint("pause", "先暫停")
+        self.receipt("check_panel_synthesis", "failed")
+        report = self.report({
+            "decisions": [{"checkpoint_id": GATE, "answer": "continue"},
+                          {"checkpoint_id": GATE, "answer": "pause"}],
+            "steps": [{"step": "check_panel_synthesis", "status": "passed"},
+                      {"step": "check_panel_synthesis", "status": "failed"}],
+        })
+        self.assertEqual(
+            [(i["item"], i["claimed"], i["recorded"]) for i in report["cannot_confirm"]],
+            [("decision", "continue", "pause"), ("step", "passed", "failed")],
+        )
+        self.assertEqual(report["backed"], 0)
+
+        with self.subTest("a repeated identical claim is one item"):
+            report = self.report({"decisions": [{"checkpoint_id": "stage-9", "answer": "go"}] * 2})
+            self.assertEqual(len(report["cannot_confirm"]), 1)
+
+        with self.subTest("each claim about a step without a receipt is listed"):
+            report = self.report({"steps": [{"step": "evidence_rows", "status": "passed"},
+                                            {"step": "evidence_rows", "status": "failed"}]})
+            self.assertEqual([i["claimed"] for i in report["not_run"]], ["passed", "failed"])
 
 
 class ChainLimitTest(_LedgerCase):
@@ -400,6 +427,7 @@ class ReadingTest(_LedgerCase):
             "entries not a list": (valid_head + "entries: {}\n").encode(),
             "created_at not UTC": (f"ledger: {run_ledger.LEDGER_FORMAT}\n"
                                    "created_at: '2026-09-23 12:00'\nentries: []\n").encode(),
+            "impossible date": (valid_head + "entries:\n- at: 2026-02-30T12:00:00Z\n").encode(),
         }
         for label, payload in cases.items():
             with self.subTest(label):
@@ -487,6 +515,46 @@ class SchemaLockstepTest(_LedgerCase):
             self.defs["checkpoint_opened"]["properties"]["reset_boundary_hash"]["pattern"],
             reset["$defs"]["boundary"]["properties"]["hash"]["pattern"],
         )
+
+
+class SchemaAgreementTest(_LedgerCase):
+    """The report trusts only entries that the schema also accepts."""
+
+    @staticmethod
+    def _chained(entries: list[dict]) -> list[dict]:
+        prev = None
+        for seq, entry in enumerate(entries, start=1):
+            entry.setdefault("at", f"2026-09-23T12:00:{seq:02d}Z")
+            entry.update(seq=seq, prev_hash=prev)
+            entry["hash"] = run_ledger.entry_hash(entry)
+            prev = entry["hash"]
+        return entries
+
+    def test_script_refuses_what_the_schema_refuses(self) -> None:
+        validator = build_schema_validator(load_json_schema(SCHEMA_PATH))
+        cases = {
+            "initial_instructions after the first entry": [
+                dict(OPENED), {"kind": "initial_instructions", "user_words": "Go."}],
+            "non-ASCII digits in at": [
+                {"kind": "initial_instructions", "user_words": "Go.",
+                 "at": "\u0662\u0660\u0662\u0666-09-23T12:00:01Z"}],
+        }
+        for label, entries in cases.items():
+            with self.subTest(label):
+                entries = self._chained(entries)
+                data = {"ledger": run_ledger.LEDGER_FORMAT,
+                        "created_at": "2026-09-23T12:00:00Z", "entries": entries}
+                self.assertFalse(validator.is_valid(data))
+                self.assertIsNotNone(run_ledger.first_untrusted_seq(entries))
+
+    def test_script_is_stricter_on_integers_and_whole_string_patterns(self) -> None:
+        # JSON Schema counts 1.0 as an integer, and Python's `$` also matches before a
+        # final newline, so a schema check may accept these; the script refuses them.
+        for label, counters in {"integral float": {"retry_count": 1.0},
+                                "trailing newline": {"retry_count\n": 1}}.items():
+            with self.subTest(label):
+                entries = self._chained([{"kind": "progress", "counters": counters}])
+                self.assertEqual(run_ledger.first_untrusted_seq(entries), 1)
 
 
 class CliTest(_LedgerCase):
