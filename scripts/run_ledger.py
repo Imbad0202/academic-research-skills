@@ -150,6 +150,8 @@ def _hex(length: int) -> Check:
     return check
 
 
+_TEXT_RULE = f"valid text of 1-{SHORT_MAX} characters"
+
 # One check per schema definition ($defs short, text, words; the inline path).
 _short = _text(SHORT_MAX)
 _long = _text(TEXT_MAX)
@@ -252,8 +254,15 @@ def _stored_entry_ok(entry: Any, index: int, prev_hash: str | None) -> bool:
         and (entry["kind"] != "initial_instructions" or index == 1)
         and isinstance(entry["at"], str) and _UTC_Z.fullmatch(entry["at"]) is not None
         and entry["prev_hash"] == prev_hash
-        and entry["hash"] == entry_hash(entry)
+        and _hash_matches(entry)
     )
+
+
+def _hash_matches(entry: dict[str, Any]) -> bool:
+    try:
+        return entry["hash"] == entry_hash(entry)
+    except ValueError:  # e.g. a hand-edited integer too long to print as JSON
+        return False
 
 
 def entry_hash(entry: dict[str, Any]) -> str:
@@ -415,13 +424,12 @@ def append_entry(
 
 def _is_decision(item: Any) -> bool:
     return (isinstance(item, dict) and set(item) == {"checkpoint_id", "answer"}
-            and all(isinstance(value, str) and value for value in item.values()))
+            and not any(_short(value) for value in item.values()))
 
 
 def _is_step(item: Any) -> bool:
     return (isinstance(item, dict) and set(item) == {"step", "status"}
-            and isinstance(item["step"], str) and bool(item["step"])
-            and item["status"] in ("passed", "failed"))
+            and not _short(item["step"]) and item["status"] in ("passed", "failed"))
 
 
 def _claims_errors(claims: Any) -> list[str]:
@@ -429,9 +437,9 @@ def _claims_errors(claims: Any) -> list[str]:
     if not isinstance(claims, dict):
         return ["claims must be a JSON object"]
     shapes = {
-        "decisions": (_is_decision, "a list of {checkpoint_id, answer} with non-empty strings"),
-        "steps": (_is_step, "a list of {step, status} with status passed or failed"),
-        "expected_steps": (lambda s: isinstance(s, str) and bool(s), "a list of non-empty strings"),
+        "decisions": (_is_decision, f"a list of {{checkpoint_id, answer}}, each {_TEXT_RULE}"),
+        "steps": (_is_step, f"a list of {{step, status}}, step {_TEXT_RULE}, status passed or failed"),
+        "expected_steps": (lambda s: not _short(s), f"a list of strings, each {_TEXT_RULE}"),
     }
     errors = [f"unknown claims key {key}" for key in claims if key not in shapes]
     for key, (is_valid, shape) in shapes.items():
@@ -604,7 +612,12 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--claims", type=Path, help="JSON file of what a summary or report claims.")
     args = parser.parse_args(argv)
 
-    if not args.passport_path.is_file():
+    try:
+        passport_found = args.passport_path.is_file()
+    except OSError as exc:  # e.g. a name too long, or no permission to look
+        print(_err(f"cannot check the passport path: {exc}"), file=sys.stderr)
+        return 2
+    if not passport_found:
         print(_err(f"passport file not found at {args.passport_path}"), file=sys.stderr)
         return 2
     try:
@@ -636,7 +649,7 @@ def main(argv: list[str] | None = None) -> int:
         print(_err(f"{what}: {exc}"), file=sys.stderr)
         return 2
     except Exception as exc:  # exit 1 means "has items", so no crash may exit 1
-        print(_err(f"unexpected error: {exc!r}"), file=sys.stderr)
+        print(_err(f"unexpected error: {type(exc).__name__}: {exc}"), file=sys.stderr)
         return 2
     return 1 if has_items(result) else 0
 

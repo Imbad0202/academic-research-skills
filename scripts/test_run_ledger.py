@@ -461,6 +461,14 @@ class ReadingTest(_LedgerCase):
         report = self.report()
         self.assertEqual((report["ledger_status"], report["untrusted_from_seq"]), ("chain_broken", 1))
 
+    def test_hand_edited_integer_too_long_to_print_is_untrusted(self) -> None:
+        self.append(kind="progress", counters={"retry_count": 1})
+        text = self.ledger.read_text(encoding="utf-8").replace(
+            "retry_count: 1", "retry_count: 0b" + "1" * 20000)
+        self.ledger.write_text(text, encoding="utf-8")
+        report = self.report()
+        self.assertEqual((report["ledger_status"], report["untrusted_from_seq"]), ("chain_broken", 1))
+
     def test_relative_file_reference_resolves_beside_the_ledger(self) -> None:
         (self.root / "raw.bin").write_bytes(b"x")
         self.append(kind="file_reference", path="raw.bin",
@@ -588,6 +596,8 @@ class CliTest(_LedgerCase):
         bad_claims.write_text(json.dumps({"decisions": [{"checkpoint_id": GATE}]}), encoding="utf-8")
         unknown_key = self.root / "claims2.json"
         unknown_key.write_text(json.dumps({"verdict": "all fine"}), encoding="utf-8")
+        surrogate = self.root / "claims3.json"
+        surrogate.write_text('{"expected_steps": ["\\ud800"]}', encoding="utf-8")
         entries = {
             "invalid entry": json.dumps({"kind": "note"}),
             "entry not an object": "[1]",
@@ -609,6 +619,8 @@ class CliTest(_LedgerCase):
                                  "--claims", str(bad_claims)),
             "claims unknown key": ("report", "--passport-path", str(self.passport),
                                    "--claims", str(unknown_key)),
+            "claims with a lone surrogate": ("report", "--passport-path", str(self.passport),
+                                             "--claims", str(surrogate)),
         }
         for label, args in cases.items():
             with self.subTest(label):
@@ -616,13 +628,22 @@ class CliTest(_LedgerCase):
                 self.assertEqual(result.returncode, 2, result.stdout)
                 self.assertTrue(result.stderr.startswith(run_ledger.ERR_PREFIX), result.stderr)
                 self.assertFalse(self.ledger.exists())
+        result = self.run_cli(*cases["claims with a lone surrogate"])
+        self.assertIn("expected_steps must be a list of strings", result.stderr)
 
     def test_unexpected_errors_exit_2_never_1(self) -> None:
-        claims = self.root / "claims.json"
-        claims.write_text('{"expected_steps": ["\\ud800"]}', encoding="utf-8")
-        result = self.run_cli("report", "--passport-path", str(self.passport), "--claims", str(claims))
+        stderr = io.StringIO()
+        with patch.object(run_ledger, "build_report", side_effect=RecursionError("deep")), \
+                contextlib.redirect_stderr(stderr):
+            code = run_ledger.main(["report", "--passport-path", str(self.passport)])
+        self.assertEqual(code, 2)
+        self.assertIn("unexpected error: RecursionError: deep", stderr.getvalue())
+
+    def test_passport_path_errors_exit_2(self) -> None:
+        too_long = self.root / ("x" * 300) / "paper_passport.yaml"
+        result = self.run_cli("report", "--passport-path", str(too_long))
         self.assertEqual(result.returncode, 2, result.stdout)
-        self.assertIn("unexpected error", result.stderr)
+        self.assertTrue(result.stderr.startswith(run_ledger.ERR_PREFIX), result.stderr)
 
     def test_report_names_an_unreadable_file_as_a_read_error(self) -> None:
         self.append(kind="file_reference", path="raw.bin", sha256="a" * 64, role="raw")
