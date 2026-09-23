@@ -61,6 +61,21 @@ class TestRelativeMarkdownLinkGrammar(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+# The README fixtures follow the lint's own README_CHANGELOG_KEEP, so a release
+# edits only check_spec_consistency.py. The first kept entry is the current
+# release. The text after each heading's dash is free: the lint matches the
+# `### vX.Y.Z (YYYY-MM-DD)` prefix.
+CUR_VER, CUR_DATE = csc.README_CHANGELOG_KEEP[0]
+CUR_HEADING = f"### v{CUR_VER} ({CUR_DATE})"
+CUR_HEADING_FULLWIDTH = f"### v{CUR_VER}（{CUR_DATE}）"
+ASCII_KEPT = "".join(
+    f"### v{ver} ({date}) — kept release\n" for ver, date in csc.README_CHANGELOG_KEEP
+)
+FULLWIDTH_KEPT = "".join(
+    f"### v{ver}（{date}） — kept release\n" for ver, date in csc.README_CHANGELOG_KEEP
+)
+
+
 # Minimal ja-JP README capturing the version-bearing surfaces the lint needs
 # to police: badge, release tag link, the CHANGELOG/archive links plus the three
 # kept release blocks (README_CHANGELOG_KEEP),
@@ -98,10 +113,7 @@ JA_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/ja-JP.md](docs/changelog-archive/ja-JP.md)
 
-### v3.22.1 (2026-09-23) — current release
-### v3.22.0 (2026-09-16) — prior minor
-### v3.21.2 (2026-09-06) — prior patch
-
+""" + ASCII_KEPT + """
 ## Version Info
 - **Suite version**: {ver}
 """
@@ -161,10 +173,7 @@ KO_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)
 
-### v3.22.1 (2026-09-23) — current release
-### v3.22.0 (2026-09-16) — prior minor
-### v3.21.2 (2026-09-06) — prior patch
-"""
+""" + ASCII_KEPT
 
 
 def _write_ko_readme(root: Path, version: str) -> None:
@@ -209,10 +218,7 @@ ZH_CN_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)
 
-### v3.22.1（2026-09-23） — current release
-### v3.22.0（2026-09-16） — prior minor
-### v3.21.2（2026-09-06） — prior patch
-"""
+""" + FULLWIDTH_KEPT
 
 
 def _write_zh_cn_readme(root: Path, version: str) -> None:
@@ -257,10 +263,7 @@ ZH_TW_README_TEMPLATE = """\
 
 [CHANGELOG.md](CHANGELOG.md) · [docs/changelog-archive/zh-TW.md](docs/changelog-archive/zh-TW.md)
 
-### v3.22.1（2026-09-23） — current release
-### v3.22.0（2026-09-16） — prior minor
-### v3.21.2（2026-09-06） — prior patch
-"""
+""" + FULLWIDTH_KEPT
 
 
 def _write_zh_tw_readme(root: Path, version: str) -> None:
@@ -285,11 +288,11 @@ class TestReadmeJaSections(unittest.TestCase):
 
     def test_aligned_ja_readme_passes(self) -> None:
         """A README.ja-JP.md whose badge / tag link / release headings all
-        agree with the suite version v3.9.4.2 must pass without errors."""
+        agree with the current suite version must pass without errors."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ja_readme(root, version="3.22.1")
+            _write_ja_readme(root, version=CUR_VER)
 
             csc.check_readme_ja_sections()
 
@@ -300,26 +303,26 @@ class TestReadmeJaSections(unittest.TestCase):
 
     def test_stale_ja_badge_fails(self) -> None:
         """Regression for #170: if README.ja-JP.md keeps a stale v3.9.4.0
-        badge while CHANGELOG has moved to v3.9.4.2, the lint must surface
+        badge while CHANGELOG has moved to the current release, the lint must surface
         the drift instead of silently passing (pre-fix behavior: this file
         was outside the lint's needle list and the drift never surfaced)."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            # Write the "current" v3.9.4.2 release block but downgrade only
+            # Write the current release block but downgrade only
             # the badge and tag link to v3.9.4.0. This is the realistic shape
             # of drift when one place gets forgotten during a release.
-            stale = JA_README_TEMPLATE.format(ver="3.22.1").replace(
-                "version-v3.22.1-blue", "version-v3.9.4.0-blue"
+            stale = JA_README_TEMPLATE.format(ver=CUR_VER).replace(
+                f"version-v{CUR_VER}-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.22.1", "releases/tag/v3.9.4.0"
+                f"releases/tag/v{CUR_VER}", "releases/tag/v3.9.4.0"
             )
             (root / "README.ja-JP.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_ja_sections()
 
             self.assertTrue(
-                any("README.ja-JP.md" in e and "v3.22.1" in e for e in csc.ERRORS),
+                any("README.ja-JP.md" in e and f"v{CUR_VER}" in e for e in csc.ERRORS),
                 msg=f"expected ja-JP drift error in: {csc.ERRORS!r}",
             )
 
@@ -343,7 +346,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_ko_readme(root, version="3.22.1")
+            _write_ko_readme(root, version=CUR_VER)
 
             csc.check_readme_ko_sections()
 
@@ -358,17 +361,17 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            stale = KO_README_TEMPLATE.format(ver="3.22.1").replace(
-                "version-v3.22.1-blue", "version-v3.9.4.0-blue"
+            stale = KO_README_TEMPLATE.format(ver=CUR_VER).replace(
+                f"version-v{CUR_VER}-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.22.1", "releases/tag/v3.9.4.0"
+                f"releases/tag/v{CUR_VER}", "releases/tag/v3.9.4.0"
             )
             (root / "README.ko-KR.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_ko_sections()
 
             self.assertTrue(
-                any("README.ko-KR.md" in e and "v3.22.1" in e for e in csc.ERRORS),
+                any("README.ko-KR.md" in e and f"v{CUR_VER}" in e for e in csc.ERRORS),
                 msg=f"expected ko-KR drift error in: {csc.ERRORS!r}",
             )
 
@@ -379,7 +382,7 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            broken = KO_README_TEMPLATE.format(ver="3.22.1").replace(
+            broken = KO_README_TEMPLATE.format(ver=CUR_VER).replace(
                 "#### Deep Research (8개 모드)", "#### Deep Research (8 modes)"
             )
             (root / "README.ko-KR.md").write_text(broken, encoding="utf-8")
@@ -396,9 +399,9 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            broken = KO_README_TEMPLATE.format(ver="3.22.1").replace(
-                "### v3.22.1 (2026-09-23)",
-                "### v3.22.1（2026-09-23）",
+            broken = KO_README_TEMPLATE.format(ver=CUR_VER).replace(
+                CUR_HEADING,
+                CUR_HEADING_FULLWIDTH,
             )
             (root / "README.ko-KR.md").write_text(broken, encoding="utf-8")
 
@@ -407,7 +410,7 @@ class TestReadmeKoSections(unittest.TestCase):
             self.assertTrue(
                 any(
                     "README.ko-KR.md" in e
-                    and "### v3.22.1 (2026-09-23)" in e
+                    and CUR_HEADING in e
                     for e in csc.ERRORS
                 ),
                 msg=f"expected Korean parenthesis-style error in: {csc.ERRORS!r}",
@@ -421,7 +424,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            regrown = KO_README_TEMPLATE.format(ver="3.22.1") + (
+            regrown = KO_README_TEMPLATE.format(ver=CUR_VER) + (
                 "### v3.20.1 (2026-08-15) — stale fourth entry\n"
             )
             (root / "README.ko-KR.md").write_text(regrown, encoding="utf-8")
@@ -444,7 +447,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            unlinked = KO_README_TEMPLATE.format(ver="3.22.1").replace(
+            unlinked = KO_README_TEMPLATE.format(ver=CUR_VER).replace(
                 " · [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)", ""
             )
             (root / "README.ko-KR.md").write_text(unlinked, encoding="utf-8")
@@ -468,8 +471,8 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            doubled = KO_README_TEMPLATE.format(ver="3.22.1") + (
-                "### v3.22.1 (2026-09-23) — pasted twice\n"
+            doubled = KO_README_TEMPLATE.format(ver=CUR_VER) + (
+                f"{CUR_HEADING} — pasted twice\n"
             )
             (root / "README.ko-KR.md").write_text(doubled, encoding="utf-8")
 
@@ -487,7 +490,7 @@ class TestReadmeKoSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_changelog_targets(root, "ko-KR")
-            base = KO_README_TEMPLATE.format(ver="3.22.1")
+            base = KO_README_TEMPLATE.format(ver=CUR_VER)
             head, _, section = base.partition("## 변경 이력\n")
             fenced = head + "```markdown\n## 변경 이력\n" + section + "```\n\n## 변경 이력\n\n"
             (root / "README.ko-KR.md").write_text(fenced, encoding="utf-8")
@@ -495,7 +498,7 @@ class TestReadmeKoSections(unittest.TestCase):
             csc.check_readme_ko_sections()
 
             self.assertTrue(
-                any("README.ko-KR.md" in e and "### v3.22.1 (2026-09-23)" in e for e in csc.ERRORS),
+                any("README.ko-KR.md" in e and CUR_HEADING in e for e in csc.ERRORS),
                 msg=f"expected missing-heading error for the fenced copy in: {csc.ERRORS!r}",
             )
 
@@ -516,13 +519,13 @@ class TestReadmeZhSections(unittest.TestCase):
         csc.ERRORS.extend(self._orig_errors)
 
     def test_aligned_zh_cn_readme_passes(self) -> None:
-        """Both zh-TW and zh-CN fixtures aligned to v3.9.4.2 produce no
+        """Both zh-TW and zh-CN fixtures aligned to the current release produce no
         lint errors. Locks the new ZH_README_CONFIGS[1] branch."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.22.1")
-            _write_zh_cn_readme(root, version="3.22.1")
+            _write_zh_tw_readme(root, version=CUR_VER)
+            _write_zh_cn_readme(root, version=CUR_VER)
 
             csc.check_readme_zh_sections()
 
@@ -533,23 +536,23 @@ class TestReadmeZhSections(unittest.TestCase):
 
     def test_stale_zh_cn_badge_fails(self) -> None:
         """Regression symmetric with #170 ja-JP: if README.zh-CN.md keeps
-        a stale v3.9.4.0 badge while the rest of the file moved to v3.9.4.2,
+        a stale v3.9.4.0 badge while the rest of the file moved to the current release,
         the lint must surface the drift on the zh-CN branch specifically."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_zh_tw_readme(root, version="3.22.1")
-            stale = ZH_CN_README_TEMPLATE.format(ver="3.22.1").replace(
-                "version-v3.22.1-blue", "version-v3.9.4.0-blue"
+            _write_zh_tw_readme(root, version=CUR_VER)
+            stale = ZH_CN_README_TEMPLATE.format(ver=CUR_VER).replace(
+                f"version-v{CUR_VER}-blue", "version-v3.9.4.0-blue"
             ).replace(
-                "releases/tag/v3.22.1", "releases/tag/v3.9.4.0"
+                f"releases/tag/v{CUR_VER}", "releases/tag/v3.9.4.0"
             )
             (root / "README.zh-CN.md").write_text(stale, encoding="utf-8")
 
             csc.check_readme_zh_sections()
 
             self.assertTrue(
-                any("README.zh-CN.md" in e and "v3.22.1" in e for e in csc.ERRORS),
+                any("README.zh-CN.md" in e and f"v{CUR_VER}" in e for e in csc.ERRORS),
                 msg=f"expected zh-CN drift error in: {csc.ERRORS!r}",
             )
 
