@@ -36,7 +36,8 @@ digit that read as element symbols and counts (``H2O``, ``CO2``, but not
 ``RCT2``); Roman numerals up to ``XXXIX`` (``II``, ``XII``, but not ``IV``);
 and the statistical symbols ``SD``, ``SE``, and ``CI``. Larger numerals stay
 candidates, because letter strings such as ``CD``, ``DC``, ``MI``, and ``LV``
-are also common acronyms.
+are also common acronyms. The plural of an excluded token is excluded too
+(``CIs``, ``SDs``).
 
 Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
@@ -245,15 +246,21 @@ class Occurrence:
 
 
 def is_candidate(token: str) -> bool:
+    return _candidate_shape(token) and not _excluded(token)
+
+
+def _candidate_shape(token: str) -> bool:
     if not 2 <= len(token) <= 6 or not token.isascii() or not token.isalnum() or token[0].isdigit():
         return False
     upper = sum(c.isupper() for c in token)
-    lower = sum(c.islower() for c in token)
-    if upper < 2 or lower > upper or token in STAT_SYMBOLS:
-        return False
-    if any(c.isdigit() for c in token) and _is_formula(token):
-        return False
-    return not (_ROMAN.fullmatch(token) and token != "IV")
+    return upper >= 2 and sum(c.islower() for c in token) <= upper
+
+
+def _excluded(token: str) -> bool:
+    """True for a statistical symbol, a chemical formula, or a Roman numeral up to XXXIX."""
+    if token in STAT_SYMBOLS or (any(c.isdigit() for c in token) and _is_formula(token)):
+        return True
+    return bool(_ROMAN.fullmatch(token)) and token != "IV"
 
 
 def _is_formula(token: str) -> bool:
@@ -264,9 +271,10 @@ def _is_formula(token: str) -> bool:
 
 
 def base_form(word: str) -> str | None:
-    """The acronym a word counts as, or None; ``RCTs`` counts as ``RCT``."""
-    if word.endswith("s") and is_candidate(word[:-1]):
-        return word[:-1]
+    """The acronym a word counts as, or None; ``RCTs`` counts as ``RCT``, and the
+    plural of an excluded token counts as none (``CIs``)."""
+    if word.endswith("s") and _candidate_shape(word[:-1]):
+        return None if _excluded(word[:-1]) else word[:-1]
     return word if is_candidate(word) else None
 
 

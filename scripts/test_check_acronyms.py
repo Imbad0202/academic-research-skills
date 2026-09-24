@@ -19,6 +19,7 @@ from scripts.check_acronyms import (
     DEFAULT_ALLOWLIST,
     SCOPES,
     NotChecked,
+    base_form,
     build_report,
     check,
     is_candidate,
@@ -230,6 +231,14 @@ def test_candidate_shape(token: str, expected: bool) -> None:
     assert is_candidate(token) is expected
 
 
+@pytest.mark.parametrize("word, expected", [
+    ("RCTs", "RCT"), ("IVs", "IV"), ("PhDs", "PhD"), ("RCT", "RCT"),
+    ("CIs", None), ("SDs", None), ("SEs", None), ("IIs", None), ("CO2s", None),  # excluded bases
+])
+def test_a_plural_counts_as_its_base(word: str, expected: str | None) -> None:
+    assert base_form(word) == expected
+
+
 def test_plural_and_possessive_count_as_the_base() -> None:
     text = "Large language models (LLMs) help. The LLM's output and two LLMs' outputs.\n"
     report = check(text)
@@ -297,6 +306,7 @@ def test_whole_token_matching() -> None:
     ("ampersand", "Smith AB & Jones EF (2020) agreed.\n"),
     ("vietnamese surnames", "Nguyễn AB and Trần EF (2020) reported this.\n"),
     ("statistical symbol", "The SD was 2.1 and the CI was narrow.\n"),
+    ("plural statistical symbols", "We report 95% CIs, SDs, and SEs.\n"),
 ])
 def test_exclusions(label: str, text: str) -> None:
     # A prose paragraph after the case keeps the body present (an all-excluded
