@@ -5,7 +5,7 @@ This file is the single source of the cross-skill routing core: the rules that d
 A Claude Code session loads the repository's `.claude/CLAUDE.md` only when its working directory is inside the ARS checkout, and Claude Code does not load a plugin's `CLAUDE.md` as project context. So the block between the markers below reaches a session through three carriers:
 
 - `.claude/CLAUDE.md` § Routing Discipline (v3.9.2), for sessions started inside a clone of this repository;
-- `scripts/announce-ars-loaded.sh`, which reads the block from this file at every SessionStart (startup, clear, resume, compaction), so plugin installs have it before any skill loads; after compaction or resume its lead-in limits the block to a new request;
+- `scripts/announce-ars-loaded.sh`, which reads the block from this file at every SessionStart (startup, clear, resume, compaction, fork), so plugin installs have it before any skill loads; after compaction, resume, or a fork its lead-in limits the block to a new request;
 - the `SKILL.md` of every skill (four today), so every install path has it once a skill loads.
 
 `scripts/check_routing_core_sync.py` fails CI when a copy differs from this block by a single byte or a skill's `SKILL.md` lacks it. Change the rules here and copy the block to the carriers in the same commit. The message template, the phase table, and worked examples are in `shared/references/intent_clarification_protocol.md`.

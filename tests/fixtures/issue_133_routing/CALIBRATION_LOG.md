@@ -212,8 +212,8 @@ still fails goes to a follow-up issue with the deciding quote.
   Post-fix: a standalone clone at `271e45f2` (this change). Both sit outside the home
   directory. Later commits in the same change left the measured text unchanged: the
   startup announce output, the copies, and the `.claude/CLAUDE.md` lead-in are
-  byte-identical. They changed the compaction and resume lead-in, how the announce reads
-  the file, and the lint.
+  byte-identical. They changed the compaction, resume, and fork lead-in, how the announce
+  reads the file, and the lint.
 - **Conditions.** *Plugin install*: the session's working directory is an empty folder
   outside the checkout, with no `CLAUDE.md` on its path, and ARS loads through
   `--plugin-dir`. *Repo clone*: the working directory is the checkout, the 2026-09-23

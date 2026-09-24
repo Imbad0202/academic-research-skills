@@ -178,6 +178,9 @@ def _announce(script: Path, source: str, path: str | None = None) -> list[str]:
     ("compact", "ARS routing discipline, for a new natural-language request: apply it before "
                 "invoking an ARS skill or dispatching an ARS agent. Messages inside a workflow "
                 "already under way go to that workflow's active skill and are not routed again."),
+    ("fork", "ARS routing discipline, for a new natural-language request: apply it before "
+             "invoking an ARS skill or dispatching an ARS agent. Messages inside a workflow "
+             "already under way go to that workflow's active skill and are not routed again."),
 ])
 def test_announce_carries_the_block_for_every_source(source: str, lead: str) -> None:
     paragraphs = _announce(ANNOUNCE, source)

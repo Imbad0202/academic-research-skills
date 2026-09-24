@@ -114,9 +114,9 @@ ANNOUNCE+=$'\n\n'"${ROUTING}"
 # ---------------------------------------------------------------------------
 # #892 routing core, read at runtime from its single source (see that file for
 # why every SessionStart source carries it). A missing or unreadable file
-# degrades to no block: the announce must never break. After compaction or
-# resume the lead-in limits it to a new request, so a run under way is not
-# routed again.
+# degrades to no block: the announce must never break. After compaction,
+# resume, or a fork the lead-in limits it to a new request, so a run under way
+# is not routed again.
 # ---------------------------------------------------------------------------
 # Builtins only (no dirname or sed), so the core survives a minimal PATH; a
 # trailing CR is dropped, so a CRLF checkout yields the same block.
@@ -141,7 +141,7 @@ read_routing_core() {
 ROUTING_CORE=$(LC_ALL=C; read_routing_core "${_CORE_FILE}" 2>/dev/null) || ROUTING_CORE=""
 if [[ -n "${ROUTING_CORE}" ]]; then
   case "${SOURCE}" in
-    compact|resume)
+    compact|resume|fork)
       LEAD="ARS routing discipline, for a new natural-language request: apply it before invoking an ARS skill or dispatching an ARS agent. Messages inside a workflow already under way go to that workflow's active skill and are not routed again."
       ;;
     *)
