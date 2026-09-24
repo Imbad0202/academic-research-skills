@@ -78,6 +78,15 @@ US$2.70 on `main`. The retest ran on an earlier text of the guard: the sentence
 in `committee_correspondence_protocol.md` came later, and the mode table then
 gave the variant its own row, which the final change dropped.
 
+Case 04 (the ethics-committee letter), 7 runs on the final text with the same
+settings: the skill fired in 2 runs, and both took the committee variant
+(concern IDs and a segmentation for the user to confirm); `tracker-covers-5`
+passed in 1 of 7. In the other 5 runs Opus 5.5 answered without invoking the
+skill. The guard sits in files that load only after the skill fires, and the
+skill descriptions and the SessionStart hook are unchanged from `main`, so those
+5 runs do not test it. The stored 2026-09-12 runs on `claude-opus-5` fired the
+skill in 2 of 2. Cost: US$1.58.
+
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 
 | Channel | Ceiling | Observed max |
