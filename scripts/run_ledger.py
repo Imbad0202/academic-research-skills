@@ -27,11 +27,13 @@ against the ledger's directory, for the writer and the report alike.
 ``report`` checks every hash, then compares the trusted entries with what a
 summary or a subagent report claims (``--claims``, a JSON file). It prints
 one JSON object carrying the four groups of the handoff check
-(``awaiting_answer``, ``cannot_confirm``, ``not_run``, ``missing``) and
-``backed``, the number of examined items the ledger supports, and the latest
-counters grouped by stage ("run" when a progress entry names no stage). A
-receipt whose input files changed or disappeared after it was written no
-longer backs its step. With ``--render en`` or ``--render zh-TW`` it prints
+(``awaiting_answer``, ``cannot_confirm``, ``not_run``, ``missing``),
+``backed``, the number of examined items the ledger supports,
+``step_outcomes``, the recorded outcome of every step whose receipt still
+backs it, and the latest counters grouped by stage ("run" when a progress
+entry names no stage). A receipt whose input files changed or disappeared
+after it was written no longer backs its step, so its step is absent from
+``step_outcomes``. With ``--render en`` or ``--render zh-TW`` it prints
 the finished handoff-check block instead, for the orchestrator to insert
 verbatim, and prints nothing when there is nothing to report (#898). Exit
 0 means there is nothing to report, 1 means the handoff check has items, and
@@ -554,6 +556,7 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
     cannot_confirm: list[dict[str, Any]] = []
     not_run: list[dict[str, Any]] = []
     missing: list[dict[str, Any]] = []
+    outcomes: dict[str, str] = {}
     backed = 0
 
     claimed = _group(claims.get("decisions", []), "checkpoint_id", "answer")
@@ -609,6 +612,7 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
             not_run += [{"step": step, "claimed": status, "reason": reason, **extra}
                         for status in statuses or [None]]
         else:
+            outcomes[step] = receipt["status"]
             differing = [status for status in statuses if status != receipt["status"]]
             cannot_confirm += [{
                 "item": "step", "step": step, "claimed": status,
@@ -636,6 +640,7 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
         "not_run": not_run,
         "missing": missing,
         "backed": backed,
+        "step_outcomes": outcomes,
         "counters": state["counters"],
     }
 
@@ -651,8 +656,9 @@ def has_items(report: dict[str, Any]) -> bool:
 # so a deterministic result is never re-worded by the model. English and
 # Traditional Chinese; the orchestrator picks zh-TW when the user writes in
 # Traditional Chinese and en otherwise. Ledger text (ids, questions, answers,
-# paths, roles) is shown as written, with whitespace runs collapsed so that it
-# stays on its line.
+# paths, roles) is shown as written: whitespace runs collapse so it stays on its
+# line, and Markdown and HTML characters are escaped so it displays as the JSON
+# holds it.
 # ---------------------------------------------------------------------------
 
 _TEXT: dict[str, dict[str, str]] = {
@@ -728,8 +734,13 @@ _REASON_LINES = {
 }
 
 
+# Always special inline, and "_" where it can open or close emphasis (not
+# between two letters or digits, as in "paper_v2.md").
+_MARKUP = re.compile(r"[\\`*\[\]<>&~]|(?<![^\W_])_|_(?![^\W_])")
+
+
 def _one_line(value: Any) -> str:
-    return " ".join(str(value).split())
+    return _MARKUP.sub(lambda m: "\\" + m.group(0), " ".join(str(value).split()))
 
 
 def render_block(report: dict[str, Any], lang: str) -> str:
@@ -740,7 +751,7 @@ def render_block(report: dict[str, Any], lang: str) -> str:
     lines = [text["title"], ""]
     if report["ledger_status"] != "ok":
         lines += [text[f"ledger_{report['ledger_status']}"].format(
-            name=Path(report["ledger"]).name, seq=report["untrusted_from_seq"]), ""]
+            name=_one_line(Path(report["ledger"]).name), seq=report["untrusted_from_seq"]), ""]
 
     awaiting: list[str] = []
     for item in report["awaiting_answer"]:

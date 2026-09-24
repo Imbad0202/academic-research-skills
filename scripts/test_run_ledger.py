@@ -352,6 +352,21 @@ class ReceiptInputTest(_LedgerCase):
                 }])
                 self.assertEqual((report["cannot_confirm"], report["backed"]), ([], 0))
 
+    def test_step_outcomes_carry_each_fresh_receipt(self) -> None:
+        # An expected step with no claimed status still gets its recorded
+        # outcome, so a tracker that lost it can take it from the report.
+        self.receipt("check_panel_synthesis", "failed")
+        self.receipt("check_revision_token_conservation", "not_run")
+        self.receipt("pdf_read_preflight", "passed", input_paths=["paper.md"])
+        expected = {"expected_steps": ["evidence_rows", "check_panel_synthesis",
+                                       "check_revision_token_conservation", "pdf_read_preflight"]}
+        report = self.report(expected)
+        self.assertEqual(report["step_outcomes"], {
+            "check_panel_synthesis": "failed", "evidence_rows": "passed",
+            "pdf_read_preflight": "passed"})
+        self.paper.write_text("v2", encoding="utf-8")
+        self.assertEqual(self.report(expected)["step_outcomes"], {"check_panel_synthesis": "failed"})
+
     def test_a_not_run_receipt_keeps_its_own_reason(self) -> None:
         self.receipt("check_panel_synthesis", "not_run", input_paths=["paper.md"])
         self.paper.write_text("v2", encoding="utf-8")
@@ -501,6 +516,25 @@ class RenderTest(_LedgerCase):
                       "摘要或報告寫通過", zh)
         self.assertIn("- verify_submission_package：沒有執行收據，摘要或報告寫通過和未通過", zh)
         self.assertIn("- check_revision_token_conservation：執行收據記錄為沒跑", zh)
+
+    def test_ledger_text_displays_as_written(self) -> None:
+        self.open_checkpoint("_gate_", question="Keep <draft> or *draft*.md? [a] & `b` ~c~")
+        draft = self.root / "drafts" / "_v2_.md"
+        draft.parent.mkdir()
+        draft.write_text("v1", encoding="utf-8")
+        self.append(kind="file_reference", path="drafts/_v2_.md", role="draft_v2 & notes")
+        draft.unlink()
+        en = run_ledger.render_block(self.report(), "en").split("\n")
+        self.assertIn("- \\_gate\\_, stage 2.5 (MANDATORY):", en)
+        self.assertIn('  "Keep \\<draft\\> or \\*draft\\*.md? \\[a\\] \\& \\`b\\` \\~c\\~"', en)
+        self.assertIn("- drafts/\\_v2\\_.md (draft_v2 \\& notes): absent", en)
+        try:
+            from markdown_it import MarkdownIt
+        except ImportError:
+            return
+        html = MarkdownIt("commonmark").render("\n".join(en))
+        self.assertIn("Keep &lt;draft&gt; or *draft*.md? [a] &amp; `b` ~c~", html)
+        self.assertIn("drafts/_v2_.md (draft_v2 &amp; notes)", html)
 
     def test_one_backed_item_is_singular(self) -> None:
         self.open_checkpoint("stage-2-config", stage="2", checkpoint_type="FULL", question="q")
