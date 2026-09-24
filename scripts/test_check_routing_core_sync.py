@@ -85,6 +85,22 @@ def test_one_changed_byte_in_a_copy_fails(tree: Path) -> None:
     assert f"RC-2 {SKILL}: routing-core block differs" in _errors(tree)
 
 
+def _to_crlf(path: Path) -> None:
+    path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+
+
+def test_line_ending_drift_in_a_copy_fails(tree: Path) -> None:
+    _to_crlf(tree / SKILL)
+    assert f"RC-2 {SKILL}: routing-core block differs" in _errors(tree)
+    assert "differs only in its line ending" in _errors(tree)
+
+
+def test_a_tree_checked_out_with_crlf_passes(tree: Path) -> None:
+    for rel in (CANONICAL, *copies(tree)):
+        _to_crlf(tree / rel)
+    assert check(tree) == []
+
+
 def test_copy_without_markers_fails(tree: Path) -> None:
     _edit(tree, CLAUDE_MD, BEGIN + "\n", "")
     _edit(tree, CLAUDE_MD, "\n" + END, "")
@@ -140,10 +156,12 @@ def test_cli_exit_codes(tree: Path) -> None:
     assert f"required file missing: {CLAUDE_MD}" in result.stderr
 
 
-def _announce(script: Path, source: str) -> list[str]:
+def _announce(script: Path, source: str, path: str | None = None) -> list[str]:
     env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PLUGIN_ROOT"}
+    if path is not None:
+        env["PATH"] = path
     result = subprocess.run(
-        ["bash", str(script)], input=json.dumps({"source": source}), text=True,
+        [shutil.which("bash"), str(script)], input=json.dumps({"source": source}), text=True,
         capture_output=True, env=env, check=True,
     )
     return json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"].split("\n\n")
@@ -165,6 +183,32 @@ def test_announce_carries_the_block_for_every_source(source: str, lead: str) -> 
     paragraphs = _announce(ANNOUNCE, source)
     at = paragraphs.index(lead)
     assert "\n\n".join(paragraphs[at + 1:]) == _canonical_block()
+
+
+def _plugin_copy(tmp_path: Path) -> Path:
+    """The announce script and the canonical file in a plugin-shaped temp tree."""
+    script = tmp_path / "scripts" / ANNOUNCE.name
+    script.parent.mkdir(parents=True)
+    shutil.copyfile(ANNOUNCE, script)
+    core = tmp_path / CANONICAL
+    core.parent.mkdir(parents=True)
+    shutil.copyfile(REPO_ROOT / CANONICAL, core)
+    return script
+
+
+def test_announce_reads_a_crlf_core_file(tmp_path: Path) -> None:
+    script = _plugin_copy(tmp_path)
+    _to_crlf(tmp_path / CANONICAL)
+    assert _announce(script, "startup") == _announce(ANNOUNCE, "startup")
+
+
+def test_announce_keeps_the_core_on_a_minimal_path(tmp_path: Path) -> None:
+    # Only bash and cat: no sed, dirname, or tr (the reader uses builtins).
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    for name in ("bash", "cat"):
+        (bindir / name).symlink_to(shutil.which(name))
+    assert _announce(ANNOUNCE, "startup", path=str(bindir)) == _announce(ANNOUNCE, "startup")
 
 
 def test_announce_without_the_core_file_still_emits_valid_json(tmp_path: Path) -> None:

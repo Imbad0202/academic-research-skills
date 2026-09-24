@@ -118,11 +118,27 @@ ANNOUNCE+=$'\n\n'"${ROUTING}"
 # resume the lead-in limits it to a new request, so a run under way is not
 # routed again.
 # ---------------------------------------------------------------------------
-# Parameter expansion, not dirname: the announce must run on a minimal PATH.
+# Builtins only (no dirname or sed), so the core survives a minimal PATH; a
+# trailing CR is dropped, so a CRLF checkout yields the same block.
 _ARS_DIR="${BASH_SOURCE[0]%/*}"
 if [[ "${_ARS_DIR}" == "${BASH_SOURCE[0]}" ]]; then _ARS_DIR="."; fi
 _CORE_FILE="${_ARS_DIR}/../shared/references/routing_core.md"
-ROUTING_CORE=$(sed -n '/^<!-- routing-core:begin -->$/,/^<!-- routing-core:end -->$/p' "${_CORE_FILE}" 2>/dev/null | sed '1d;$d') || ROUTING_CORE=""
+# Print the lines between the markers; fail when the end marker is missing.
+read_routing_core() {
+  local line="" inside=0
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+    if [[ "${line}" == "<!-- routing-core:end -->" && ${inside} -eq 1 ]]; then
+      return 0
+    elif [[ ${inside} -eq 1 ]]; then
+      printf '%s\n' "${line}"
+    elif [[ "${line}" == "<!-- routing-core:begin -->" ]]; then
+      inside=1
+    fi
+  done < "$1"
+  return 1
+}
+ROUTING_CORE=$(LC_ALL=C; read_routing_core "${_CORE_FILE}" 2>/dev/null) || ROUTING_CORE=""
 if [[ -n "${ROUTING_CORE}" ]]; then
   case "${SOURCE}" in
     compact|resume)
@@ -165,9 +181,11 @@ escape_json() {
   printf '%s' "${raw}"
 }
 
-# C locale: bash 3.2 runs ${var//a/b} far slower on UTF-8 text, and the
-# characters escaped here are single bytes that never occur inside a UTF-8
-# sequence, so the output bytes are the same.
+# C locale, for correctness and speed. In a locale such as Big5 or Shift_JIS a
+# backslash byte can be the second byte of a character, and the substitutions
+# above would leave it unescaped. The characters escaped here never occur
+# inside a UTF-8 sequence, so UTF-8 text escapes to the same bytes, and bash
+# 3.2 runs ${var//a/b} far faster on it in the C locale.
 ESCAPED=$(LC_ALL=C; escape_json "${ANNOUNCE}")
 
 cat <<JSON

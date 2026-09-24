@@ -211,8 +211,9 @@ still fails goes to a follow-up issue with the deciding quote.
 - **Subjects.** Baseline: a standalone clone at `bff05339` (`main` before #892).
   Post-fix: a standalone clone at `271e45f2` (this change). Both sit outside the home
   directory. Later commits in the same change left the measured text unchanged: the
-  startup announce, the copies, and the `.claude/CLAUDE.md` lead-in are byte-identical;
-  only the compaction and resume lead-in and the lint changed.
+  startup announce output, the copies, and the `.claude/CLAUDE.md` lead-in are
+  byte-identical. They changed the compaction and resume lead-in, how the announce reads
+  the file, and the lint.
 - **Conditions.** *Plugin install*: the session's working directory is an empty folder
   outside the checkout, with no `CLAUDE.md` on its path, and ARS loads through
   `--plugin-dir`. *Repo clone*: the working directory is the checkout, the 2026-09-23
@@ -221,14 +222,17 @@ still fails goes to a follow-up issue with the deciding quote.
 - **Runs.** Baseline plugin install on Claude Opus 5.5 (12 fixtures). Post-fix plugin
   install and repo clone on Claude Opus 5.5 and Claude Fable 5.1 (48). One probe per
   model and condition first.
-- **Scoring and acceptance, fixed before the run.** The scoring rules above, unchanged.
-  Acceptance: on the post-fix subject, plugin install matches repo clone on each model,
+- **Scoring and acceptance, fixed before the run.** The scoring rules above, with one
+  reading for this condition in the next bullet. Acceptance: on the post-fix subject, plugin install matches repo clone on each model,
   fixture by fixture, and the SessionStart output carries the routing core in every
   plugin-install session. A fixture that fails on the baseline and passes after the fix
   is evidence that the gap closed; one that passes in both says nothing about the fix.
 - **Reads in the plugin-install condition.** The plugin's files sit outside the working
   directory, so the permission check refused every read of them. An attempted read of the
-  target agent's file is scored as reading it (fixture 05).
+  target agent's file is scored as reading it (fixture 05). In both post-fix
+  plugin-install cells the only read of `bibliography_agent.md` was refused and nothing
+  dispatched the agent, so scored as a completed read or a dispatch, fixture 05 fails its
+  destination field there on both models.
 
 ### Probes and checks
 
@@ -300,6 +304,13 @@ tested cause.
 - Without the fix, a plugin-install session on Opus 5.5 failed 6 of 12 fixtures. With
   the fix it passed all 12, as the repo clone did. The routing core now reaches plugin
   installs before any skill loads.
+- Two qualifications hold for both models. Fixture 04 runs on `claude-sonnet-5` in every
+  cell, through its command's model pin, so each model's total counts one Sonnet 5 session.
+  Fixture 05 passes in the plugin install only under the two readings recorded above: a
+  refused read counts as reading the agent file, and a paraphrased Skill argument counts
+  as carrying the stripped message. Scored strictly on either, it fails there on both
+  models, and the plugin install would match the repo clone on 11 of 12 fixtures on
+  Opus 5.5 and 10 of 12 on Fable 5.1.
 - On Fable 5.1 the plugin install matched the repo clone on 11 of 12 fixtures. On
   fixture 06 it honored a mid-message `[direct-mode]` token in 5 of 6 sessions, where the
   repo clone never did, so the acceptance rule is not met for that fixture. This change

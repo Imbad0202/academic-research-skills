@@ -114,13 +114,17 @@ runtime graceful-degradation mechanisms is
    sessions started inside the checkout, so the core also rides in the SessionStart
    announce and in each skill's `SKILL.md` (#892). **Plugin:** before any skill loads,
    through the announce (note-8 conditions), and again once a skill loads. **Repo clone:**
-   from `.claude/CLAUDE.md` at session start, and from `SKILL.md`. **Skills copy, Cowork,
-   Claude Science, Pi port:** only after a skill has loaded, from its `SKILL.md`: a request
-   that no skill picks up gets no routing guard, and a clarifying question can come only
-   after a skill call. As with note 7, these are prompt-level instructions, not runtime
-   enforcement. The #133 routing fixtures were run with the plugin loaded, in sessions
-   started inside and outside the checkout; outside it, Claude Fable 5.1 still failed one
-   fixture (a mid-message `[direct-mode]` token)
+   from `.claude/CLAUDE.md` at session start, and from `SKILL.md`. **Skills copy:** at
+   session start from the project's `.claude/CLAUDE.md` when it carries the merged ARS
+   text, as SETUP Method 1 instructs for a project install (a merged copy does not update
+   with ARS). **Skills copy without that text (a global install, or the step skipped),
+   Cowork, Claude Science, Pi port:** only after a skill has loaded, from its `SKILL.md`: a
+   request that no skill picks up gets no routing guard, and a clarifying question can
+   come only after a skill call. As with note 7, these are prompt-level instructions, not
+   runtime enforcement. The #133 routing fixtures were run with the plugin loaded, in
+   sessions started inside and outside the checkout; outside it, Claude Fable 5.1 still
+   failed one fixture (a mid-message `[direct-mode]` token), and fixture 05 passed on both
+   models only under two scoring readings
    ([`CALIBRATION_LOG.md`](../tests/fixtures/issue_133_routing/CALIBRATION_LOG.md)). The
    other channels are covered only by the copy check (`scripts/check_routing_core_sync.py`).
 
