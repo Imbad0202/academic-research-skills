@@ -276,9 +276,10 @@ differently: fabricating a decision is R11's risk; this row covers losing one.
   passport reset for MANDATORY decisions
   (`academic-pipeline/references/passport_as_reset_boundary.md`).
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — how the
-  report reads a ledger is CI-pinned by six synthetic scenarios
-  (`scripts/test_run_ledger.py`); whether the orchestrator writes the entries is not
-  measured on any session model.
+  report reads a ledger is CI-pinned by six synthetic scenarios, and the handoff-check
+  block it renders in English and Traditional Chinese by line-exact tests (#898,
+  `scripts/test_run_ledger.py`); whether the orchestrator writes the entries and inserts
+  the block unchanged is not measured on any session model.
 - **Residual gap**: anything lost before its entry is written cannot be recovered; the
   hashes catch accidental damage, not deliberate edits, a lost tail, or a restored older
   copy of the ledger

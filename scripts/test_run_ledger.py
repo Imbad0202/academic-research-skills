@@ -12,6 +12,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import threading
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -245,6 +246,270 @@ class ReportDetailTest(_LedgerCase):
             report = self.report({"steps": [{"step": "evidence_rows", "status": "passed"},
                                             {"step": "evidence_rows", "status": "failed"}]})
             self.assertEqual([i["claimed"] for i in report["not_run"]], ["passed", "failed"])
+
+
+class DigestAtWriteTest(_LedgerCase):
+    """append hashes the files an entry names and refuses a wrong digest (#898)."""
+
+    def write(self, name: str, content: bytes = b"x") -> str:
+        target = self.root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        return hashlib.sha256(content).hexdigest()
+
+    def test_file_reference_digest_is_computed_or_checked(self) -> None:
+        digest = self.write("raw.bin")
+        entry = self.append(kind="file_reference", path="raw.bin", role="raw")
+        self.assertEqual(entry["sha256"], digest)
+        self.assertEqual(self.append(kind="file_reference", path="raw.bin", sha256=digest,
+                                     role="raw again")["sha256"], digest)
+
+    def test_receipt_input_paths_become_input_sha256(self) -> None:
+        paper, notes = self.write("paper.md", b"paper"), self.write("notes/n.md", b"notes")
+        entry = self.receipt("evidence_rows", "passed", input_paths=["paper.md"],
+                             input_sha256={"notes/n.md": notes})
+        self.assertEqual(entry["input_sha256"], {"paper.md": paper, "notes/n.md": notes})
+        self.assertNotIn("input_paths", self.load_raw()["entries"][0])
+
+    def test_relative_paths_resolve_beside_the_ledger_not_the_working_directory(self) -> None:
+        digest = self.write("raw.bin", b"beside")
+        elsewhere = TemporaryDirectory()
+        self.addCleanup(elsewhere.cleanup)
+        (Path(elsewhere.name) / "raw.bin").write_bytes(b"elsewhere")
+        cwd = Path.cwd()
+        os.chdir(elsewhere.name)
+        try:
+            entry = self.append(kind="file_reference", path="raw.bin", role="raw")
+        finally:
+            os.chdir(cwd)
+        self.assertEqual(entry["sha256"], digest)
+
+    def test_refused_digests_write_nothing(self) -> None:
+        self.write("raw.bin")
+        (self.root / "folder").mkdir()
+        cases = {
+            "wrong file digest": ({"kind": "file_reference", "path": "raw.bin", "sha256": "0" * 64,
+                                   "role": "r"}, "does not match the file"),
+            "absent file": ({"kind": "file_reference", "path": "gone.bin", "role": "r"},
+                            "gone.bin is not a file"),
+            "a directory": ({"kind": "file_reference", "path": "folder", "role": "r"},
+                            "folder is not a file"),
+            "wrong input digest": ({**RECEIPT, "input_sha256": {"raw.bin": "0" * 64}},
+                                   "does not match the file"),
+            "absent input": ({**RECEIPT, "input_paths": ["gone.md"]}, "gone.md is not a file"),
+            "input_paths not a list": ({**RECEIPT, "input_paths": "raw.bin"},
+                                       "input_paths must be a list"),
+            "input_paths too long": ({**RECEIPT, "input_paths": ["raw.bin"] * (run_ledger.LIST_MAX + 1)},
+                                     "input_paths must be a list"),
+            "empty input path": ({**RECEIPT, "input_paths": [""]}, "input_paths must be a list"),
+            "input_paths on another kind": ({"kind": "file_reference", "path": "raw.bin", "role": "r",
+                                             "input_paths": ["raw.bin"]}, "unknown field input_paths"),
+        }
+        for label, (fields, message) in cases.items():
+            with self.subTest(label):
+                with self.assertRaisesRegex(run_ledger.LedgerRefused, message):
+                    self.append(**fields)
+                self.assertFalse(self.ledger.exists())
+
+    def test_unreadable_file_is_refused(self) -> None:
+        self.write("raw.bin")
+        with patch.object(run_ledger, "_file_sha256", side_effect=PermissionError("denied")):
+            with self.assertRaisesRegex(run_ledger.LedgerRefused, "cannot read raw.bin: denied"):
+                self.append(kind="file_reference", path="raw.bin", role="raw")
+        self.assertFalse(self.ledger.exists())
+
+    def test_the_caller_mapping_is_not_changed(self) -> None:
+        self.write("paper.md")
+        fields = {**RECEIPT, "input_paths": ["paper.md"]}
+        run_ledger.append_entry(self.passport, fields, now=self.clock)
+        self.assertEqual(fields["input_paths"], ["paper.md"])
+        self.assertNotIn("input_sha256", fields)
+
+
+class ReceiptInputTest(_LedgerCase):
+    """A receipt whose inputs changed after it was written backs nothing (#898)."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.paper = self.root / "paper.md"
+        self.paper.write_text("v1", encoding="utf-8")
+        self.receipt("evidence_rows", "passed", input_paths=["paper.md"])
+        self.claims = {"steps": [{"step": "evidence_rows", "status": "passed"}]}
+
+    def test_unchanged_inputs_back_the_step(self) -> None:
+        report = self.report(self.claims)
+        self.assertEqual((report["not_run"], report["backed"]), ([], 1))
+
+    def test_changed_or_absent_inputs_move_the_step_to_not_run(self) -> None:
+        for label, change, state in (("changed", lambda: self.paper.write_text("v2", encoding="utf-8"),
+                                      "changed"),
+                                     ("absent", self.paper.unlink, "absent")):
+            with self.subTest(label):
+                change()
+                report = self.report(self.claims)
+                self.assertEqual(report["not_run"], [{
+                    "step": "evidence_rows", "claimed": "passed",
+                    "reason": "the receipt's inputs changed after it was written",
+                    "changed_inputs": [{"path": "paper.md", "reason": state}],
+                }])
+                self.assertEqual((report["cannot_confirm"], report["backed"]), ([], 0))
+
+    def test_a_not_run_receipt_keeps_its_own_reason(self) -> None:
+        self.receipt("check_panel_synthesis", "not_run", input_paths=["paper.md"])
+        self.paper.write_text("v2", encoding="utf-8")
+        [item] = [i for i in self.report()["not_run"] if i["step"] == "check_panel_synthesis"]
+        self.assertEqual(item, {"step": "check_panel_synthesis", "claimed": None,
+                                "reason": "the receipt records not_run"})
+
+
+class RenderTest(_LedgerCase):
+    """The block the orchestrator inserts verbatim (#898)."""
+
+    def scenario(self, question: str, role: str) -> dict:
+        self.open_checkpoint(question=question)
+        self.append(kind="partial_answer", checkpoint_id=GATE, item_id="E6-2",
+                    answer="accept", user_words="E6-2 accept")
+        self.open_checkpoint("stage-2-config", stage="2", checkpoint_type="FULL", question="q")
+        self.close_checkpoint("confirm", "Confirmed.", checkpoint_id="stage-2-config")
+        self.receipt("check_phase_conformance", "passed")
+        draft = self.root / "drafts" / "paper_v2.md"
+        draft.parent.mkdir()
+        draft.write_text("v1", encoding="utf-8")
+        self.append(kind="file_reference", path="drafts/paper_v2.md", role=role)
+        draft.write_text("v2", encoding="utf-8")
+        return self.report({
+            "decisions": [{"checkpoint_id": "stage-2-config", "answer": "confirm"},
+                          {"checkpoint_id": "stage3-decision", "answer": "major revision"}],
+            "steps": [{"step": "check_phase_conformance", "status": "passed"},
+                      {"step": "check_panel_synthesis", "status": "passed"}],
+        })
+
+    def test_english_block(self) -> None:
+        report = self.scenario("Three fix rounds failed. How should we proceed?", "draft")
+        self.assertEqual(run_ledger.render_block(report, "en"), "\n".join([
+            "### Handoff check",
+            "",
+            "Awaiting your answer (1)",
+            "- stage-2.5-gate, stage 2.5 (MANDATORY):",
+            '  "Three fix rounds failed. How should we proceed?"',
+            "  1 item recorded: E6-2",
+            "",
+            "Cannot confirm (1)",
+            '- Decision stage3-decision: the summary or report says "major revision"; '
+            "no answer in your words is recorded",
+            "",
+            "Not run (1)",
+            "- check_panel_synthesis: no receipt; the summary or report says passed",
+            "",
+            "Missing (1)",
+            "- drafts/paper_v2.md (draft): changed",
+            "",
+            "The ledger backs 2 items; they will not be asked again.",
+        ]))
+
+    def test_traditional_chinese_block(self) -> None:
+        report = self.scenario("三輪修正都沒過，要怎麼處理？", "草稿")
+        self.assertEqual(run_ledger.render_block(report, "zh-TW"), "\n".join([
+            "### 交接檢查",
+            "",
+            "等你回答（1）",
+            "- stage-2.5-gate，階段 2.5（MANDATORY）：",
+            "  「三輪修正都沒過，要怎麼處理？」",
+            "  已記下 1 項：E6-2",
+            "",
+            "無法確認（1）",
+            "- 決定 stage3-decision：摘要或報告寫「major revision」，紀錄裡沒有你的原話",
+            "",
+            "沒跑過（1）",
+            "- check_panel_synthesis：沒有執行收據，摘要或報告寫通過",
+            "",
+            "不見了（1）",
+            "- drafts/paper_v2.md（草稿）：檔案被改過",
+            "",
+            "紀錄已確認 2 項，這些不會再問你。",
+        ]))
+
+    def test_nothing_to_report_renders_nothing(self) -> None:
+        self.open_checkpoint()
+        self.close_checkpoint("continue", "Continue.")
+        report = self.report({"decisions": [{"checkpoint_id": GATE, "answer": "continue"}]})
+        for lang in run_ledger.RENDER_LANGUAGES:
+            with self.subTest(lang):
+                self.assertEqual(run_ledger.render_block(report, lang), "")
+
+    def test_ledger_problems_are_named_once(self) -> None:
+        with self.subTest("missing"):
+            report = self.report()
+            self.assertEqual(run_ledger.render_block(report, "en").split("\n")[2],
+                             "Ledger problem: no paper_passport_run_ledger.yaml beside the Material Passport.")
+            self.assertEqual(run_ledger.render_block(report, "zh-TW").split("\n")[-1],
+                             "紀錄沒有確認任何項目。")
+        with self.subTest("unreadable"):
+            self.ledger.write_bytes(b"entries: [\n")
+            self.assertIn("紀錄檔問題：paper_passport_run_ledger.yaml 無法讀取。",
+                          run_ledger.render_block(self.report(), "zh-TW"))
+        with self.subTest("chain broken"):
+            self.ledger.unlink()
+            self.open_checkpoint()
+            self.append(kind="progress", counters={"retry_count": 1})
+            self.edit_entries(lambda e: e[1]["counters"].update(retry_count=0))
+            block = run_ledger.render_block(self.report(), "en")
+            self.assertIn("Ledger problem: entry 2 fails validation; entries from 2 on are not used.",
+                          block)
+            self.assertEqual(block.count("Ledger problem"), 1)
+
+    def test_line_details(self) -> None:
+        self.open_checkpoint(question="# A heading\n\nand a second   line")
+        self.append(kind="partial_answer", checkpoint_id=GATE, item_id="E6-1", answer="a",
+                    user_words="a")
+        self.append(kind="partial_answer", checkpoint_id=GATE, item_id="E6-3", answer="b",
+                    user_words="b")
+        self.open_checkpoint("stage-3-branch", stage="3", question="Revise?")
+        self.close_checkpoint("abort", "Abort.", checkpoint_id="stage-3-branch")
+        self.open_checkpoint("stage-4.5-gate", stage="4.5", question="Close the gate?")
+        self.receipt("check_panel_synthesis", "failed")
+        paper = self.root / "paper.md"
+        paper.write_text("v1", encoding="utf-8")
+        self.receipt("evidence_rows", "passed", input_paths=["paper.md"])
+        paper.unlink()
+        report = self.report({
+            "decisions": [{"checkpoint_id": "stage-3-branch", "answer": "revise"},
+                          {"checkpoint_id": "stage-4.5-gate", "answer": "continue"}],
+            "steps": [{"step": "check_panel_synthesis", "status": "passed"},
+                      {"step": "evidence_rows", "status": "passed"},
+                      {"step": "verify_submission_package", "status": "passed"},
+                      {"step": "verify_submission_package", "status": "failed"}],
+        })
+        en = run_ledger.render_block(report, "en").split("\n")
+        self.assertIn('  "# A heading and a second line"', en)
+        self.assertIn("  2 items recorded: E6-1, E6-3", en)
+        self.assertIn('- Decision stage-3-branch: the summary or report says "revise"; '
+                      'the ledger records "abort"', en)
+        self.assertIn('- Decision stage-4.5-gate: the summary or report says "continue"; '
+                      "the checkpoint is still open in the ledger", en)
+        self.assertIn("- Step check_panel_synthesis: the summary or report says passed; "
+                      "the receipt records failed", en)
+        self.assertIn("- evidence_rows: its inputs changed after the receipt was written "
+                      "(paper.md: absent); the summary or report says passed", en)
+        self.assertIn("- verify_submission_package: no receipt; the summary or report says "
+                      "passed and failed", en)
+        self.assertIn("Not run (2)", en)
+        self.assertEqual(en[-1], "The ledger backs no items.")
+        zh = run_ledger.render_block(report, "zh-TW").split("\n")
+        self.assertIn("- 步驟 check_panel_synthesis：摘要或報告寫通過，執行收據記錄的是未通過", zh)
+        self.assertIn("- evidence_rows：執行收據寫下後，輸入檔有變動（paper.md：檔案不見了），"
+                      "摘要或報告寫通過", zh)
+        self.assertIn("- verify_submission_package：沒有執行收據，摘要或報告寫通過和未通過", zh)
+
+    def test_one_backed_item_is_singular(self) -> None:
+        self.open_checkpoint("stage-2-config", stage="2", checkpoint_type="FULL", question="q")
+        self.close_checkpoint("confirm", "Confirmed.", checkpoint_id="stage-2-config")
+        self.open_checkpoint()
+        report = self.report({"decisions": [{"checkpoint_id": "stage-2-config", "answer": "confirm"}]})
+        self.assertEqual(run_ledger.render_block(report, "en").split("\n")[-1],
+                         "The ledger backs 1 item; it will not be asked again.")
+        self.assertEqual(run_ledger.render_block(report, "zh-TW").split("\n")[-1],
+                         "紀錄已確認 1 項，這一項不會再問你。")
 
 
 class ChainLimitTest(_LedgerCase):
@@ -488,10 +753,13 @@ class SchemaLockstepTest(_LedgerCase):
         self.append(kind="partial_answer", checkpoint_id=GATE, item_id="E5-1",
                     answer="bounded", user_words="用有界的說法")
         self.close_checkpoint("continue", "繼續")
-        self.receipt("verify_submission_package", "passed", input_sha256={"paper.md": "b" * 64},
+        (self.root / "paper.md").write_text("# Paper\n", encoding="utf-8")
+        self.receipt("verify_submission_package", "passed", input_paths=["paper.md"],
                      output_sha256="c" * 64, gate_tokens=["PASS"])
         self.append(kind="progress", counters={"fix_round": 2}, stage="5")
-        self.append(kind="file_reference", path="/abs/raw.json", sha256="d" * 64, role="raw")
+        raw = self.root / "raw.json"
+        raw.write_text("{}", encoding="utf-8")
+        self.append(kind="file_reference", path=str(raw), role="raw")
         build_schema_validator(self.schema).validate(self.load_raw())
 
     def test_module_constants_match_the_schema(self) -> None:
@@ -631,6 +899,19 @@ class CliTest(_LedgerCase):
         result = self.run_cli(*cases["claims with a lone surrogate"])
         self.assertIn("expected_steps must be a list of strings", result.stderr)
 
+    def test_report_renders_the_block_on_request(self) -> None:
+        args = ("report", "--passport-path", str(self.passport))
+        result = self.run_cli(*args, "--render", "zh-TW")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual(result.stdout, "\n".join([
+            "### 交接檢查", "", "紀錄檔問題：Material Passport 旁邊沒有 "
+            "paper_passport_run_ledger.yaml。", "", "紀錄沒有確認任何項目。", ""]))
+        self.append(kind="initial_instructions", user_words="Go.")
+        result = self.run_cli(*args, "--render", "en")
+        self.assertEqual((result.returncode, result.stdout), (0, ""))
+        result = self.run_cli(*args, "--render", "fr")
+        self.assertEqual(result.returncode, 2)
+
     def test_unexpected_errors_exit_2_never_1(self) -> None:
         stderr = io.StringIO()
         with patch.object(run_ledger, "build_report", side_effect=RecursionError("deep")), \
@@ -646,8 +927,8 @@ class CliTest(_LedgerCase):
         self.assertTrue(result.stderr.startswith(run_ledger.ERR_PREFIX), result.stderr)
 
     def test_report_names_an_unreadable_file_as_a_read_error(self) -> None:
-        self.append(kind="file_reference", path="raw.bin", sha256="a" * 64, role="raw")
         (self.root / "raw.bin").write_bytes(b"x")
+        self.append(kind="file_reference", path="raw.bin", role="raw")
         stderr = io.StringIO()
         with patch.object(run_ledger, "_file_sha256", side_effect=PermissionError("denied")), \
                 contextlib.redirect_stderr(stderr):
