@@ -54,16 +54,16 @@ here. No committee guard or agent definition changed.
 
 ## Committee-branch guard (2026-09-24, #854)
 
-Both committee guards (`academic-paper/SKILL.md` and `revision_coach_agent.md`)
-now say that journal or conference reviewers, editors, area chairs, and program
-committees are peer review, not a committee for the #668 variant, and the mode
-table gives the variant its own row. Case 03 gained `no-committee-branch`, a
-with-only regex that fails when the final answer has the committee bundle's
-shape: a concern-tracker or preserved-source heading, or the bundle's file
-names. Checked against the stored 2026-09-12 results, it flags the run that
-announced the branch and one more run that produced the same three-part shape
-(preserved source, concern tracker, response skeleton) without naming the
-branch, and none of the other nine runs, the without-plugin arms included.
+Case 03 gained `no-committee-branch` with the #854 guard (see `CHANGELOG.md`):
+a with-only regex that fails on a concern-tracker or preserved-source heading or
+bold label, on the concern IDs, status line, and human-subjects footer that
+`committee_correspondence_protocol.md` requires, or on the committee bundle's
+file names. Against the stored 2026-09-12 results it flags the two runs named
+under Known caveats and none of the other nine, the without-plugin arms
+included. Neither flagged run used the protocol's required strings; the heading
+pattern caught both. The grader misses a run that only announces the branch
+without building its output, and it would flag a peer-review answer that titles
+a section "concern tracker".
 
 Retest with Claude Code 2.1.281, `--ablation none --model claude-opus-5-5
 --judge-model sonnet --runs 7 --case '03-*' --no-publish`, from outside the
@@ -74,7 +74,9 @@ Opus 5.5 did not reproduce it without the guard, so this retest shows no
 effect of the guard; the guard is prompt-level and its effect is unmeasured.
 None of the fourteen runs built the Revision Roadmap or the response skeleton;
 each answered the push-back question directly. Cost: US$2.46 with the guard,
-US$2.70 on `main`.
+US$2.70 on `main`. The retest ran on an earlier text of the guard: the sentence
+in `committee_correspondence_protocol.md` came later, and the mode table then
+gave the variant its own row, which the final change dropped.
 
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 

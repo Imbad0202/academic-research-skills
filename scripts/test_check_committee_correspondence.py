@@ -66,10 +66,12 @@ def test_revision_coach_entrypoint_and_protocol_are_wired() -> None:
             "Committee-Correspondence Variant (#668)",
             "references/committee_correspondence_protocol.md",
             "never emits",
+            "program committees are peer review",
         ),
         "academic-paper/SKILL.md": (
             "Committee-correspondence routing:",
             "separate #668 concern tracker",
+            "committees are peer review, not a committee for this variant",
         ),
         "commands/ars-revision-coach.md": (
             "committee-correspondence variant",
@@ -79,6 +81,7 @@ def test_revision_coach_entrypoint_and_protocol_are_wired() -> None:
             "source_letter.txt",
             "committee-correspondence/1.0",
             BOUNDARY_LINE,
+            "area chairs, and program committees are",
         ),
     }
     for relative, needles in requirements.items():

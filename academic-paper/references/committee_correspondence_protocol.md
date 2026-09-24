@@ -19,11 +19,14 @@ a letter from a real committee/institutional review office and asks for tracking
 response preparation, or resubmission organization. Do not infer official authority
 from formal tone, letterhead-like prose, words such as “required,” or a file name.
 
-If the source is ordinary manuscript peer review, use normal `revision-coach`. If
-the source identity is uncertain, ask the user to identify it before choosing the
-variant. V1 accepts UTF-8 letter text. For a binary PDF/DOCX, retain the user’s
-original file outside this bundle and obtain a UTF-8 export/transcription; label
-that textual source honestly rather than claiming byte identity with the binary.
+If the source is ordinary manuscript peer review, use normal `revision-coach`.
+Journal or conference reviewers, editors, area chairs, and program committees are
+peer review, even when the user names the venue or the venue calls the role a
+committee (#854). If the source identity is uncertain, ask the user to identify it
+before choosing the variant. V1 accepts UTF-8 letter text. For a binary PDF/DOCX,
+retain the user’s original file outside this bundle and obtain a UTF-8
+export/transcription; label that textual source honestly rather than claiming byte
+identity with the binary.
 
 This variant is standalone and separate from paper-review traceability. It MUST NOT:
 
