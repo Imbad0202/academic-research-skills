@@ -31,12 +31,18 @@ and joining words or marks (``(SEM, RCT)``, ``(SDs, RMSE)``,
 ``(R², AIC, BIC)``, ``(n = 120, RCT)``, ``(PCA/ICA, NMF)``,
 ``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``). So are
 Chinese words after an acronym that open with ``見``, ``參見``, ``詳見``, or
-``參閱`` (``RCT（見第二節）``). A parenthetical that opens with ``i.e.`` or
-``i. e.``, ``viz.``, ``namely``, ``that is``, ``即``, ``亦即``, or ``也就是``
-is read without those words (``structural equation modeling (i.e., SEM)`` and
-``結構方程模型（即 SEM）`` define ``SEM``), except that one ending with the
-acronym is a use when the words before it do not spell the acronym
-(``two designs (namely RCT)``).
+``參閱`` (``RCT（見第二節）``). A lead at the start of a parenthetical or of
+its last item is read as if absent, and so are quotation marks around the
+acronym. A lead is a restatement (such as ``i.e.`` or ``i. e.``, ``viz.``,
+``namely``, ``that is``, ``in other words``, ``即``, ``亦即``, ``也就是``) or
+a naming lead (such as ``hereafter``, ``henceforth``, ``abbreviated as``,
+``referred to as``, ``also known as``, ``aka``, ``called``, ``以下簡稱``,
+``下稱``, ``簡稱``, ``又稱``, ``稱為``, ``縮寫為``). So ``structural equation
+modeling (i.e., SEM)``, ``structural equation modeling (hereafter SEM)``, and
+``結構方程模型（structural equation modeling，以下簡稱「SEM」）`` define
+``SEM``. After a restatement, an acronym the words before it do not spell is a
+use (``two designs (namely RCT)``); after a naming lead, it is a definition
+this check cannot confirm (``two designs (hereafter RCT)``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -255,9 +261,23 @@ _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱")
 # Leads read across a wrap, as definitions do: "that\nis", "e. g.", "包\n括".
 _EXAMPLE_LEAD = re.compile(r"(?:e\.\s*g\.|eg|see|cf\.|for\s+example|for\s+instance|such\s+as|including)"
                            r"(?![A-Za-z0-9])|例\s*如|比\s*如|諸\s*如|包\s*括")
-# Case-sensitive, so the acronym "IE" is not read as "ie".
-_RESTATEMENT_LEAD = re.compile(r"\s*(?:(?:[Ii]\.\s*e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat\s+is)(?![A-Za-z0-9])"
-                               r"|亦\s*即|也\s*就\s*是|即)[,，:：]?\s*")
+
+
+def _zh(*leads: str) -> str:
+    """Chinese leads, longest first, with any whitespace between characters."""
+    return "|".join(r"\s*".join(lead) for lead in sorted(leads, key=len, reverse=True))
+
+
+# Leads read as if absent (see _lead). Case-sensitive, so the acronyms IE and AKA stay.
+_RESTATEMENT_LEAD = re.compile(
+    r"\s*(?:(?:[Ii]\.\s*e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat\s+is(?:\s+to\s+say)?|[Ii]n\s+other\s+words)"
+    rf"(?![A-Za-z0-9])|(?:{_zh('亦即', '也就是', '即')})(?:\s*為)?)[,，:：]?\s*")
+_NAMING_LEAD = re.compile(
+    r"\s*(?:(?:(?:(?:[Hh]ere(?:in)?after|[Hh]enceforth|[Aa]lso)\s+)?(?:referred\s+to\s+as|known\s+as|called"
+    r"|termed|abbreviated(?:\s+(?:as|to))?)|[Hh]ere(?:in)?after|[Hh]enceforth|a\.?k\.?a\.?)(?![A-Za-z0-9])"
+    rf"|(?:{_zh('以下簡稱', '以下稱', '下稱', '簡稱', '又稱', '亦稱', '或稱', '稱為', '縮寫', '英文縮寫', '英文簡稱')})"
+    r"(?:\s*為)?)[,，:：]?\s*")
+_QUOTES = re.compile(r"^[\s'\"‘’“”「」『』]+|[\s'\"‘’“”「」『』]+$")
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
@@ -346,6 +366,17 @@ def _caption_label(line: str) -> bool:
                 or ((_SUBFIGURE.fullmatch(start) or tight) and _RANGE_LETTER.match(after))
                 or (_ROMAN_ID.fullmatch(start) and _RANGE_ROMAN.match(after))
                 or (re.fullmatch(_ZH_NUMERAL, start) and _RANGE_ZH.match(after)))
+
+
+def _lead(text: str) -> tuple[str, str]:
+    """``text`` without a lead at its start, and the lead's kind: "restated" for a
+    restatement (``i.e.``, ``namely``, ``即``), "named" for a naming lead
+    (``hereafter``, ``abbreviated as``, ``以下簡稱``), or "" for none."""
+    for kind, lead in (("restated", _RESTATEMENT_LEAD), ("named", _NAMING_LEAD)):
+        found = lead.match(text)
+        if found:
+            return text[found.end():], kind
+    return text, ""
 
 
 def base_form(word: str) -> str | None:
@@ -643,9 +674,7 @@ def _reverse_definition(acronym: str, content: str) -> bool:
     """True when a parenthetical right after an acronym reads as its expansion
     (``RCT (randomized controlled trial)``, ``RCT（隨機對照試驗）``), a definition
     form this check does not read. A cross-reference is not one."""
-    content = content.strip()
-    restated = _RESTATEMENT_LEAD.match(content)
-    content = content[restated.end():] if restated else content
+    content = _lead(content.strip())[0]
     words = content.split()
     if not words or acronym in content or _example_led(words):
         return False
@@ -660,9 +689,11 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
     defined: dict[int, Occurrence] = {}
     for paren in _PAREN.finditer(text):
         content = paren.group(1)
-        restated = _RESTATEMENT_LEAD.match(content)
-        items = [item.strip() for item in _ITEM_BREAK.split(content[restated.end() if restated else 0:])]
-        last = items[-1]
+        rest, kind = _lead(content)  # "(i.e., SEM)", "(hereafter SEM)"
+        items = [item.strip() for item in _ITEM_BREAK.split(rest)]
+        last, last_kind = _lead(items[-1])  # "（structural equation modeling，以下簡稱 SEM）"
+        kind = kind or last_kind
+        last = _QUOTES.sub("", last)  # "（以下簡稱「SEM」）"
         bare = _POSSESSIVE.sub("", last)
         acronym = base_form(bare) if _WORD.fullmatch(bare) else None
         before = _paragraph_before(text, paren.start())
@@ -677,7 +708,7 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
                 expansion = _spelled_run(expansion, acronym) or ""
         else:
             expansion = _expansion(before, acronym) or ""
-        if restated and not expansion:
+        if kind == "restated" and not expansion:
             continue  # "two designs (namely RCT)" is a use
         offset = paren.start(1) + content.rfind(last)
         defined[offset] = (Occurrence(doc.line_of(offset), acronym, "definition", expansion)

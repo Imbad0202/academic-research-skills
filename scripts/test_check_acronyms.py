@@ -141,6 +141,7 @@ def _outcome(text: str) -> tuple[list[tuple], list[tuple]]:
     "We tried methods (for instance, NMF). Nonnegative matrix factorization (NMF) won.",
     "Structural equation modeling (i. e., SEM) was used. The RCT (e. g., a pilot trial) ran.",
     "The RCT (including recruitment, consent, and treatment) lasted six months.",
+    "Structural equation modeling (hereafter referred to as SEM) was used. The SEM held.",
 ])
 def test_a_line_break_at_any_space_reads_as_the_space(text: str) -> None:
     expected = _outcome(text + "\n")
@@ -159,6 +160,7 @@ def test_a_line_break_at_any_space_reads_as_the_space(text: str) -> None:
     "多種方法（例如 PCA，NMF）。非負矩陣分解（NMF）表現最好。",
     "結構方程模型（亦即 SEM）被使用。結構方程模型（也就是 SEM）再次被使用。",
     "SEM（也就是結構方程模型）被使用。",
+    "結構方程模型（以下簡稱 SEM）被使用。結構方程模型（structural equation modeling，下稱 SEM）再次被使用。",
 ])
 def test_a_line_break_between_chinese_characters_changes_nothing(text: str) -> None:
     expected = _outcome(text + "\n")
@@ -265,7 +267,8 @@ _FUZZ_PIECES = ["(", ")", "（", "）", ",", "，", "、", ";", "/", "-", " and 
                 "（見第二節）", "Figure 1 |", "Table III.", "圖一：", "Note.", "Smith AB", " (2020a)",
                 "(WHO, n.d.-a)", "[WHO]", "\n", "\n\n", "# Abstract\n", "## 摘要\n", "## References\n",
                 "| a | b |\n|---|---|\n", "- ", "> ", "```\n", "![img](x.png)\n", "***\n", "===\n", "\\",
-                "*", "Keywords: ", "\r\n", "\u2028", "and/or", "1", "2020", "et al."]
+                "*", "Keywords: ", "\r\n", "\u2028", "and/or", "1", "2020", "et al.", "hereafter ", "以下簡稱",
+                "i.e., ", "「", "」", "“", "'", " – ", "Figure 1A"]
 
 
 def test_mixed_constructs_never_crash_the_check() -> None:
@@ -302,7 +305,8 @@ def test_an_example_led_parenthetical_after_an_acronym_is_a_use(text: str) -> No
     assert findings(text) == [("body", 1, "undefined", "RCT")]
 
 
-@pytest.mark.parametrize("lead", ["i.e.,", "i.e.", "i. e.,", "ie", "viz.", "namely,", "That is,"])
+@pytest.mark.parametrize("lead", ["i.e.,", "i.e.", "i. e.,", "ie", "viz.", "namely,", "That is,",
+                                  "that is to say,", "in other words,"])
 def test_a_restatement_lead_is_read_without_its_words(lead: str) -> None:
     assert findings(f"Structural equation modeling ({lead} SEM) was used.\n") == []
     report = check(f"The SEM ({lead} structural equation modeling) was used.\n")
@@ -319,8 +323,32 @@ def test_a_chinese_restatement_lead_is_read_without_its_words(lead: str) -> None
     assert rows(report) == [] and report["coverage_limits"][0]["acronym"] == "SEM"
 
 
-def test_the_acronym_ie_is_not_a_restatement_lead() -> None:
-    assert findings("Internet Explorer (IE) crashed.\n") == []
+@pytest.mark.parametrize("lead", ["hereafter", "Hereafter,", "hereinafter", "henceforth", "abbreviated as",
+                                  "referred to as", "hereafter referred to as", "also known as", "aka",
+                                  "a.k.a.", "called", "termed"])
+def test_a_naming_lead_is_read_without_its_words(lead: str) -> None:
+    assert findings(f"Structural equation modeling ({lead} SEM) was used.\n") == []
+    assert findings(f"A new method (structural equation modeling, {lead} SEM) was used.\n") == []
+    report = check(f"Two designs ({lead} RCT) ran.\n")
+    assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unconfirmed_definition"
+
+
+@pytest.mark.parametrize("lead", ["以下簡稱", "以下簡稱 ", "簡稱", "簡稱為", "下稱", "以下稱為", "又稱", "或稱", "稱為",
+                                  "縮寫為", "英文縮寫", "即為"])
+def test_a_chinese_naming_lead_is_read_without_its_words(lead: str) -> None:
+    assert findings(f"結構方程模型（{lead}SEM）被使用。\n") == []
+    assert findings(f"結構方程模型（structural equation modeling，{lead}SEM）被使用。\n") == []
+
+
+@pytest.mark.parametrize("text", ["結構方程模型（以下簡稱「SEM」）被使用。\n", "結構方程模型（『SEM』）被使用。\n",
+                                  "Structural equation modeling (hereafter “SEM”) was used.\n",
+                                  "Structural equation modeling ('SEM') was used.\n"])
+def test_quotation_marks_around_a_defined_acronym_are_ignored(text: str) -> None:
+    assert findings(text) == []
+
+
+def test_acronyms_shaped_like_leads_stay_acronyms() -> None:
+    assert findings("Internet Explorer (IE) crashed. Also known as (AKA) forms vary.\n") == []
 
 
 @pytest.mark.parametrize("lead", ["例如，", "例如 PCA，", "包括 PCA，"])
