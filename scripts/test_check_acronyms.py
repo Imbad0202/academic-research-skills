@@ -281,6 +281,11 @@ def test_whole_token_matching() -> None:
     ("supplementary caption", "Figure S1. The RCT flow\n"),
     ("appendix table caption", "Table A.1. The SEM fit\n"),
     ("dotted caption", "Figure 1.2. The RCT flow\n"),
+    ("chapter-numbered captions", "Figure 2-1. The RCT flow\n\n圖 3-2：SEM 路徑\n"),
+    ("chinese-numeral caption", "表一：RCT 分組\n"),
+    ("undated citations", "Earlier work (WHO, n.d.-a, n.d.-b; NIH, n.d.) supported this.\n"),
+    ("in-press, reprint, and range citations",
+     "As argued (WHO, in press-a; APA, 1900/1953; NIH, 1959–1963), it held.\n"),
     ("compound surname initials", "Smith AB, McDonald EF (2020) reported this.\n"),
     ("apostrophe and hyphen surnames", "O'Brien AB, Smith-Jones EF (2020) agreed.\n"),
     ("surname particles", "Smith AB, van der Berg EF, Van Dyke GH (2020) agreed.\n"),
@@ -324,9 +329,13 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     text = "The effect held, as in\nFigure 2. The RCT ran.\nNote. The SEM fit.\n"
     assert findings(text) == [("body", 2, "undefined", "RCT"), ("body", 3, "undefined", "SEM")]
     assert findings("![Flow](flow.png)\nFigure 1. The RCT flow.\n\nThe study ended.\n") == []
-    # A supplementary caption's definition does not reach the body.
+    # A supplementary caption's definition does not reach the body, nor does a
+    # Chinese caption's.
     text = "Figure S1. Randomized controlled trial (RCT) flow.\n\nThe RCT ended.\n"
     assert findings(text) == [("body", 3, "undefined", "RCT")]
+    for label in ("圖一：", "圖 2-1："):
+        text = f"{label}隨機對照試驗（RCT）流程。\n\n本研究使用 RCT。\n"
+        assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
     assert findings("Intro.\n\n***\nFigure 2. The RCT flow\n\nBody text.\n") == []
     text = "See [RCT].\nA randomized controlled trial (RCT) ran.\n***\n[RCT]: https://example.org\n"
@@ -384,7 +393,9 @@ def test_a_link_reference_definition_starts_a_paragraph() -> None:
 
 
 def test_caption_word_at_sentence_start_is_still_prose() -> None:
-    assert findings("Table 2 shows the RCT arm.\n") == [("body", 1, "undefined", "RCT")]
+    for text in ("Table 2 shows the RCT arm.\n", "Figure 2-1 shows the RCT arm.\n",
+                 "表一所示的 RCT 分組。\n"):
+        assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
 
 # --- scopes and coverage ---------------------------------------------------

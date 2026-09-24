@@ -47,9 +47,11 @@ https://example.org``), ATX and setext headings, tables (with or without outer
 pipes, up to a blank line, heading, list item, blockquote, or thematic break),
 image lines, caption, note, and keyword paragraphs (from a line that starts a
 paragraph or follows an image and opens with a label such as ``Figure 2.``,
-``Table S1.``, ``Note.``, or ``Keywords:``, up to a blank line; ``Figure 1.2
-shows`` opens no label), the reference list, author-year citations whose
-author part is a run of names and whose locator, if any, is a page, paragraph,
+``Table S1.``, ``圖 2-1：``, ``表一：``, ``Note.``, or ``Keywords:``, up to a
+blank line; ``Figure 1.2 shows`` opens no label), the reference list,
+author-year citations whose author part is a run of names, whose dates are
+years, year pairs or ranges, ``n.d.``, or ``in press`` (``2020a``,
+``1900/1953``, ``n.d.-a``), and whose locator, if any, is a page, paragraph,
 chapter, or section (``(WHO, 2020)``, ``(see Smith et al., 2020, pp. 4, 6;
 Lee, 2019)``, and the citations after the acronym in ``(RCTs; Smith, 2020)``),
 a bracketed abbreviation right after a capitalized word, as in an APA group
@@ -145,7 +147,8 @@ _EMPH = r"(?:\*{1,2}|_{1,2})?"
 _NAME_LETTERS = [chr(c) for block in (range(0x530), range(0x1E00, 0x2000)) for c in block]
 _UPPER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.isupper())
 _LOWER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.islower())
-_CAPTION = re.compile(rf"^\s*{_EMPH}(?:Figure|Fig\.?|Table|圖|表)\s*(?:[A-Z][.-]?)?\d+(?:\.\d+)*[A-Za-z]?"
+_CAPTION = re.compile(rf"^\s*{_EMPH}(?:(?:Figure|Fig\.?|Table|圖|表)\s*(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*"
+                      rf"[A-Za-z]?|[圖表]\s*[一二三四五六七八九十百零〇]+)"
                       rf"{_EMPH}(?:[.:：](?!\d)|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
@@ -165,17 +168,21 @@ _COMMA = r"[,，]"
 _SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank line
 # An author-year citation: items whose author part is a run of names (capitalized
 # words, a bracketed group abbreviation, CJK, "&", "and", "et al.", or a name
-# particle), then a year and an optional page, paragraph, chapter, or section
-# locator. "(Smith et al., 2020, pp. 4, 6; Lee, 2019)" and "(WHO, 2020)" match;
-# "(LLM in 2020)" and "(LLM use began in May 2020)" do not.
+# particle), then one or more dates and an optional page, paragraph, chapter, or
+# section locator. "(Smith et al., 2020, pp. 4, 6; Lee, 2019)" and "(WHO, 2020)"
+# match; "(LLM in 2020)" and "(LLM use began in May 2020)" do not.
 _PARTICLE = r"(?:[vV]an|[vV]on|[dD]e|[dD]er|[dD]en|[dD]u|[dD]a|[dD]i|[dD]el|[lL]a|[lL]e)"
 _NAME = (rf"(?:[{_UPPER}][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\]|[㐀-鿿]+|&|and|et{_SPACE}al\.?"
          rf"|{_PARTICLE}(?=\s))")
+# A citation date: a year (2020, 2020a), a reprint pair or a range (1900/1953,
+# 1959–1963), "n.d.", or "in press", the last two with a letter when one author
+# has several such works (n.d.-a, in press-b).
+_DATE = rf"(?:{_YEAR}(?:[/–-]{_YEAR})?[a-z]?|(?:n\.d\.|in{_SPACE}press)(?:-[a-z])?)"
 _LOCATOR = (rf"(?:(?:p|pp|paras?|ch|chap|secs?)\.\s*|(?:Chapter|Section){_SPACE})[\w.–-]+"
             rf"(?:\s*{_COMMA}\s*[\w.–-]*\d[\w.–-]*)*")
 _CITE_ITEM = (rf"\s*(?:(?:see(?:{_SPACE}also)?|e\.g\.|cf\.|i\.e\.)\s*{_COMMA}?\s*)?"
               rf"{_NAME}(?:(?:\s*[,，、]\s*|\s+){_NAME})*\s*{_COMMA}?\s*"
-              rf"(?:n\.d\.|{_YEAR}[a-z]?)(?:\s*{_COMMA}\s*{_YEAR}[a-z]?)*"
+              rf"{_DATE}(?:\s*{_COMMA}\s*{_DATE})*"
               rf"(?:\s*{_COMMA}\s*{_LOCATOR})?\s*")
 _CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
 # The citations after an acronym in "(RCTs; Smith, 2020)".
