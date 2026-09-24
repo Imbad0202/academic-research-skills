@@ -154,7 +154,8 @@ assembled prompt.
   and `agents/report_compiler_agent.md`, copied from their `deep-research/agents/`
   sources.
 - `shared/cross_model_verification.md`: the copy inside the step-3 prompt.
-- Skills: the four `SKILL.md` files.
+- Skills: the four `SKILL.md` files, and the whole-file lock on
+  `academic-pipeline/SKILL.md` in `scripts/check_pipeline_boundary_semantics.py`.
 - `scripts/check_instruction_data_boundary.py`, `scripts/test_check_instruction_data_boundary.py`:
   the new files, with the existing mutation tests parametrized over them, and the
   reference prompt as a third prompt template, with four mutation tests.

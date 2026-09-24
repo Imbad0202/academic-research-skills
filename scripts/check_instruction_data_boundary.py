@@ -60,7 +60,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 AUTHORITATIVE_REL = "shared/ground_truth_isolation_pattern.md"
 
-# Agents that must inline the principle verbatim + carry a backpoint.
+# Files that must inline the principle verbatim + carry a backpoint.
 HOTSPOT_AGENTS = (
     "deep-research/agents/source_verification_agent.md",
     "deep-research/agents/bibliography_agent.md",
@@ -87,6 +87,12 @@ HOTSPOT_AGENTS = (
     "deep-research/agents/synthesis_agent.md",
     "academic-paper/agents/draft_writer_agent.md",
     "deep-research/agents/report_compiler_agent.md",
+    # #894: the main session's home. Every install path loads a skill's
+    # SKILL.md when the skill runs; .claude/CLAUDE.md loads only in a checkout.
+    "academic-paper/SKILL.md",
+    "academic-paper-reviewer/SKILL.md",
+    "academic-pipeline/SKILL.md",
+    "deep-research/SKILL.md",
 )
 
 # The cross-model receives this prompt and the reviewed material only. The

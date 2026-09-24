@@ -47,9 +47,17 @@ AGENTS_894_RELS = (
     "academic-paper/agents/draft_writer_agent.md",
     "deep-research/agents/report_compiler_agent.md",
 )
-# Listed here, not imported from the checker, so dropping an agent from the
+# #894 main-session home: the four SKILL.md files.
+SKILLS_894_RELS = (
+    "academic-paper/SKILL.md",
+    "academic-paper-reviewer/SKILL.md",
+    "academic-pipeline/SKILL.md",
+    "deep-research/SKILL.md",
+)
+# Listed here, not imported from the checker, so dropping a file from the
 # checker's HOTSPOT_AGENTS makes its parametrized cases below fail.
-HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS, *AGENTS_894_RELS)
+HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS, *AGENTS_894_RELS,
+                *SKILLS_894_RELS)
 
 JUDGE_REL = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
 JUDGE_START = "<!-- JUDGE-PROMPT-CANONICAL-START"
