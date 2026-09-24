@@ -189,7 +189,8 @@ def test_allowlist_file_and_repeated_flags(tmp_path: Path) -> None:
     ("RCT", True), ("eGFR", True), ("qPCR", True), ("mRNA", True), ("PhD", True), ("AI", True),
     ("BRCA1", True), ("RCT2", True), ("IV", True),
     ("H2O", False), ("CO2", False), ("H1N1", False),        # element symbols with counts
-    ("II", False), ("XII", False),                          # Roman numerals
+    ("II", False), ("XII", False), ("XXXIX", False),        # Roman numerals up to XXXIX
+    ("XL", True), ("CD", True), ("MI", True), ("LV", True),  # larger ones stay candidates
     ("SD", False), ("SE", False), ("CI", False),            # statistical symbols
     ("A", False), ("ABCDEFG", False), ("Hello", False), ("iPad", False),
 ])
@@ -257,6 +258,8 @@ def test_exclusions(label: str, text: str) -> None:
     ("A ``RCT`x`` span.\n", []),                                       # a span may hold a backtick
     ("Use `C:\\RCT\\` here.\n", []),     # a backslash inside a span is literal
     ("A \\\\`RCT` span.\n", []),          # an escaped backslash leaves the backtick free
+    ("The marker `![alt](flow.png)` adds an image. The RCT ran.\n",  # an image in a span is text
+     [("body", 1, "undefined", "RCT")]),
 ])
 def test_code_spans_pair_equal_backtick_runs(text: str, expected: list[tuple]) -> None:
     assert findings(text) == expected
@@ -277,6 +280,10 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     text = "The effect held, as in\nFigure 2. The RCT ran.\nNote. The SEM fit.\n"
     assert findings(text) == [("body", 2, "undefined", "RCT"), ("body", 3, "undefined", "SEM")]
     assert findings("![Flow](flow.png)\nFigure 1. The RCT flow.\n\nThe study ended.\n") == []
+    # A thematic break ends a paragraph, so a caption or a link definition may follow it.
+    assert findings("Intro.\n\n***\nFigure 2. The RCT flow\n\nBody text.\n") == []
+    text = "See [RCT].\nA randomized controlled trial (RCT) ran.\n***\n[RCT]: https://example.org\n"
+    assert findings(text) == [("body", 1, "defined_after_use", "RCT")]
 
 
 def test_a_fence_closes_only_on_a_matching_closer() -> None:
@@ -305,6 +312,9 @@ def test_a_link_label_is_not_a_group_author() -> None:
     assert findings("The Trial [RCT](#x) ran.\n") == [("body", 1, "undefined", "RCT")]
     # A shortcut link: its label has a definition (matched case-insensitively).
     text = "See [RCT].\nA randomized controlled trial (RCT) ran.\n\n[rct]: https://example.org/design\n"
+    assert findings(text) == [("body", 1, "defined_after_use", "RCT")]
+    # A link whose destination is a URL.
+    text = "See [RCT](https://example.org/design). A randomized controlled trial (RCT) ran.\n"
     assert findings(text) == [("body", 1, "defined_after_use", "RCT")]
 
 

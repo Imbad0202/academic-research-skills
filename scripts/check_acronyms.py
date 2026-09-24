@@ -29,8 +29,10 @@ lowercase than uppercase letters (``RCT``, ``eGFR``, ``qPCR``). Plural and
 possessive forms count as the base (``RCTs``, ``RCT's``). Matching is whole
 token, so ``AI`` is never found inside ``AIDS``. Not candidates: chemical
 formulas, meaning tokens with a digit that read as element symbols and counts
-(``H2O``, ``CO2``, but not ``RCT2``); Roman numerals (``II``, ``XII``, but
-not ``IV``); and the statistical symbols ``SD``, ``SE``, and ``CI``.
+(``H2O``, ``CO2``, but not ``RCT2``); Roman numerals up to ``XXXIX`` (``II``,
+``XII``, but not ``IV``); and the statistical symbols ``SD``, ``SE``, and
+``CI``. Larger numerals stay candidates, because letter strings such as
+``CD``, ``DC``, ``MI``, and ``LV`` are also common acronyms.
 
 Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
@@ -45,12 +47,12 @@ paragraph or follows an image and opens with a label such as ``Figure 2.``,
 author-year citations whose author part is a run of names and whose locator,
 if any, is a page, paragraph, chapter, or section (``(WHO, 2020)``, ``(see
 Smith et al., 2020, pp. 4, 6; Lee, 2019)``, and the citations after the
-acronym in ``(RCTs; Smith, 2020)``), APA group-author brackets after a name
-(``World Health Organization [WHO]``, but not a link: ``[RCT](#design)``, or
-``[RCT]`` when a link reference definition names it), and author initials in
-author lists (``Smith JA, Jones BC (2020)``). In definitions, citations,
-group-author brackets, and author lists, a line break inside a paragraph reads
-as a space.
+acronym in ``(RCTs; Smith, 2020)``), a bracketed abbreviation right after a
+capitalized word, as in an APA group author (``World Health Organization
+[WHO]``), but not a link (``[RCT](#design)``, or ``[RCT]`` when a link
+reference definition names it), and author initials in author lists (``Smith
+JA, Jones BC (2020)``). In definitions, citations, group-author brackets, and
+author lists, a line break inside a paragraph reads as a space.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
@@ -379,11 +381,12 @@ class Manuscript:
         self._assign_scopes(chars)
         for start, line in zip(self.starts, self.lines):
             chars[start:start + len(line)] = _blank_code_spans("".join(chars[start:start + len(line)]))
-        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _URL, _CITATION, _TRAILING_CITATION):
-            _blank_pattern(chars, pattern)
+        # Before URLs are masked, so a link's "(" still marks it as a link.
         for bracket in _GROUP_AUTHOR.finditer("".join(chars)):
             if _link_label(bracket.group(1)[1:-1]) not in self.link_labels:
                 _blank(chars, bracket.start(1), bracket.end(1))
+        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _URL, _CITATION, _TRAILING_CITATION):
+            _blank_pattern(chars, pattern)
         _blank_author_initials(chars)
         self.masked = "".join(chars)
         if text.endswith("\n"):
@@ -471,11 +474,12 @@ class Manuscript:
             definition = None if in_paragraph else _LINK_DEFINITION.match(line)
             if definition:
                 self.link_labels.add(_link_label(definition.group(1)))
-            image = _IMAGE.search(line)
+            image = _IMAGE.search(_blank_code_spans(line))  # an image in a code span is text
             if (self.scope[i] is None or in_aside or definition or image or i in tables
                     or _TABLE.match(line)):
                 self._blank_line(chars, i)
-            in_paragraph = bool(line.strip()) and not definition
+            in_paragraph = (bool(line.strip()) and not definition
+                            and not _THEMATIC_BREAK.match(line))
             after_image = image is not None
             i += 1
 
