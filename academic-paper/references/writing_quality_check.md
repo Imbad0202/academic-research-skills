@@ -148,6 +148,41 @@ Abstracts must respect venue length and structure requirements. Methods may bene
 
 ---
 
+## F. Acronyms (Script Check, #849)
+
+`scripts/check_acronyms.py` checks the acronyms in a Markdown or plain-text manuscript. It calls no model and never changes the file. Its rules follow common journal copyediting practice, and author and venue requirements come first (*Priority and scope* above).
+
+1. **Define at first use.** Give the full form, then the acronym in parentheses: randomized controlled trial (RCT). Later uses take the acronym alone.
+2. **Each scope defines its own.** The body, the English abstract, and the Chinese abstract are separate scopes. The Chinese form `全稱（English full form, ABBR）` counts as a definition.
+3. **Define once per scope.** A second definition in the same scope is reported.
+4. **Allowlist.** Acronyms on the script's default list (DNA, PhD, DOI, and similar) or on the author's list (`--allow`, `--allow-file`) need no definition. The allowlist exempts rules 1 and 3 only.
+
+### When the Caller Runs It
+
+The caller, meaning the session that dispatches the writing agents, runs the script; the writing agents cannot run scripts. Set `--lang` to the user's language (`en` or `zh-TW`) and show the report as printed.
+
+| Point | Input | `--scopes` |
+|---|---|---|
+| Draft assembled (`draft_writer_agent` Step 3, or Phase 4b in `full` mode) | the draft | `body` |
+| Abstracts written (Phase 5b, or `abstract-only` mode) | the abstract output | the abstract scopes the run produced |
+| Revision round (`revision` mode) | the draft the round starts from | all (the default) |
+
+For example: `python3 scripts/check_acronyms.py --input draft.md --scopes body --lang en`. After the fixes, the caller runs the check again on the final text and shows the user that report.
+
+### Reading the Report
+
+- Findings are advisory. They ask for no reply, and they never block a handoff, change a decision, or stop a run.
+- `(complete)` on the coverage line means every requested scope was read. A `partial` report lists what it did not read, and a `Not checked` report (exit status 2) gives the reason nothing was read. Neither is a clean result.
+- If the script cannot run at all, say that the acronym check did not run; never report it as clean.
+
+### Who Fixes What
+
+- **Initial drafting:** the writer fixes the findings that apply before handoff.
+- **Revision round:** the writer changes an acronym only inside a `will_address` target and operation the author authorized. Other findings stay advisory and add no revision item.
+- **Abstracts:** `abstract_bilingual_agent` fixes the findings in the abstract scopes, within the length regime.
+
+---
+
 ## How to Use This Checklist
 
 ### During Drafting (Preferred)

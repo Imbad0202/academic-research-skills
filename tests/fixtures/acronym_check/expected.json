@@ -1,0 +1,98 @@
+{
+  "checker": "ars-acronym-check/1.0",
+  "input_sha256": "071399a6a752264a8c1ab47e0772d0fa14cb82051eaf8e166a5c4e864f53dfe2",
+  "status": "partial",
+  "allowlist": {
+    "default": 29,
+    "user": []
+  },
+  "coverage": {
+    "body": "checked",
+    "abstract_en": "checked",
+    "abstract_zh": "checked"
+  },
+  "scope_lines": {
+    "body": [
+      [
+        1,
+        4
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        18,
+        43
+      ]
+    ],
+    "abstract_en": [
+      [
+        8,
+        12
+      ]
+    ],
+    "abstract_zh": [
+      [
+        14,
+        16
+      ]
+    ]
+  },
+  "unread_sections": [
+    {
+      "line": 44,
+      "heading": "Resumen"
+    }
+  ],
+  "coverage_limits": [
+    {
+      "scope": "body",
+      "line": 20,
+      "acronym": "qPCR",
+      "reason": "unread_definition_form"
+    }
+  ],
+  "findings": [
+    {
+      "scope": "body",
+      "line": 19,
+      "rule": "defined_after_use",
+      "acronym": "RCT",
+      "expansion": "randomized controlled trial",
+      "occurrences": 3
+    },
+    {
+      "scope": "body",
+      "line": 20,
+      "rule": "undefined",
+      "acronym": "eGFR",
+      "expansion": null,
+      "occurrences": 1
+    },
+    {
+      "scope": "body",
+      "line": 40,
+      "rule": "defined_again",
+      "acronym": "NLP",
+      "expansion": "natural language processing",
+      "occurrences": 3
+    },
+    {
+      "scope": "abstract_en",
+      "line": 9,
+      "rule": "undefined",
+      "acronym": "AI",
+      "expansion": null,
+      "occurrences": 1
+    },
+    {
+      "scope": "abstract_zh",
+      "line": 15,
+      "rule": "undefined",
+      "acronym": "NLP",
+      "expansion": null,
+      "occurrences": 1
+    }
+  ]
+}

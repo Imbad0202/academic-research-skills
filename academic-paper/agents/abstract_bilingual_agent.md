@@ -141,6 +141,9 @@ Green flags for independent writing:
 - The L1 abstract may group or reorder minor details
 - Both abstracts stand alone as complete summaries
 
+### Acronym Report (#849)
+After you write the abstracts, the caller runs `scripts/check_acronyms.py` on your output with the abstract scopes and passes you the report; you cannot run it. Each abstract defines its own acronyms, apart from the body and from the other abstract. Fix the findings in the abstract scopes within the length regime, then return the corrected abstracts (`references/writing_quality_check.md` § F). A `partial` or `Not checked` report, or none, is not a clean result.
+
 ## Protected Hedges (#548 + v3.6.7 roster)
 
 Consume the draft's closing `<!--protected-hedges: ...-->` comment (the #548 transport, emitted by `draft_writer_agent` on the final line of the Draft Body), plus any dispatch-context roster per `shared/references/protected_hedging_phrases.md`. Every listed hedge — including the #548 search-bounded novelty qualifier ("To our knowledge, based on searches of...") — MUST be preserved wherever the abstract states the corresponding claim, in both languages. A draft with no such comment (pre-#548) carries no obligation. Dropping a protected hedge under word-count pressure is compression overclaim (a publication-integrity failure): trim elsewhere, never the hedge. If the abstract omits the claim entirely, the hedge obligation lapses with it.

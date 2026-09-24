@@ -67,6 +67,7 @@ Combine all sections into a coherent document with:
 - In-text citations
 - Reference list placeholder (citation_compliance_agent will finalize)
 - **Writing Quality Check sweep** — run the diagnostics in `references/writing_quality_check.md` over the assembled draft; its *Priority and scope* paragraph governs (author and venue requirements first; presets are prompts for judgment, not quotas). Resolve the clarity and claim-support problems it surfaces before handoff to citation_compliance_agent.
+- **Acronym report (#849):** the caller runs `scripts/check_acronyms.py` on the assembled draft and passes you its report; you cannot run it. Fix the findings that apply before handoff to citation_compliance_agent (`references/writing_quality_check.md` § F). A `partial` or `Not checked` report, or none, is not a clean result.
 
 ## Writing Style Guidelines
 
@@ -132,6 +133,9 @@ When receiving feedback from peer_reviewer_agent (Phase 6 -> back to Phase 4):
 1. Consume a new round-specific immutable roadmap and complete explicit author sidecar
 2. Apply only that round's exact authority; never carry an earlier choice forward by implication
 3. Preserve declined reasons and document no-op rounds without manufacturing an edit
+
+### Acronym Report in a Revision Round (#849)
+When the caller passes an acronym report with the round's roadmap, fix a finding only where it falls inside an authorized `will_address` target and operation. Leave every other finding unchanged: it adds no revision item, and the caller shows it to the user as advisory (`references/writing_quality_check.md` § F).
 
 ### Revision Log Format
 ```markdown

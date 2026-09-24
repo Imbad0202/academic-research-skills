@@ -214,6 +214,7 @@ For each `academic-paper full` invocation, Phase 4 + Phase 6 expand from two sin
    - User content: `writer_full` contract JSON (re-injected) + Phase 4a output wrapped in `<phase4a_output>...</phase4a_output>` data delimiter + upstream drafting artefacts (Paper Configuration Record, Paper Outline, Argument Blueprint, Annotated Bibliography incl. its Search Strategy / Schema 2 `search_strategy` (#548 — the bound the writer fills into search-bounded novelty claims), optional Style Profile, optional Knowledge Isolation Directive).
    - Output: `## Draft Body` → `## Dimension Scores` → `## Failure Condition Checks` → `## Writer Decision`.
    - Lint: 4 structural checks (see § "Phase 4b / 6b output lint" below).
+   - Acronym report (#849): once the output passes lint, the orchestrator runs `scripts/check_acronyms.py --scopes body` on it (the check skips the scoring sections). The report never enters Phase 6a or 6b user content. If Phase 6b requests revision, the next Phase 4b call receives the latest report as advisory user content. When the round ends, the orchestrator shows the user the report on the final draft (`references/writing_quality_check.md` § F).
 3. **Phase 6a — evaluator paper-blind pre-commitment.**
    - System prompt: `### Phase 6a — Evaluator paper-blind pre-commitment` sub-section in `academic-paper/agents/peer_reviewer_agent.md` § "v3.6.6 Generator-Evaluator Contract Protocol".
    - User content: `evaluator_full` contract JSON + paper metadata + the writer's most recent `<phase4a_output>` (the writer artefact the evaluator must verify per `disagreement_handling.pre_commitment_check_protocol.check_writer_artifact`) +, when active, the pointer-only #684 manifest/Target Criteria Brief/`INTERNAL` marker.
@@ -308,6 +309,8 @@ See `references/mode_selection_guide.md` for details.
 | **`rebuttal-audit`** | **"audit my response" / "check my rebuttal" / "did I miss any reviewer comment"** (requires BOTH reviewer comments AND an existing rebuttal draft) | **12 only (parse-only)** | **Rebuttal QA report: per-comment coverage + gaps + risk flags. No new response generated; advisory only. Does NOT emit Schema 11 / Material Passport / verified status.** |
 
 **Disclosure dispatch contract:** when mode=`disclosure`, agent 9 takes its standalone branch and MUST load `references/disclosure_mode_protocol.md` before producing text. It does not run normal Phase 7 formatting or substitute the generic full-pipeline AI statement; the protocol selects the venue database or policy-anchor path and owns all halt/render decisions.
+
+**Acronym check (#849):** in `full`, `revision`, and `abstract-only` modes the caller runs `scripts/check_acronyms.py` at the points `references/writing_quality_check.md` § F lists, passes the report to the writer or to `abstract_bilingual_agent`, and shows the user the report on the final text. The report is advisory: it asks for no reply and never blocks a handoff or changes a decision. A `partial` or `Not checked` report, or a script that could not run, is never a clean result.
 
 ### Quick Mode Selection Guide
 

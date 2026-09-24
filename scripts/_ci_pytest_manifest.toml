@@ -699,3 +699,7 @@ path = "scripts/test_output_language_pair.py"
 [[pytest]]
 id = "887-run-ledger"
 path = "scripts/test_run_ledger.py"
+
+[[pytest]]
+id = "849-acronym-check"
+path = "scripts/test_check_acronyms.py"

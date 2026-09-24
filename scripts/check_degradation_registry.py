@@ -91,6 +91,10 @@ _EXPECTED_MECHANISMS = frozenset({
     "write_scope_guard_no_timeout_binary",
     "write_scope_guard_subprocess_misbehaves",
     "write_scope_guard_payload_capacity_edge",
+    # #849: acronym check coverage (scripts/check_acronyms.py). Advisory;
+    # a degraded report is never a clean result and never blocks.
+    "acronym_check_not_checked",
+    "acronym_check_partial_coverage",
 })
 
 
