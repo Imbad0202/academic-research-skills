@@ -23,9 +23,9 @@ which this check cannot confirm as a definition, and one followed by its
 expansion in parentheses (``RCT (randomized controlled
 trial)``, ``RCT（隨機對照試驗）``), a definition form this check does not
 read. A parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, or
-``viz.``, or made only of acronyms, counting excluded ones, acronyms that a
-slash or a hyphen joins to each other or to a number, and joining words such
-as ``and`` or ``與`` (``(SEM, RCT)``, ``(SDs, RMSE)``, ``(PCA/ICA, NMF)``,
+``viz.``, or made only of acronyms, counting excluded ones, symbols, numbers,
+and joining words or marks (``(SEM, RCT)``, ``(SDs, RMSE)``, ``(R², AIC,
+BIC)``, ``(n = 120, RCT)``, ``(PCA/ICA, NMF)``,
 ``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``), is a
 use, and so are Chinese words after an acronym that open with ``見``,
 ``參見``, ``詳見``, ``參閱``, or ``例如`` (``RCT（見第二節）``).
@@ -228,6 +228,7 @@ _CJK_RUN = re.compile(r"[㐀-鿿]+$")
 _CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space inside Chinese text
 _LIST_JOINER = re.compile(r"[/／–-]|[與和及或]")  # "PCA/ICA", "COVID-19", "PCA與ICA"
 _LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus"}  # lowercase only: "OR" is an acronym
+_WORDLIKE = re.compile(r"[A-Za-z]{3,}|[㐀-鿿]")  # not a symbol or number ("R²", "df", "p", "3.2")
 _NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱", "例如")
 
@@ -289,14 +290,12 @@ def _acronym_shaped(word: str) -> bool:
 
 
 def _acronym_list(words: list[str]) -> bool:
-    """True when words hold only acronyms, excluded or not, which a slash or a
-    hyphen may join to each other or to a number (``PCA/ICA``, ``COVID-19``),
-    and joining words (``PCA and ICA``, ``PCA and/or ICA``, ``PCA與ICA``);
-    ``OR`` stays an acronym."""
+    """True when words hold only acronyms, excluded or not, symbols and numbers
+    (``R²``, ``p < .05``, ``n = 120``), and joining words or marks (``PCA and/or
+    ICA``, ``COVID-19``, ``PCA與ICA``); ``OR`` stays an acronym."""
     parts = [part for word in words for part in _LIST_JOINER.split(word)
              if part and part not in _LIST_WORDS]
-    return (any(_acronym_shaped(part) for part in parts)
-            and all(_acronym_shaped(part) or part.isdigit() for part in parts))
+    return all(_acronym_shaped(part) or not _WORDLIKE.search(part) for part in parts)
 
 
 def base_form(word: str) -> str | None:

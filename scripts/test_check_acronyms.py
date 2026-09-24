@@ -272,9 +272,17 @@ def test_mixed_constructs_never_crash_the_check() -> None:
         render(report, "zh-TW")
 
 
-@pytest.mark.parametrize("item", ["$R^2$", "`r2`", "<!-- fit -->"])
-def test_a_list_item_that_is_not_read_leaves_a_use(item: str) -> None:
+@pytest.mark.parametrize("item", ["$R^2$", "`r2`", "<!-- fit -->", "R²", "χ²", "p < .05", "n = 120",
+                                  "M = 3.2, SD = 1.1"])
+def test_symbols_numbers_and_unread_items_leave_a_use(item: str) -> None:
     assert findings(f"We compared fit statistics ({item}, AIC).\n") == [("body", 1, "undefined", "AIC")]
+
+
+def test_a_word_or_chinese_before_the_acronym_can_still_define_it() -> None:
+    assert findings("Doses were given (in vivo, IV) twice.\n") == []
+    assert findings("這是設計（試驗，RCT）。本研究使用 RCT。\n") == []
+    report = check("We compared fit statistics (adjusted R², AIC).\n")
+    assert rows(report) == [] and report["coverage_limits"][0]["acronym"] == "AIC"
 
 
 def test_acronyms_joined_by_a_slash_hyphen_or_word_form_a_list() -> None:
