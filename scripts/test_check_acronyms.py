@@ -97,8 +97,48 @@ def test_a_definition_across_a_line_break() -> None:
     assert findings("In a trial (randomized controlled trial,\nRCT) we saw the RCT end.\n") == []
 
 
-def test_a_parenthetical_at_the_start_of_a_line_is_not_a_definition() -> None:
+def test_a_parenthetical_at_the_start_of_a_paragraph_is_not_a_definition() -> None:
     assert findings("(RCT) was run.\n") == [("body", 1, "undefined", "RCT")]
+    assert findings("Trials vary.\n\n(RCT) was run.\n") == [("body", 3, "undefined", "RCT")]
+
+
+def test_soft_line_breaks_do_not_change_the_result() -> None:
+    assert findings("A randomized controlled trial\n(RCT) ran. The RCT ended.\n") == []
+    wrapped = check("The RCT\n(randomized controlled trial) ran.\n")
+    assert wrapped["coverage_limits"] == [{"scope": "body", "line": 1, "acronym": "RCT",
+                                           "reason": "unread_definition_form"}]
+
+
+def test_a_parenthetical_it_cannot_confirm_is_a_coverage_limit() -> None:
+    report = check("We compared several methods (RCT). The RCT ended.\n")
+    assert report["findings"] == []
+    assert report["status"] == "partial"
+    assert report["coverage_limits"] == [{"scope": "body", "line": 1, "acronym": "RCT",
+                                          "reason": "unconfirmed_definition"}]
+    assert "RCT (the initials before its parentheses do not spell it)" in render(report, "en")
+    assert "RCT（括號前各字的字首拼不出這個縮寫）" in render(report, "zh-TW")
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("Designs vary (e.g., RCT). The RCT ended.\n", [("body", 1, "undefined", "RCT")]),
+    ("Two designs (SEM, RCT) ran.\n", [("body", 1, "undefined", "RCT"),
+                                       ("body", 1, "undefined", "SEM")]),
+])
+def test_example_and_list_parentheticals_are_uses(text: str, expected: list[tuple]) -> None:
+    assert findings(text) == expected
+
+
+@pytest.mark.parametrize("text, expansion", [
+    ("The eGFR fell.\nWe measured the estimated glomerular filtration rate (eGFR).\n",
+     "estimated glomerular filtration rate"),
+    ("The DoE paid.\nThe Department of Education (DoE) funds it.\n", "Department of Education"),
+    ("The RCTs ended.\nRandomized controlled trials (RCTs; Smith, 2020) help.\n",
+     "Randomized controlled trials"),
+    ("The RCT ended.\nA *randomized controlled trial* (RCT) ran.\n", "randomized controlled trial"),
+])
+def test_the_expansion_is_the_shortest_run_that_spells_it(text: str, expansion: str) -> None:
+    [finding] = check(text)["findings"]
+    assert (finding["rule"], finding["expansion"]) == ("defined_after_use", expansion)
 
 
 # --- allowlist -------------------------------------------------------------
@@ -171,12 +211,18 @@ def test_whole_token_matching() -> None:
     ("display math", "$$\nRCT = 1\n$$\n"),
     ("url", "See https://example.org/RCT and [a link](https://example.org/LLM).\n"),
     ("year citation", "As reported (WHO, 2020), it held.\n"),
+    ("citation list", "As shown (see Smith et al., 2020, p. 4; WHO, 2019), it held.\n"),
+    ("pipe-less table", "Design | Arms\n--- | ---\nRCT | 2\nSEM | 1\n"),
+    ("multi-line note", "*Note.* RCT = randomized\ncontrolled trial; SEM = structural model.\n"),
+    ("multi-line caption", "Figure 1. The RCT flow,\nwith SEM paths.\n"),
     ("group author", "The World Health Organization [WHO] said so.\n"),
     ("author initials", "Smith JA, Jones BC (2019) agreed, as did Lee KM et al.\n"),
     ("statistical symbol", "The SD was 2.1 and the CI was narrow.\n"),
 ])
 def test_exclusions(label: str, text: str) -> None:
-    assert findings(text) == [], label
+    # A prose paragraph after the case keeps the body present (an all-excluded
+    # input is not_checked, tested below).
+    assert findings(text + "\nThe study ended.\n") == [], label
 
 
 @pytest.mark.parametrize("text, expected", [
@@ -184,7 +230,7 @@ def test_exclusions(label: str, text: str) -> None:
     ("An `RCT`` run.\n", [("body", 1, "undefined", "RCT")]),          # unequal runs open no span
     ("A ``RCT`x`` span.\n", []),                                       # a span may hold a backtick
 ])
-def test_code_spans_follow_commonmark(text: str, expected: list[tuple]) -> None:
+def test_code_spans_pair_equal_backtick_runs(text: str, expected: list[tuple]) -> None:
     assert findings(text) == expected
 
 
@@ -196,6 +242,14 @@ def test_a_fence_closes_only_on_a_matching_closer() -> None:
 
 def test_sentence_start_word_before_an_acronym_is_not_an_author() -> None:
     assert findings("The RCT, conducted in 2020, ended.\n") == [("body", 1, "undefined", "RCT")]
+    assert findings("Our RCT (2020) ended.\n") == [("body", 1, "undefined", "RCT")]
+    assert findings("Using LLM (2024) helped.\n") == [("body", 1, "undefined", "LLM")]
+    assert findings("As Smith JA (2019) and Lee KM et al. showed.\n") == []
+
+
+def test_a_parenthetical_with_a_year_is_not_always_a_citation() -> None:
+    assert findings("Uptake grew (the RCT ran from 2019 to 2020).\n") == [
+        ("body", 1, "undefined", "RCT")]
 
 
 def test_caption_word_at_sentence_start_is_still_prose() -> None:
@@ -213,6 +267,33 @@ def test_scope_runs_to_the_next_heading_at_its_level() -> None:
                             ("abstract_zh", 9, "undefined", "LLM")]
     assert report["scope_lines"] == {"body": [[12, 13]], "abstract_en": [[2, 2], [4, 6]],
                                      "abstract_zh": [[8, 10]]}
+
+
+def test_setext_headings_set_scopes() -> None:
+    text = ("Abstract\n========\n\nThe RCT worked.\n\n"
+            "Methods\n=======\n\nA randomized controlled trial (RCT) ran.\n\n---\n\n"
+            "- A list item\n---\n\nThe SEM fit.\n")
+    assert rows(check(text)) == [("body", 16, "undefined", "SEM"),
+                                 ("abstract_en", 4, "undefined", "RCT")]
+
+
+def test_a_nested_excluded_section_returns_to_its_parent_scope() -> None:
+    text = ("## Abstract\n\nThe RCT worked.\n\n### Keywords\n\nSEM, IRT\n\n"
+            "### Plain-language summary\n\nThe LLM helped.\n\n## Methods\n\nThe GLM fit.\n")
+    assert rows(check(text)) == [("body", 15, "undefined", "GLM"),
+                                 ("abstract_en", 3, "undefined", "RCT"),
+                                 ("abstract_en", 11, "undefined", "LLM")]
+
+
+def test_a_table_ends_at_a_blank_line() -> None:
+    assert findings("| a |\n|---|\n| RCT |\n\nThe LLM ran.\n") == [
+        ("body", 5, "undefined", "LLM")]
+
+
+def test_a_scope_is_present_only_with_prose() -> None:
+    report = check("\n## Abstract\n\nThe RCT worked.\n")
+    assert report["coverage"] == {"body": "not_in_input", "abstract_en": "checked",
+                                  "abstract_zh": "not_in_input"}
 
 
 def test_unread_abstract_section_makes_coverage_partial() -> None:
@@ -262,6 +343,9 @@ def test_clean_result_is_distinct_from_not_checked(tmp_path: Path) -> None:
         assert render(report, "zh-TW").splitlines()[1].startswith("未檢查：")
     missing = build_report(tmp_path / "absent.md", "body", [], None)
     assert missing["reason"] == "unreadable_input"
+    for i, empty in enumerate((b"", b"\n\n", b"## Methods\n", b"```\nRCT\n```\n")):
+        report = build_report(_write(tmp_path, f"empty{i}.md", empty), "body", [], None)
+        assert (report["status"], report["reason"]) == ("not_checked", "no_requested_scope_in_input")
 
 
 def test_cli_exit_codes_and_outputs(tmp_path: Path) -> None:
@@ -297,8 +381,8 @@ def test_full_fixture_matches_the_pinned_reports(tmp_path: Path) -> None:
     assert source.read_bytes() == before  # the checker never edits the manuscript
     assert report.pop("input") == str(source)
     assert report["input_sha256"] == hashlib.sha256(before).hexdigest()
-    expected = json.loads((FIXTURES / "expected.json").read_text(encoding="utf-8"))
-    assert report == expected
+    pinned = (FIXTURES / "expected.json").read_text(encoding="utf-8")
+    assert json.dumps(report, ensure_ascii=False, indent=2) + "\n" == pinned
     for lang in ("en", "zh-TW"):
         pinned = (FIXTURES / f"expected.{lang}.md").read_text(encoding="utf-8")
         assert render(report, lang) + "\n" == pinned

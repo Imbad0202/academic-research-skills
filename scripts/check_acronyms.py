@@ -10,13 +10,19 @@ Chinese abstract), and each scope defines its acronyms on its own:
                       definition;
   defined_again       a scope defines the same acronym more than once.
 
-A definition is a parenthetical whose last item is the acronym, placed right
-after text: ``randomized controlled trial (RCT)``, ``大型語言模型（LLM）``, or
-``隨機對照試驗（randomized controlled trial, RCT）``. An acronym followed by
-its expansion in parentheses (``RCT (randomized controlled trial)``, where
-the words' initials spell the acronym) is a definition form this check does
-not read: that acronym gets no finding in that scope and the report lists it
-as a coverage limit.
+A definition is a parenthetical whose last item is the acronym, placed after
+text in the same paragraph (a line break inside a paragraph reads as a space),
+when the words before it spell the acronym: ``randomized controlled trial
+(RCT)``, ``大型語言模型（LLM）``, or ``隨機對照試驗（randomized controlled
+trial, RCT）``. Chinese words spell any acronym; Latin words spell it when the
+first starts with the acronym's first letter and their initials contain its
+letters in order. The expansion is the shortest such run of words. Two kinds
+of acronym get no finding in their scope and are listed as coverage limits: one
+whose parenthetical the words do not spell (``several methods (RCT)``), which
+this check cannot confirm as a definition, and one followed by its expansion
+in parentheses (``RCT (randomized controlled trial)``), a definition form this
+check does not read. A parenthetical led by ``e.g.``, ``i.e.``, ``see``,
+``cf.``, or ``viz.``, or made only of acronyms (``(SEM, RCT)``), is a use.
 
 Candidates are 2-6 letters or digits with at least two capitals and no more
 lowercase than uppercase letters (``RCT``, ``eGFR``, ``qPCR``). Plural and
@@ -26,19 +32,23 @@ formulas, meaning tokens with a digit that read as element symbols and counts
 (``H2O``, ``CO2``, but not ``RCT2``); Roman numerals (``II``, ``XII``, but
 not ``IV``); and the statistical symbols ``SD``, ``SE``, and ``CI``.
 
-Not read, with line numbers kept: front matter, code fences and spans, HTML
-comments (including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math,
-URLs, headings, tables, image lines, figure and table captions, notes,
-keyword lines, the reference list, parenthetical citations with a year
-(``(WHO, 2020)``), APA group-author brackets (``World Health Organization
-[WHO]``), and author initials in citations (``Smith JA, Jones BC (2020)``).
+Not read, with line numbers kept: front matter, code fences, code spans (read
+within one line, pairing backtick runs of equal length), HTML comments
+(including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math, URLs, ATX
+and setext headings, tables (with or without outer pipes), image lines,
+caption, note, and keyword paragraphs, the reference list, author-year
+citations (``(WHO, 2020)``, ``(see Smith et al., 2020, p. 4; Lee, 2019)``,
+and the citations after the acronym in ``(RCTs; Smith, 2020)``), APA
+group-author brackets (``World Health Organization [WHO]``), and author
+initials in author lists (``Smith JA, Jones BC (2020)``).
 
 Scopes come from headings: ``Abstract`` or ``English Abstract`` starts the
 English abstract, ``摘要``, ``中文摘要`` or ``Chinese Abstract`` the Chinese
 one, and each runs to the next heading of the same or a higher level.
-Everything else is the body. An abstract in another language is a section
-this check does not read, listed as a coverage limit, and so is a requested
-scope the input does not contain.
+Everything else is the body. A scope is in the input only when it has a line
+of prose this check reads. An abstract in another language is a section this
+check does not read, listed as a coverage limit, and so is a requested scope
+the input does not contain.
 
 Usage:
     python3 scripts/check_acronyms.py --input FILE
@@ -98,8 +108,11 @@ _WORD = re.compile(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9]*(?![A-Za-z0-9])")
 _POSSESSIVE = re.compile(r"['’]s(?![A-Za-z0-9])")
 
 _HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*#*[ \t]*$")
+_SETEXT = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
+_BLOCK_START = re.compile(r"^ {0,3}(?:[-*+][ \t]|\d{1,9}[.)][ \t]|>)")
 _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _TABLE = re.compile(r"^\s*\|")
+_TABLE_DELIMITER = re.compile(r"^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 _IMAGE = re.compile(r"!\[")
 _EMPH = r"(?:\*{1,2}|_{1,2})?"
 _CAPTION = re.compile(rf"^\s*{_EMPH}(?:Figure|Fig\.?|Table|圖|表)\s*\d+[A-Za-z]?{_EMPH}(?:[.:：]|\s*$)")
@@ -111,17 +124,36 @@ _DISPLAY_MATH = re.compile(r"\$\$.*?\$\$", re.S)
 _INLINE_MATH = re.compile(r"\$(?=\S)[^$\n]+?(?<=\S)\$")
 _URL = re.compile(r"\((?:https?|ftp)://[^)\s]*\)|(?:https?|ftp)://\S+")
 _PAREN = re.compile(r"[(（]([^()（）]*)[)）]")
-_UNREAD = re.compile(r"(?:['’]s)?[ \t]?" + _PAREN.pattern)
+_ITEM_BREAK = re.compile(r"[,，;；、]")
+_UNREAD = re.compile(r"(?:['’]s)?[ \t]*(?:\n[ \t]*)?" + _PAREN.pattern)
 _TRAILING_PAREN = re.compile(rf"\s*{_PAREN.pattern}\s*$")
 _YEAR = r"(?:1[89]|20)\d{2}"
-_YEAR_CITATION = re.compile(rf"[(（](?=[^()（）]*\b{_YEAR}[a-z]?\b)[^()（）]*[)）]")
+_COMMA = r"[,，]"
+# An author-year citation: items of authors ending in a capitalized name, "et
+# al.", a bracketed group abbreviation, or CJK, then a year and an optional page.
+# "(Smith et al., 2020; Lee, 2019)" and "(WHO, 2020)" match; "(LLM in 2020)" does not.
+_CITE_ITEM = (rf"\s*(?:(?:see(?: also)?|e\.g\.|cf\.|i\.e\.)\s*{_COMMA}?\s*)?"
+              rf"[^;；()（）]*?(?:\[?[A-Z][\w'’.-]*\]?|al\.|[㐀-鿿]+)\s*{_COMMA}?\s*"
+              rf"(?:n\.d\.|{_YEAR}[a-z]?)(?:\s*{_COMMA}\s*{_YEAR}[a-z]?)*"
+              rf"(?:\s*{_COMMA}\s*(?:p|pp|para)\.\s*[\w–-]+)?\s*")
+_CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
+# The citations after an acronym in "(RCTs; Smith, 2020)".
+_TRAILING_CITATION = re.compile(rf"[;；]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*(?=[)）])")
 _GROUP_AUTHOR = re.compile(r"\[[A-Za-z][A-Za-z0-9]{1,5}s?\]")
-_INITIALS = re.compile(
-    rf"\b[A-Z][a-z]+ ([A-Z]{{1,3}})(?=\s*(?:,\s*[A-Z][a-z]+ [A-Z]{{1,3}}\b|et\s+al\b|\(?{_YEAR}\b))")
+# Author initials in an author list: "Smith JA, Jones BC (2019)", "Lee KM et al.".
+_AUTHOR = re.compile(r"([A-Z][a-z]+) ([A-Z]{1,3})\b")
+_AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:\s*,\s*{_AUTHOR.pattern})*"
+                          rf"(?=\s*(?:,\s*)?(?:et\s+al\b|\(?{_YEAR}\b))")
+# One "Word ABC (2020)" is prose, not an author, when the word opens a sentence.
+_SENTENCE_WORDS = frozenset({"A", "All", "An", "At", "Both", "By", "Each", "Every", "For",
+                             "From", "In", "Its", "No", "On", "One", "Our", "Some", "That",
+                             "The", "Their", "These", "This", "Those", "We", "With"})
 _LOOKBACK = 300  # characters of context read before a parenthetical
 _LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
-_CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、\n]")
+_PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
+_CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
 _CJK_RUN = re.compile(r"[㐀-鿿]+$")
+_NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
@@ -132,7 +164,9 @@ _EXCLUDED_SECTIONS = {
     "references", "reference list", "bibliography", "works cited", "literature cited",
     "參考文獻", "參考資料", "引用文獻", "keywords",
 }
-_STOP = {"of", "and", "the", "for", "in", "on", "to", "a", "an", "with", "by", "at", "or"}
+# Occurrence kinds that make an acronym a coverage limit in its scope.
+_LIMIT_REASONS = {"unread_definition": "unread_definition_form",
+                  "unconfirmed_definition": "unconfirmed_definition"}
 
 
 class NotChecked(Exception):
@@ -143,7 +177,7 @@ class NotChecked(Exception):
 class Occurrence:
     line: int
     acronym: str
-    kind: str  # "use", "definition", or "unread_definition"
+    kind: str  # "use", "definition", "unread_definition", or "unconfirmed_definition"
     expansion: str | None = None
 
 
@@ -174,8 +208,9 @@ def base_form(word: str) -> str | None:
 
 
 def _spells(acronym: str, words: str) -> bool:
-    """True when the acronym's letters appear, in order, as the words' initials."""
-    initials = [w[0].lower() for w in _LATIN_WORD.findall(words) if w.casefold() not in _STOP]
+    """True when the acronym's letters appear, in order, among the initials of
+    two or more words (``Department of Education`` spells ``DoE``)."""
+    initials = [w[0].lower() for w in _LATIN_WORD.findall(words)]
     letters = iter(initials)
     return len(initials) >= 2 and all(c in letters for c in acronym.lower() if c.isalpha())
 
@@ -199,6 +234,50 @@ def _blank_pattern(chars: list[str], pattern: re.Pattern[str], group: int = 0) -
         _blank(chars, match.start(group), match.end(group))
 
 
+def _blank_author_initials(chars: list[str]) -> None:
+    text = "".join(chars)
+    for match in _AUTHOR_LIST.finditer(text):
+        authors = list(_AUTHOR.finditer(match.group(0)))
+        if len(authors) == 1 and (authors[0].group(1) in _SENTENCE_WORDS
+                                  or len(authors[0].group(2)) > 2):
+            continue  # "The RCT (2020)" and "Using LLM (2024)" are prose
+        for author in authors:
+            _blank(chars, match.start() + author.start(2), match.start() + author.end(2))
+
+
+def _setext_headings(lines: list[str]) -> dict[int, tuple[int, str, int]]:
+    """Setext headings by first line: (level, title, underline line)."""
+    found: dict[int, tuple[int, str, int]] = {}
+    start: int | None = None
+    for j, line in enumerate(lines):
+        underline = _SETEXT.match(line)
+        if underline and start is not None:
+            title = " ".join(lines[k].strip() for k in range(start, j))
+            found[start] = (1 if underline.group(1)[0] == "=" else 2, title, j)
+            start = None
+        elif (not line.strip() or underline or _HEADING.match(line) or _BLOCK_START.match(line)
+              or "|" in line):
+            start = None
+        elif start is None:
+            start = j
+    return found
+
+
+def _table_rows(lines: list[str]) -> set[int]:
+    """GFM table rows, with or without a leading pipe: a header row, a delimiter
+    row, and the rows after it up to a blank line or a heading."""
+    rows: set[int] = set()
+    for j, line in enumerate(lines):
+        if j == 0 or "|" not in line or "|" not in lines[j - 1] or not _TABLE_DELIMITER.match(line):
+            continue
+        rows.update((j - 1, j))
+        k = j + 1
+        while k < len(lines) and lines[k].strip() and not _HEADING.match(lines[k]):
+            rows.add(k)
+            k += 1
+    return rows
+
+
 class Manuscript:
     """The masked text, the line of each offset, and the scope of each line."""
 
@@ -216,15 +295,18 @@ class Manuscript:
         self._assign_scopes(chars)
         for start, line in zip(self.starts, self.lines):
             chars[start:start + len(line)] = blank_code_spans("".join(chars[start:start + len(line)]))
-        for pattern, group in ((_DISPLAY_MATH, 0), (_INLINE_MATH, 0), (_URL, 0),
-                               (_INITIALS, 1), (_YEAR_CITATION, 0), (_GROUP_AUTHOR, 0)):
-            _blank_pattern(chars, pattern, group)
+        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _URL, _CITATION, _TRAILING_CITATION,
+                        _GROUP_AUTHOR):
+            _blank_pattern(chars, pattern)
+        _blank_author_initials(chars)
         self.masked = "".join(chars)
         if text.endswith("\n"):
             self.scope[-1] = None  # the empty string after the final newline is not a line
-        for number, scope in enumerate(self.scope, start=1):
+        self.present = {s: False for s in SCOPES}  # the scope has a line of prose
+        for number, (scope, line) in enumerate(zip(self.scope, self.masked.split("\n")), start=1):
             if scope is None:
                 continue
+            self.present[scope] = self.present[scope] or bool(line.strip())
             spans = self.ranges[scope]
             if spans and spans[-1][1] == number - 1:
                 spans[-1][1] = number
@@ -258,55 +340,74 @@ class Manuscript:
                 fence = None
 
     def _assign_scopes(self, chars: list[str]) -> None:
-        """Headings set scopes; excluded and unread sections are blanked."""
-        section: tuple[int, str | None] | None = None  # (level, scope or None when excluded)
-        for i, raw in enumerate(self.lines):
-            line = "".join(chars[self.starts[i]:self.starts[i] + len(raw)])
-            heading = _HEADING.match(line) if line.strip() else None
-            if heading:
-                level = len(heading.group(1))
-                name = _normalize_heading(heading.group(2) or "")
-                if section is not None and level <= section[0]:
-                    section = None
+        """Headings set scopes. Excluded and unread sections, tables, images, and
+        caption, note, and keyword paragraphs are blanked."""
+        lines = ["".join(chars[start:start + len(raw)]) for start, raw in zip(self.starts, self.lines)]
+        setext = _setext_headings(lines)
+        tables = _table_rows(lines)
+        sections: list[tuple[int, str | None]] = []  # open sections: (level, scope or None)
+        in_aside = False  # inside a caption, note, or keyword paragraph
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            atx = _HEADING.match(line) if line.strip() else None
+            if atx or i in setext:
+                level, title, last = ((len(atx.group(1)), atx.group(2) or "", i) if atx
+                                      else setext[i])
+                while sections and sections[-1][0] >= level:
+                    sections.pop()
+                name = _normalize_heading(title)
                 if name in _EN_ABSTRACT:
-                    section = (level, "abstract_en")
+                    sections.append((level, "abstract_en"))
                 elif name in _ZH_ABSTRACT:
-                    section = (level, "abstract_zh")
+                    sections.append((level, "abstract_zh"))
                 elif name in _OTHER_ABSTRACT or re.fullmatch(r"\w+ abstract", name):
-                    section = (level, None)
-                    self.unread_sections.append({"line": i + 1, "heading": (heading.group(2) or "").strip()})
+                    sections.append((level, None))
+                    self.unread_sections.append({"line": i + 1, "heading": title.strip()})
                 elif name in _EXCLUDED_SECTIONS:
-                    section = (level, None)
-                self.scope[i] = None
-                self._blank_line(chars, i)
+                    sections.append((level, None))
+                for j in range(i, last + 1):
+                    self.scope[j] = None
+                    self._blank_line(chars, j)
+                in_aside = False
+                i = last + 1
                 continue
-            self.scope[i] = "body" if section is None else section[1]
-            if (self.scope[i] is None or _TABLE.match(line) or _IMAGE.search(line)
-                    or _CAPTION.match(line) or _NOTE.match(line) or _KEYWORDS.match(line)):
+            self.scope[i] = sections[-1][1] if sections else "body"
+            if not line.strip():
+                in_aside = False
+            elif _CAPTION.match(line) or _NOTE.match(line) or _KEYWORDS.match(line):
+                in_aside = True
+            if (self.scope[i] is None or in_aside or i in tables or _TABLE.match(line)
+                    or _IMAGE.search(line)):
                 self._blank_line(chars, i)
+            i += 1
 
     def line_of(self, offset: int) -> int:
         return bisect.bisect_right(self.starts, offset)
 
 
+def _paragraph_before(text: str, start: int) -> str:
+    """The text before `start` in its paragraph, soft line breaks read as spaces."""
+    window = text[max(0, start - _LOOKBACK):start]
+    return " ".join(_PARAGRAPH_BREAK.split(window)[-1].split())
+
+
 def _expansion(before: str, acronym: str) -> str | None:
-    """The words a definition follows, in its clause: the CJK run, or as many
-    Latin words as the acronym has capitals (stop words not counted)."""
-    head = _CLAUSE_BREAK.split(before)[-1].rstrip()
+    """The words a definition spells out: the CJK run just before it, or the
+    shortest run of Latin words ending its clause that starts with the acronym's
+    first letter and spells it. None when neither is there."""
+    head = _CLAUSE_BREAK.split(before)[-1].strip().rstrip("*_\"'”’")
     cjk = _CJK_RUN.search(head)
     if cjk:
         return cjk.group(0)[-20:]
     if not re.search(r"[A-Za-z]$", head):
-        return head or None
-    picked: list[str] = []
-    wanted = sum(c.isupper() for c in acronym)
-    for word in reversed(_LATIN_WORD.findall(head)):
-        picked.append(word)
-        if word.casefold() not in _STOP:
-            wanted -= 1
-            if not wanted:
-                break
-    return " ".join(reversed(picked))
+        return None
+    words = _LATIN_WORD.findall(head)
+    for start in range(len(words) - 1, -1, -1):
+        run = " ".join(words[start:])
+        if run[0].lower() == acronym[0].lower() and _spells(acronym, run):
+            return run
+    return None
 
 
 def find_occurrences(doc: Manuscript) -> list[Occurrence]:
@@ -314,16 +415,26 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
     defined: dict[int, Occurrence] = {}
     for paren in _PAREN.finditer(text):
         content = paren.group(1)
-        items = [item.strip() for item in re.split(r"[,，;；、]", content)]
+        items = [item.strip() for item in _ITEM_BREAK.split(content)]
         last = items[-1]
         bare = _POSSESSIVE.sub("", last)
         acronym = base_form(bare) if _WORD.fullmatch(bare) else None
-        before = text[max(0, paren.start() - _LOOKBACK):paren.start()].rstrip(" \t")
-        if acronym is None or not before or before[-1] in "\n([（":
+        before = _paragraph_before(text, paren.start())
+        if acronym is None or not before or before[-1] in "([（":
             continue
-        expansion = " ".join(items[:-1]) or None if len(items) > 1 else _expansion(before, acronym)
+        if len(items) > 1:
+            expansion = " ".join(items[:-1]).strip()
+            if (expansion.split(" ")[0].casefold() in _NOT_EXPANSION
+                    or all(base_form(w) for w in expansion.split())):
+                continue  # "(e.g., RCT)" and "(SEM, RCT)" are uses
+            if not (_CJK_RUN.search(expansion) or _spells(acronym, expansion)):
+                expansion = ""
+        else:
+            expansion = _expansion(before, acronym) or ""
         offset = paren.start(1) + content.rfind(last)
-        defined[offset] = Occurrence(doc.line_of(offset), acronym, "definition", expansion)
+        defined[offset] = (Occurrence(doc.line_of(offset), acronym, "definition", expansion)
+                           if expansion else
+                           Occurrence(doc.line_of(offset), acronym, "unconfirmed_definition"))
     occurrences: list[Occurrence] = []
     for word in _WORD.finditer(text):
         acronym = base_form(word.group(0))
@@ -354,10 +465,10 @@ def check(text: str, scopes: tuple[str, ...] = SCOPES,
             if acronym in allow:
                 continue
             count = len(found)
-            unread = [o for o in found if o.kind == "unread_definition"]
-            if unread:
-                limits.append({"scope": scope, "line": unread[0].line, "acronym": acronym,
-                               "reason": "unread_definition_form"})
+            limited = [o for o in found if o.kind in _LIMIT_REASONS]
+            if limited:
+                limits.append({"scope": scope, "line": limited[0].line, "acronym": acronym,
+                               "reason": _LIMIT_REASONS[limited[0].kind]})
                 continue
             definitions = [o for o in found if o.kind == "definition"]
             if not definitions:
@@ -373,7 +484,7 @@ def check(text: str, scopes: tuple[str, ...] = SCOPES,
     findings.sort(key=lambda f: (order[f["scope"]], f["line"], RULES.index(f["rule"]), f["acronym"]))
     limits.sort(key=lambda f: (order[f["scope"]], f["line"], f["acronym"]))
     coverage = {scope: ("not_requested" if scope not in scopes
-                        else "checked" if doc.ranges[scope] else "not_in_input")
+                        else "checked" if doc.present[scope] else "not_in_input")
                 for scope in SCOPES}
     if not any(state == "checked" for state in coverage.values()):
         raise NotChecked("no_requested_scope_in_input")
@@ -404,7 +515,9 @@ _TEXT = {
         "states": {"checked": "complete", "partial": "partial"},
         "absent": "Not in this input: {scopes}.",
         "limits": "Not checked:",
-        "limit": "- {scope}, line {line}: {acronym} (a definition form this check does not read)",
+        "limit": "- {scope}, line {line}: {acronym} ({why})",
+        "limit_reasons": {"unread_definition_form": "a definition form this check does not read",
+                          "unconfirmed_definition": "the initials before its parentheses do not spell it"},
         "section": "- Line {line}: section \"{heading}\" (not a scope this check reads)",
         "none": "No findings.",
         "header": "| Scope | Line | Rule | Acronym | Uses |",
@@ -429,7 +542,9 @@ _TEXT = {
         "states": {"checked": "完整", "partial": "部分"},
         "absent": "此檔沒有：{scopes}。",
         "limits": "未檢查：",
-        "limit": "- {scope}第 {line} 行：{acronym}（這個檢查讀不到的定義寫法）",
+        "limit": "- {scope}第 {line} 行：{acronym}（{why}）",
+        "limit_reasons": {"unread_definition_form": "這個檢查讀不到的定義寫法",
+                          "unconfirmed_definition": "括號前各字的字首拼不出這個縮寫"},
         "section": "- 第 {line} 行：「{heading}」段落（不是這個檢查會讀的範圍）",
         "none": "沒有發現問題。",
         "header": "| 範圍 | 行 | 問題 | 縮寫 | 次數 |",
@@ -466,7 +581,8 @@ def render(report: dict[str, Any], lang: str) -> str:
     if report["coverage_limits"] or report["unread_sections"]:
         lines.append(text["limits"])
         lines += [text["limit"].format(scope=text["scope_cells"][item["scope"]], line=item["line"],
-                                       acronym=item["acronym"])
+                                       acronym=item["acronym"],
+                                       why=text["limit_reasons"][item["reason"]])
                   for item in report["coverage_limits"]]
         lines += [text["section"].format(line=item["line"], heading=item["heading"])
                   for item in report["unread_sections"]]

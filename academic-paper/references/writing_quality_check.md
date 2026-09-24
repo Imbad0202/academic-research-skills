@@ -170,7 +170,7 @@ The caller, meaning the session that dispatches the writing agents, runs the scr
 
 For example: `python3 scripts/check_acronyms.py --input phase4_composition/draft.md --scopes body --lang en`.
 
-- Pass a report to an agent only when it has findings. The agent fixes them with targeted edits (in a revision round, patch operations), not a new full draft; `draft_writer_agent.md` and `abstract_bilingual_agent.md` say which findings each may fix.
+- Pass a report to an agent only when it has findings. In `full` mode the writer fixes them in its next Phase 4b draft, and in a revision round with patch operations; otherwise the agent makes targeted edits to the file the check read, not a new full draft. `draft_writer_agent.md` and `abstract_bilingual_agent.md` say which findings each may fix.
 - Run the check again only after an agent has edited the prose (in a revision round, on the applied draft), and show the user the last report.
 - An integrity-correction round makes no acronym fix.
 
