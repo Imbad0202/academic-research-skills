@@ -34,7 +34,7 @@ Add `--no-publish` to keep the HTML report local. Headline number is Δ
 | 07-neg-landlord-letter-zh | no | non-academic letter | regex + llm + Skill not called |
 
 `skill-fired` (`tool_used: Skill`) on 01–05 is display-only under ablation and
-never moves Δ.
+never moves Δ. So is `no-committee-branch` on 03 (`arm: with-only`, #854).
 
 ## Routing retest (2026-09-21, #854)
 
@@ -52,6 +52,30 @@ not rule out the intermittent failure or close #854. Earlier intermediate
 candidates included timeouts and are not counted as completed passing runs
 here. No committee guard or agent definition changed.
 
+## Committee-branch guard (2026-09-24, #854)
+
+Both committee guards (`academic-paper/SKILL.md` and `revision_coach_agent.md`)
+now say that journal or conference reviewers, editors, area chairs, and program
+committees are peer review, not a committee for the #668 variant, and the mode
+table gives the variant its own row. Case 03 gained `no-committee-branch`, a
+with-only regex that fails when the final answer has the committee bundle's
+shape: a concern-tracker or preserved-source heading, or the bundle's file
+names. Checked against the stored 2026-09-12 results, it flags the run that
+announced the branch and one more run that produced the same three-part shape
+(preserved source, concern tracker, response skeleton) without naming the
+branch, and none of the other nine runs, the without-plugin arms included.
+
+Retest with Claude Code 2.1.281, `--ablation none --model claude-opus-5-5
+--judge-model sonnet --runs 7 --case '03-*' --no-publish`, from outside the
+plugin checkout: with the guard, **0 of 7** runs took the branch; on unchanged
+`main` with only the new grader added, also **0 of 7** (5 of those 7 read
+`revision_coach_agent.md`). The misroute was seen on `claude-opus-5`, and
+Opus 5.5 did not reproduce it without the guard, so this retest shows no
+effect of the guard; the guard is prompt-level and its effect is unmeasured.
+None of the fourteen runs built the Revision Roadmap or the response skeleton;
+each answered the push-back question directly. Cost: US$2.46 with the guard,
+US$2.70 on `main`.
+
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 
 | Channel | Ceiling | Observed max |
@@ -66,10 +90,11 @@ here. No committee guard or agent definition changed.
 - **03 fires since #851.** Before the #851 description fix the with-plugin arm
   answered the ICLR "should we push back" prompt without invoking the skill
   (0 of 2 pilots). After the fix: 7 of 7 verification runs invoked it. One of
-  those seven misrouted ICLR peer reviews into the #668 committee-correspondence
-  branch (the skill forbids inferring committee authority); the other six
-  reasoned explicitly that anonymous conference referees are peer review.
-  Tracked separately from #851.
+  those seven said it was applying the #668 committee-correspondence branch to
+  the ICLR peer reviews (the skill forbids inferring committee authority), and a
+  second produced that branch's shape without naming it; four said the
+  reviewers are peer review and one did not say. Tracked as #854 (see
+  Committee-branch guard above).
 - **Judge style matters.** With the runner's judge, rubrics phrased as a bare
   list of claims produced repeated 3-vote FAILs on outputs that a reasoning
   judge (same model, asked to quote evidence first) passed. Every llm rubric in
