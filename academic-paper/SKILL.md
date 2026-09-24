@@ -352,8 +352,10 @@ Not sure? Start with `plan` — it will guide you step by step. `disclosure` is 
 **Committee-correspondence routing:** use the `revision-coach` variant only when the
 user explicitly identifies a real committee/institutional review office. Load
 `references/committee_correspondence_protocol.md`; do not infer official authority
-from tone. The separate artifact is a source-accounted drafting aid and never enters
-peer-review Schema 11.
+from tone. Journal or conference reviewers, editors, area chairs, and program
+committees are peer review, not a committee for this variant, even when the user
+names the venue or the venue calls the role a committee (#854). The separate
+artifact is a source-accounted drafting aid and never enters peer-review Schema 11.
 
 ### Mode Selection Logic
 
