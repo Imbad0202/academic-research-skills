@@ -58,23 +58,24 @@ The counts and costs in this section are maintainer-reported: they come from
 local runs whose outputs are not committed (`plugin-evals/results/` is ignored
 by git).
 
-Case 03 gained `no-committee-branch` with the #854 guard (see `CHANGELOG.md`):
-a with-only regex that fails when the answer emits a line of the committee
+Case 03 gained `no-committee-branch` with the #854 guard (see `CHANGELOG.md`): a
+with-only regex that fails when the answer emits a line of the committee
 variant's output, that is, a concern-tracker or preserved-source heading or bold
 label, a concern-ID heading or comment, the status line, or the blockquoted
-human-subjects footer that `committee_correspondence_protocol.md` requires, or a
-path into the committee bundle's directory. A heading or bold-label line with
-"no", "not", "none", "without", or "n/a" in it does not count, and an answer that
-declines the variant in prose passes even when it names the variant's parts.
+human-subjects footer that `committee_correspondence_protocol.md` requires. A
+heading or bold-label line with "no", "not", "none", "without", or "n/a" in it
+does not count, and an answer that declines the variant in prose passes even
+when it names the variant's parts.
 `scripts/test_check_committee_correspondence.py` runs examples of both through a
 JavaScript `RegExp` with the grader's flags, because the eval runner is a
 JavaScript program. Against the maintainer's 2026-09-12 results it flags the two
 runs named under Known caveats and none of the other nine, the without-plugin
 arms included. Neither flagged run used the protocol's required strings; the
-heading pattern caught both. The grader misses a run that only announces the
-branch without building its output. It would flag a peer-review answer that
-titles a section "concern tracker" with no negating word, and a refusal that
-quotes one of those lines on a line of its own.
+heading pattern caught both. The grader reads only the answer text, so it misses
+a run that only announces the branch, or only writes the bundle's files, without
+printing their lines. It would flag a peer-review answer that titles a section
+"concern tracker" with no negating word, and a refusal that quotes one of those
+lines on a line of its own.
 
 Retest with Claude Code 2.1.281, `--ablation none --model claude-opus-5-5
 --judge-model sonnet --runs 7 --case '03-*' --no-publish`, from outside the

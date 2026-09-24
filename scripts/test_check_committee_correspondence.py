@@ -117,7 +117,6 @@ _GRADER_FLAGS = [
     "### Concern CC-001",
     "> **Human-subjects boundary:** This output does not authorize recruitment.",
     "**Status:** drafting aid — no concern is asserted resolved.",
-    "Saved to committee_correspondence/0123456789ab/concern_tracker.json",
     "Introduction\r## Concern tracker",
 ]
 _GRADER_PASSES = [
@@ -129,6 +128,7 @@ _GRADER_PASSES = [
     "I will not add concern:CC-001 markers or ### Concern CC-001 headings.",
     'There is no "Status: drafting aid — no concern is asserted resolved" line here.',
     "I did not create concern_tracker.json or source_letter.txt.",
+    "So I will not create `committee_correspondence/0123456789ab/concern_tracker.json`.",
     "## Revision Roadmap",
 ]
 
