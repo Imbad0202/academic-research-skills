@@ -47,22 +47,22 @@ https://example.org``), ATX and setext headings, tables (with or without outer
 pipes, up to a blank line, heading, list item, blockquote, or thematic break),
 image lines, caption, note, and keyword paragraphs (from a line that starts a
 paragraph or follows an image and opens with a label such as ``Figure 2.``,
-``Table S1.``, ``圖 2-1：``, ``表一：``, ``Note.``, or ``Keywords:``, up to a
-blank line; ``Figure 1.2 shows`` opens no label), the reference list,
-author-year citations whose author part is a run of names, whose dates are
-years, year pairs or ranges, ``n.d.``, or ``in press`` (``2020a``,
-``1900/1953``, ``n.d.-a``), and whose locator, if any, is a page, paragraph,
-chapter, or section (``(WHO, 2020)``, ``(see Smith et al., 2020, pp. 4, 6;
-Lee, 2019)``, and the citations after the acronym in ``(RCTs; Smith, 2020)``),
-a bracketed abbreviation right after a capitalized word, as in an APA group
-author (``World Health Organization [WHO]``), but not a link
-(``[RCT](#design)``, or ``[RCT]`` when a link reference definition names it),
-and author initials in author lists, whose names are joined by commas,
-``and``, or ``&`` (``Smith JA, García BC, McDonald EF, and van der Berg GH
-(2020)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
-(2020)``, is read as one. In definitions, citations, group-author brackets,
-and author lists, a line break inside a paragraph reads as a space, and a line
-break or space between two Chinese characters is ignored.
+``Table S1.``, ``TABLE III``, ``圖 2-1：``, ``表一：``, ``Note.``, or
+``Keywords:``, up to a blank line; ``Figure 1.2 shows`` opens no label), the
+reference list, author-year citations whose author part is a run of names,
+whose dates are years from 1800 to 2099, year pairs or ranges, ``n.d.``, or
+``in press`` (``2020a``, ``1900/1953``, ``n.d.-a``), and whose locator, if
+any, is a page, paragraph, chapter, or section (``(WHO, 2020)``, ``(see Smith
+et al., 2020, pp. 4, 6; Lee, 2019)``, and the citations after the acronym in
+``(RCTs; Smith, 2020)``), a bracketed abbreviation right after a capitalized
+word, as in an APA group author (``World Health Organization [WHO]``), but not
+a link (``[RCT](#design)``, or ``[RCT]`` when a link reference definition
+names it), and author initials in author lists, whose names are joined by
+commas, ``and``, or ``&`` (``Smith JA, García BC, McDonald EF, and van der
+Berg GH (2020)``); prose shaped like such a list, as in ``Delphi RCT and
+Bayesian SEM (2020)``, is read as one. In definitions, citations, group-author
+brackets, and author lists, a line break inside a paragraph reads as a space,
+and a line break or space between two Chinese characters is ignored.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
@@ -147,8 +147,11 @@ _EMPH = r"(?:\*{1,2}|_{1,2})?"
 _NAME_LETTERS = [chr(c) for block in (range(0x530), range(0x1E00, 0x2000)) for c in block]
 _UPPER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.isupper())
 _LOWER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.islower())
-_CAPTION = re.compile(rf"^\s*{_EMPH}(?:(?:Figure|Fig\.?|Table|圖|表)\s*(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*"
-                      rf"[A-Za-z]?|[圖表]\s*[一二三四五六七八九十百零〇]+)"
+# A caption label's number: Arabic, with a letter prefix, dots, or hyphens ("S1",
+# "A.1", "2-1"), a Roman numeral ("III"), or one capital letter ("B").
+_CAPTION_ID = r"(?:(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*[A-Za-z]?|[IVXLC]+|[A-Z])"
+_CAPTION = re.compile(rf"^\s*{_EMPH}(?:(?i:Figure|Fig\.?|Table)\s*{_CAPTION_ID}"
+                      rf"|[圖表]\s*(?:{_CAPTION_ID}|[一二三四五六七八九十百零〇]+))"
                       rf"{_EMPH}(?:[.:：](?!\d)|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
@@ -163,7 +166,7 @@ _PAREN = re.compile(r"[(（]([^()（）]*)[)）]")
 _ITEM_BREAK = re.compile(r"[,，;；、]")
 _UNREAD = re.compile(r"(?:['’]s)?[ \t]*(?:\n[ \t]*)?" + _PAREN.pattern)
 _TRAILING_PAREN = re.compile(rf"\s*{_PAREN.pattern}\s*$")
-_YEAR = r"(?:1[89]|20)\d{2}"
+_YEAR = r"(?:1[89]|20)\d{2}"  # 1800 to 2099, for citations and author lists alike
 _COMMA = r"[,，]"
 _SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank line
 # An author-year citation: items whose author part is a run of names (capitalized

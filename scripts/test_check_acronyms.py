@@ -283,6 +283,9 @@ def test_whole_token_matching() -> None:
     ("dotted caption", "Figure 1.2. The RCT flow\n"),
     ("chapter-numbered captions", "Figure 2-1. The RCT flow\n\n圖 3-2：SEM 路徑\n"),
     ("chinese-numeral caption", "表一：RCT 分組\n"),
+    ("roman-numbered and all-caps captions",
+     "Table III. The RCT arms\n\nTABLE IV\nSEM fit indices\n\nFIG. 2. The GLM flow\n"),
+    ("letter-numbered caption", "Figure B. The RCT flow\n"),
     ("undated citations", "Earlier work (WHO, n.d.-a, n.d.-b; NIH, n.d.) supported this.\n"),
     ("in-press, reprint, and range citations",
      "As argued (WHO, in press-a; APA, 1900/1953; NIH, 1959–1963), it held.\n"),
@@ -336,6 +339,8 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     for label in ("圖一：", "圖 2-1："):
         text = f"{label}隨機對照試驗（RCT）流程。\n\n本研究使用 RCT。\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
+    text = "Table III. Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
+    assert findings(text) == [("body", 3, "undefined", "RCT")]
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
     assert findings("Intro.\n\n***\nFigure 2. The RCT flow\n\nBody text.\n") == []
     text = "See [RCT].\nA randomized controlled trial (RCT) ran.\n***\n[RCT]: https://example.org\n"
@@ -366,6 +371,12 @@ def test_prose_shaped_like_an_author_list_is_read_as_one() -> None:
     assert findings("Delphi RCT and Bayesian SEM (2020) were compared.\n") == []
 
 
+def test_years_before_1800_are_not_citation_years() -> None:
+    # A disclosed limit: citations and author lists read years from 1800 to 2099.
+    assert findings("As reported (WHO, 1799), it held.\n") == [("body", 1, "undefined", "WHO")]
+    assert findings("As reported (WHO, 1800), it held.\n") == []
+
+
 def test_a_parenthetical_with_a_year_is_not_always_a_citation() -> None:
     assert findings("Uptake grew (the RCT ran from 2019 to 2020).\n") == [
         ("body", 1, "undefined", "RCT")]
@@ -394,7 +405,7 @@ def test_a_link_reference_definition_starts_a_paragraph() -> None:
 
 def test_caption_word_at_sentence_start_is_still_prose() -> None:
     for text in ("Table 2 shows the RCT arm.\n", "Figure 2-1 shows the RCT arm.\n",
-                 "表一所示的 RCT 分組。\n"):
+                 "Table III shows the RCT arm.\n", "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
 
