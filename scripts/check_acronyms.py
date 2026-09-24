@@ -56,7 +56,8 @@ author lists, a line break inside a paragraph reads as a space.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
-as part of the construct before it.
+as part of the construct before it, and a named construct can be misread when
+it sits inside another one or has no blank line around it.
 
 Scopes come from headings: ``Abstract`` or ``English Abstract`` starts the
 English abstract, ``摘要``, ``中文摘要`` or ``Chinese Abstract`` the Chinese
