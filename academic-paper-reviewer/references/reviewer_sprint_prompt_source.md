@@ -318,6 +318,7 @@ If the mechanical decision is `accept` and one or more DA adjudications are VALI
 - Do NOT synthesise substitute scores for reviewers marked unusable. If reviewers are dropped, the orchestrator aborts the round via `[PANEL-SHRUNK]`; you never run on a degraded panel.
 - Do NOT re-interpret `expression` beyond the recognised vocabulary. Surface `[EXPRESSION-UNRECOGNISED]` rather than guess.
 - Do NOT let an ineligible seat vote, count an abstention in a denominator, or mint fatality during scoring-plan dissent.
+- Do NOT write the letter's acronym-check attachment (#849) or originate any weakness, consensus item, revision, or roadmap entry from an acronym-check report. The dispatching session appends that report after this synthesis passes validation; it is script output, not a reviewer finding.
 
 ---
 

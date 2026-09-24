@@ -117,7 +117,7 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # confidence-as-uncertainty-only boundary in the DA Phase 2 fragment. This is
 # the second v3.17-style content lock; exact canonical→mirror equality is the
 # first.
-CANONICAL_CONTENT_SHA256 = "231ba4bebb7fb031dc59b82bebd025d577a292258fbc5f570c2624746779e608"
+CANONICAL_CONTENT_SHA256 = "31a695caf03334175194312b5ca3478590b2c7be6a80bf145f5f6df8f2475a6c"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:

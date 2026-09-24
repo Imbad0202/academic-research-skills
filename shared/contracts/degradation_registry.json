@@ -433,7 +433,7 @@
       "failure_class": "The acronym check cannot read its input (not a Markdown or plain-text file, not UTF-8 text, an unknown scope name, an unreadable allowlist file, or no requested scope with a line of prose in the input, as in an empty file), or the script cannot run at all (for example, no Python interpreter)",
       "degraded_state": "not_checked: the script exits 2 and its report states the reason; no finding is emitted. When the script cannot run, the caller reports that the acronym check did not run",
       "diagnostic_marker": "JSON status not_checked with a closed reason code; Markdown report line 'Not checked: <reason>.' ('未檢查：<原因>。' in zh-TW)",
-      "downstream_consumer": "The caller that runs scripts/check_acronyms.py, the writer or abstract_bilingual_agent that receives the report, and the user, who is shown it",
+      "downstream_consumer": "The caller that runs scripts/check_acronyms.py, the writer or abstract_bilingual_agent that receives the report, the Editorial Decision Letter that carries it as an advisory attachment after a review, and the user, who is shown it",
       "terminal_policy_effect": "none: the acronym check is advisory; findings and degraded states never block a handoff, change a decision, or stop a run",
       "authority": [
         {
@@ -455,7 +455,7 @@
       "failure_class": "The acronym check reads the input only in part: an acronym uses a definition form the check does not read, or a parenthetical the check cannot confirm as its definition; an abstract is in a language the check does not read; or a requested scope is not in the input",
       "degraded_state": "partial: the script exits 0, its coverage line says partial, and the report lists each unread part; an acronym with an unread or unconfirmed definition gets no finding in that scope",
       "diagnostic_marker": "JSON status partial, with coverage marking a requested scope not_in_input, or a non-empty coverage_limits or unread_sections; Markdown report coverage line ending '(partial)', a 'Not checked:' line listing coverage_limits and unread_sections when either is non-empty, and a 'Not in this input:' line when a requested scope is absent ('（部分）', '未檢查：', and '此檔沒有：' in zh-TW)",
-      "downstream_consumer": "The caller that runs scripts/check_acronyms.py, the writer or abstract_bilingual_agent that receives the report, and the user, who is shown it",
+      "downstream_consumer": "The caller that runs scripts/check_acronyms.py, the writer or abstract_bilingual_agent that receives the report, the Editorial Decision Letter that carries it as an advisory attachment after a review, and the user, who is shown it",
       "terminal_policy_effect": "none: the acronym check is advisory; a partial report is not a clean result and blocks nothing",
       "authority": [
         {

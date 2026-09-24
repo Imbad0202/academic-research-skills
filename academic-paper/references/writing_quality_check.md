@@ -167,6 +167,7 @@ The caller, meaning the session that dispatches the writing agents, runs the scr
 | Any other drafting call (`draft_writer_agent` Step 3) | `phase4_*/draft.md` | `body` | the writer, in a fix call |
 | Abstracts written (Phase 5b, or `abstract-only` mode) | `phase5_*/abstract.md` | the abstract scopes the run produced | `abstract_bilingual_agent`, in a fix call |
 | Revision round (`revision` mode) | the anchored draft, after `anchorize` | all (the default) | the round's writer call, with the roadmap |
+| Review decision (`academic-paper-reviewer`), after the synthesis passes `scripts/check_panel_synthesis.py` | the reviewed manuscript file | all (the default) | the Editorial Decision Letter, as its last section; never a reviewer seat or the synthesizer |
 
 For example: `python3 scripts/check_acronyms.py --input phase4_composition/draft.md --scopes body --lang en`.
 
