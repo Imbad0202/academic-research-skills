@@ -22,14 +22,20 @@ one whose parenthetical the words do not spell (``several methods (RCT)``),
 which this check cannot confirm as a definition, and one followed by its
 expansion in parentheses (``RCT (randomized controlled
 trial)``, ``RCT（隨機對照試驗）``), a definition form this check does not
-read. A parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, ``viz.``,
-``for example``, ``such as``, ``including``, ``namely``, ``that is``,
-``例如``, or ``包括``, or made only of acronyms, counting excluded ones,
-symbols, numbers, and joining words or marks (``(SEM, RCT)``, ``(SDs, RMSE)``,
-``(R², AIC, BIC)``, ``(n = 120, RCT)``, ``(PCA/ICA, NMF)``,
-``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``), is a
-use, and so are Chinese words after an acronym that open with ``見``,
-``參見``, ``詳見``, ``參閱``, or ``例如`` (``RCT（見第二節）``).
+read. A parenthetical is a use, not a definition, when it opens with
+``e.g.``, ``see``, ``cf.``, ``for example``, ``for instance``, ``such as``,
+``including``, ``例如``, ``比如``, ``諸如``, or ``包括``, before or after the
+acronym (``(e.g., RCT)``, ``RCT (including recruitment)``), or when it is made
+only of acronyms, counting excluded ones, symbols, numbers, and joining words
+or marks (``(SEM, RCT)``, ``(SDs, RMSE)``, ``(R², AIC, BIC)``, ``(n = 120,
+RCT)``, ``(PCA/ICA, NMF)``, ``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``,
+``（PCA與ICA，NMF）``). So are Chinese words after an acronym that open with
+``見``, ``參見``, ``詳見``, or ``參閱`` (``RCT（見第二節）``). A parenthetical
+that opens with ``i.e.``, ``viz.``, ``namely``, ``that is``, ``即``, ``亦即``,
+or ``也就是`` is read without those words (``structural equation modeling
+(i.e., SEM)`` and ``結構方程模型（即 SEM）`` define ``SEM``), except that one
+ending with the acronym is a use when the words before it do not spell the
+acronym (``two designs (namely RCT)``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -164,7 +170,7 @@ _CAPTION_WORD = (r"(?i:(?:(?:Supplementary|Supplemental|Suppl?\.|Extended\s+Data
                  r"|Online)\s*)?(?:Figure|Fig\.?|Table|Box|Scheme|Plate|Chart|Exhibit))")
 _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*{_CAPTION_ID}"
                       rf"|附?[圖表]\s*(?:{_CAPTION_ID}|[一二三四五六七八九十百零〇]+))"
-                      rf"{_EMPH}(?:[.:：](?!\d)|\s*\||(?:\s*[–—]|\s+-\s)(?!\s*\d)|\s*$)")
+                      rf"{_EMPH}(?:[.:：](?!\d)|\s*\||(?:\s+[–-]\s|\s*—)(?!\s*\d)|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
 
@@ -230,10 +236,12 @@ _CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space insi
 _LIST_JOINER = re.compile(r"[\W_]+|[與和及或]")  # "PCA/ICA", "ARIMA+LSTM", "PCA與ICA"
 _LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus"}  # lowercase only: "OR" is an acronym
 _WORDLIKE = re.compile(r"[A-Za-z]{3,}|[㐀-鿿]")  # not a symbol or number ("R²", "df", "p", "3.2")
-_NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
-_NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱", "例如")
-_EXAMPLE_LEAD = re.compile(r"(?:for example|for instance|such as|including|namely|that is)\b"
-                           r"|例如|比如|諸如|包括")
+_NOT_EXPANSION = {"e.g.", "eg", "see", "cf."}
+_NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱")
+_EXAMPLE_LEAD = re.compile(r"(?:for example|for instance|such as|including)\b|例如|比如|諸如|包括")
+# Case-sensitive, so the acronym "IE" is not read as "ie".
+_RESTATEMENT_LEAD = re.compile(r"\s*(?:(?:[Ii]\.e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat is)(?![A-Za-z0-9])"
+                               r"|亦即|也就是|即)[,，:：]?\s*")
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
@@ -303,8 +311,9 @@ def _acronym_list(words: list[str]) -> bool:
 
 def _example_led(words: list[str]) -> bool:
     """True when words open with an example or cross-reference marker (``e.g.``,
-    ``for example``, ``including``, ``例如``), so the acronym after them is a use."""
-    return words[0].casefold() in _NOT_EXPANSION or bool(_EXAMPLE_LEAD.match(" ".join(words).casefold()))
+    ``for example``, ``including``, ``例如``), so they are not an expansion."""
+    return (words[0].casefold().rstrip(",，") in _NOT_EXPANSION
+            or bool(_EXAMPLE_LEAD.match(" ".join(words).casefold())))
 
 
 def base_form(word: str) -> str | None:
@@ -603,8 +612,10 @@ def _reverse_definition(acronym: str, content: str) -> bool:
     (``RCT (randomized controlled trial)``, ``RCT（隨機對照試驗）``), a definition
     form this check does not read. A cross-reference is not one."""
     content = content.strip()
+    restated = _RESTATEMENT_LEAD.match(content)
+    content = content[restated.end():] if restated else content
     words = content.split()
-    if not words or acronym in content or words[0].casefold().rstrip(",，") in _NOT_EXPANSION:
+    if not words or acronym in content or _example_led(words):
         return False
     joined = _CJK_GAP.sub("", content)
     if _CJK_RUN.fullmatch(joined):
@@ -617,7 +628,8 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
     defined: dict[int, Occurrence] = {}
     for paren in _PAREN.finditer(text):
         content = paren.group(1)
-        items = [item.strip() for item in _ITEM_BREAK.split(content)]
+        restated = _RESTATEMENT_LEAD.match(content)
+        items = [item.strip() for item in _ITEM_BREAK.split(content[restated.end() if restated else 0:])]
         last = items[-1]
         bare = _POSSESSIVE.sub("", last)
         acronym = base_form(bare) if _WORD.fullmatch(bare) else None
@@ -633,6 +645,8 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
                 expansion = _spelled_run(expansion, acronym) or ""
         else:
             expansion = _expansion(before, acronym) or ""
+        if restated and not expansion:
+            continue  # "two designs (namely RCT)" is a use
         offset = paren.start(1) + content.rfind(last)
         defined[offset] = (Occurrence(doc.line_of(offset), acronym, "definition", expansion)
                            if expansion else

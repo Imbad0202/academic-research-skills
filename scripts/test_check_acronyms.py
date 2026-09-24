@@ -284,6 +284,35 @@ def test_an_example_led_list_is_a_use(lead: str) -> None:
     assert ("body", 1, "defined_after_use", "NMF") in findings(text)
 
 
+@pytest.mark.parametrize("text", [
+    "The RCT (including recruitment, consent, and treatment) lasted six months.\n",
+    "The RCT（包括招募與同意）持續六個月。\n",
+])
+def test_an_example_led_parenthetical_after_an_acronym_is_a_use(text: str) -> None:
+    assert findings(text) == [("body", 1, "undefined", "RCT")]
+
+
+@pytest.mark.parametrize("lead", ["i.e.,", "i.e.", "ie", "viz.", "namely,", "That is,"])
+def test_a_restatement_lead_is_read_without_its_words(lead: str) -> None:
+    assert findings(f"Structural equation modeling ({lead} SEM) was used.\n") == []
+    report = check(f"The SEM ({lead} structural equation modeling) was used.\n")
+    assert rows(report) == [] and report["coverage_limits"][0]["acronym"] == "SEM"
+    for text in (f"Two designs ({lead} SEM) were used.\n",
+                 f"The SEM ({lead} the model in Section 2) was used.\n"):
+        assert findings(text) == [("body", 1, "undefined", "SEM")]
+
+
+@pytest.mark.parametrize("lead", ["即", "即 ", "亦即", "也就是"])
+def test_a_chinese_restatement_lead_is_read_without_its_words(lead: str) -> None:
+    assert findings(f"結構方程模型（{lead}SEM）被使用。\n") == []
+    report = check(f"SEM（{lead}結構方程模型）被使用。\n")
+    assert rows(report) == [] and report["coverage_limits"][0]["acronym"] == "SEM"
+
+
+def test_the_acronym_ie_is_not_a_restatement_lead() -> None:
+    assert findings("Internet Explorer (IE) crashed.\n") == []
+
+
 @pytest.mark.parametrize("lead", ["例如，", "例如 PCA，", "包括 PCA，"])
 def test_a_chinese_example_led_list_is_a_use(lead: str) -> None:
     text = f"我們比較方法（{lead}NMF）。非負矩陣分解（NMF）最佳。\n"
@@ -430,7 +459,7 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
         text = f"{label}隨機對照試驗（RCT）流程。\n\n本研究使用 RCT。\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     for label in ("Table III.", "Supplementary Figure S1.", "Box 1.", "Figure 1 |", "Fig. 2 –",
-                  "Figure 3—"):
+                  "Figure 3—", "Figure 4 -"):
         text = f"{label} Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
@@ -501,6 +530,9 @@ def test_caption_word_at_sentence_start_is_still_prose() -> None:
                  "Fig. 1 Flow diagram of the RCT.\n",  # a disclosed limit: no mark after the number
                  "Tables 2–4 list the RCT arms.\n", "Table 2–4 list the RCT arms.\n",
                  "Figure 1 – 3 show the RCT arm.\n", "圖1–3顯示 RCT 的流程。\n",
+                 "Figure 1A–C shows the RCT arm.\n", "Table S1–S3 list the RCT arms.\n",
+                 "Table I–III list the RCT arms.\n", "Figure 1—3 show the RCT arm.\n",
+                 "圖一–三顯示 RCT 的流程。\n",
                  "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
