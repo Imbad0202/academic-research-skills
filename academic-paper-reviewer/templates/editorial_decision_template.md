@@ -218,7 +218,7 @@ After careful consideration, we are unable to accept your manuscript for publica
 
 ## Attachment: Acronym Check (advisory, #849)
 
-[Not written by the synthesizer: leave this section out. After the synthesis passes `scripts/check_panel_synthesis.py`, the dispatching session appends it with the report that `scripts/check_acronyms.py` prints for the reviewed manuscript, unchanged, or with one line saying the acronym check did not run. It is script output, not a reviewer finding: it adds no weakness, consensus item, required or suggested revision, or roadmap entry, and it asks for no reply.]
+[Leave this section out. The dispatching session appends it after the decision is final (`SKILL.md` § Acronym check attachment).]
 ```
 
 ---

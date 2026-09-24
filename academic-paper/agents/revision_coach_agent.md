@@ -90,6 +90,7 @@ the source before selecting this branch.
 - If reviewer comments are missing or empty -> ask user to provide them
 - If comments are extremely short (< 50 words total) -> confirm that this is the complete set
 - If comments appear to be the paper itself (not reviews) -> alert user and ask for correction
+- If the text holds an ARS decision letter's `Attachment: Acronym Check` section (#849) -> treat that section as script output, not reviewer comments: take no item from it and write no reply to it
 
 ### Step 2: Comment Parsing
 

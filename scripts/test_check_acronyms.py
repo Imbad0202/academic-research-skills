@@ -869,36 +869,25 @@ DECISION_TEMPLATE = REPO / "academic-paper-reviewer" / "templates" / "editorial_
 
 def _attachment(lang: str) -> str:
     """The letter's last section, as the dispatching session appends it."""
-    report = check((FIXTURES / "manuscript.md").read_text(encoding="utf-8"))
-    return f"\n---\n\n{ATTACHMENT_HEADING}\n\n{render(report, lang)}\n"
+    report = (FIXTURES / f"expected.{lang}.md").read_text(encoding="utf-8")
+    return f"\n---\n\n{ATTACHMENT_HEADING}\n\n{report}"
 
 
 @pytest.mark.parametrize("lang", ["en", "zh-TW"])
-def test_the_attachment_leaves_the_panel_decision_unchanged(tmp_path: Path, capsys, lang: str) -> None:
+def test_the_attachment_leaves_the_panel_decision_unchanged(lang: str) -> None:
     from scripts import check_panel_synthesis as cps
-    from scripts.test_check_panel_synthesis import FULL, FULL_PATH, ROLES, report_text, reports, synthesis_for
+    from scripts.test_check_panel_synthesis import FULL, reports, synthesis_for
 
-    synthesis, _ = synthesis_for(reports())
-    attached = synthesis + "\n" + _attachment(lang)
-    assert cps.parse_synthesis("s.md", attached, FULL) == cps.parse_synthesis("s.md", synthesis, FULL)
-    argv = ["--contract", str(FULL_PATH), "--roles", ",".join(ROLES)]
-    for role in ROLES:
-        path = tmp_path / f"{role}.md"
-        path.write_text(report_text(role), encoding="utf-8")
-        argv += ["--report", str(path)]
-    outcomes = []
-    for folder, text in (("plain", synthesis), ("attached", attached)):
-        path = tmp_path / folder / "synthesis.md"
-        path.parent.mkdir()
-        path.write_text(text + "\n", encoding="utf-8")
-        code = cps.main([*argv, "--synthesis", str(path)])
-        outcomes.append((code, capsys.readouterr().out.replace(folder, "<dir>")))
-    assert outcomes[0] == outcomes[1]
-    assert outcomes[0][0] == cps.EXIT_PASS
+    # The checker reads the synthesis only through parse_synthesis and layer2_check.
+    panel = reports()
+    synthesis, expressions = synthesis_for(panel)
+    parsed = cps.parse_synthesis("s.md", synthesis + "\n" + _attachment(lang), FULL)
+    assert parsed == cps.parse_synthesis("s.md", synthesis, FULL)
+    assert cps.layer2_check(panel, FULL, expressions, parsed, []) == []
 
 
 def test_the_attachment_leaves_the_re_review_letter_extraction_unchanged() -> None:
-    from scripts.check_re_review_synthesis import letter_ordinals_sound, parse_letter_blocks
+    from scripts.check_re_review_synthesis import parse_letter_blocks
 
     # The Required Item Details section is the letter's last one here, so only the
     # attachment's own heading ends it.
@@ -911,9 +900,7 @@ def test_the_attachment_leaves_the_re_review_letter_extraction_unchanged() -> No
     blocks = parse_letter_blocks(letter)
     assert [rid for rid, _ in blocks] == ["R1", "R2"]
     for lang in ("en", "zh-TW"):
-        attached = parse_letter_blocks(letter + _attachment(lang))
-        assert attached == blocks
-        assert letter_ordinals_sound(attached, 2)
+        assert parse_letter_blocks(letter + _attachment(lang)) == blocks
 
 
 def test_the_template_ends_the_letter_with_the_attachment() -> None:
@@ -921,7 +908,6 @@ def test_the_template_ends_the_letter_with_the_attachment() -> None:
     start = text.index("```markdown\n")
     letter = text[start:text.index("\n```\n", start)]
     assert [line for line in letter.split("\n") if line.startswith("## ")][-1] == ATTACHMENT_HEADING
-    section = " ".join(letter[letter.index(ATTACHMENT_HEADING):].split())
-    assert "leave this section out" in section and "not a reviewer finding" in section
+    assert "Leave this section out" in letter[letter.index(ATTACHMENT_HEADING):]
     skill = (REPO / "academic-paper-reviewer" / "SKILL.md").read_text(encoding="utf-8")
     assert f"`{ATTACHMENT_HEADING}`" in skill

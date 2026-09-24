@@ -159,7 +159,7 @@ Abstracts must respect venue length and structure requirements. Methods may bene
 
 ### When the Caller Runs It
 
-The caller, meaning the session that dispatches the writing agents, runs the script; the writing agents cannot run scripts. The writer saves its draft as `draft.md` in its `phase4_*/` folder, and `abstract_bilingual_agent` saves its abstracts as `abstract.md` in its `phase5_*/` folder, so the check reads a file an agent already wrote. Set `--lang` to the user's language (`en` or `zh-TW`) and show the report as printed.
+The caller, meaning the session that dispatches the writing or review agents, runs the script; those agents cannot run scripts. The writer saves its draft as `draft.md` in its `phase4_*/` folder, and `abstract_bilingual_agent` saves its abstracts as `abstract.md` in its `phase5_*/` folder, so the check reads a file an agent already wrote. Set `--lang` to the user's language (`en` or `zh-TW`) and show the report as printed.
 
 | Point | Input | `--scopes` | Report goes to |
 |---|---|---|---|
@@ -167,7 +167,7 @@ The caller, meaning the session that dispatches the writing agents, runs the scr
 | Any other drafting call (`draft_writer_agent` Step 3) | `phase4_*/draft.md` | `body` | the writer, in a fix call |
 | Abstracts written (Phase 5b, or `abstract-only` mode) | `phase5_*/abstract.md` | the abstract scopes the run produced | `abstract_bilingual_agent`, in a fix call |
 | Revision round (`revision` mode) | the anchored draft, after `anchorize` | all (the default) | the round's writer call, with the roadmap |
-| Review decision (`academic-paper-reviewer`), after the synthesis passes `scripts/check_panel_synthesis.py` | the reviewed manuscript file | all (the default) | the Editorial Decision Letter, as its last section; never a reviewer seat or the synthesizer |
+| Review decision (`academic-paper-reviewer`), once the decision is final | the reviewed manuscript file | all (the default) | the Editorial Decision Letter's last section (`academic-paper-reviewer/SKILL.md` § Acronym check attachment) |
 
 For example: `python3 scripts/check_acronyms.py --input phase4_composition/draft.md --scopes body --lang en`.
 

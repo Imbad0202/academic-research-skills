@@ -247,9 +247,9 @@ the emission audit lines, and enforces the DA terminal gate. Consequences by exi
 Reviewer reports must satisfy the pinned output grammar in each reviewer
 agent's delivered Phase 2 section; the checker parses that grammar and nothing looser.
 
-After exit 0, the orchestrator appends the acronym check to the letter as an
-advisory attachment (`SKILL.md` § Acronym check attachment, #849); it never
-feeds back into the synthesis or the decision.
+The acronym-check attachment (#849) is appended to the letter only after exit
+0, and it never feeds back into the synthesis (`SKILL.md` § Acronym check
+attachment).
 
 ## 9. Recognised expression vocabulary
 
