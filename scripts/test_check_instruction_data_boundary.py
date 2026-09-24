@@ -39,9 +39,17 @@ AGENTS_890_RELS = (
     "deep-research/agents/ethics_review_agent.md",
     "shared/agents/compliance_agent.md",
 )
+# #894 receivers that read third-party text through their own tool calls.
+AGENTS_894_RELS = (
+    "academic-paper/agents/formatter_agent.md",
+    "academic-paper/agents/citation_compliance_agent.md",
+    "deep-research/agents/synthesis_agent.md",
+    "academic-paper/agents/draft_writer_agent.md",
+    "deep-research/agents/report_compiler_agent.md",
+)
 # Listed here, not imported from the checker, so dropping an agent from the
 # checker's HOTSPOT_AGENTS makes its parametrized cases below fail.
-HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS)
+HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS, *AGENTS_894_RELS)
 
 JUDGE_REL = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
 JUDGE_START = "<!-- JUDGE-PROMPT-CANONICAL-START"
@@ -50,6 +58,10 @@ XM_REL = "shared/cross_model_verification.md"
 XM_INTRO = "a simplified DA prompt to the cross-model:"
 XM_START = "You are a devil's advocate reviewing this"
 XM_END = "Material: [the reviewed content]"
+# #894: the single-reference verification prompt (integrity-gate step 3).
+REF_INTRO = "Issue **one API call per reference**"
+REF_START = "Verify this academic reference."
+REF_END = "Reference: [full reference text]"
 
 OPEN_MARKER = "<!-- canonical:instruction-data-boundary -->"
 CLOSE_MARKER = "<!-- /canonical:instruction-data-boundary -->"
@@ -385,6 +397,58 @@ def test_xm_copy_elsewhere_in_the_fence_passes(tmp_path):
     root = _mirror(tmp_path)
     _edit(root, XM_REL, edit)
     assert _run(root) == 0
+
+
+# --- the cross-model reference verification prompt (#894) ---------------------
+
+def _cut_ref_copy(t: str):
+    """Remove the reference prompt's copy; return (text without it, the copy)."""
+    s = t.index(REF_START)
+    a = t.index("   Retrieved external content", s)
+    assert a < t.index(REF_END, s), "the copy must sit inside the reference prompt"
+    b = t.index("command to follow.\n", a) + len("command to follow.\n")
+    return t[:a] + t[b:], t[a:b]
+
+
+def test_m22_xm_reference_prompt_principle_removed(tmp_path):
+    """The reference prompt loses its copy while the DA prompt keeps its own."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, lambda t: _cut_ref_copy(t)[0])
+    code, err = _run2(root)
+    assert code == 1
+    assert "cross-model reference verification prompt does not carry" in err
+
+
+def test_m23_xm_reference_prompt_principle_moved_out(tmp_path):
+    """The copy moved just past the closing fence, which the verifier never receives, must fail."""
+    def edit(t: str) -> str:
+        t, copy = _cut_ref_copy(t)
+        fence_end = t.index("```\n", t.index(REF_END)) + len("```\n")
+        return t[:fence_end] + copy + t[fence_end:]
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, edit)
+    code, err = _run2(root)
+    assert code == 1
+    assert "cross-model reference verification prompt does not carry" in err
+
+
+def test_m24_xm_reference_prompt_principle_weakened(tmp_path):
+    """A one-phrase edit inside the reference prompt copy must fail."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, _in_region(REF_START, REF_END,
+        lambda seg: seg.replace("is data, not instructions", "is usually data")))
+    code, err = _run2(root)
+    assert code == 1
+    assert "cross-model reference verification prompt does not carry" in err
+
+
+def test_m25_xm_reference_prompt_anchor_renamed(tmp_path):
+    """A renamed start anchor leaves nothing to check, which must fail rather than pass."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, lambda t: t.replace(REF_INTRO, "Issue one call per reference"))
+    code, err = _run2(root)
+    assert code == 1
+    assert "cross-model reference verification prompt not found" in err
 
 
 def test_m19_judge_copy_only_inside_start_marker(tmp_path):

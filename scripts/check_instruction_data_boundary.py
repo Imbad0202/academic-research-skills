@@ -19,7 +19,8 @@ What it asserts, without any semantic analysis:
    (the file path + "§ 2A"), outside any code fence.
 4. Each prompt a model receives without the agent file around it (the
    claim-audit unified judge prompt and the cross-model devil's advocate
-   prompt) carries the canonical sentences verbatim (#890).
+   prompt, #890; the cross-model reference verification prompt, #894)
+   carries the canonical sentences verbatim.
 
 Presence + a pointer alone is not enough: keeping the anchor while gutting the
 body must FAIL. So the lint compares the block body to a verbatim constant, and a
@@ -79,6 +80,13 @@ HOTSPOT_AGENTS = (
     "deep-research/agents/devils_advocate_agent.md",
     "deep-research/agents/ethics_review_agent.md",
     "shared/agents/compliance_agent.md",
+    # #894: receivers that fetch or read third-party text through their own tool
+    # calls; see docs/design/2026-09-24-894-instruction-data-boundary-tool-calls.md.
+    "academic-paper/agents/formatter_agent.md",
+    "academic-paper/agents/citation_compliance_agent.md",
+    "deep-research/agents/synthesis_agent.md",
+    "academic-paper/agents/draft_writer_agent.md",
+    "deep-research/agents/report_compiler_agent.md",
 )
 
 # The cross-model receives this prompt and the reviewed material only. The
@@ -98,6 +106,22 @@ def _da_prompt_block(text: str) -> str | None:
     return m.group("body") if m else None
 
 
+# #894: the single-reference verification prompt the first-party API route sends
+# (integrity-gate step 3). Same fence rule as the DA prompt; the Codex transport
+# builds its own request and is not this prompt.
+_REFERENCE_PROMPT_RE = re.compile(
+    r"Issue \*\*one API call per reference\*\*[^\n]*\n"
+    r"[ \t]*(?P<fence>(?P<c>[`~])(?P=c){2,})[^\n]*\n"
+    r"(?P<body>.*?)\n[ \t]*(?P=fence)(?P=c)*[ \t]*$",
+    re.DOTALL | re.MULTILINE,
+)
+
+
+def _reference_prompt_block(text: str) -> str | None:
+    m = _REFERENCE_PROMPT_RE.search(text)
+    return m.group("body") if m else None
+
+
 # #890: prompts sent to a model as written, without the agent file around them.
 # Each copy carries the canonical sentences without the HTML markers or the
 # backpoint. Entries: (file, name, extract); extract returns the text the model
@@ -108,6 +132,8 @@ PROMPT_TEMPLATES = (
     (JUDGE_PROMPT_REL, "unified judge prompt", extract_judge_prompt),
     ("shared/cross_model_verification.md", "cross-model devil's advocate prompt",
      _da_prompt_block),
+    ("shared/cross_model_verification.md", "cross-model reference verification prompt",
+     _reference_prompt_block),
 )
 _QUOTE_PREFIX_RE = re.compile(r"^[ \t]*>[ \t]?", re.MULTILINE)
 
