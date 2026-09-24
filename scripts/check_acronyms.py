@@ -31,27 +31,27 @@ trial)``, ``RCT（隨機對照試驗）``), a definition form this check does no
 read. Words after the acronym count as its expansion when they spell it, so a
 list whose initials spell it counts too (``ML (MARS, LASSO, and random
 forests)``). A parenthetical is a use, not a definition, when it opens with
-``e.g.`` or ``e. g.``, ``see``, ``cf.``, ``for example``, ``for instance``,
-``such as``, ``including``, ``例如``, ``比如``, ``諸如``, or ``包括``, before
-or after the acronym (``(e.g., RCT)``, ``RCT (including recruitment)``), or
-when it is made only of acronyms, counting excluded ones, symbols, numbers,
-and joining words or marks, before or after the acronym (``(SEM, RCT)``,
-``ML (MARS, LASSO)``, ``(SDs, RMSE)``, ``(R², AIC, BIC)``, ``(n = 120, RCT)``,
-``(PCA/ICA, NMF)``, ``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``,
-``（PCA與ICA，NMF）``). So are Chinese words after an acronym that open with
-``見``, ``參見``, ``詳見``, or ``參閱`` (``RCT（見第二節）``). A lead at the
-start of a parenthetical or of its last item is read as if absent, and so are
-quotation marks around the acronym. A lead is a restatement (such as ``i.e.``
-or ``i. e.``, ``viz.``, ``namely``, ``that is``, ``in other words``, ``即``,
-``亦即``, ``也就是``) or a naming lead (such as ``hereafter``, ``henceforth``,
-``abbreviated as``, ``referred to as``, ``also known as``, ``aka``,
-``called``, ``以下簡稱``, ``下稱``, ``簡稱``, ``又稱``, ``稱為``, ``縮寫為``).
-So ``structural equation modeling (i.e., SEM)``, ``structural equation
-modeling (hereafter SEM)``, and ``結構方程模型（structural equation
-modeling，以下簡稱「SEM」）`` define ``SEM``. After a restatement, an acronym
-the words before it do not spell is a use (``two designs (namely RCT)``);
-after a naming lead, it is a definition this check cannot confirm
-(``two designs (hereafter RCT)``).
+``e.g.``, ``e. g.``, ``eg``, ``see``, ``cf.``, ``for example``,
+``for instance``, ``such as``, ``including``, ``例如``, ``比如``, ``諸如``, or
+``包括``, before or after the acronym (``(e.g., RCT)``,
+``RCT (including recruitment)``), or when it is made only of acronyms,
+counting excluded ones, symbols, numbers, and joining words or marks, before
+or after the acronym (``(SEM, RCT)``, ``ML (MARS, LASSO)``, ``(SDs, RMSE)``,
+``(R², AIC, BIC)``, ``(n = 120, RCT)``, ``(PCA/ICA, NMF)``,
+``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``). So are
+Chinese words after an acronym that open with ``見``, ``參見``, ``詳見``, or
+``參閱`` (``RCT（見第二節）``). A lead at the start of a parenthetical or of
+its last item is read as if absent, and so are quotation marks around the
+acronym. A lead is a restatement (such as ``i.e.`` or ``i. e.``, ``viz.``,
+``namely``, ``that is``, ``in other words``, ``即``, ``亦即``, ``也就是``) or
+a naming lead (such as ``hereafter``, ``henceforth``, ``abbreviated as``,
+``referred to as``, ``also known as``, ``aka``, ``called``, ``以下簡稱``,
+``下稱``, ``簡稱``, ``又稱``, ``稱為``, ``縮寫為``). So ``structural equation
+modeling (i.e., SEM)``, ``structural equation modeling (hereafter SEM)``, and
+``結構方程模型（structural equation modeling，以下簡稱「SEM」）`` define
+``SEM``. After a restatement, an acronym the words before it do not spell is a
+use (``two designs (namely RCT)``); after a naming lead, it is a definition
+this check cannot confirm (``two designs (hereafter RCT)``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -195,7 +195,8 @@ _LOWER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.islower())
 # A caption label: an optional prefix ("Supplementary", "Extended Data", "附"), a
 # label word, and a number: Arabic, with a letter prefix, dots, or hyphens ("S1",
 # "A.1", "2-1"), a Roman numeral ("III"), or one capital letter ("B").
-_CAPTION_ID = r"(?:(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*[A-Za-z]?|[IVXLC]+|[A-Z])"
+_ARABIC_ID = r"(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*"
+_CAPTION_ID = rf"(?:{_ARABIC_ID}[A-Za-z]?|[IVXLC]+|[A-Z])"
 _CAPTION_WORD = (r"(?i:(?:(?:Supplementary|Supplemental|Suppl?\.|Extended\s+Data|Appendix"
                  r"|Online)\s*)?(?:Figure|Fig\.?|Table|Box|Scheme|Plate|Chart|Exhibit))")
 _ZH_NUMERAL = "[一二三四五六七八九十百零〇]+"
@@ -205,7 +206,7 @@ _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*(?P<id>{_CAPTION_ID})"
 # Range ends after a caption dash (see _caption_label).
 _RANGE_ANY = re.compile(rf"\s*(?:[A-Z]?[.-]?\d"
                         rf"|(?:{_CAPTION_WORD}|附?[圖表])\s*(?:{_CAPTION_ID}|{_ZH_NUMERAL})(?![A-Za-z0-9]))")
-_SUBFIGURE = re.compile(r"(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*[A-Za-z]|(?![IVXLC])[A-Z]")
+_SUBFIGURE = re.compile(rf"{_ARABIC_ID}[A-Za-z]|(?![IVXLC])[A-Z]")
 _RANGE_LETTER = re.compile(r"\s*[A-Za-z](?![A-Za-z0-9-])")  # not "C-reactive"
 _RANGE_ROMAN = re.compile(r"\s*([IVXLCDM]+)(?![A-Za-z0-9-])")  # not "X-ray"
 _STANDARD_ROMAN = re.compile(r"(?=[MDCLXVI])M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})")
@@ -222,11 +223,11 @@ _INLINE_MATH = re.compile(r"(?<!\\)\$(?=\S)[^$\n]+?(?<=\S)\$")
 _URL = re.compile(r"\((?:https?|ftp)://[^)\s]*\)|(?:https?|ftp)://\S+")
 _PAREN = re.compile(r"[(（]([^()（）]*)[)）]")
 _ITEM_BREAK = re.compile(r"[,，;；、]")
-_UNREAD = re.compile(r"(?:['’]s)?[ \t]*(?:\n[ \t]*)?" + _PAREN.pattern)
 _TRAILING_PAREN = re.compile(rf"\s*{_PAREN.pattern}\s*$")
 _YEAR = r"(?:1[89]|20)\d{2}"  # 1800 to 2099, for citations and author lists alike
 _COMMA = r"[,，]"
-_SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank line
+_SPACE = r"(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)"  # a space or one line break, never a blank line
+_UNREAD = re.compile(rf"(?:['’]s)?(?:{_SPACE})?{_PAREN.pattern}")
 # A link's destination and title, which are not shown: "[the protocol](#RCT)",
 # '[the site](https://example.org "RCT")', with backslash escapes inside. The link text stays.
 _LINK_TARGET = re.compile(
@@ -237,22 +238,25 @@ _LINK_LABEL = re.compile(r"(?<=\])\[([^\[\]\n]*)\]")
 # "IV" and stage numerals ("IIIB", "IVA") are numerals after a numbering word ("Table IV",
 # "stage IIIB", "phases III and IV", "stage-IV", "Fig. IV", "第IV期"), never across a sentence
 # end or a blank line.
-_ROMAN_STAGE = re.compile(r"(?=[IVX])(?:X{0,3})(?:IX|IV|V?I{0,3})(?:[A-Da-d]\d?)?")  # "IIID", "IB2"
+_STAGE_SUFFIX = r"(?:[A-Da-d]\d?)?"  # "IIID", "IB2"
+_ROMAN_STAGE = re.compile(rf"(?=[IVX]){_ROMAN.pattern}{_STAGE_SUFFIX}")  # used only with fullmatch
 _NUMBERING_WORD = (r"(?i:\b(?:(?:table|figure|box|section|chapter|part|appendix|volume|phase|stage"
                    r"|grade|type|class|level|tier|category|study|experiment|wave|round|model)s?"
                    r"|(?:figs?|vols?)\.?))")
 _ROMAN_JOIN = (rf"(?:(?:{_SPACE})?[,&–—/-](?:{_SPACE})?(?:(?:and|or){_SPACE})?"
                rf"|{_SPACE}(?:and|or|to|through){_SPACE})")
 _NUMBERING_BEFORE = re.compile(
-    rf"(?:{_NUMBERING_WORD}(?:{_SPACE}|-)(?:[IVXLC]+(?:[A-Da-d]\d?)?{_ROMAN_JOIN})*|第(?:{_SPACE})?)\Z")
+    rf"(?:{_NUMBERING_WORD}(?:{_SPACE}|-)(?:[IVXLC]+{_STAGE_SUFFIX}{_ROMAN_JOIN})*|第(?:{_SPACE})?)\Z")
 _NUMBERING_AFTER = re.compile(rf"(?:{_SPACE})?[期級型類]")
 # An author-year citation: items whose author part is a run of names (capitalized
 # words, a bracketed group abbreviation, CJK, "&", "and", "et al.", or a name
 # particle), then one or more dates and an optional page, paragraph, chapter, or
 # section locator. "(Smith et al., 2020, pp. 4, 6; Lee, 2019)" and "(WHO, 2020)"
 # match; "(LLM in 2020)" and "(LLM use began in May 2020)" do not.
+_GROUP_ABBR = r"\[[A-Za-z][A-Za-z0-9]{1,5}s?\]"  # "[WHO]", "[RCTs]"
+_CJK = "㐀-鿿"  # CJK Unified Ideographs and Extension A, as a character-class range
 _PARTICLE = r"(?:[vV]an|[vV]on|[dD]e|[dD]er|[dD]en|[dD]u|[dD]a|[dD]i|[dD]el|[lL]a|[lL]e)"
-_NAME = (rf"(?:[{_UPPER}][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\]|[㐀-鿿]+|&|and|et{_SPACE}al\.?"
+_NAME = (rf"(?:[{_UPPER}][\w'’.-]*|{_GROUP_ABBR}|[{_CJK}]+|&|and|et{_SPACE}al\.?"
          rf"|{_PARTICLE}(?=\s))")
 # A citation date: a year (2020, 2020a), a reprint pair or a range (1900/1953,
 # 1959–1963), "n.d.", or "in press", the last two with a letter when one author
@@ -260,8 +264,8 @@ _NAME = (rf"(?:[{_UPPER}][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\]|[㐀-鿿]+
 _DATE = rf"(?:{_YEAR}(?:[/–-]{_YEAR})?[a-z]?|(?:n\.d\.|in{_SPACE}press)(?:-[a-z])?)"
 _LOCATOR = (rf"(?:(?:p|pp|paras?|ch|chap|secs?)\.\s*|(?:Chapter|Section){_SPACE})[\w.–-]+"
             rf"(?:\s*{_COMMA}\s*[\w.–-]*\d[\w.–-]*)*")
-_CITE_ITEM = (rf"\s*(?:(?:see(?:{_SPACE}also)?|e\.g\.|cf\.|i\.e\.)\s*{_COMMA}?\s*)?"
-              rf"{_NAME}(?:(?:\s*[,，、]\s*|\s+){_NAME})*\s*{_COMMA}?\s*"
+_CITE_ITEM = (rf"\s*(?:(?:see(?:{_SPACE}also)?|e\.g\.|cf\.|i\.e\.)\s*(?:{_COMMA}\s*)?)?"
+              rf"{_NAME}(?:(?:\s*[,，、]\s*|\s+){_NAME})*\s*(?:{_COMMA}\s*)?"
               rf"{_DATE}(?:\s*{_COMMA}\s*{_DATE})*"
               rf"(?:\s*{_COMMA}\s*{_LOCATOR})?\s*")
 _CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
@@ -269,7 +273,7 @@ _CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
 _TRAILING_CITATION = re.compile(rf"[;；]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*(?=[)）])")
 # "World Health Organization [WHO]": a bracket after a capitalized word, not a
 # Markdown link ("[RCT](#design)", "[RCT][1]", or "[RCT]" with a definition).
-_GROUP_AUTHOR = re.compile(rf"\b[{_UPPER}][{_LOWER}]+{_SPACE}(\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\])(?![(\[:])")
+_GROUP_AUTHOR = re.compile(rf"\b[{_UPPER}][{_LOWER}]+{_SPACE}({_GROUP_ABBR})(?![(\[:])")
 # Author initials in an author list: "Smith JA, Jones BC (2019)", "Lee KM et al.".
 # A surname may hold a capital that starts a new run of small letters, after an
 # apostrophe or hyphen or not ("McDonald", "O'Brien", "Smith-Jones"), and may
@@ -279,8 +283,9 @@ _AUTHOR = re.compile(rf"(?:{_PARTICLE}{_SPACE})*({_SURNAME}){_SPACE}([A-Z]{{1,3}
 _AUTHOR_SEP = rf"(?:\s*,\s*(?:(?:and|&){_SPACE})?|{_SPACE}(?:and|&){_SPACE})"
 _AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:{_AUTHOR_SEP}{_AUTHOR.pattern})*"
                           rf"(?=\s*(?:,\s*)?(?:et\s+al\b|\(?{_DATE}(?!\w)))")
-# One "Word ABC (2020)" is prose, not an author, when the word opens a sentence.
-_SENTENCE_WORDS = frozenset({"A", "All", "An", "At", "Both", "By", "Each", "Every", "For",
+# One "Word AB (2020)" is prose, not an author, when the word opens a sentence
+# ("The AI (2020)"); one name with three initials is always prose ("Using LLM (2024)").
+_SENTENCE_WORDS = frozenset({"All", "An", "At", "Both", "By", "Each", "Every", "For",
                              "From", "In", "Its", "No", "On", "One", "Our", "Some", "That",
                              "The", "Their", "These", "This", "Those", "We", "With"})
 _LOOKBACK = 300  # characters of context read before a parenthetical
@@ -290,15 +295,12 @@ _LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
 _RUN_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
 _PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
 _CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
-_CJK_RUN = re.compile(r"[㐀-鿿]+$")
-_CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space inside Chinese text
+_CJK_RUN = re.compile(rf"[{_CJK}]+$")
+_CJK_GAP = re.compile(rf"(?<=[{_CJK}])\s+(?=[{_CJK}])")  # a wrap or space inside Chinese text
 _LIST_JOINER = re.compile(r"[\W_]+|[與和及或]")  # "PCA/ICA", "ARIMA+LSTM", "PCA與ICA"
-_LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus"}  # lowercase only: "OR" is an acronym
-_WORDLIKE = re.compile(r"[A-Za-z]{3,}|[㐀-鿿]")  # not a symbol or number ("R²", "df", "p", "3.2")
+_LIST_WORDS = {"and", "or", "vs", "versus"}  # joining words; "&" and "vs." split off as marks
+_WORDLIKE = re.compile(rf"[A-Za-z]{{3,}}|[{_CJK}]")  # not a symbol or number ("R²", "df", "p", "3.2")
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱")
-# Leads read across a wrap, as definitions do: "that\nis", "e. g.", "包\n括".
-_EXAMPLE_LEAD = re.compile(r"(?:e\.\s*g\.|eg|see|cf\.|for\s+example|for\s+instance|such\s+as|including)"
-                           r"(?![A-Za-z0-9])|例\s*如|比\s*如|諸\s*如|包\s*括")
 
 
 def _zh(*leads: str) -> str:
@@ -306,6 +308,9 @@ def _zh(*leads: str) -> str:
     return "|".join(r"\s*".join(lead) for lead in sorted(leads, key=len, reverse=True))
 
 
+# Leads read across a wrap, as definitions do: "that\nis", "e. g.", "包\n括".
+_EXAMPLE_LEAD = re.compile(r"(?:e\.\s*g\.|eg|see|cf\.|for\s+example|for\s+instance|such\s+as|including)"
+                           rf"(?![A-Za-z0-9])|{_zh('例如', '比如', '諸如', '包括')}")
 # Leads read as if absent (see _lead). Case-sensitive, so the acronyms IE and AKA stay.
 _RESTATEMENT_LEAD = re.compile(
     r"\s*(?:(?:[Ii]\.\s*e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat\s+is(?:\s+to\s+say)?|[Ii]n\s+other\s+words)"
@@ -369,10 +374,12 @@ def _is_formula(token: str) -> bool:
             and all(m.group(1) in ELEMENTS for m in parts))
 
 
-def _acronym_shaped(word: str) -> bool:
-    """True when a word, or its singular, has a candidate's shape, excluded or
-    not (``RCTs``, ``SD``, ``CO2``)."""
-    return _candidate_shape(word) or (word.endswith("s") and _candidate_shape(word[:-1]))
+def _shaped_base(word: str) -> str | None:
+    """The word's singular, or else the word, when it has a candidate's shape,
+    excluded or not (``RCTs`` gives ``RCT``; ``SD``, ``CO2``); otherwise None."""
+    if word.endswith("s") and _candidate_shape(word[:-1]):
+        return word[:-1]
+    return word if _candidate_shape(word) else None
 
 
 def _acronym_list(words: list[str]) -> bool:
@@ -381,7 +388,7 @@ def _acronym_list(words: list[str]) -> bool:
     ICA``, ``ARIMA+LSTM``, ``COVID-19``, ``PCA與ICA``); ``OR`` stays an acronym."""
     parts = [part for word in words for part in _LIST_JOINER.split(word)
              if part and part not in _LIST_WORDS]
-    return all(_acronym_shaped(part) or not _WORDLIKE.search(part) for part in parts)
+    return all(_shaped_base(part) is not None or not _WORDLIKE.search(part) for part in parts)
 
 
 def _example_led(words: list[str]) -> bool:
@@ -433,9 +440,8 @@ def _lead(text: str) -> tuple[str, str]:
 def base_form(word: str) -> str | None:
     """The acronym a word counts as, or None; ``RCTs`` counts as ``RCT``, and the
     plural of an excluded token counts as none (``CIs``)."""
-    if word.endswith("s") and _candidate_shape(word[:-1]):
-        return None if _excluded(word[:-1]) else word[:-1]
-    return word if is_candidate(word) else None
+    base = _shaped_base(word)
+    return None if base is None or _excluded(base) else base
 
 
 def _spells(acronym: str, words: str) -> bool:
@@ -470,6 +476,8 @@ def _after_backticks(text: str, run: re.Match[str]) -> tuple[int, bool]:
 
 def _blank_code_spans(line: str) -> str:
     """Blank the code spans in one line."""
+    if "`" not in line:
+        return line
     chars = list(line)
     pos = 0
     while (run := _BACKTICKS.search(line, pos)) is not None:
@@ -526,9 +534,15 @@ def _blank_author_initials(chars: list[str]) -> None:
         authors = list(_AUTHOR.finditer(match.group(0)))
         if len(authors) == 1 and (authors[0].group(1) in _SENTENCE_WORDS
                                   or len(authors[0].group(2)) > 2):
-            continue  # "The RCT (2020)" and "Using LLM (2024)" are prose
+            continue  # "The AI (2020)" and "Using LLM (2024)" are prose
         for author in authors:
             _blank(chars, match.start() + author.start(2), match.start() + author.end(2))
+
+
+def _ends_block(line: str) -> bool:
+    """True for a blank line, an ATX heading, a list item or blockquote, or a
+    thematic break, each of which ends a paragraph or a table."""
+    return not line.strip() or any(p.match(line) for p in (_HEADING, _BLOCK_START, _THEMATIC_BREAK))
 
 
 def _setext_headings(lines: list[str]) -> dict[int, tuple[int, str, int]]:
@@ -541,8 +555,7 @@ def _setext_headings(lines: list[str]) -> dict[int, tuple[int, str, int]]:
             title = " ".join(lines[k].strip() for k in range(start, j))
             found[start] = (1 if underline.group(1)[0] == "=" else 2, title, j)
             start = None
-        elif (not line.strip() or underline or _HEADING.match(line) or _BLOCK_START.match(line)
-              or _THEMATIC_BREAK.match(line) or "|" in line):
+        elif underline or "|" in line or _ends_block(line):
             start = None
         elif start is None:
             start = j
@@ -559,8 +572,7 @@ def _table_rows(lines: list[str]) -> set[int]:
             continue
         rows.update((j - 1, j))
         k = j + 1
-        while (k < len(lines) and lines[k].strip() and not _HEADING.match(lines[k])
-               and not _BLOCK_START.match(lines[k]) and not _THEMATIC_BREAK.match(lines[k])):
+        while k < len(lines) and not _ends_block(lines[k]):
             rows.add(k)
             k += 1
     return rows
@@ -584,7 +596,7 @@ class Manuscript:
         self._assign_scopes(chars)
         for start, line in zip(self.starts, self.lines):
             chars[start:start + len(line)] = _blank_code_spans("".join(chars[start:start + len(line)]))
-        # Before URLs are masked, so a link's "(" still marks it as a link.
+        # Before link labels, destinations, and URLs are masked, so a link's "(" or "[" still marks it.
         for bracket in _GROUP_AUTHOR.finditer("".join(chars)):
             if _link_label(bracket.group(1)[1:-1]) not in self.link_labels:
                 _blank(chars, bracket.start(1), bracket.end(1))
@@ -724,15 +736,26 @@ def _spelled_run(text: str, acronym: str) -> str | None:
     return None
 
 
+def _not_expansion(words: list[str]) -> bool:
+    """True when words, before or after an acronym, cannot be its expansion:
+    none, only acronyms, symbols, and numbers, or an example lead."""
+    return not words or _acronym_list(words) or _example_led(words)
+
+
+def _unquoted(text: str) -> str:
+    """The text without wraps between Chinese characters or outer quotation marks."""
+    return _QUOTES.sub("", _CJK_GAP.sub("", text))
+
+
 def _reverse_definition(acronym: str, content: str) -> bool:
     """True when a parenthetical right after an acronym reads as its expansion
     (``RCT (randomized controlled trial)``, ``RCT（隨機對照試驗）``), a definition
     form this check does not read. A cross-reference is not one."""
     content = _lead(content.strip())[0]
     words = content.split()
-    if not words or acronym in content or _example_led(words) or _acronym_list(words):
+    if acronym in content or _not_expansion(words):
         return False  # "RCT (see Section 2)", "ML (MARS, LASSO)", "RCT (n = 120)" are uses
-    joined = _QUOTES.sub("", _CJK_GAP.sub("", content))
+    joined = _unquoted(content)
     if _CJK_RUN.fullmatch(joined):
         return not joined.startswith(_NOT_EXPANSION_ZH)
     return _spells(acronym, content)
@@ -755,9 +778,9 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             continue
         if len(items) > 1:
             words = " ".join(items[:-1]).split()
-            if not words or _acronym_list(words) or _example_led(words):
+            if _not_expansion(words):
                 continue  # "(e.g., RCT)", "(SEM, RCT)", "(PCA/ICA, NMF)", "($R^2$, AIC)" are uses
-            expansion = _QUOTES.sub("", _CJK_GAP.sub("", " ".join(words)))  # "（「結構方程模型」，SEM）"
+            expansion = _unquoted(" ".join(words))  # "（「結構方程模型」，SEM）"
             if not _CJK_RUN.search(expansion):
                 expansion = _spelled_run(expansion, acronym) or ""
         else:
@@ -765,9 +788,9 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
         if kind == "restated" and not expansion:
             continue  # "two designs (namely RCT)" is a use
         offset = paren.start(1) + content.rfind(last)
-        defined[offset] = (Occurrence(doc.line_of(offset), acronym, "definition", expansion)
-                           if expansion else
-                           Occurrence(doc.line_of(offset), acronym, "unconfirmed_definition"))
+        defined[offset] = Occurrence(doc.line_of(offset), acronym,
+                                     "definition" if expansion else "unconfirmed_definition",
+                                     expansion or None)
     occurrences: list[Occurrence] = []
     for word in _WORD.finditer(text):
         acronym = base_form(word.group(0))

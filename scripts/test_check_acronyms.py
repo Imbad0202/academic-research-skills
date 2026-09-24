@@ -265,13 +265,12 @@ def test_a_plural_counts_as_its_base(word: str, expected: str | None) -> None:
     assert base_form(word) == expected
 
 
-@pytest.mark.parametrize("text", [
-    "We compared error measures (SDs, RMSE). The RMSE decreased.\n",
-    "We compared error measures (SE, RMSE). The RMSE decreased.\n",
-    "Gases rose (CO2, NOx) in the NOx series.\n",
+@pytest.mark.parametrize("text, acronym", [
+    ("We compared error measures (SDs, RMSE). The RMSE decreased.\n", "RMSE"),
+    ("We compared error measures (SE, RMSE). The RMSE decreased.\n", "RMSE"),
+    ("Gases rose (CO2, NOx) in the NOx series.\n", "NOx"),
 ])
-def test_a_list_with_excluded_tokens_is_a_use(text: str) -> None:
-    acronym = "NOx" if "NOx" in text else "RMSE"
+def test_a_list_with_excluded_tokens_is_a_use(text: str, acronym: str) -> None:
     assert findings(text) == [("body", 1, "undefined", acronym)]
 
 
@@ -305,8 +304,8 @@ def test_symbols_numbers_and_unread_items_leave_a_use(item: str) -> None:
     assert findings(f"We compared fit statistics ({item}, AIC).\n") == [("body", 1, "undefined", "AIC")]
 
 
-@pytest.mark.parametrize("lead", ["for example,", "e. g.,", "such as", "including PCA,", "that is,",
-                                  "namely"])
+@pytest.mark.parametrize("lead", ["for example,", "e. g., matrix methods,", "such as matrix methods,",
+                                  "including PCA,"])
 def test_an_example_led_list_is_a_use(lead: str) -> None:
     text = f"We tried methods ({lead} NMF). Nonnegative matrix factorization (NMF) won.\n"
     assert ("body", 1, "defined_after_use", "NMF") in findings(text)
@@ -341,8 +340,8 @@ def test_a_list_after_an_acronym_whose_initials_spell_it_is_a_coverage_limit() -
     assert rows(report) == [] and [limit["acronym"] for limit in report["coverage_limits"]] == ["ML"]
 
 
-@pytest.mark.parametrize("lead", ["i.e.,", "i.e.", "i. e.,", "ie", "viz.", "namely,", "That is,",
-                                  "that is to say,", "in other words,"])
+@pytest.mark.parametrize("lead", ["i.e.,", "i.e.", "i. e.,", "ie", "viz.", "namely,", "namely", "That is,",
+                                  "that is,", "that is to say,", "in other words,"])
 def test_a_restatement_lead_is_read_without_its_words(lead: str) -> None:
     assert findings(f"Structural equation modeling ({lead} SEM) was used.\n") == []
     report = check(f"The SEM ({lead} structural equation modeling) was used.\n")
@@ -580,13 +579,10 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     for label in ("圖一：", "圖 2-1："):
         text = f"{label}隨機對照試驗（RCT）流程。\n\n本研究使用 RCT。\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
-    for label in ("Table III.", "Supplementary Figure S1.", "Box 1.", "Figure 1 |", "Fig. 2 –",
-                  "Figure 3—", "Figure 4 -"):
-        text = f"{label} Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
-        assert findings(text) == [("body", 3, "undefined", "RCT")], label
-    for label in ("Figure 5–", "Figure 6–Comparison. ", "Figure 1 – A ", "圖1–流程。",
-                  "Figure 1 – T cell counts. ", "Table I – A summary. ", "Figure 1 – Box plots. ",
-                  "Figure 1A – Comparison. ", "圖1 – 圖示流程。", "表1 – 表現比較。",
+    for label in ("Table III. ", "Supplementary Figure S1. ", "Box 1. ", "Figure 1 | ", "Fig. 2 – ",
+                  "Figure 3— ", "Figure 4 - ", "Figure 5–", "Figure 6–Comparison. ", "Figure 1 – A ",
+                  "圖1–流程。", "Figure 1 – T cell counts. ", "Table I – A summary. ",
+                  "Figure 1 – Box plots. ", "Figure 1A – Comparison. ", "圖1 – 圖示流程。", "表1 – 表現比較。",
                   "TABLE II – CI estimates. ", "TABLE I – X-ray findings. ",
                   "Figure 1A – C-reactive protein. ", "TABLE I – XXII cohorts. "):
         text = f"{label}Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
