@@ -20,15 +20,15 @@ letters in order. The expansion is the shortest such run of words. Two kinds
 of acronym get no finding in their scope and are listed as coverage limits:
 one whose parenthetical the words do not spell (``several methods (RCT)``),
 which this check cannot confirm as a definition, and one followed by its
-expansion in parentheses (``RCT (randomized controlled trial)``,
-``RCT（隨機對照試驗）``), a definition form this check does not read. A
-parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, or ``viz.``, or
-made only of acronyms, counting excluded ones, acronyms that a slash or a
-hyphen joins to each other or to a number, and joining words such as ``and``
-(``(SEM, RCT)``, ``(SDs, RMSE)``, ``(PCA/ICA, NMF)``, ``(COVID-19, ARDS)``,
-``(PCA and ICA, NMF)``), is a use, and so are Chinese words after an acronym
-that open with ``見``, ``參見``, ``詳見``, ``參閱``, or ``例如``
-(``RCT（見第二節）``).
+expansion in parentheses (``RCT (randomized controlled
+trial)``, ``RCT（隨機對照試驗）``), a definition form this check does not
+read. A parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, or
+``viz.``, or made only of acronyms, counting excluded ones, acronyms that a
+slash or a hyphen joins to each other or to a number, and joining words such
+as ``and`` or ``與`` (``(SEM, RCT)``, ``(SDs, RMSE)``, ``(PCA/ICA, NMF)``,
+``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``), is a
+use, and so are Chinese words after an acronym that open with ``見``,
+``參見``, ``詳見``, ``參閱``, or ``例如`` (``RCT（見第二節）``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -224,8 +224,8 @@ _PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
 _CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
 _CJK_RUN = re.compile(r"[㐀-鿿]+$")
 _CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space inside Chinese text
-_LIST_JOINER = re.compile(r"[/–-]")  # "PCA/ICA", "COVID-19" in an acronym list
-_LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus", "與", "和", "及", "或"}
+_LIST_JOINER = re.compile(r"[/／–-]|[與和及或]")  # "PCA/ICA", "COVID-19", "PCA與ICA"
+_LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus"}  # lowercase only: "OR" is an acronym
 _NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱", "例如")
 
@@ -289,8 +289,8 @@ def _acronym_shaped(word: str) -> bool:
 def _acronym_list(words: list[str]) -> bool:
     """True when words hold only acronyms, excluded or not, which a slash or a
     hyphen may join to each other or to a number (``PCA/ICA``, ``COVID-19``),
-    and joining words (``PCA and ICA``)."""
-    parts = [part for word in words if word.casefold() not in _LIST_WORDS
+    and joining words (``PCA and ICA``, ``PCA與ICA``); ``OR`` stays an acronym."""
+    parts = [part for word in words if word not in _LIST_WORDS
              for part in _LIST_JOINER.split(word) if part]
     return (any(_acronym_shaped(part) for part in parts)
             and all(_acronym_shaped(part) or part.isdigit() for part in parts))

@@ -256,6 +256,13 @@ def test_acronyms_joined_by_a_slash_hyphen_or_word_form_a_list() -> None:
         assert findings(text) == [("body", 2, "defined_after_use", "NMF")], joined
     text = "Cases rose (COVID-19, ARDS) in the ARDS unit.\n"
     assert findings(text, allow=DEFAULT_ALLOWLIST | {"COVID"}) == [("body", 1, "undefined", "ARDS")]
+    # An acronym spelled like a joining word stays an acronym.
+    text = "We compared estimates (OR, HR). The hazard ratio (HR) decreased.\n"
+    assert findings(text, allow=DEFAULT_ALLOWLIST | {"OR"}) == [("body", 1, "defined_after_use", "HR")]
+    # Chinese joining words need no spaces.
+    for joined in ("PCA與ICA", "PCA 與 ICA", "PCA／ICA"):
+        text = f"本研究比較方法（{joined}，NMF）。非負矩陣分解（NMF）效果最佳。\n"
+        assert ("body", 1, "defined_after_use", "NMF") in findings(text), joined
 
 
 def test_plural_and_possessive_count_as_the_base() -> None:
