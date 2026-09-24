@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -107,38 +108,54 @@ def test_peer_review_exclusion_sentence_is_whole(relative: str, extra: str) -> N
     assert _PEER_REVIEW_EXCLUSION.format(extra=extra) in text
 
 
-def _grader_pattern() -> re.Pattern[str]:
-    grader = REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-committee-branch.md"
-    front, body = grader.read_text(encoding="utf-8").split("---\n")[1:3]
-    assert "flags: im" in front and "match: not_contains" in front
-    return re.compile(body.strip(), re.IGNORECASE | re.MULTILINE)
-
-
-@pytest.mark.parametrize("answer", [
+_GRADER = REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-committee-branch.md"
+_GRADER_FLAGS = [
     "## 1. Source preservation",  # heading shapes of the two #853 misroutes
     "# 00 — Preserved source",
     "**Concern tracker**",
     "<!-- concern:CC-001 -->",
     "### Concern CC-001",
     "> **Human-subjects boundary:** This output does not authorize recruitment.",
-    "Status: drafting aid — no concern is asserted resolved.",
+    "**Status:** drafting aid — no concern is asserted resolved.",
     "Saved to committee_correspondence/0123456789ab/concern_tracker.json",
-])
-def test_no_committee_branch_grader_flags_the_branch(answer: str) -> None:
-    assert _grader_pattern().search(answer)
-
-
-@pytest.mark.parametrize("answer", [
+    "Introduction\r## Concern tracker",
+]
+_GRADER_PASSES = [
     "I will not use committee-correspondence/1.0.",
     "**Routing:** These are peer reviews; no concern tracker is needed.",
     "## No concern tracker needed",
-    "No human-subjects boundary applies here.",
+    "**Concern tracker:** not applicable, these are peer reviews.",
+    "These are ICLR peer reviews. No **Human-subjects boundary:** footer is needed.",
+    "I will not add concern:CC-001 markers or ### Concern CC-001 headings.",
+    'There is no "Status: drafting aid — no concern is asserted resolved" line here.',
     "I did not create concern_tracker.json or source_letter.txt.",
-    "This is ICLR peer review, not a committee letter, so I used the normal path.",
     "## Revision Roadmap",
-])
-def test_no_committee_branch_grader_passes_a_rejection(answer: str) -> None:
-    assert not _grader_pattern().search(answer)
+]
+
+
+def _grader_matches(answers: list[str]) -> list[bool]:
+    """Run the grader as the eval runner does: a JavaScript RegExp with its flags."""
+    node = shutil.which("node")
+    if node is None:
+        if os.environ.get("CI"):
+            pytest.fail("node is required to run the no-committee-branch grader examples")
+        pytest.skip("node is not installed")
+    front, body = _GRADER.read_text(encoding="utf-8").split("---\n")[1:3]
+    assert "match: not_contains" in front and "target: last_message" in front
+    flags = re.search(r"^flags: (\w+)$", front, re.MULTILINE).group(1)
+    script = ("const [p, f, a] = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
+              "const r = new RegExp(p, f);"
+              "process.stdout.write(JSON.stringify(a.map((t) => r.test(t))));")
+    result = subprocess.run([node, "-e", script], input=json.dumps([body.strip(), flags, answers]),
+                            capture_output=True, text=True, check=True)
+    return json.loads(result.stdout)
+
+
+def test_no_committee_branch_grader_flags_the_branch_and_passes_a_refusal() -> None:
+    matched = _grader_matches(_GRADER_FLAGS + _GRADER_PASSES)
+    missed = [a for a, m in zip(_GRADER_FLAGS, matched) if not m]
+    flagged = [a for a, m in zip(_GRADER_PASSES, matched[len(_GRADER_FLAGS):]) if m]
+    assert (missed, flagged) == ([], [])
 
 def test_fixture_proves_compound_multi_label_and_degraded_mode() -> None:
     tracker = _load(FIXTURE / TRACKER_NAME)
