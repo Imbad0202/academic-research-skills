@@ -54,9 +54,11 @@ Lee, 2019)``, and the citations after the acronym in ``(RCTs; Smith, 2020)``),
 a bracketed abbreviation right after a capitalized word, as in an APA group
 author (``World Health Organization [WHO]``), but not a link
 (``[RCT](#design)``, or ``[RCT]`` when a link reference definition names it),
-and author initials in author lists (``Smith JA, García BC, McDonald EF, van
-der Berg GH (2020)``). In definitions, citations, group-author brackets, and
-author lists, a line break inside a paragraph reads as a space.
+and author initials in author lists, whose names are joined by commas,
+``and``, or ``&`` (``Smith JA, García BC, McDonald EF, and van der Berg GH
+(2020)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
+(2020)``, is read as one. In definitions, citations, group-author brackets,
+and author lists, a line break inside a paragraph reads as a space.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
@@ -183,7 +185,8 @@ _GROUP_AUTHOR = re.compile(rf"\b[{_UPPER}][{_LOWER}]+{_SPACE}(\[[A-Za-z][A-Za-z0
 # follow name particles ("van der Berg").
 _SURNAME = rf"[{_UPPER}](?:[{_LOWER}]|['’-]?[{_UPPER}](?=[{_LOWER}]))*[{_LOWER}]"
 _AUTHOR = re.compile(rf"(?:{_PARTICLE}{_SPACE})*({_SURNAME}){_SPACE}([A-Z]{{1,3}})\b")
-_AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:\s*,\s*{_AUTHOR.pattern})*"
+_AUTHOR_SEP = rf"(?:\s*,\s*(?:(?:and|&){_SPACE})?|{_SPACE}(?:and|&){_SPACE})"
+_AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:{_AUTHOR_SEP}{_AUTHOR.pattern})*"
                           rf"(?=\s*(?:,\s*)?(?:et\s+al\b|\(?{_YEAR}\b))")
 # One "Word ABC (2020)" is prose, not an author, when the word opens a sentence.
 _SENTENCE_WORDS = frozenset({"A", "All", "An", "At", "Both", "By", "Each", "Every", "For",
@@ -535,6 +538,19 @@ def _spelled_run(text: str, acronym: str) -> str | None:
     return None
 
 
+def _reverse_definition(acronym: str, content: str) -> bool:
+    """True when a parenthetical right after an acronym reads as its expansion
+    (``RCT (randomized controlled trial)``, ``RCT（隨機對照試驗）``), a definition
+    form this check does not read. A cross-reference is not one."""
+    content = content.strip()
+    words = content.split()
+    if not words or acronym in content or words[0].casefold().rstrip(",，") in _NOT_EXPANSION:
+        return False
+    if _CJK_RUN.fullmatch(content):
+        return not content.startswith(_NOT_EXPANSION_ZH)
+    return _spells(acronym, content)
+
+
 def find_occurrences(doc: Manuscript) -> list[Occurrence]:
     text = doc.masked
     defined: dict[int, Occurrence] = {}
@@ -569,10 +585,8 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             occurrences.append(defined[word.start()])
             continue
         unread = _UNREAD.match(text, word.end())
-        content = unread.group(1).strip() if unread else ""
-        kind = ("unread_definition" if unread and acronym not in content
-                and ((_CJK_RUN.fullmatch(content) and not content.startswith(_NOT_EXPANSION_ZH))
-                     or _spells(acronym, content)) else "use")
+        kind = ("unread_definition" if unread and _reverse_definition(acronym, unread.group(1))
+                else "use")
         occurrences.append(Occurrence(doc.line_of(word.start()), acronym, kind))
     return occurrences
 

@@ -93,8 +93,10 @@ def test_chinese_words_after_an_acronym_are_an_unread_definition_form() -> None:
     assert report["findings"] == []
     assert report["coverage_limits"] == [{"scope": "body", "line": 1, "acronym": "RCT",
                                           "reason": "unread_definition_form"}]
-    # A cross-reference is a use, as "see" is in English.
+    # A cross-reference is a use, in either language.
     assert findings("本研究的 RCT（見第二節）有效。\n") == [("body", 1, "undefined", "RCT")]
+    text = "The RCT (see recruitment criteria in Table 1) enrolled 120 participants.\n"
+    assert findings(text) == [("body", 1, "undefined", "RCT")]
 
 
 def test_a_parenthetical_whose_words_do_not_spell_the_acronym_is_a_use() -> None:
@@ -127,6 +129,7 @@ def _outcome(text: str) -> tuple[list[tuple], list[tuple]]:
     "As reported (see also Smith et al., 2020, pp. 4, 6; WHO, 2019), the SEM held.",
     "Smith JA, Jones BC (2019) agreed, as did Lee KM et al. about the IRT.",
     "Smith AB, McDonald EF, van der Berg GH (2020) agreed about the IRT.",
+    "Smith AB and Jones EF (2020) agreed, as did Lee GH & Wu KM (2021), about the IRT.",
     "The World Health Organization [WHO] said so. The LLM helped.",
     "Randomized controlled trials (RCTs; Smith, 2020, Chapter 3) help. The RCT ended.",
     "The effect held, as in Figure 2. The RCT ran. A randomized controlled trial (RCT) is a design.",
@@ -266,6 +269,9 @@ def test_whole_token_matching() -> None:
     ("compound surname initials", "Smith AB, McDonald EF (2020) reported this.\n"),
     ("apostrophe and hyphen surnames", "O'Brien AB, Smith-Jones EF (2020) agreed.\n"),
     ("surname particles", "Smith AB, van der Berg EF, Van Dyke GH (2020) agreed.\n"),
+    ("authors joined by and", "Smith AB and Jones EF (2020) reported this.\n"),
+    ("serial and", "Smith AB, Jones EF, and Lee GH (2020) agreed.\n"),
+    ("ampersand", "Smith AB & Jones EF (2020) agreed.\n"),
     ("statistical symbol", "The SD was 2.1 and the CI was narrow.\n"),
 ])
 def test_exclusions(label: str, text: str) -> None:
@@ -328,6 +334,11 @@ def test_sentence_start_word_before_an_acronym_is_not_an_author() -> None:
     assert findings("Our RCT (2020) ended.\n") == [("body", 1, "undefined", "RCT")]
     assert findings("Using LLM (2024) helped.\n") == [("body", 1, "undefined", "LLM")]
     assert findings("As Smith JA (2019) and Lee KM et al. showed.\n") == []
+
+
+def test_prose_shaped_like_an_author_list_is_read_as_one() -> None:
+    # A disclosed limit: the author-list rule matches by shape.
+    assert findings("Delphi RCT and Bayesian SEM (2020) were compared.\n") == []
 
 
 def test_a_parenthetical_with_a_year_is_not_always_a_citation() -> None:
