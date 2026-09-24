@@ -351,6 +351,8 @@ def test_quotation_marks_around_a_defined_acronym_are_ignored(text: str) -> None
 def test_quotation_marks_around_a_chinese_expansion_are_ignored() -> None:
     assert findings("本研究採用「結構方程模型」（SEM）。\n") == []
     assert findings("本研究採用『結構方程模型』（SEM）。\n") == []
+    text = "本研究採用此方法（「結構方程模型」，SEM）。結構方程模型（SEM）再次被使用。\n"
+    assert findings(text) == [("body", 1, "defined_again", "SEM")]
     report = check("SEM（「結構方程模型」）被使用。\n")
     assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unread_definition_form"
 
@@ -359,15 +361,31 @@ def test_quotation_marks_around_a_chinese_expansion_are_ignored() -> None:
                                   "Patients with stage IV cancer enrolled.\n",
                                   "This phase IV trial ran.\n", "Grade IV glioma was rare.\n",
                                   "Stages III and IV were pooled.\n", "Grades III–IV toxicity was rare.\n",
-                                  "Tables II, III, and IV list arms.\n", "第IV期病人較少。\n", "IV 期病人較少。\n"])
-def test_iv_after_a_numbering_word_is_a_numeral(text: str) -> None:
+                                  "Tables II, III, and IV list arms.\n", "第IV期病人較少。\n", "IV 期病人較少。\n",
+                                  "Patients with stage-IV disease enrolled.\n",
+                                  "Stages I through IV were pooled.\n",
+                                  "Stage IIA, IIB, and IIIA tumors.\n",
+                                  "Stage IIIB and IV disease.\n", "stage IVA disease.\n",
+                                  "As shown in Table\nIV, the arms differ.\n",
+                                  "Stages III and\nIV were pooled.\n"])
+def test_iv_and_stage_numerals_after_a_numbering_word_are_numerals(text: str) -> None:
     assert findings(text) == []
 
 
-@pytest.mark.parametrize("text", ["Patients received IV fluids.\n", "Two types of IV access were used.\n",
-                                  "病人接受 IV 注射。\n"])
-def test_iv_elsewhere_is_an_acronym(text: str) -> None:
-    assert findings(text) == [("body", 1, "undefined", "IV")]
+@pytest.mark.parametrize(("text", "acronym"), [
+    ("Patients received IV fluids.\n", "IV"), ("Two types of IV access were used.\n", "IV"),
+    ("病人接受 IV 注射。\n", "IV"), ("Patients with IIIB disease.\n", "IIIB")])
+def test_iv_and_stage_numerals_elsewhere_are_acronyms(text: str, acronym: str) -> None:
+    assert findings(text) == [("body", 1, "undefined", acronym)]
+
+
+@pytest.mark.parametrize(("text", "line"), [
+    ("Patients were classified by stage.\n\nIV fluids were administered.\n", 3),
+    ("Patients were classified by stage\n\nIV fluids were administered.\n", 3),
+    ("Patients were classified by stage. IV fluids were given.\n", 1),
+    ("Stages III and\n\nIV were pooled.\n", 3)])
+def test_a_numbering_word_stops_at_a_sentence_end_or_a_blank_line(text: str, line: int) -> None:
+    assert findings(text) == [("body", line, "undefined", "IV")]
 
 
 def test_acronyms_shaped_like_leads_stay_acronyms() -> None:

@@ -51,13 +51,15 @@ two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
 (``RCTs``, ``RCT's``). Matching is whole token, so ``AI`` is never found
 inside ``AIDS``. Not candidates: chemical formulas, meaning tokens with a
 digit that read as element symbols and counts (``H2O``, ``CO2``, but not
-``RCT2``); Roman numerals up to ``XXXIX`` (``II``, ``XII``), with ``IV`` only
-after a numbering word or in a Chinese stage (``Table IV``, ``stage IV``,
-``phases III and IV``, ``第IV期``, ``IV 期``), since ``IV`` alone is a common
-acronym; and the statistical symbols ``SD``, ``SE``, and ``CI``. Larger
-numerals stay candidates, because letter strings such as ``CD``, ``DC``,
-``MI``, and ``LV`` are also common acronyms. The plural of an excluded token
-is excluded too (``CIs``, ``SDs``).
+``RCT2``); Roman numerals up to ``XXXIX`` (``II``, ``XII``); ``IV`` and stage
+numerals with a letter (``IIIB``, ``IVA``) only right after a numbering word,
+or after a list of numerals that follows one, in the same sentence, or in a
+Chinese stage (``Table IV``, ``stage IIIB``, ``stages I through IV``,
+``第IV期``, ``IV 期``), since ``IV`` alone is a common acronym; and the
+statistical symbols ``SD``, ``SE``, and ``CI``. Larger numerals stay
+candidates, because letter strings such as ``CD``, ``DC``, ``MI``, and ``LV``
+are also common acronyms. The plural of an excluded token is excluded too
+(``CIs``, ``SDs``).
 
 Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
@@ -153,12 +155,6 @@ DEFAULT_ALLOWLIST = frozenset({
 STAT_SYMBOLS = frozenset({"SD", "SE", "CI"})
 
 _ROMAN = re.compile(r"(?:X{0,3})(?:IX|V?I{0,3}|IV)")
-# "IV" is a numeral after a numbering word ("Table IV", "stage IV", "phases III and IV", "第IV期").
-_NUMBERING_BEFORE = re.compile(
-    r"(?:(?i:\b(?:table|figure|fig|box|section|chapter|part|appendix|volume|vol|phase|stage|grade|type"
-    r"|class|level|tier|category|study|experiment|wave|round|model)s?\.?)\s+"
-    r"(?:[IVXLC]+\s*(?:,\s*(?:and\s+|or\s+)?|and\s+|or\s+|&\s*|to\s+|[–—/-]\s*))*|第\s*)$")
-_NUMBERING_AFTER = re.compile(r"\s*[期級型類]")
 _ELEMENT_PART = re.compile(r"([A-Z][a-z]?)\d*")
 ELEMENTS = frozenset("""
 H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As
@@ -217,6 +213,18 @@ _TRAILING_PAREN = re.compile(rf"\s*{_PAREN.pattern}\s*$")
 _YEAR = r"(?:1[89]|20)\d{2}"  # 1800 to 2099, for citations and author lists alike
 _COMMA = r"[,，]"
 _SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank line
+# "IV" and stage numerals ("IIIB", "IVA") are numerals after a numbering word ("Table IV",
+# "stage IIIB", "phases III and IV", "stage-IV", "Fig. IV", "第IV期"), never across a sentence
+# end or a blank line.
+_ROMAN_STAGE = re.compile(r"(?=[IVX])(?:X{0,3})(?:IX|IV|V?I{0,3})[A-Ca-c]?")
+_NUMBERING_WORD = (r"(?i:\b(?:(?:table|figure|box|section|chapter|part|appendix|volume|phase|stage"
+                   r"|grade|type|class|level|tier|category|study|experiment|wave|round|model)s?"
+                   r"|(?:figs?|vols?)\.?))")
+_ROMAN_JOIN = (rf"(?:(?:{_SPACE})?[,&–—/-](?:{_SPACE})?(?:(?:and|or){_SPACE})?"
+               rf"|{_SPACE}(?:and|or|to|through){_SPACE})")
+_NUMBERING_BEFORE = re.compile(
+    rf"(?:{_NUMBERING_WORD}(?:{_SPACE}|-)(?:[IVXLC]+[A-Ca-c]?{_ROMAN_JOIN})*|第(?:{_SPACE})?)\Z")
+_NUMBERING_AFTER = re.compile(rf"(?:{_SPACE})?[期級型類]")
 # An author-year citation: items whose author part is a run of names (capitalized
 # words, a bracketed group abbreviation, CJK, "&", "and", "et al.", or a name
 # particle), then one or more dates and an optional page, paragraph, chapter, or
@@ -713,7 +721,7 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             words = " ".join(items[:-1]).split()
             if not words or _acronym_list(words) or _example_led(words):
                 continue  # "(e.g., RCT)", "(SEM, RCT)", "(PCA/ICA, NMF)", "($R^2$, AIC)" are uses
-            expansion = _CJK_GAP.sub("", " ".join(words))
+            expansion = _QUOTES.sub("", _CJK_GAP.sub("", " ".join(words)))  # "（「結構方程模型」，SEM）"
             if not _CJK_RUN.search(expansion):
                 expansion = _spelled_run(expansion, acronym) or ""
         else:
@@ -732,10 +740,10 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
         if word.start() in defined:
             occurrences.append(defined[word.start()])
             continue
-        if word.group(0) == "IV" and (_NUMBERING_AFTER.match(text, word.end())
-                                      or _NUMBERING_BEFORE.search(text, max(0, word.start() - 120),
-                                                                  word.start())):
-            continue  # a numeral, not intravenous
+        if _ROMAN_STAGE.fullmatch(word.group(0)) and (
+                _NUMBERING_AFTER.match(text, word.end())
+                or _NUMBERING_BEFORE.search(text, max(0, word.start() - 120), word.start())):
+            continue  # a numeral ("stage IV", "stage IIIB"), not intravenous
         unread = _UNREAD.match(text, word.end())
         kind = ("unread_definition" if unread and _reverse_definition(acronym, unread.group(1))
                 else "use")
