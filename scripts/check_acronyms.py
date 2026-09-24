@@ -22,10 +22,11 @@ one whose parenthetical the words do not spell (``several methods (RCT)``),
 which this check cannot confirm as a definition, and one followed by its
 expansion in parentheses (``RCT (randomized controlled
 trial)``, ``RCT（隨機對照試驗）``), a definition form this check does not
-read. A parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, or
-``viz.``, or made only of acronyms, counting excluded ones, symbols, numbers,
-and joining words or marks (``(SEM, RCT)``, ``(SDs, RMSE)``, ``(R², AIC,
-BIC)``, ``(n = 120, RCT)``, ``(PCA/ICA, NMF)``,
+read. A parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, ``viz.``,
+``for example``, ``such as``, ``including``, ``namely``, ``that is``,
+``例如``, or ``包括``, or made only of acronyms, counting excluded ones,
+symbols, numbers, and joining words or marks (``(SEM, RCT)``, ``(SDs, RMSE)``,
+``(R², AIC, BIC)``, ``(n = 120, RCT)``, ``(PCA/ICA, NMF)``,
 ``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``), is a
 use, and so are Chinese words after an acronym that open with ``見``,
 ``參見``, ``詳見``, ``參閱``, or ``例如`` (``RCT（見第二節）``).
@@ -163,7 +164,7 @@ _CAPTION_WORD = (r"(?i:(?:(?:Supplementary|Supplemental|Suppl?\.|Extended\s+Data
                  r"|Online)\s*)?(?:Figure|Fig\.?|Table|Box|Scheme|Plate|Chart|Exhibit))")
 _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*{_CAPTION_ID}"
                       rf"|附?[圖表]\s*(?:{_CAPTION_ID}|[一二三四五六七八九十百零〇]+))"
-                      rf"{_EMPH}(?:[.:：](?!\d)|\s*[|–—]|\s+-\s|\s*$)")
+                      rf"{_EMPH}(?:[.:：](?!\d)|\s*\||(?:\s*[–—]|\s+-\s)(?!\s*\d)|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
 
@@ -226,11 +227,13 @@ _PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
 _CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
 _CJK_RUN = re.compile(r"[㐀-鿿]+$")
 _CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space inside Chinese text
-_LIST_JOINER = re.compile(r"[/／–-]|[與和及或]")  # "PCA/ICA", "COVID-19", "PCA與ICA"
+_LIST_JOINER = re.compile(r"[\W_]+|[與和及或]")  # "PCA/ICA", "ARIMA+LSTM", "PCA與ICA"
 _LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus"}  # lowercase only: "OR" is an acronym
 _WORDLIKE = re.compile(r"[A-Za-z]{3,}|[㐀-鿿]")  # not a symbol or number ("R²", "df", "p", "3.2")
 _NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱", "例如")
+_EXAMPLE_LEAD = re.compile(r"(?:for example|for instance|such as|including|namely|that is)\b"
+                           r"|例如|比如|諸如|包括")
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
@@ -292,10 +295,16 @@ def _acronym_shaped(word: str) -> bool:
 def _acronym_list(words: list[str]) -> bool:
     """True when words hold only acronyms, excluded or not, symbols and numbers
     (``R²``, ``p < .05``, ``n = 120``), and joining words or marks (``PCA and/or
-    ICA``, ``COVID-19``, ``PCA與ICA``); ``OR`` stays an acronym."""
+    ICA``, ``ARIMA+LSTM``, ``COVID-19``, ``PCA與ICA``); ``OR`` stays an acronym."""
     parts = [part for word in words for part in _LIST_JOINER.split(word)
              if part and part not in _LIST_WORDS]
     return all(_acronym_shaped(part) or not _WORDLIKE.search(part) for part in parts)
+
+
+def _example_led(words: list[str]) -> bool:
+    """True when words open with an example or cross-reference marker (``e.g.``,
+    ``for example``, ``including``, ``例如``), so the acronym after them is a use."""
+    return words[0].casefold() in _NOT_EXPANSION or bool(_EXAMPLE_LEAD.match(" ".join(words).casefold()))
 
 
 def base_form(word: str) -> str | None:
@@ -617,7 +626,7 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             continue
         if len(items) > 1:
             words = " ".join(items[:-1]).split()
-            if not words or _acronym_list(words) or words[0].casefold() in _NOT_EXPANSION:
+            if not words or _acronym_list(words) or _example_led(words):
                 continue  # "(e.g., RCT)", "(SEM, RCT)", "(PCA/ICA, NMF)", "($R^2$, AIC)" are uses
             expansion = _CJK_GAP.sub("", " ".join(words))
             if not _CJK_RUN.search(expansion):

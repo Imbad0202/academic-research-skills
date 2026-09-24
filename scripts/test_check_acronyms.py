@@ -278,15 +278,28 @@ def test_symbols_numbers_and_unread_items_leave_a_use(item: str) -> None:
     assert findings(f"We compared fit statistics ({item}, AIC).\n") == [("body", 1, "undefined", "AIC")]
 
 
+@pytest.mark.parametrize("lead", ["for example,", "such as", "including PCA,", "that is,", "namely"])
+def test_an_example_led_list_is_a_use(lead: str) -> None:
+    text = f"We tried methods ({lead} NMF). Nonnegative matrix factorization (NMF) won.\n"
+    assert ("body", 1, "defined_after_use", "NMF") in findings(text)
+
+
+@pytest.mark.parametrize("lead", ["例如，", "例如 PCA，", "包括 PCA，"])
+def test_a_chinese_example_led_list_is_a_use(lead: str) -> None:
+    text = f"我們比較方法（{lead}NMF）。非負矩陣分解（NMF）最佳。\n"
+    assert ("body", 1, "defined_after_use", "NMF") in findings(text)
+
+
 def test_a_word_or_chinese_before_the_acronym_can_still_define_it() -> None:
     assert findings("Doses were given (in vivo, IV) twice.\n") == []
+    assert findings("Ratios were used (likelihood ratio, LR). The LR fell.\n") == []
     assert findings("這是設計（試驗，RCT）。本研究使用 RCT。\n") == []
     report = check("We compared fit statistics (adjusted R², AIC).\n")
     assert rows(report) == [] and report["coverage_limits"][0]["acronym"] == "AIC"
 
 
 def test_acronyms_joined_by_a_slash_hyphen_or_word_form_a_list() -> None:
-    for joined in ("PCA/ICA", "PCA and ICA", "PCA and/or ICA"):
+    for joined in ("PCA/ICA", "PCA and ICA", "PCA and/or ICA", "PCA+ICA", "PCA & ICA"):
         text = ("Principal component analysis (PCA) and independent component analysis (ICA) ran.\n"
                 f"We compared them ({joined}, NMF). Nonnegative matrix factorization (NMF) won.\n")
         assert findings(text) == [("body", 2, "defined_after_use", "NMF")], joined
@@ -416,7 +429,8 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     for label in ("圖一：", "圖 2-1："):
         text = f"{label}隨機對照試驗（RCT）流程。\n\n本研究使用 RCT。\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
-    for label in ("Table III.", "Supplementary Figure S1.", "Box 1.", "Figure 1 |", "Fig. 2 –"):
+    for label in ("Table III.", "Supplementary Figure S1.", "Box 1.", "Figure 1 |", "Fig. 2 –",
+                  "Figure 3—"):
         text = f"{label} Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
@@ -485,6 +499,8 @@ def test_caption_word_at_sentence_start_is_still_prose() -> None:
     for text in ("Table 2 shows the RCT arm.\n", "Figure 2-1 shows the RCT arm.\n",
                  "Table III shows the RCT arm.\n", "Box 1 lists the RCT arm.\n",
                  "Fig. 1 Flow diagram of the RCT.\n",  # a disclosed limit: no mark after the number
+                 "Tables 2–4 list the RCT arms.\n", "Table 2–4 list the RCT arms.\n",
+                 "Figure 1 – 3 show the RCT arm.\n", "圖1–3顯示 RCT 的流程。\n",
                  "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
