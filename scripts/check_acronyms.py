@@ -27,15 +27,16 @@ made only of acronyms (``(SEM, RCT)``), is a use, and so are Chinese words
 after an acronym that open with ``見``, ``參見``, ``詳見``, ``參閱``, or
 ``例如`` (``RCT（見第二節）``).
 
-Candidates are 2-6 letters or digits with at least two capitals and no more
-lowercase than uppercase letters (``RCT``, ``eGFR``, ``qPCR``). Plural and
-possessive forms count as the base (``RCTs``, ``RCT's``). Matching is whole
-token, so ``AI`` is never found inside ``AIDS``. Not candidates: chemical
-formulas, meaning tokens with a digit that read as element symbols and counts
-(``H2O``, ``CO2``, but not ``RCT2``); Roman numerals up to ``XXXIX`` (``II``,
-``XII``, but not ``IV``); and the statistical symbols ``SD``, ``SE``, and
-``CI``. Larger numerals stay candidates, because letter strings such as
-``CD``, ``DC``, ``MI``, and ``LV`` are also common acronyms.
+Candidates are 2-6 letters or digits, starting with a letter, with at least
+two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
+``qPCR``, but not ``2FA``). Plural and possessive forms count as the base
+(``RCTs``, ``RCT's``). Matching is whole token, so ``AI`` is never found
+inside ``AIDS``. Not candidates: chemical formulas, meaning tokens with a
+digit that read as element symbols and counts (``H2O``, ``CO2``, but not
+``RCT2``); Roman numerals up to ``XXXIX`` (``II``, ``XII``, but not ``IV``);
+and the statistical symbols ``SD``, ``SE``, and ``CI``. Larger numerals stay
+candidates, because letter strings such as ``CD``, ``DC``, ``MI``, and ``LV``
+are also common acronyms.
 
 Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
@@ -234,7 +235,7 @@ class Occurrence:
 
 
 def is_candidate(token: str) -> bool:
-    if not 2 <= len(token) <= 6 or not token.isascii() or not token.isalnum():
+    if not 2 <= len(token) <= 6 or not token.isascii() or not token.isalnum() or token[0].isdigit():
         return False
     upper = sum(c.isupper() for c in token)
     lower = sum(c.islower() for c in token)
@@ -572,7 +573,7 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             words = " ".join(items[:-1]).split()
             if all(base_form(w) for w in words) or words[0].casefold() in _NOT_EXPANSION:
                 continue  # "(e.g., RCT)" and "(SEM, RCT)" are uses
-            expansion = " ".join(words)
+            expansion = _CJK_GAP.sub("", " ".join(words))
             if not _CJK_RUN.search(expansion):
                 expansion = _spelled_run(expansion, acronym) or ""
         else:

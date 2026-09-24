@@ -147,6 +147,7 @@ def test_a_line_break_at_any_space_reads_as_the_space(text: str) -> None:
     "本研究採隨機對照試驗（RCT）。RCT 有效。",
     "本研究使用 RCT（隨機對照試驗）。RCT 有效。",
     "RCT 有效。本研究採隨機對照試驗（RCT）。",
+    "RCT 有效。此設計（隨機對照試驗，RCT）。",
 ])
 def test_a_line_break_between_chinese_characters_changes_nothing(text: str) -> None:
     expected = _outcome(text + "\n")
@@ -223,6 +224,7 @@ def test_allowlist_file_and_repeated_flags(tmp_path: Path) -> None:
     ("XL", True), ("CD", True), ("MI", True), ("LV", True),  # larger ones stay candidates
     ("SD", False), ("SE", False), ("CI", False),            # statistical symbols
     ("A", False), ("ABCDEFG", False), ("Hello", False), ("iPad", False),
+    ("2FA", False), ("2SLS", False),                        # a candidate starts with a letter
 ])
 def test_candidate_shape(token: str, expected: bool) -> None:
     assert is_candidate(token) is expected
