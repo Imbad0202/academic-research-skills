@@ -33,20 +33,22 @@ formulas, meaning tokens with a digit that read as element symbols and counts
 not ``IV``); and the statistical symbols ``SD``, ``SE``, and ``CI``.
 
 Not read, with line numbers kept: front matter, code fences, code spans (read
-within one line, pairing backtick runs of equal length), HTML comments
+within one line: a backtick run pairs with the next run of the same length,
+and a backslash inside a span is literal), HTML comments
 (including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math, URLs, ATX
 and setext headings, tables (with or without outer pipes), image lines,
 caption, note, and keyword paragraphs, the reference list, author-year
-citations (``(WHO, 2020)``, ``(see Smith et al., 2020, p. 4; Lee, 2019)``,
-and the citations after the acronym in ``(RCTs; Smith, 2020)``), APA
-group-author brackets (``World Health Organization [WHO]``), and author
-initials in author lists (``Smith JA, Jones BC (2020)``).
+citations whose author part is a run of names (``(WHO, 2020)``, ``(see
+Smith et al., 2020, p. 4; Lee, 2019)``, and the citations after the acronym in
+``(RCTs; Smith, 2020)``), APA group-author brackets after a name (``World
+Health Organization [WHO]``, but not a link label such as ``[RCT](#design)``),
+and author initials in author lists (``Smith JA, Jones BC (2020)``).
 
 Scopes come from headings: ``Abstract`` or ``English Abstract`` starts the
 English abstract, ``摘要``, ``中文摘要`` or ``Chinese Abstract`` the Chinese
 one, and each runs to the next heading of the same or a higher level.
-Everything else is the body. A scope is in the input only when it has a line
-of prose this check reads. An abstract in another language is a section this
+Everything else is the body. A scope is in the input only when a line this
+check reads there has a letter. An abstract in another language is a section this
 check does not read, listed as a coverage limit, and so is a requested scope
 the input does not contain.
 
@@ -76,8 +78,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _markdown_lint_util import blank_code_spans  # noqa: E402
 
 CHECKER = "ars-acronym-check/1.0"
 SCOPES = ("body", "abstract_en", "abstract_zh")
@@ -129,17 +129,22 @@ _UNREAD = re.compile(r"(?:['’]s)?[ \t]*(?:\n[ \t]*)?" + _PAREN.pattern)
 _TRAILING_PAREN = re.compile(rf"\s*{_PAREN.pattern}\s*$")
 _YEAR = r"(?:1[89]|20)\d{2}"
 _COMMA = r"[,，]"
-# An author-year citation: items of authors ending in a capitalized name, "et
-# al.", a bracketed group abbreviation, or CJK, then a year and an optional page.
-# "(Smith et al., 2020; Lee, 2019)" and "(WHO, 2020)" match; "(LLM in 2020)" does not.
+# An author-year citation: items whose author part is a run of names (capitalized
+# words, a bracketed group abbreviation, CJK, "&", "and", "et al.", or a name
+# particle), then a year and an optional page. "(Smith et al., 2020; Lee, 2019)"
+# and "(WHO, 2020)" match; "(LLM in 2020)" and "(LLM use began in May 2020)" do not.
+_NAME = (r"(?:[A-Z][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{1,5}s?\]|[㐀-鿿]+|&|and|et al\.?"
+         r"|(?:van|von|de|der|den|du|da|di|del|la|le)(?=\s))")
 _CITE_ITEM = (rf"\s*(?:(?:see(?: also)?|e\.g\.|cf\.|i\.e\.)\s*{_COMMA}?\s*)?"
-              rf"[^;；()（）]*?(?:\[?[A-Z][\w'’.-]*\]?|al\.|[㐀-鿿]+)\s*{_COMMA}?\s*"
+              rf"{_NAME}(?:(?:\s*[,，、]\s*|\s+){_NAME})*\s*{_COMMA}?\s*"
               rf"(?:n\.d\.|{_YEAR}[a-z]?)(?:\s*{_COMMA}\s*{_YEAR}[a-z]?)*"
               rf"(?:\s*{_COMMA}\s*(?:p|pp|para)\.\s*[\w–-]+)?\s*")
 _CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
 # The citations after an acronym in "(RCTs; Smith, 2020)".
 _TRAILING_CITATION = re.compile(rf"[;；]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*(?=[)）])")
-_GROUP_AUTHOR = re.compile(r"\[[A-Za-z][A-Za-z0-9]{1,5}s?\]")
+# "World Health Organization [WHO]": a bracket after a capitalized word, not a
+# Markdown link label ("[RCT](#design)", "[RCT][1]", "[RCT]: url").
+_GROUP_AUTHOR = re.compile(r"\b[A-Z][a-z]+[ \t]+(\[[A-Za-z][A-Za-z0-9]{1,5}s?\])(?![(\[:])")
 # Author initials in an author list: "Smith JA, Jones BC (2019)", "Lee KM et al.".
 _AUTHOR = re.compile(r"([A-Z][a-z]+) ([A-Z]{1,3})\b")
 _AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:\s*,\s*{_AUTHOR.pattern})*"
@@ -149,6 +154,8 @@ _SENTENCE_WORDS = frozenset({"A", "All", "An", "At", "Both", "By", "Each", "Ever
                              "From", "In", "Its", "No", "On", "One", "Our", "Some", "That",
                              "The", "Their", "These", "This", "Those", "We", "With"})
 _LOOKBACK = 300  # characters of context read before a parenthetical
+_LETTER = re.compile(r"[^\W\d_]")  # a scope with no letter has no prose
+_BACKTICKS = re.compile(r"`+")
 _LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
 _PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
 _CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
@@ -215,6 +222,34 @@ def _spells(acronym: str, words: str) -> bool:
     return len(initials) >= 2 and all(c in letters for c in acronym.lower() if c.isalpha())
 
 
+def _escaped(line: str, index: int) -> bool:
+    """True when an odd number of backslashes come right before line[index]."""
+    count = 0
+    while index - count > 0 and line[index - count - 1] == "\\":
+        count += 1
+    return count % 2 == 1
+
+
+def _blank_code_spans(line: str) -> str:
+    """Blank the code spans in one line as CommonMark reads them: a backtick run
+    opens a span that the next run of the same length closes, a backslash inside
+    a span is literal, and outside one an escaped backtick opens nothing."""
+    chars = list(line)
+    pos = 0
+    while (opener := _BACKTICKS.search(line, pos)) is not None:
+        if _escaped(line, opener.start()):
+            pos = opener.start() + 1
+            continue
+        closer = next((m for m in _BACKTICKS.finditer(line, opener.end())
+                       if len(m.group(0)) == len(opener.group(0))), None)
+        if closer is None:
+            pos = opener.end()
+            continue
+        chars[opener.start():closer.end()] = " " * (closer.end() - opener.start())
+        pos = closer.end()
+    return "".join(chars)
+
+
 def _normalize_heading(text: str) -> str:
     text = re.sub(r"[*_`]", "", text).strip()
     text = re.sub(r"^(?:[0-9IVX]+(?:\.[0-9]+)*[.)]?|[一二三四五六七八九十壹貳參肆伍]+[、.])\s*", "", text)
@@ -265,14 +300,16 @@ def _setext_headings(lines: list[str]) -> dict[int, tuple[int, str, int]]:
 
 def _table_rows(lines: list[str]) -> set[int]:
     """GFM table rows, with or without a leading pipe: a header row, a delimiter
-    row, and the rows after it up to a blank line or a heading."""
+    row, and the rows after it up to a blank line, a heading, a list item, or a
+    blockquote."""
     rows: set[int] = set()
     for j, line in enumerate(lines):
         if j == 0 or "|" not in line or "|" not in lines[j - 1] or not _TABLE_DELIMITER.match(line):
             continue
         rows.update((j - 1, j))
         k = j + 1
-        while k < len(lines) and lines[k].strip() and not _HEADING.match(lines[k]):
+        while (k < len(lines) and lines[k].strip() and not _HEADING.match(lines[k])
+               and not _BLOCK_START.match(lines[k])):
             rows.add(k)
             k += 1
     return rows
@@ -294,10 +331,10 @@ class Manuscript:
         _blank_pattern(chars, _COMMENT)
         self._assign_scopes(chars)
         for start, line in zip(self.starts, self.lines):
-            chars[start:start + len(line)] = blank_code_spans("".join(chars[start:start + len(line)]))
-        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _URL, _CITATION, _TRAILING_CITATION,
-                        _GROUP_AUTHOR):
+            chars[start:start + len(line)] = _blank_code_spans("".join(chars[start:start + len(line)]))
+        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _URL, _CITATION, _TRAILING_CITATION):
             _blank_pattern(chars, pattern)
+        _blank_pattern(chars, _GROUP_AUTHOR, group=1)
         _blank_author_initials(chars)
         self.masked = "".join(chars)
         if text.endswith("\n"):
@@ -306,7 +343,7 @@ class Manuscript:
         for number, (scope, line) in enumerate(zip(self.scope, self.masked.split("\n")), start=1):
             if scope is None:
                 continue
-            self.present[scope] = self.present[scope] or bool(line.strip())
+            self.present[scope] = self.present[scope] or bool(_LETTER.search(line))
             spans = self.ranges[scope]
             if spans and spans[-1][1] == number - 1:
                 spans[-1][1] = number

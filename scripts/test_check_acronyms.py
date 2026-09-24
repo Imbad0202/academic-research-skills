@@ -18,6 +18,7 @@ import pytest
 from scripts.check_acronyms import (
     DEFAULT_ALLOWLIST,
     SCOPES,
+    NotChecked,
     build_report,
     check,
     is_candidate,
@@ -229,6 +230,8 @@ def test_exclusions(label: str, text: str) -> None:
     ("Use \\`RCT\\` here.\n", [("body", 1, "undefined", "RCT")]),  # escaped backticks are literal
     ("An `RCT`` run.\n", [("body", 1, "undefined", "RCT")]),          # unequal runs open no span
     ("A ``RCT`x`` span.\n", []),                                       # a span may hold a backtick
+    ("Use `C:\\RCT\\` here.\n", []),     # a backslash inside a span is literal
+    ("A \\\\`RCT` span.\n", []),          # an escaped backslash leaves the backtick free
 ])
 def test_code_spans_pair_equal_backtick_runs(text: str, expected: list[tuple]) -> None:
     assert findings(text) == expected
@@ -250,6 +253,14 @@ def test_sentence_start_word_before_an_acronym_is_not_an_author() -> None:
 def test_a_parenthetical_with_a_year_is_not_always_a_citation() -> None:
     assert findings("Uptake grew (the RCT ran from 2019 to 2020).\n") == [
         ("body", 1, "undefined", "RCT")]
+    text = "We used models (LLM use began in May 2020). A large language model (LLM) helped.\n"
+    assert findings(text) == [("body", 1, "defined_after_use", "LLM")]
+
+
+def test_a_link_label_is_not_a_group_author() -> None:
+    text = "We used [RCT](#design). A randomized controlled trial (RCT) ran.\n"
+    assert findings(text) == [("body", 1, "defined_after_use", "RCT")]
+    assert findings("The Trial [RCT](#x) ran.\n") == [("body", 1, "undefined", "RCT")]
 
 
 def test_caption_word_at_sentence_start_is_still_prose() -> None:
@@ -285,15 +296,20 @@ def test_a_nested_excluded_section_returns_to_its_parent_scope() -> None:
                                  ("abstract_en", 11, "undefined", "LLM")]
 
 
-def test_a_table_ends_at_a_blank_line() -> None:
+def test_a_table_ends_at_a_blank_line_or_another_block() -> None:
     assert findings("| a |\n|---|\n| RCT |\n\nThe LLM ran.\n") == [
         ("body", 5, "undefined", "LLM")]
+    assert findings("| a |\n|---|\n| x |\n> The RCT ran.\n- The SEM fit.\n") == [
+        ("body", 4, "undefined", "RCT"), ("body", 5, "undefined", "SEM")]
 
 
 def test_a_scope_is_present_only_with_prose() -> None:
     report = check("\n## Abstract\n\nThe RCT worked.\n")
     assert report["coverage"] == {"body": "not_in_input", "abstract_en": "checked",
                                   "abstract_zh": "not_in_input"}
+    for markers in ("---", "***", "- ", "> ", "| |\n|---|"):
+        with pytest.raises(NotChecked):
+            check(f"## Abstract\n\n{markers}\n", ("abstract_en",))
 
 
 def test_unread_abstract_section_makes_coverage_partial() -> None:
