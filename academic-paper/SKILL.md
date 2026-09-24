@@ -303,7 +303,8 @@ See `references/mode_selection_guide.md` for details.
 | `format-convert` | "Convert to LaTeX" / "Convert citations to [format]" | 9 only | Formatted document; includes citation format conversion (APA 7 / Chicago / MLA / IEEE / Vancouver) |
 | `citation-check` | "Check citations" | 6 only | Citation error report |
 | `plan` | "guide my paper" / "help me plan my paper" | 1->10->3->4 | Chapter Plan + INSIGHT Collection |
-| `revision-coach` | "parse reviews" / "revision roadmap" / "I got reviewer comments" / "should we push back" / "conference rebuttal" / "grant panel response" / explicitly identified real committee correspondence | 12 only | Peer-review path: immutable Roadmap core + explicit author sidecar + optional Tracking Template/Response Skeleton. Committee path: separate #668 concern tracker + placeholder response skeleton; no Schema 11, reviewer obligation/severity, or determination. |
+| `revision-coach` | "parse reviews" / "revision roadmap" / "I got reviewer comments" / "should we push back" / "conference rebuttal" / "grant panel response" | 12 only | Immutable Roadmap core + explicit author sidecar + optional Tracking Template/Response Skeleton |
+| `revision-coach` committee-correspondence variant | The user explicitly identifies the source as a real committee or institutional review office; journal or conference peer review never qualifies | 12 only | Separate #668 concern tracker + placeholder response skeleton; no Schema 11, reviewer obligation/severity, or determination |
 | **`disclosure`** (v3.2) | **"AI disclosure for Nature" / "generate AI usage statement"** | **9 only** | **Default venue path: `REQUIRED` / `ACTION_ONLY` / `NOT_REQUIRED` / `UNKNOWN` applicability plus typed halt status; policy-anchor path: anchor-specific render** |
 | **`rebuttal-audit`** | **"audit my response" / "check my rebuttal" / "did I miss any reviewer comment"** (requires BOTH reviewer comments AND an existing rebuttal draft) | **12 only (parse-only)** | **Rebuttal QA report: per-comment coverage + gaps + risk flags. No new response generated; advisory only. Does NOT emit Schema 11 / Material Passport / verified status.** |
 
@@ -333,8 +334,10 @@ Not sure? Start with `plan` — it will guide you step by step. `disclosure` is 
 **Committee-correspondence routing:** use the `revision-coach` variant only when the
 user explicitly identifies a real committee/institutional review office. Load
 `references/committee_correspondence_protocol.md`; do not infer official authority
-from tone. The separate artifact is a source-accounted drafting aid and never enters
-peer-review Schema 11.
+from tone. Journal or conference reviewers, editors, area chairs, and program
+committees are peer review, not a committee for this variant, even when the user
+names the venue or the venue calls the role a committee (#854). The separate
+artifact is a source-accounted drafting aid and never enters peer-review Schema 11.
 
 ### Mode Selection Logic
 
