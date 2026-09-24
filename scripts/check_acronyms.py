@@ -23,11 +23,12 @@ which this check cannot confirm as a definition, and one followed by its
 expansion in parentheses (``RCT (randomized controlled trial)``,
 ``RCT（隨機對照試驗）``), a definition form this check does not read. A
 parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, or ``viz.``, or
-made only of acronyms, counting excluded ones and acronyms that a slash or a
-hyphen joins to each other or to a number (``(SEM, RCT)``, ``(SDs, RMSE)``,
-``(PCA/ICA, NMF)``, ``(COVID-19, ARDS)``), is a use, and so are Chinese words
-after an acronym that open with ``見``, ``參見``, ``詳見``, ``參閱``, or
-``例如`` (``RCT（見第二節）``).
+made only of acronyms, counting excluded ones, acronyms that a slash or a
+hyphen joins to each other or to a number, and joining words such as ``and``
+(``(SEM, RCT)``, ``(SDs, RMSE)``, ``(PCA/ICA, NMF)``, ``(COVID-19, ARDS)``,
+``(PCA and ICA, NMF)``), is a use, and so are Chinese words after an acronym
+that open with ``見``, ``參見``, ``詳見``, ``參閱``, or ``例如``
+(``RCT（見第二節）``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -45,26 +46,27 @@ Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
 backslash or a comment marker inside a span is literal), HTML comments
 (including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math (inline math
-within one line), URLs, link reference definitions (``[RCT]:
-https://example.org``), ATX and setext headings, tables (with or without outer
-pipes, up to a blank line, heading, list item, blockquote, or thematic break),
-image lines, caption, note, and keyword paragraphs (from a line that starts a
-paragraph or follows an image and opens with a label such as ``Figure 2.``,
-``Table S1.``, ``TABLE III``, ``圖 2-1：``, ``表一：``, ``Note.``, or
-``Keywords:``, up to a blank line; ``Figure 1.2 shows`` opens no label), the
-reference list, author-year citations whose author part is a run of names,
-whose dates are years from 1800 to 2099, year pairs or ranges, ``n.d.``, or
-``in press`` (``2020a``, ``1900/1953``, ``n.d.-a``), and whose locator, if
-any, is a page, paragraph, chapter, or section (``(WHO, 2020)``, ``(see Smith
-et al., 2020, pp. 4, 6; Lee, 2019)``, and the citations after the acronym in
+within one line), URLs, link reference definitions
+(``[RCT]: https://example.org``), ATX and setext headings, tables (with or
+without outer pipes, up to a blank line, heading, list item, blockquote, or
+thematic break), image lines, caption, note, and keyword paragraphs (from a
+line that starts a paragraph or follows an image and opens with a label such
+as ``Figure 2.``, ``Table S1.``, ``TABLE III``, ``Supplementary Table 2.``,
+``Box 1.``, ``圖 2-1：``, ``表一：``, ``Note.``, or ``Keywords:``, up to a
+blank line; ``Figure 1.2 shows`` opens no label), the reference list,
+author-year citations whose author part is a run of names, whose dates are
+years from 1800 to 2099, year pairs or ranges, ``n.d.``, or ``in press``
+(``2020a``, ``1900/1953``, ``n.d.-a``), and whose locator, if any, is a page,
+paragraph, chapter, or section (``(WHO, 2020)``, ``(see Smith et al., 2020,
+pp. 4, 6; Lee, 2019)``, and the citations after the acronym in
 ``(RCTs; Smith, 2020)``), a bracketed abbreviation right after a capitalized
-word, as in an APA group author (``World Health Organization [WHO]``), but not
-a link (``[RCT](#design)``, or ``[RCT]`` when a link reference definition
-names it), and author initials in author lists, whose names are joined by
-commas, ``and``, or ``&`` and come before ``et al.`` or a date in a form a
-citation takes (``Smith JA, García BC, McDonald EF, and van der Berg GH
-(2020a)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
-(2020)``, is read as one. In definitions, citations, group-author
+word, as in an APA group author (``World Health Organization
+[WHO]``), but not a link (``[RCT](#design)``, or ``[RCT]`` when a link
+reference definition names it), and author initials in author lists, whose
+names are joined by commas, ``and``, or ``&`` and come before ``et al.`` or a
+date in a form a citation takes (``Smith JA, García BC, McDonald EF, and van
+der Berg GH (2020a)``); prose shaped like such a list, as in ``Delphi RCT and
+Bayesian SEM (2020)``, is read as one. In definitions, citations, group-author
 brackets, and author lists, a line break inside a paragraph reads as a space,
 and a line break or space between two Chinese characters is ignored.
 
@@ -151,11 +153,14 @@ _EMPH = r"(?:\*{1,2}|_{1,2})?"
 _NAME_LETTERS = [chr(c) for block in (range(0x530), range(0x1E00, 0x2000)) for c in block]
 _UPPER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.isupper())
 _LOWER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.islower())
-# A caption label's number: Arabic, with a letter prefix, dots, or hyphens ("S1",
+# A caption label: an optional prefix ("Supplementary", "Extended Data", "附"), a
+# label word, and a number: Arabic, with a letter prefix, dots, or hyphens ("S1",
 # "A.1", "2-1"), a Roman numeral ("III"), or one capital letter ("B").
 _CAPTION_ID = r"(?:(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*[A-Za-z]?|[IVXLC]+|[A-Z])"
-_CAPTION = re.compile(rf"^\s*{_EMPH}(?:(?i:Figure|Fig\.?|Table)\s*{_CAPTION_ID}"
-                      rf"|[圖表]\s*(?:{_CAPTION_ID}|[一二三四五六七八九十百零〇]+))"
+_CAPTION_WORD = (r"(?i:(?:(?:Supplementary|Supplemental|Suppl?\.|Extended\s+Data|Appendix"
+                 r"|Online)\s*)?(?:Figure|Fig\.?|Table|Box|Scheme|Plate|Chart|Exhibit))")
+_CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*{_CAPTION_ID}"
+                      rf"|附?[圖表]\s*(?:{_CAPTION_ID}|[一二三四五六七八九十百零〇]+))"
                       rf"{_EMPH}(?:[.:：](?!\d)|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
@@ -220,6 +225,7 @@ _CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
 _CJK_RUN = re.compile(r"[㐀-鿿]+$")
 _CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space inside Chinese text
 _LIST_JOINER = re.compile(r"[/–-]")  # "PCA/ICA", "COVID-19" in an acronym list
+_LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus", "與", "和", "及", "或"}
 _NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱", "例如")
 
@@ -282,8 +288,10 @@ def _acronym_shaped(word: str) -> bool:
 
 def _acronym_list(words: list[str]) -> bool:
     """True when words hold only acronyms, excluded or not, which a slash or a
-    hyphen may join to each other or to a number (``PCA/ICA``, ``COVID-19``)."""
-    parts = [part for word in words for part in _LIST_JOINER.split(word) if part]
+    hyphen may join to each other or to a number (``PCA/ICA``, ``COVID-19``),
+    and joining words (``PCA and ICA``)."""
+    parts = [part for word in words if word.casefold() not in _LIST_WORDS
+             for part in _LIST_JOINER.split(word) if part]
     return (any(_acronym_shaped(part) for part in parts)
             and all(_acronym_shaped(part) or part.isdigit() for part in parts))
 

@@ -249,10 +249,11 @@ def test_a_list_with_excluded_tokens_is_a_use(text: str) -> None:
     assert findings(text) == [("body", 1, "undefined", acronym)]
 
 
-def test_acronyms_joined_by_a_slash_or_hyphen_form_a_list() -> None:
-    text = ("Principal component analysis (PCA) and independent component analysis (ICA) ran.\n"
-            "We compared them (PCA/ICA, NMF). Nonnegative matrix factorization (NMF) won.\n")
-    assert findings(text) == [("body", 2, "defined_after_use", "NMF")]
+def test_acronyms_joined_by_a_slash_hyphen_or_word_form_a_list() -> None:
+    for joined in ("PCA/ICA", "PCA and ICA"):
+        text = ("Principal component analysis (PCA) and independent component analysis (ICA) ran.\n"
+                f"We compared them ({joined}, NMF). Nonnegative matrix factorization (NMF) won.\n")
+        assert findings(text) == [("body", 2, "defined_after_use", "NMF")], joined
     text = "Cases rose (COVID-19, ARDS) in the ARDS unit.\n"
     assert findings(text, allow=DEFAULT_ALLOWLIST | {"COVID"}) == [("body", 1, "undefined", "ARDS")]
 
@@ -313,6 +314,9 @@ def test_whole_token_matching() -> None:
     ("roman-numbered and all-caps captions",
      "Table III. The RCT arms\n\nTABLE IV\nSEM fit indices\n\nFIG. 2. The GLM flow\n"),
     ("letter-numbered caption", "Figure B. The RCT flow\n"),
+    ("prefixed and boxed captions",
+     "Supplementary Table 2. The RCT arms\n\nExtended Data Fig. 1. The SEM paths\n\n"
+     "Box 1. The GLM terms\n\n附表 1：IRT 參數\n"),
     ("undated citations", "Earlier work (WHO, n.d.-a, n.d.-b; NIH, n.d.) supported this.\n"),
     ("in-press, reprint, and range citations",
      "As argued (WHO, in press-a; APA, 1900/1953; NIH, 1959–1963), it held.\n"),
@@ -369,8 +373,9 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     for label in ("圖一：", "圖 2-1："):
         text = f"{label}隨機對照試驗（RCT）流程。\n\n本研究使用 RCT。\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
-    text = "Table III. Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
-    assert findings(text) == [("body", 3, "undefined", "RCT")]
+    for label in ("Table III.", "Supplementary Figure S1.", "Box 1."):
+        text = f"{label} Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
+        assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
     assert findings("Intro.\n\n***\nFigure 2. The RCT flow\n\nBody text.\n") == []
     text = "See [RCT].\nA randomized controlled trial (RCT) ran.\n***\n[RCT]: https://example.org\n"
@@ -435,7 +440,8 @@ def test_a_link_reference_definition_starts_a_paragraph() -> None:
 
 def test_caption_word_at_sentence_start_is_still_prose() -> None:
     for text in ("Table 2 shows the RCT arm.\n", "Figure 2-1 shows the RCT arm.\n",
-                 "Table III shows the RCT arm.\n", "表一所示的 RCT 分組。\n"):
+                 "Table III shows the RCT arm.\n", "Box 1 lists the RCT arm.\n",
+                 "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
 
