@@ -159,27 +159,26 @@ Abstracts must respect venue length and structure requirements. Methods may bene
 
 ### When the Caller Runs It
 
-The caller, meaning the session that dispatches the writing agents, runs the script; the writing agents cannot run scripts. Set `--lang` to the user's language (`en` or `zh-TW`) and show the report as printed.
+The caller, meaning the session that dispatches the writing agents, runs the script; the writing agents cannot run scripts. The writer saves its draft as `draft.md` in its `phase4_*/` folder, and `abstract_bilingual_agent` saves its abstracts as `abstract.md` in its `phase5_*/` folder, so the check reads a file an agent already wrote. Set `--lang` to the user's language (`en` or `zh-TW`) and show the report as printed.
 
-| Point | Input | `--scopes` |
-|---|---|---|
-| Draft assembled (`draft_writer_agent` Step 3, or Phase 4b in `full` mode) | the draft | `body` |
-| Abstracts written (Phase 5b, or `abstract-only` mode) | the abstract output | the abstract scopes the run produced |
-| Revision round (`revision` mode) | the draft the round starts from | all (the default) |
+| Point | Input | `--scopes` | Report goes to |
+|---|---|---|---|
+| Phase 4b in `full` mode | `phase4_*/draft.md` (the Draft Body) | `body` | the next Phase 4b call; never Phase 6a or 6b |
+| Any other drafting call (`draft_writer_agent` Step 3) | `phase4_*/draft.md` | `body` | the writer, in a fix call |
+| Abstracts written (Phase 5b, or `abstract-only` mode) | `phase5_*/abstract.md` | the abstract scopes the run produced | `abstract_bilingual_agent`, in a fix call |
+| Revision round (`revision` mode) | the anchored draft, after `anchorize` | all (the default) | the round's writer call, with the roadmap |
 
-For example: `python3 scripts/check_acronyms.py --input draft.md --scopes body --lang en`. After the fixes, the caller runs the check again on the final text and shows the user that report.
+For example: `python3 scripts/check_acronyms.py --input phase4_composition/draft.md --scopes body --lang en`.
+
+- Pass a report to an agent only when it has findings. The agent fixes them with targeted edits (in a revision round, patch operations), not a new full draft; `draft_writer_agent.md` and `abstract_bilingual_agent.md` say which findings each may fix.
+- Run the check again only after an agent has edited the prose (in a revision round, on the applied draft), and show the user the last report.
+- An integrity-correction round makes no acronym fix.
 
 ### Reading the Report
 
 - Findings are advisory. They ask for no reply, and they never block a handoff, change a decision, or stop a run.
 - `(complete)` on the coverage line means every requested scope was read. A `partial` report lists what it did not read, and a `Not checked` report (exit status 2) gives the reason nothing was read. Neither is a clean result.
 - If the script cannot run at all, say that the acronym check did not run; never report it as clean.
-
-### Who Fixes What
-
-- **Initial drafting:** the writer fixes the findings that apply before handoff.
-- **Revision round:** the writer changes an acronym only inside a `will_address` target and operation the author authorized. Other findings stay advisory and add no revision item.
-- **Abstracts:** `abstract_bilingual_agent` fixes the findings in the abstract scopes, within the length regime.
 
 ---
 

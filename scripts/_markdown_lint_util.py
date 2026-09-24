@@ -43,6 +43,60 @@ _FENCE_OPEN_RE = re.compile(r"`{3,}|~{3,}")
 NON_RELATIVE_LINK_PREFIXES = ("http://", "https://", "mailto:", "#")
 
 
+# CommonMark §2.4: a backslash escapes the next punctuation character, so
+# `\\` is a literal backslash and ``\` `` a literal backtick that can
+# neither open nor close a code span. One left-to-right pass sequences the
+# two correctly (`\\` consumes its backslash before a following backtick is
+# considered). Ignoring this let an escaped-backtick "span" blank a live
+# `<!--` and credit a hidden dissent field (#613 security round 1, P1).
+ESCAPED_BACKTICK_RE = re.compile(r"\\[\\`]")
+
+
+def blank_code_spans(line: str) -> str:
+    """Blank CommonMark inline code spans, matching runs of EQUAL length.
+
+    A regex accepting unequal delimiter runs (#610 round-4 P1) blanked
+    from a single-backtick opener to a double-backtick closer — a stretch
+    the renderer does NOT treat as code, re-opening the later-cell attack
+    — and conversely swallowed legitimate prose. This scanner pairs an
+    opening run only with the next run of exactly its length, as the
+    renderer does; an unmatched run stays literal. Backslash-escaped
+    backticks are blanked FIRST: they are literal to the renderer and must
+    not participate in pairing.
+    """
+    line = ESCAPED_BACKTICK_RE.sub("  ", line)
+    out: list[str] = []
+    index, length = 0, len(line)
+    while index < length:
+        if line[index] != "`":
+            out.append(line[index])
+            index += 1
+            continue
+        run_end = index
+        while run_end < length and line[run_end] == "`":
+            run_end += 1
+        run = run_end - index
+        scan, close = run_end, -1
+        while scan < length:
+            if line[scan] != "`":
+                scan += 1
+                continue
+            candidate_end = scan
+            while candidate_end < length and line[candidate_end] == "`":
+                candidate_end += 1
+            if candidate_end - scan == run:
+                close = scan
+                break
+            scan = candidate_end
+        if close >= 0:
+            out.append(" " * (close + run - index))
+            index = close + run
+        else:
+            out.append(line[index:run_end])
+            index = run_end
+    return "".join(out)
+
+
 class RelativeLinkFailure(str, Enum):
     """Closed failure vocabulary for a rendered repo-relative link."""
 

@@ -75,6 +75,7 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 - In-text citations integrated
 - Word count tracking per section
 - Transition paragraphs between sections
+- Acronym check on the saved draft (#849; [`writing_quality_check.md`](writing_quality_check.md) § F)
 
 ---
 
@@ -103,6 +104,7 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 - Headings and report columns are pair-derived; for the default pair `zh-tw-en` they render exactly as `### English Abstract` / `### Chinese Abstract`
 - Independent writing (not mechanical translation)
 - Field absent → default pair; the heading literals are unchanged from the pre-#862 surface (no rendered-output equivalence is claimed)
+- Acronym check on the saved abstracts (#849; [`writing_quality_check.md`](writing_quality_check.md) § F)
 
 ---
 

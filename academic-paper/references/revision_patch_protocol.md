@@ -35,6 +35,11 @@ The apply report shares the revised draft's lifecycle: it is a **required input 
 #    any rewrite (including a finalizer pass) invalidates the manifest.
 python scripts/ars_anchorize_draft.py draft.md
 
+# 1a. Acronym check (#849): read-only, on the anchored draft. A report with
+#     findings goes to the writer with the round's authority artifacts
+#     (writing_quality_check.md § F); an integrity-correction round skips it.
+python scripts/check_acronyms.py --input draft.md --lang en
+
 # 2. Validate the immutable roadmap, registered claim surfaces, and explicit
 #    author sidecar. The writer receives all exact artifacts/bindings and emits
 #    phase6_*/revision_patch_round1.json (current format 1.1, never a full draft).
@@ -55,9 +60,9 @@ python scripts/ars_apply_revision_patch.py draft.md \
     --artifact-root revision-authority/ \
     --output draft.rev1.md
 
-# 4. Run your normal post-revision steps (finalizer / citation checks)
-#    on draft.rev1.md, then re-review with draft.rev1.md.apply-report.json
-#    attached.
+# 4. Run your normal post-revision steps (finalizer / citation checks, and
+#    the acronym check, whose report goes to the user) on draft.rev1.md,
+#    then re-review with draft.rev1.md.apply-report.json attached.
 ```
 
 Exit codes: `0` applied · `2` Phase 1 rejection (structured failure report on stdout; base byte-untouched) · `3` structural refusal (see escalation) · `4` post-write self-check bug.

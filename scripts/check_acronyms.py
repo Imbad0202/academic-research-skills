@@ -29,10 +29,9 @@ not ``IV``); and the statistical symbols ``SD``, ``SE``, and ``CI``.
 Not read, with line numbers kept: front matter, code fences and spans, HTML
 comments (including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math,
 URLs, headings, tables, image lines, figure and table captions, notes,
-keyword lines, the reference list, the writer's and evaluator's scoring
-sections, parenthetical citations with a year (``(WHO, 2020)``), APA
-group-author brackets (``World Health Organization [WHO]``), and author
-initials in citations (``Smith JA, Jones BC (2020)``).
+keyword lines, the reference list, parenthetical citations with a year
+(``(WHO, 2020)``), APA group-author brackets (``World Health Organization
+[WHO]``), and author initials in citations (``Smith JA, Jones BC (2020)``).
 
 Scopes come from headings: ``Abstract`` or ``English Abstract`` starts the
 English abstract, ``摘要``, ``中文摘要`` or ``Chinese Abstract`` the Chinese
@@ -47,11 +46,11 @@ Usage:
         [--allow-file FILE] [--lang en|zh-TW] [--json-out FILE]
 
 Prints the Markdown report in ``--lang`` and writes the JSON report to
-``--json-out``, which may not be the input file. Exit 0: the requested
-scopes were read (``checked``, or ``partial`` with coverage limits); findings
-never change the exit status.
+``--json-out``, which may be neither the input nor the allowlist file.
+Exit 0: the requested scopes were read (``checked``, or ``partial`` with
+coverage limits); findings never change the exit status.
 Exit 2: nothing was checked (``not_checked``: unsupported format, unreadable
-input, an unknown scope name, or none of the requested scopes in the input),
+input or allowlist, an unknown scope name, or none of the requested scopes in the input),
 and the report says so. A missing report or any other exit status also means
 not checked; it is never a clean result.
 """
@@ -66,6 +65,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _markdown_lint_util import blank_code_spans  # noqa: E402
 
 CHECKER = "ars-acronym-check/1.0"
 SCOPES = ("body", "abstract_en", "abstract_zh")
@@ -105,18 +107,21 @@ _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[�
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
 
 _COMMENT = re.compile(r"<!--.*?-->", re.S)
-_CODE_SPAN = re.compile(r"(`+)[^`\n]*?\1")
 _DISPLAY_MATH = re.compile(r"\$\$.*?\$\$", re.S)
 _INLINE_MATH = re.compile(r"\$(?=\S)[^$\n]+?(?<=\S)\$")
 _URL = re.compile(r"\((?:https?|ftp)://[^)\s]*\)|(?:https?|ftp)://\S+")
-_YEAR_CITATION = re.compile(r"[(（](?=[^()（）]*\b(?:1[89]|20)\d{2}[a-z]?\b)[^()（）]*[)）]")
+_PAREN = re.compile(r"[(（]([^()（）]*)[)）]")
+_UNREAD = re.compile(r"(?:['’]s)?[ \t]?" + _PAREN.pattern)
+_TRAILING_PAREN = re.compile(rf"\s*{_PAREN.pattern}\s*$")
+_YEAR = r"(?:1[89]|20)\d{2}"
+_YEAR_CITATION = re.compile(rf"[(（](?=[^()（）]*\b{_YEAR}[a-z]?\b)[^()（）]*[)）]")
 _GROUP_AUTHOR = re.compile(r"\[[A-Za-z][A-Za-z0-9]{1,5}s?\]")
 _INITIALS = re.compile(
-    r"\b[A-Z][a-z]+ ([A-Z]{1,3})(?=\s*(?:,\s*[A-Z][a-z]+ [A-Z]{1,3}\b|et\s+al\b|\(?(?:1[89]|20)\d{2}\b))")
-_PAREN = re.compile(r"[(（]([^()（）]*)[)）]")
-_UNREAD = re.compile(r"(?:['’]s)?[ \t]?[(（]([^()（）]*)[)）]")
+    rf"\b[A-Z][a-z]+ ([A-Z]{{1,3}})(?=\s*(?:,\s*[A-Z][a-z]+ [A-Z]{{1,3}}\b|et\s+al\b|\(?{_YEAR}\b))")
 _LOOKBACK = 300  # characters of context read before a parenthetical
 _LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
+_CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、\n]")
+_CJK_RUN = re.compile(r"[㐀-鿿]+$")
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
@@ -125,10 +130,7 @@ _OTHER_ABSTRACT = {"resumen", "résumé", "resumo", "zusammenfassung", "sommario
                    "abstrak", "özet"}
 _EXCLUDED_SECTIONS = {
     "references", "reference list", "bibliography", "works cited", "literature cited",
-    "參考文獻", "參考資料", "引用文獻",
-    "dimension scores", "failure condition checks", "writer decision", "evaluator decision",
-    "scoring plan", "acceptance criteria paraphrase", "contract paraphrase", "quality checklist",
-    "keywords",
+    "參考文獻", "參考資料", "引用文獻", "keywords",
 }
 _STOP = {"of", "and", "the", "for", "in", "on", "to", "a", "an", "with", "by", "at", "or"}
 
@@ -140,7 +142,6 @@ class NotChecked(Exception):
 @dataclass(frozen=True)
 class Occurrence:
     line: int
-    offset: int
     acronym: str
     kind: str  # "use", "definition", or "unread_definition"
     expansion: str | None = None
@@ -155,7 +156,7 @@ def is_candidate(token: str) -> bool:
         return False
     if any(c.isdigit() for c in token) and _is_formula(token):
         return False
-    return not (token.isupper() and _ROMAN.fullmatch(token) and token != "IV")
+    return not (_ROMAN.fullmatch(token) and token != "IV")
 
 
 def _is_formula(token: str) -> bool:
@@ -174,8 +175,7 @@ def base_form(word: str) -> str | None:
 
 def _spells(acronym: str, words: str) -> bool:
     """True when the acronym's letters appear, in order, as the words' initials."""
-    initials = [w[0].lower() for w in re.findall(r"[A-Za-z][A-Za-z'’-]*", words)
-                if w.casefold() not in _STOP]
+    initials = [w[0].lower() for w in _LATIN_WORD.findall(words) if w.casefold() not in _STOP]
     letters = iter(initials)
     return len(initials) >= 2 and all(c in letters for c in acronym.lower() if c.isalpha())
 
@@ -183,7 +183,7 @@ def _spells(acronym: str, words: str) -> bool:
 def _normalize_heading(text: str) -> str:
     text = re.sub(r"[*_`]", "", text).strip()
     text = re.sub(r"^(?:[0-9IVX]+(?:\.[0-9]+)*[.)]?|[一二三四五六七八九十壹貳參肆伍]+[、.])\s*", "", text)
-    text = re.sub(r"\s*[(（][^()（）]*[)）]\s*$", "", text)
+    text = _TRAILING_PAREN.sub("", text)
     return text.strip().casefold()
 
 
@@ -214,7 +214,9 @@ class Manuscript:
         self._mask_blocks(chars)
         _blank_pattern(chars, _COMMENT)
         self._assign_scopes(chars)
-        for pattern, group in ((_CODE_SPAN, 0), (_DISPLAY_MATH, 0), (_INLINE_MATH, 0), (_URL, 0),
+        for start, line in zip(self.starts, self.lines):
+            chars[start:start + len(line)] = blank_code_spans("".join(chars[start:start + len(line)]))
+        for pattern, group in ((_DISPLAY_MATH, 0), (_INLINE_MATH, 0), (_URL, 0),
                                (_INITIALS, 1), (_YEAR_CITATION, 0), (_GROUP_AUTHOR, 0)):
             _blank_pattern(chars, pattern, group)
         self.masked = "".join(chars)
@@ -235,7 +237,7 @@ class Manuscript:
     def _mask_blocks(self, chars: list[str]) -> None:
         """Front matter and code fences, by line."""
         index = 0
-        if self.lines and self.lines[0].rstrip("\r") == "---":
+        if self.lines[0].rstrip("\r") == "---":
             for end in range(1, len(self.lines)):
                 if self.lines[end].rstrip("\r") in ("---", "..."):
                     for i in range(end + 1):
@@ -245,13 +247,15 @@ class Manuscript:
         fence: str | None = None
         for i in range(index, len(self.lines)):
             match = _FENCE.match(self.lines[i])
-            if fence is None and match:
-                fence = match.group(1)[0] * len(match.group(1))
-                self._blank_line(chars, i)
-            elif fence is not None:
-                self._blank_line(chars, i)
-                if self.lines[i].strip().startswith(fence):
-                    fence = None
+            if fence is None:
+                if match:
+                    fence = match.group(1)
+                    self._blank_line(chars, i)
+                continue
+            self._blank_line(chars, i)
+            if (match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence)
+                    and not self.lines[i][match.end():].strip()):
+                fence = None
 
     def _assign_scopes(self, chars: list[str]) -> None:
         """Headings set scopes; excluded and unread sections are blanked."""
@@ -285,28 +289,24 @@ class Manuscript:
         return bisect.bisect_right(self.starts, offset)
 
 
-def _expansion_before(text: str) -> str | None:
-    """The words before a parenthetical, as many as the acronym has letters."""
-    head = re.split(r"[.;:!?。；：！？,，、\n]", text)[-1].rstrip()
-    if not head:
-        return None
-    if re.search(r"[㐀-鿿]$", head):
-        run = re.search(r"[㐀-鿿]+$", head)
-        return run.group(0)[-20:] if run else None
-    return head
-
-
-def _latin_expansion(head: str, letters: int) -> str | None:
-    words = _LATIN_WORD.findall(head)
+def _expansion(before: str, acronym: str) -> str | None:
+    """The words a definition follows, in its clause: the CJK run, or as many
+    Latin words as the acronym has capitals (stop words not counted)."""
+    head = _CLAUSE_BREAK.split(before)[-1].rstrip()
+    cjk = _CJK_RUN.search(head)
+    if cjk:
+        return cjk.group(0)[-20:]
+    if not re.search(r"[A-Za-z]$", head):
+        return head or None
     picked: list[str] = []
-    counted = 0
-    for word in reversed(words):
+    wanted = sum(c.isupper() for c in acronym)
+    for word in reversed(_LATIN_WORD.findall(head)):
         picked.append(word)
         if word.casefold() not in _STOP:
-            counted += 1
-        if counted >= letters:
-            break
-    return " ".join(reversed(picked)) or None
+            wanted -= 1
+            if not wanted:
+                break
+    return " ".join(reversed(picked))
 
 
 def find_occurrences(doc: Manuscript) -> list[Occurrence]:
@@ -321,35 +321,26 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
         before = text[max(0, paren.start() - _LOOKBACK):paren.start()].rstrip(" \t")
         if acronym is None or not before or before[-1] in "\n([（":
             continue
-        if len(items) > 1:
-            expansion = " ".join(items[:-1]) or None
-        else:
-            head = _expansion_before(before)
-            if head and re.search(r"[A-Za-z]$", head):
-                letters = sum(c.isupper() for c in acronym) or len(acronym)
-                expansion = _latin_expansion(head, letters)
-            else:
-                expansion = head
+        expansion = " ".join(items[:-1]) or None if len(items) > 1 else _expansion(before, acronym)
         offset = paren.start(1) + content.rfind(last)
-        defined[offset] = Occurrence(doc.line_of(offset), offset, acronym, "definition", expansion)
+        defined[offset] = Occurrence(doc.line_of(offset), acronym, "definition", expansion)
     occurrences: list[Occurrence] = []
     for word in _WORD.finditer(text):
         acronym = base_form(word.group(0))
         if acronym is None:
             continue
-        offset = word.start()
-        if offset in defined:
-            occurrences.append(defined[offset])
+        if word.start() in defined:
+            occurrences.append(defined[word.start()])
             continue
         unread = _UNREAD.match(text, word.end())
-        if unread and acronym not in unread.group(1) and _spells(acronym, unread.group(1)):
-            occurrences.append(Occurrence(doc.line_of(offset), offset, acronym, "unread_definition"))
-        else:
-            occurrences.append(Occurrence(doc.line_of(offset), offset, acronym, "use"))
+        kind = ("unread_definition" if unread and acronym not in unread.group(1)
+                and _spells(acronym, unread.group(1)) else "use")
+        occurrences.append(Occurrence(doc.line_of(word.start()), acronym, kind))
     return occurrences
 
 
-def check(text: str, scopes: tuple[str, ...], allow: frozenset[str]) -> dict[str, Any]:
+def check(text: str, scopes: tuple[str, ...] = SCOPES,
+          allow: frozenset[str] = DEFAULT_ALLOWLIST) -> dict[str, Any]:
     doc = Manuscript(text)
     by_scope: dict[str, dict[str, list[Occurrence]]] = {s: {} for s in SCOPES}
     for occurrence in find_occurrences(doc):
@@ -369,13 +360,12 @@ def check(text: str, scopes: tuple[str, ...], allow: frozenset[str]) -> dict[str
                                "reason": "unread_definition_form"})
                 continue
             definitions = [o for o in found if o.kind == "definition"]
-            expansion = definitions[0].expansion if definitions else None
             if not definitions:
                 findings.append(_finding(scope, found[0].line, "undefined", acronym, None, count))
                 continue
             if found[0].kind == "use":
                 findings.append(_finding(scope, found[0].line, "defined_after_use", acronym,
-                                         expansion, count))
+                                         definitions[0].expansion, count))
             for repeat in definitions[1:]:
                 findings.append(_finding(scope, repeat.line, "defined_again", acronym,
                                          repeat.expansion, count))
@@ -406,11 +396,12 @@ def _finding(scope: str, line: int, rule: str, acronym: str, expansion: str | No
 # Chinese, chosen by the language the user writes in.
 # ---------------------------------------------------------------------------
 
+_ZH_SCOPES = {"body": "正文", "abstract_en": "英文摘要", "abstract_zh": "中文摘要"}
 _TEXT = {
     "en": {
         "title": "### Acronym check (advisory; no reply needed)",
         "coverage": "Coverage: {scopes} ({state})",
-        "complete": "complete", "partial": "partial",
+        "states": {"checked": "complete", "partial": "partial"},
         "absent": "Not in this input: {scopes}.",
         "limits": "Not checked:",
         "limit": "- {scope}, line {line}: {acronym} (a definition form this check does not read)",
@@ -435,7 +426,7 @@ _TEXT = {
     "zh-TW": {
         "title": "### 縮寫檢查（僅供參考，不必回覆）",
         "coverage": "範圍：{scopes}（{state}）",
-        "complete": "完整", "partial": "部分",
+        "states": {"checked": "完整", "partial": "部分"},
         "absent": "此檔沒有：{scopes}。",
         "limits": "未檢查：",
         "limit": "- {scope}第 {line} 行：{acronym}（這個檢查讀不到的定義寫法）",
@@ -443,8 +434,8 @@ _TEXT = {
         "none": "沒有發現問題。",
         "header": "| 範圍 | 行 | 問題 | 縮寫 | 次數 |",
         "not_checked": "未檢查：{reason}。",
-        "scope_names": {"body": "正文", "abstract_en": "英文摘要", "abstract_zh": "中文摘要"},
-        "scope_cells": {"body": "正文", "abstract_en": "英文摘要", "abstract_zh": "中文摘要"},
+        "scope_names": _ZH_SCOPES,
+        "scope_cells": _ZH_SCOPES,
         "rules": {"undefined": "未定義", "defined_after_use": "定義晚於首次使用",
                   "defined_again": "重複定義"},
         "join": "、",
@@ -468,8 +459,7 @@ def render(report: dict[str, Any], lang: str) -> str:
     names = text["scope_names"]
     checked = [names[s] for s in SCOPES if report["coverage"][s] == "checked"]
     lines.append(text["coverage"].format(scopes=text["join"].join(checked),
-                                         state=text[report["status"] == "checked" and "complete"
-                                                    or "partial"]))
+                                         state=text["states"][report["status"]]))
     absent = [names[s] for s in SCOPES if report["coverage"][s] == "not_in_input"]
     if absent:
         lines.append(text["absent"].format(scopes=text["join"].join(absent)))
@@ -502,9 +492,17 @@ def _read_allowlist(path: Path) -> set[str]:
     return {line.split("#", 1)[0].strip() for line in lines} - {""}
 
 
+def _same_file(a: Path, b: Path) -> bool:
+    """True when both paths name one file, including through a link."""
+    try:
+        return a.resolve() == b.resolve() or a.samefile(b)
+    except OSError:
+        return False
+
+
 def build_report(path: Path, scopes_arg: str, allow: list[str], allow_file: Path | None) -> dict[str, Any]:
     report: dict[str, Any] = {"checker": CHECKER, "input": str(path), "input_sha256": None,
-                              "status": "not_checked", "reason": None}
+                              "status": "not_checked"}
     try:
         scopes = tuple(s.strip() for s in scopes_arg.split(",") if s.strip())
         if not scopes or any(s not in SCOPES for s in scopes):
@@ -520,7 +518,6 @@ def build_report(path: Path, scopes_arg: str, allow: list[str], allow_file: Path
         user = set(allow) | (_read_allowlist(allow_file) if allow_file else set())
         report["allowlist"] = {"default": len(DEFAULT_ALLOWLIST), "user": sorted(user)}
         report.update(check(text.replace("\r\n", "\n"), scopes, DEFAULT_ALLOWLIST | frozenset(user)))
-        report.pop("reason")
     except NotChecked as exc:
         report["reason"] = str(exc)
     return report
@@ -536,8 +533,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--lang", choices=LANGS, default="en", help="Language of the Markdown report.")
     parser.add_argument("--json-out", type=Path, help="Write the JSON report to this file.")
     args = parser.parse_args(argv)
-    if args.json_out and args.json_out.resolve() == args.input.resolve():
-        parser.error("--json-out may not be the input file")
+    if args.json_out and any(_same_file(args.json_out, path)
+                             for path in (args.input, args.allow_file) if path):
+        parser.error("--json-out may not be the input file or the allowlist file")
     report = build_report(args.input, args.scopes, args.allow, args.allow_file)
     if args.json_out:
         args.json_out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -142,7 +142,7 @@ Green flags for independent writing:
 - Both abstracts stand alone as complete summaries
 
 ### Acronym Report (#849)
-After you write the abstracts, the caller runs `scripts/check_acronyms.py` on your output with the abstract scopes and passes you the report; you cannot run it. Each abstract defines its own acronyms, apart from the body and from the other abstract. Fix the findings in the abstract scopes within the length regime, then return the corrected abstracts (`references/writing_quality_check.md` § F). A `partial` or `Not checked` report, or none, is not a clean result.
+Define each acronym at its first use in each abstract, apart from the body and from the other abstract. Save the abstracts as `abstract.md` in your `phase5_*/` folder; the caller runs `scripts/check_acronyms.py` on that file. If a later call carries its report, fix the findings in the abstract scopes with targeted edits to that file, within the length regime (`references/writing_quality_check.md` § F).
 
 ## Protected Hedges (#548 + v3.6.7 roster)
 

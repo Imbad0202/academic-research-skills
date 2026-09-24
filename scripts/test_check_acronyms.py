@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -29,9 +30,12 @@ SCRIPT = REPO / "scripts" / "check_acronyms.py"
 FIXTURES = REPO / "tests" / "fixtures" / "acronym_check"
 
 
-def findings(text: str, scopes: tuple[str, ...] = SCOPES, allow: frozenset[str] = DEFAULT_ALLOWLIST):
-    report = check(text, scopes, allow)
+def rows(report: dict) -> list[tuple]:
     return [(f["scope"], f["line"], f["rule"], f["acronym"]) for f in report["findings"]]
+
+
+def findings(text: str, **kwargs) -> list[tuple]:
+    return rows(check(text, **kwargs))
 
 
 # --- rules ---------------------------------------------------------------
@@ -42,14 +46,14 @@ def test_defined_before_use_is_clean() -> None:
 
 
 def test_undefined_is_reported_at_first_use_with_the_count() -> None:
-    report = check("We ran an RCT.\n\nThe RCT ended.\n", SCOPES, DEFAULT_ALLOWLIST)
+    report = check("We ran an RCT.\n\nThe RCT ended.\n")
     assert report["findings"] == [{"scope": "body", "line": 1, "rule": "undefined", "acronym": "RCT",
                                    "expansion": None, "occurrences": 2}]
 
 
 def test_use_before_the_definition() -> None:
     text = "The RCT ran.\nA randomized controlled trial (RCT) is a design.\n"
-    report = check(text, SCOPES, DEFAULT_ALLOWLIST)
+    report = check(text)
     [finding] = report["findings"]
     assert (finding["line"], finding["rule"], finding["expansion"]) == (
         1, "defined_after_use", "randomized controlled trial")
@@ -76,8 +80,7 @@ def test_chinese_definition_forms() -> None:
 
 
 def test_unread_definition_form_is_a_coverage_limit_not_a_finding() -> None:
-    report = check("The RCT (randomized controlled trial) ran. The RCT ended.\n", SCOPES,
-                   DEFAULT_ALLOWLIST)
+    report = check("The RCT (randomized controlled trial) ran. The RCT ended.\n")
     assert report["findings"] == []
     assert report["status"] == "partial"
     assert report["coverage_limits"] == [{"scope": "body", "line": 1, "acronym": "RCT",
@@ -133,13 +136,13 @@ def test_candidate_shape(token: str, expected: bool) -> None:
 
 def test_plural_and_possessive_count_as_the_base() -> None:
     text = "Large language models (LLMs) help. The LLM's output and two LLMs' outputs.\n"
-    report = check(text, SCOPES, DEFAULT_ALLOWLIST)
+    report = check(text)
     assert report["findings"] == []
     assert findings("The RCTs and the RCT's arm.\n") == [("body", 1, "undefined", "RCT")]
 
 
 def test_whole_token_matching() -> None:
-    report = check("The AIDS cohort and AI-based tools.\n", SCOPES, DEFAULT_ALLOWLIST)
+    report = check("The AIDS cohort and AI-based tools.\n")
     assert [(f["acronym"], f["occurrences"]) for f in report["findings"]] == [("AI", 1)]
 
 
@@ -164,7 +167,6 @@ def test_whole_token_matching() -> None:
     ("chinese note", "註：RCT 為隨機對照試驗。\n"),
     ("keywords", "**Keywords**: RCT, LLM\n"),
     ("chinese keywords", "關鍵詞：RCT、LLM\n"),
-    ("scoring section", "Body.\n\n## Dimension Scores\n\nD1 RCT score.\n"),
     ("inline math", "The effect $F_{RCT}$ held.\n"),
     ("display math", "$$\nRCT = 1\n$$\n"),
     ("url", "See https://example.org/RCT and [a link](https://example.org/LLM).\n"),
@@ -175,6 +177,21 @@ def test_whole_token_matching() -> None:
 ])
 def test_exclusions(label: str, text: str) -> None:
     assert findings(text) == [], label
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("Use \\`RCT\\` here.\n", [("body", 1, "undefined", "RCT")]),  # escaped backticks are literal
+    ("An `RCT`` run.\n", [("body", 1, "undefined", "RCT")]),          # unequal runs open no span
+    ("A ``RCT`x`` span.\n", []),                                       # a span may hold a backtick
+])
+def test_code_spans_follow_commonmark(text: str, expected: list[tuple]) -> None:
+    assert findings(text) == expected
+
+
+def test_a_fence_closes_only_on_a_matching_closer() -> None:
+    text = ("````\nRCT\n```\nLLM\n~~~~\nSEM\n````  \nThe IRT held.\n"
+            "```python\nNLP\n```python\nABC\n    ```\nXYZ\n```\nThe GLM fit.\n")
+    assert findings(text) == [("body", 8, "undefined", "IRT"), ("body", 16, "undefined", "GLM")]
 
 
 def test_sentence_start_word_before_an_acronym_is_not_an_author() -> None:
@@ -191,21 +208,21 @@ def test_caption_word_at_sentence_start_is_still_prose() -> None:
 def test_scope_runs_to_the_next_heading_at_its_level() -> None:
     text = ("## English Abstract\n\n### Paper title\n\nThe RCT worked.\n\n"
             "## Chinese Abstract (zh-TW)\n\n這項 LLM 研究。\n\n## Methods\n\nThe SEM fit.\n")
-    report = check(text, SCOPES, DEFAULT_ALLOWLIST)
-    assert findings(text) == [("body", 13, "undefined", "SEM"), ("abstract_en", 5, "undefined", "RCT"),
-                              ("abstract_zh", 9, "undefined", "LLM")]
+    report = check(text)
+    assert rows(report) == [("body", 13, "undefined", "SEM"), ("abstract_en", 5, "undefined", "RCT"),
+                            ("abstract_zh", 9, "undefined", "LLM")]
     assert report["scope_lines"] == {"body": [[12, 13]], "abstract_en": [[2, 2], [4, 6]],
                                      "abstract_zh": [[8, 10]]}
 
 
 def test_unread_abstract_section_makes_coverage_partial() -> None:
-    report = check("## Resumen\n\nUn ECA.\n\n## Body\n\nText.\n", SCOPES, DEFAULT_ALLOWLIST)
+    report = check("## Resumen\n\nUn ECA.\n\n## Body\n\nText.\n")
     assert report["unread_sections"] == [{"line": 1, "heading": "Resumen"}]
     assert report["status"] == "partial" and report["findings"] == []
 
 
 def test_requested_scope_absent_from_the_input() -> None:
-    report = check("Body text.\n", ("body", "abstract_en"), DEFAULT_ALLOWLIST)
+    report = check("Body text.\n", ("body", "abstract_en"))
     assert report["coverage"] == {"body": "checked", "abstract_en": "not_in_input",
                                   "abstract_zh": "not_requested"}
     assert report["status"] == "partial"
@@ -256,9 +273,18 @@ def test_cli_exit_codes_and_outputs(tmp_path: Path) -> None:
     assert json.loads(out.read_text(encoding="utf-8"))["findings"][0]["acronym"] == "RCT"
     result = run_script(SCRIPT, "--input", str(_write(tmp_path, "m.pdf", b"%PDF")))
     assert result.returncode == 2 and "Not checked:" in result.stdout
-    result = run_script(SCRIPT, "--input", str(manuscript), "--json-out", str(manuscript))
-    assert result.returncode == 2 and "may not be the input file" in result.stderr
-    assert manuscript.read_bytes() == b"We ran an RCT.\n"
+
+
+def test_json_out_may_not_overwrite_an_input(tmp_path: Path) -> None:
+    manuscript = _write(tmp_path, "m.md", b"We ran an RCT.\n")
+    allow = _write(tmp_path, "allow.txt", b"SEM\n")
+    os.link(manuscript, tmp_path / "hard-link.md")
+    for target in (manuscript, allow, tmp_path / "hard-link.md"):
+        result = run_script(SCRIPT, "--input", str(manuscript), "--allow-file", str(allow),
+                            "--json-out", str(target))
+        assert result.returncode == 2
+        assert "may not be the input file or the allowlist file" in result.stderr
+    assert (manuscript.read_bytes(), allow.read_bytes()) == (b"We ran an RCT.\n", b"SEM\n")
 
 
 # --- fidelity and determinism -------------------------------------------------
@@ -290,9 +316,9 @@ def test_source_lines_survive_masking() -> None:
 def test_ordering_is_deterministic() -> None:
     text = ("## 摘要\n\nLLM。\n\n## Abstract\n\nThe SEM and the RCT.\n\n## Body\n\n"
             "ZZZ then AAA.\n")
-    first = check(text, SCOPES, DEFAULT_ALLOWLIST)
-    assert first == check(text, SCOPES, DEFAULT_ALLOWLIST)
-    assert findings(text) == [("body", 11, "undefined", "AAA"), ("body", 11, "undefined", "ZZZ"),
+    first = check(text)
+    assert first == check(text)
+    assert rows(first) == [("body", 11, "undefined", "AAA"), ("body", 11, "undefined", "ZZZ"),
                               ("abstract_en", 7, "undefined", "RCT"),
                               ("abstract_en", 7, "undefined", "SEM"),
                               ("abstract_zh", 3, "undefined", "LLM")]
