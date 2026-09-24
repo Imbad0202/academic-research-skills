@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import random
 from pathlib import Path
 
 import pytest
@@ -249,8 +250,35 @@ def test_a_list_with_excluded_tokens_is_a_use(text: str) -> None:
     assert findings(text) == [("body", 1, "undefined", acronym)]
 
 
+_FUZZ_PIECES = ["(", ")", "（", "）", ",", "，", "、", ";", "/", "-", " and ", " or ", "與", "$R^2$", "`x`",
+                "($R^2$, ", "(`x`, ", "（、",
+                "<!-- c -->", "RCT", "CIs", "OR", "HR", "e.g.,", "randomized controlled trial", "隨機對照試驗",
+                "（見第二節）", "Figure 1 |", "Table III.", "圖一：", "Note.", "Smith AB", " (2020a)",
+                "(WHO, n.d.-a)", "[WHO]", "\n", "\n\n", "# Abstract\n", "## 摘要\n", "## References\n",
+                "| a | b |\n|---|---|\n", "- ", "> ", "```\n", "![img](x.png)\n", "***\n", "===\n", "\\",
+                "*", "Keywords: ", "\r\n", "\u2028", "and/or", "1", "2020", "et al."]
+
+
+def test_mixed_constructs_never_crash_the_check() -> None:
+    # Every input gives a report or a not_checked state, never an exception.
+    rng = random.Random(849)
+    for _ in range(1500):
+        text = "Body prose ran. " + "".join(rng.choice(_FUZZ_PIECES) for _ in range(rng.randint(1, 30)))
+        try:
+            report = check(text)
+        except NotChecked:
+            continue
+        render(report, "en")
+        render(report, "zh-TW")
+
+
+@pytest.mark.parametrize("item", ["$R^2$", "`r2`", "<!-- fit -->"])
+def test_a_list_item_that_is_not_read_leaves_a_use(item: str) -> None:
+    assert findings(f"We compared fit statistics ({item}, AIC).\n") == [("body", 1, "undefined", "AIC")]
+
+
 def test_acronyms_joined_by_a_slash_hyphen_or_word_form_a_list() -> None:
-    for joined in ("PCA/ICA", "PCA and ICA"):
+    for joined in ("PCA/ICA", "PCA and ICA", "PCA and/or ICA"):
         text = ("Principal component analysis (PCA) and independent component analysis (ICA) ran.\n"
                 f"We compared them ({joined}, NMF). Nonnegative matrix factorization (NMF) won.\n")
         assert findings(text) == [("body", 2, "defined_after_use", "NMF")], joined
@@ -380,7 +408,7 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     for label in ("圖一：", "圖 2-1："):
         text = f"{label}隨機對照試驗（RCT）流程。\n\n本研究使用 RCT。\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
-    for label in ("Table III.", "Supplementary Figure S1.", "Box 1."):
+    for label in ("Table III.", "Supplementary Figure S1.", "Box 1.", "Figure 1 |", "Fig. 2 –"):
         text = f"{label} Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
@@ -448,6 +476,7 @@ def test_a_link_reference_definition_starts_a_paragraph() -> None:
 def test_caption_word_at_sentence_start_is_still_prose() -> None:
     for text in ("Table 2 shows the RCT arm.\n", "Figure 2-1 shows the RCT arm.\n",
                  "Table III shows the RCT arm.\n", "Box 1 lists the RCT arm.\n",
+                 "Fig. 1 Flow diagram of the RCT.\n",  # a disclosed limit: no mark after the number
                  "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
