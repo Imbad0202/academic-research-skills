@@ -469,7 +469,7 @@
       ],
       "pinned_by": [
         "scripts/test_check_acronyms.py::test_unread_definition_form_is_a_coverage_limit_not_a_finding",
-    "scripts/test_check_acronyms.py::test_a_parenthetical_it_cannot_confirm_is_a_coverage_limit",
+        "scripts/test_check_acronyms.py::test_a_parenthetical_it_cannot_confirm_is_a_coverage_limit",
         "scripts/test_check_acronyms.py::test_unread_abstract_section_makes_coverage_partial",
         "scripts/test_check_acronyms.py::test_requested_scope_absent_from_the_input"
       ]

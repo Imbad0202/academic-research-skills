@@ -32,17 +32,29 @@ formulas, meaning tokens with a digit that read as element symbols and counts
 (``H2O``, ``CO2``, but not ``RCT2``); Roman numerals (``II``, ``XII``, but
 not ``IV``); and the statistical symbols ``SD``, ``SE``, and ``CI``.
 
-Not read, with line numbers kept: front matter, code fences, code spans (read
-within one line: a backtick run pairs with the next run of the same length,
-and a backslash inside a span is literal), HTML comments
-(including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math, URLs, ATX
-and setext headings, tables (with or without outer pipes), image lines,
-caption, note, and keyword paragraphs, the reference list, author-year
-citations whose author part is a run of names (``(WHO, 2020)``, ``(see
-Smith et al., 2020, p. 4; Lee, 2019)``, and the citations after the acronym in
-``(RCTs; Smith, 2020)``), APA group-author brackets after a name (``World
-Health Organization [WHO]``, but not a link label such as ``[RCT](#design)``),
-and author initials in author lists (``Smith JA, Jones BC (2020)``).
+Not read, with line numbers kept: front matter, code fences, code spans (a
+backtick run pairs with the next run of the same length on its line, and a
+backslash or a comment marker inside a span is literal), HTML comments
+(including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math (inline math
+within one line), URLs, link reference definitions (``[RCT]:
+https://example.org``), ATX and setext headings, tables (with or without outer
+pipes, up to a blank line, heading, list item, blockquote, or thematic break),
+image lines, caption, note, and keyword paragraphs (from a line that starts a
+paragraph or follows an image and opens with a label such as ``Figure 2.``,
+``Note.``, or ``Keywords:``, up to a blank line), the reference list,
+author-year citations whose author part is a run of names and whose locator,
+if any, is a page, paragraph, chapter, or section (``(WHO, 2020)``, ``(see
+Smith et al., 2020, pp. 4, 6; Lee, 2019)``, and the citations after the
+acronym in ``(RCTs; Smith, 2020)``), APA group-author brackets after a name
+(``World Health Organization [WHO]``, but not a link: ``[RCT](#design)``, or
+``[RCT]`` when a link reference definition names it), and author initials in
+author lists (``Smith JA, Jones BC (2020)``). In definitions, citations,
+group-author brackets, and author lists, a line break inside a paragraph reads
+as a space.
+
+These rules read Markdown line by line; this is not a full CommonMark parser.
+Markdown the rules do not name, such as an HTML block, can be read as prose or
+as part of the construct before it.
 
 Scopes come from headings: ``Abstract`` or ``English Abstract`` starts the
 English abstract, ``摘要``, ``中文摘要`` or ``Chinese Abstract`` the Chinese
@@ -110,6 +122,7 @@ _POSSESSIVE = re.compile(r"['’]s(?![A-Za-z0-9])")
 _HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*#*[ \t]*$")
 _SETEXT = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
 _BLOCK_START = re.compile(r"^ {0,3}(?:[-*+][ \t]|\d{1,9}[.)][ \t]|>)")
+_THEMATIC_BREAK = re.compile(r"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _TABLE = re.compile(r"^\s*\|")
 _TABLE_DELIMITER = re.compile(r"^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
@@ -119,9 +132,11 @@ _CAPTION = re.compile(rf"^\s*{_EMPH}(?:Figure|Fig\.?|Table|圖|表)\s*\d+[A-Za-z
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
 
-_COMMENT = re.compile(r"<!--.*?-->", re.S)
+_COMMENT_OR_BACKTICKS = re.compile(r"<!--|`+")
+# A link reference definition ("[RCT]: https://example.org"), which is not shown.
+_LINK_DEFINITION = re.compile(r"^ {0,3}\[([^\]\n]+)\]:[ \t]*\S")
 _DISPLAY_MATH = re.compile(r"\$\$.*?\$\$", re.S)
-_INLINE_MATH = re.compile(r"\$(?=\S)[^$\n]+?(?<=\S)\$")
+_INLINE_MATH = re.compile(r"(?<!\\)\$(?=\S)[^$\n]+?(?<=\S)\$")
 _URL = re.compile(r"\((?:https?|ftp)://[^)\s]*\)|(?:https?|ftp)://\S+")
 _PAREN = re.compile(r"[(（]([^()（）]*)[)）]")
 _ITEM_BREAK = re.compile(r"[,，;；、]")
@@ -129,24 +144,28 @@ _UNREAD = re.compile(r"(?:['’]s)?[ \t]*(?:\n[ \t]*)?" + _PAREN.pattern)
 _TRAILING_PAREN = re.compile(rf"\s*{_PAREN.pattern}\s*$")
 _YEAR = r"(?:1[89]|20)\d{2}"
 _COMMA = r"[,，]"
+_SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank line
 # An author-year citation: items whose author part is a run of names (capitalized
 # words, a bracketed group abbreviation, CJK, "&", "and", "et al.", or a name
-# particle), then a year and an optional page. "(Smith et al., 2020; Lee, 2019)"
-# and "(WHO, 2020)" match; "(LLM in 2020)" and "(LLM use began in May 2020)" do not.
-_NAME = (r"(?:[A-Z][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{1,5}s?\]|[㐀-鿿]+|&|and|et al\.?"
+# particle), then a year and an optional page, paragraph, chapter, or section
+# locator. "(Smith et al., 2020, pp. 4, 6; Lee, 2019)" and "(WHO, 2020)" match;
+# "(LLM in 2020)" and "(LLM use began in May 2020)" do not.
+_NAME = (rf"(?:[A-Z][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\]|[㐀-鿿]+|&|and|et{_SPACE}al\.?"
          r"|(?:van|von|de|der|den|du|da|di|del|la|le)(?=\s))")
-_CITE_ITEM = (rf"\s*(?:(?:see(?: also)?|e\.g\.|cf\.|i\.e\.)\s*{_COMMA}?\s*)?"
+_LOCATOR = (rf"(?:(?:p|pp|paras?|ch|chap|secs?)\.\s*|(?:Chapter|Section){_SPACE})[\w.–-]+"
+            rf"(?:\s*{_COMMA}\s*[\w.–-]*\d[\w.–-]*)*")
+_CITE_ITEM = (rf"\s*(?:(?:see(?:{_SPACE}also)?|e\.g\.|cf\.|i\.e\.)\s*{_COMMA}?\s*)?"
               rf"{_NAME}(?:(?:\s*[,，、]\s*|\s+){_NAME})*\s*{_COMMA}?\s*"
               rf"(?:n\.d\.|{_YEAR}[a-z]?)(?:\s*{_COMMA}\s*{_YEAR}[a-z]?)*"
-              rf"(?:\s*{_COMMA}\s*(?:p|pp|para)\.\s*[\w–-]+)?\s*")
+              rf"(?:\s*{_COMMA}\s*{_LOCATOR})?\s*")
 _CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
 # The citations after an acronym in "(RCTs; Smith, 2020)".
 _TRAILING_CITATION = re.compile(rf"[;；]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*(?=[)）])")
 # "World Health Organization [WHO]": a bracket after a capitalized word, not a
-# Markdown link label ("[RCT](#design)", "[RCT][1]", "[RCT]: url").
-_GROUP_AUTHOR = re.compile(r"\b[A-Z][a-z]+[ \t]+(\[[A-Za-z][A-Za-z0-9]{1,5}s?\])(?![(\[:])")
+# Markdown link ("[RCT](#design)", "[RCT][1]", or "[RCT]" with a definition).
+_GROUP_AUTHOR = re.compile(rf"\b[A-Z][a-z]+{_SPACE}(\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\])(?![(\[:])")
 # Author initials in an author list: "Smith JA, Jones BC (2019)", "Lee KM et al.".
-_AUTHOR = re.compile(r"([A-Z][a-z]+) ([A-Z]{1,3})\b")
+_AUTHOR = re.compile(rf"([A-Z][a-z]+){_SPACE}([A-Z]{{1,3}})\b")
 _AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:\s*,\s*{_AUTHOR.pattern})*"
                           rf"(?=\s*(?:,\s*)?(?:et\s+al\b|\(?{_YEAR}\b))")
 # One "Word ABC (2020)" is prose, not an author, when the word opens a sentence.
@@ -230,24 +249,52 @@ def _escaped(line: str, index: int) -> bool:
     return count % 2 == 1
 
 
+def _after_backticks(text: str, run: re.Match[str]) -> tuple[int, bool]:
+    """Where reading resumes after a backtick run, and whether the run opens a
+    code span. As in CommonMark, a span closes at the next run of the same
+    length (here, on the same line), a backslash inside it is literal, and an
+    escaped backtick opens nothing."""
+    if _escaped(text, run.start()):
+        return run.start() + 1, False
+    stop = text.find("\n", run.end())
+    for closer in _BACKTICKS.finditer(text, run.end(), len(text) if stop < 0 else stop):
+        if len(closer.group(0)) == len(run.group(0)):
+            return closer.end(), True
+    return run.end(), False
+
+
 def _blank_code_spans(line: str) -> str:
-    """Blank the code spans in one line as CommonMark reads them: a backtick run
-    opens a span that the next run of the same length closes, a backslash inside
-    a span is literal, and outside one an escaped backtick opens nothing."""
+    """Blank the code spans in one line."""
     chars = list(line)
     pos = 0
-    while (opener := _BACKTICKS.search(line, pos)) is not None:
-        if _escaped(line, opener.start()):
-            pos = opener.start() + 1
-            continue
-        closer = next((m for m in _BACKTICKS.finditer(line, opener.end())
-                       if len(m.group(0)) == len(opener.group(0))), None)
-        if closer is None:
-            pos = opener.end()
-            continue
-        chars[opener.start():closer.end()] = " " * (closer.end() - opener.start())
-        pos = closer.end()
+    while (run := _BACKTICKS.search(line, pos)) is not None:
+        pos, span = _after_backticks(line, run)
+        if span:
+            chars[run.start():pos] = " " * (pos - run.start())
     return "".join(chars)
+
+
+def _blank_comments(chars: list[str]) -> None:
+    """Blank HTML comments, reading left to right as CommonMark does: a comment
+    marker inside a code span is literal, ``<!-->`` and ``<!--->`` are whole
+    comments, and a comment ends at the first ``-->``."""
+    text = "".join(chars)
+    pos = 0
+    while (mark := _COMMENT_OR_BACKTICKS.search(text, pos)) is not None:
+        if mark.group(0) != "<!--":
+            pos = _after_backticks(text, mark)[0]
+        elif _escaped(text, mark.start()):
+            pos = mark.end()
+        elif (end := text.find("-->", mark.start() + 2)) < 0:
+            return
+        else:
+            _blank(chars, mark.start(), end + 3)
+            pos = end + 3
+
+
+def _link_label(label: str) -> str:
+    """A link label as CommonMark matches it: case-folded, whitespace collapsed."""
+    return " ".join(label.split()).casefold()
 
 
 def _normalize_heading(text: str) -> str:
@@ -263,10 +310,9 @@ def _blank(chars: list[str], start: int, end: int) -> None:
             chars[i] = " "
 
 
-def _blank_pattern(chars: list[str], pattern: re.Pattern[str], group: int = 0) -> None:
-    text = "".join(chars)
-    for match in pattern.finditer(text):
-        _blank(chars, match.start(group), match.end(group))
+def _blank_pattern(chars: list[str], pattern: re.Pattern[str]) -> None:
+    for match in pattern.finditer("".join(chars)):
+        _blank(chars, match.start(), match.end())
 
 
 def _blank_author_initials(chars: list[str]) -> None:
@@ -291,7 +337,7 @@ def _setext_headings(lines: list[str]) -> dict[int, tuple[int, str, int]]:
             found[start] = (1 if underline.group(1)[0] == "=" else 2, title, j)
             start = None
         elif (not line.strip() or underline or _HEADING.match(line) or _BLOCK_START.match(line)
-              or "|" in line):
+              or _THEMATIC_BREAK.match(line) or "|" in line):
             start = None
         elif start is None:
             start = j
@@ -300,8 +346,8 @@ def _setext_headings(lines: list[str]) -> dict[int, tuple[int, str, int]]:
 
 def _table_rows(lines: list[str]) -> set[int]:
     """GFM table rows, with or without a leading pipe: a header row, a delimiter
-    row, and the rows after it up to a blank line, a heading, a list item, or a
-    blockquote."""
+    row, and the rows after it up to a blank line, a heading, a list item, a
+    blockquote, or a thematic break. Code fences are blank lines here."""
     rows: set[int] = set()
     for j, line in enumerate(lines):
         if j == 0 or "|" not in line or "|" not in lines[j - 1] or not _TABLE_DELIMITER.match(line):
@@ -309,7 +355,7 @@ def _table_rows(lines: list[str]) -> set[int]:
         rows.update((j - 1, j))
         k = j + 1
         while (k < len(lines) and lines[k].strip() and not _HEADING.match(lines[k])
-               and not _BLOCK_START.match(lines[k])):
+               and not _BLOCK_START.match(lines[k]) and not _THEMATIC_BREAK.match(lines[k])):
             rows.add(k)
             k += 1
     return rows
@@ -327,14 +373,17 @@ class Manuscript:
         self.scope: list[str | None] = ["body"] * len(self.lines)
         self.ranges: dict[str, list[list[int]]] = {s: [] for s in SCOPES}
         self.unread_sections: list[dict[str, Any]] = []
+        self.link_labels: set[str] = set()
         self._mask_blocks(chars)
-        _blank_pattern(chars, _COMMENT)
+        _blank_comments(chars)
         self._assign_scopes(chars)
         for start, line in zip(self.starts, self.lines):
             chars[start:start + len(line)] = _blank_code_spans("".join(chars[start:start + len(line)]))
         for pattern in (_DISPLAY_MATH, _INLINE_MATH, _URL, _CITATION, _TRAILING_CITATION):
             _blank_pattern(chars, pattern)
-        _blank_pattern(chars, _GROUP_AUTHOR, group=1)
+        for bracket in _GROUP_AUTHOR.finditer("".join(chars)):
+            if _link_label(bracket.group(1)[1:-1]) not in self.link_labels:
+                _blank(chars, bracket.start(1), bracket.end(1))
         _blank_author_initials(chars)
         self.masked = "".join(chars)
         if text.endswith("\n"):
@@ -377,13 +426,16 @@ class Manuscript:
                 fence = None
 
     def _assign_scopes(self, chars: list[str]) -> None:
-        """Headings set scopes. Excluded and unread sections, tables, images, and
-        caption, note, and keyword paragraphs are blanked."""
+        """Headings set scopes. Excluded and unread sections, tables, images, link
+        reference definitions, and caption, note, and keyword paragraphs are
+        blanked."""
         lines = ["".join(chars[start:start + len(raw)]) for start, raw in zip(self.starts, self.lines)]
         setext = _setext_headings(lines)
         tables = _table_rows(lines)
         sections: list[tuple[int, str | None]] = []  # open sections: (level, scope or None)
         in_aside = False  # inside a caption, note, or keyword paragraph
+        in_paragraph = False  # the line before is paragraph text
+        after_image = False  # the line before holds an image, which a caption may follow
         i = 0
         while i < len(lines):
             line = lines[i]
@@ -406,17 +458,25 @@ class Manuscript:
                 for j in range(i, last + 1):
                     self.scope[j] = None
                     self._blank_line(chars, j)
-                in_aside = False
+                in_aside = in_paragraph = after_image = False
                 i = last + 1
                 continue
             self.scope[i] = sections[-1][1] if sections else "body"
             if not line.strip():
                 in_aside = False
-            elif _CAPTION.match(line) or _NOTE.match(line) or _KEYWORDS.match(line):
+            elif ((not in_paragraph or after_image)
+                  and (_CAPTION.match(line) or _NOTE.match(line) or _KEYWORDS.match(line))):
                 in_aside = True
-            if (self.scope[i] is None or in_aside or i in tables or _TABLE.match(line)
-                    or _IMAGE.search(line)):
+            # A link reference definition cannot interrupt a paragraph.
+            definition = None if in_paragraph else _LINK_DEFINITION.match(line)
+            if definition:
+                self.link_labels.add(_link_label(definition.group(1)))
+            image = _IMAGE.search(line)
+            if (self.scope[i] is None or in_aside or definition or image or i in tables
+                    or _TABLE.match(line)):
                 self._blank_line(chars, i)
+            in_paragraph = bool(line.strip()) and not definition
+            after_image = image is not None
             i += 1
 
     def line_of(self, offset: int) -> int:
@@ -460,10 +520,10 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
         if acronym is None or not before or before[-1] in "([（":
             continue
         if len(items) > 1:
-            expansion = " ".join(items[:-1]).strip()
-            if (expansion.split(" ")[0].casefold() in _NOT_EXPANSION
-                    or all(base_form(w) for w in expansion.split())):
+            words = " ".join(items[:-1]).split()
+            if all(base_form(w) for w in words) or words[0].casefold() in _NOT_EXPANSION:
                 continue  # "(e.g., RCT)" and "(SEM, RCT)" are uses
+            expansion = " ".join(words)
             if not (_CJK_RUN.search(expansion) or _spells(acronym, expansion)):
                 expansion = ""
         else:

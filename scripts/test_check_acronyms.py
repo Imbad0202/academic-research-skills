@@ -103,11 +103,31 @@ def test_a_parenthetical_at_the_start_of_a_paragraph_is_not_a_definition() -> No
     assert findings("Trials vary.\n\n(RCT) was run.\n") == [("body", 3, "undefined", "RCT")]
 
 
-def test_soft_line_breaks_do_not_change_the_result() -> None:
-    assert findings("A randomized controlled trial\n(RCT) ran. The RCT ended.\n") == []
-    wrapped = check("The RCT\n(randomized controlled trial) ran.\n")
-    assert wrapped["coverage_limits"] == [{"scope": "body", "line": 1, "acronym": "RCT",
-                                           "reason": "unread_definition_form"}]
+def _outcome(text: str) -> tuple[list[tuple], list[tuple]]:
+    report = check(text)
+    return ([(f["rule"], f["acronym"], f["expansion"], f["occurrences"]) for f in report["findings"]],
+            [(c["acronym"], c["reason"]) for c in report["coverage_limits"]])
+
+
+@pytest.mark.parametrize("text", [
+    "A randomized controlled trial (RCT) ran. The RCT ended.",
+    "The RCT ran. A randomized controlled trial (RCT) is a design.",
+    "The RCT (randomized controlled trial) ran. The RCT ended.",
+    "We compared several methods (RCT). The RCT ended.",
+    "Designs vary (e.g. randomized controlled trials, RCTs). A randomized controlled trial (RCT) ran.",
+    "As reported (see also Smith et al., 2020, pp. 4, 6; WHO, 2019), the SEM held.",
+    "Smith JA, Jones BC (2019) agreed, as did Lee KM et al. about the IRT.",
+    "The World Health Organization [WHO] said so. The LLM helped.",
+    "Randomized controlled trials (RCTs; Smith, 2020, Chapter 3) help. The RCT ended.",
+    "The effect held, as in Figure 2. The RCT ran. A randomized controlled trial (RCT) is a design.",
+    "本研究採隨機對照試驗（randomized controlled trial, RCT）。The RCT ended.",
+])
+def test_a_line_break_at_any_space_reads_as_the_space(text: str) -> None:
+    expected = _outcome(text + "\n")
+    for i, char in enumerate(text):
+        if char == " ":
+            wrapped = text[:i] + "\n" + text[i + 1:] + "\n"
+            assert _outcome(wrapped) == expected, wrapped
 
 
 def test_a_parenthetical_it_cannot_confirm_is_a_coverage_limit() -> None:
@@ -124,6 +144,8 @@ def test_a_parenthetical_it_cannot_confirm_is_a_coverage_limit() -> None:
     ("Designs vary (e.g., RCT). The RCT ended.\n", [("body", 1, "undefined", "RCT")]),
     ("Two designs (SEM, RCT) ran.\n", [("body", 1, "undefined", "RCT"),
                                        ("body", 1, "undefined", "SEM")]),
+    ("Designs vary (e.g.\nrandomized controlled trials, RCTs).\nA randomized controlled trial "
+     "(RCT) is one.\n", [("body", 2, "defined_after_use", "RCT")]),
 ])
 def test_example_and_list_parentheticals_are_uses(text: str, expected: list[tuple]) -> None:
     assert findings(text) == expected
@@ -213,6 +235,9 @@ def test_whole_token_matching() -> None:
     ("url", "See https://example.org/RCT and [a link](https://example.org/LLM).\n"),
     ("year citation", "As reported (WHO, 2020), it held.\n"),
     ("citation list", "As shown (see Smith et al., 2020, p. 4; WHO, 2019), it held.\n"),
+    ("citation page list", "Earlier work (WHO, 2020, pp. 4, 6) supported this.\n"),
+    ("citation section", "As defined (APA, 2020, Section 8.1; WHO, 2019, ch. 3), it held.\n"),
+    ("link reference definition", "[RCT]: https://example.org/design\n"),
     ("pipe-less table", "Design | Arms\n--- | ---\nRCT | 2\nSEM | 1\n"),
     ("multi-line note", "*Note.* RCT = randomized\ncontrolled trial; SEM = structural model.\n"),
     ("multi-line caption", "Figure 1. The RCT flow,\nwith SEM paths.\n"),
@@ -235,6 +260,23 @@ def test_exclusions(label: str, text: str) -> None:
 ])
 def test_code_spans_pair_equal_backtick_runs(text: str, expected: list[tuple]) -> None:
     assert findings(text) == expected
+
+
+@pytest.mark.parametrize("text", [
+    "The marker `<!--` opens a comment. The RCT worked. It closes with `-->`.\n",
+    "<!--> The RCT worked. <!-- a note -->\n",           # "<!-->" is a whole comment
+    "An escaped \\<!-- marker. The RCT worked. -->\n",   # an escaped "<" opens nothing
+    "<!-- a `note --> The RCT worked.\n",                # a comment that starts first holds the backtick
+    "It cost \\$5 per RCT arm and \\$10 per site.\n",       # an escaped dollar opens no math
+])
+def test_comment_and_math_markers_follow_markdown(text: str) -> None:
+    assert findings(text) == [("body", 1, "undefined", "RCT")]
+
+
+def test_a_caption_or_note_starts_a_paragraph() -> None:
+    text = "The effect held, as in\nFigure 2. The RCT ran.\nNote. The SEM fit.\n"
+    assert findings(text) == [("body", 2, "undefined", "RCT"), ("body", 3, "undefined", "SEM")]
+    assert findings("![Flow](flow.png)\nFigure 1. The RCT flow.\n\nThe study ended.\n") == []
 
 
 def test_a_fence_closes_only_on_a_matching_closer() -> None:
@@ -261,6 +303,16 @@ def test_a_link_label_is_not_a_group_author() -> None:
     text = "We used [RCT](#design). A randomized controlled trial (RCT) ran.\n"
     assert findings(text) == [("body", 1, "defined_after_use", "RCT")]
     assert findings("The Trial [RCT](#x) ran.\n") == [("body", 1, "undefined", "RCT")]
+    # A shortcut link: its label has a definition (matched case-insensitively).
+    text = "See [RCT].\nA randomized controlled trial (RCT) ran.\n\n[rct]: https://example.org/design\n"
+    assert findings(text) == [("body", 1, "defined_after_use", "RCT")]
+
+
+def test_a_link_reference_definition_starts_a_paragraph() -> None:
+    text = "[RCT]: https://example.org/design\n\nA randomized controlled trial (RCT) ran.\n"
+    assert findings(text) == []
+    # Inside a paragraph the same line is text, and its bracket is not a link.
+    assert findings("We ran it.\n[RCT]: see the design.\n") == [("body", 2, "undefined", "RCT")]
 
 
 def test_caption_word_at_sentence_start_is_still_prose() -> None:
@@ -296,11 +348,14 @@ def test_a_nested_excluded_section_returns_to_its_parent_scope() -> None:
                                  ("abstract_en", 11, "undefined", "LLM")]
 
 
-def test_a_table_ends_at_a_blank_line_or_another_block() -> None:
+@pytest.mark.parametrize("rule", ["***", "---", "___", " _ _ _"])
+def test_a_table_ends_at_a_blank_line_or_another_block(rule: str) -> None:
     assert findings("| a |\n|---|\n| RCT |\n\nThe LLM ran.\n") == [
         ("body", 5, "undefined", "LLM")]
     assert findings("| a |\n|---|\n| x |\n> The RCT ran.\n- The SEM fit.\n") == [
         ("body", 4, "undefined", "RCT"), ("body", 5, "undefined", "SEM")]
+    assert findings(f"Intro.\n\n| a |\n|---|\n| x |\n{rule}\nThe RCT worked.\n") == [
+        ("body", 7, "undefined", "RCT")]
 
 
 def test_a_scope_is_present_only_with_prose() -> None:
