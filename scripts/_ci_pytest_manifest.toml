@@ -61,6 +61,10 @@ id = "v3.10-firm-rules-sync"
 path = "scripts/test_check_firm_rules_sync.py"
 
 [[pytest]]
+id = "892-routing-core-sync"
+path = "scripts/test_check_routing_core_sync.py"
+
+[[pytest]]
 id = "v3.10-policy-layer"
 path = "scripts/test_check_v3_10_policy.py"
 

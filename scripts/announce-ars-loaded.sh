@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# version: 1.4.0
+# version: 1.5.0
 #
 # SessionStart hook script for the ARS Claude Code plugin (v3.7.0+).
 #
@@ -110,6 +110,25 @@ esac
 # automatic routing into a disable-model-invocation command (#857).
 ROUTING="ARS routing: the mode slash commands above are for the user to type. For a matching natural-language request, invoke the core Skill before answering: academic-research-skills:academic-paper for paper planning, writing, revision, reviewer-response coaching, rebuttal audit, abstracts, literature reviews, format conversion, citation checks, and AI disclosure; academic-research-skills:academic-paper-reviewer for simulated peer review; academic-research-skills:deep-research for research and three-way scans; academic-research-skills:academic-pipeline for the full research-to-finalize pipeline. Pass the requested mode and user request as arguments, then read the selected mode's supporting prompt files from the loaded skill directory. Requests outside academic research and writing do not invoke ARS."
 ANNOUNCE+=$'\n\n'"${ROUTING}"
+
+# ---------------------------------------------------------------------------
+# #892 routing core. A plugin install runs in the user's own project folder,
+# where Claude Code does not load this repository's .claude/CLAUDE.md, so the
+# announce carries the cross-skill routing core for every SessionStart source
+# (compaction and resume included). It is read at runtime from its single
+# source, located from this script's own path so the block needs no second
+# copy here. A missing or unreadable file degrades to no block: the announce
+# must never break.
+# ---------------------------------------------------------------------------
+ROUTING_CORE=""
+_ARS_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd) || _ARS_ROOT=""
+_CORE_FILE="${_ARS_ROOT}/shared/references/routing_core.md"
+if [[ -n "${_ARS_ROOT}" && -r "${_CORE_FILE}" ]]; then
+  ROUTING_CORE=$(sed -n '/^<!-- routing-core:begin -->$/,/^<!-- routing-core:end -->$/p' "${_CORE_FILE}" 2>/dev/null | sed '1d;$d') || ROUTING_CORE=""
+fi
+if [[ -n "${ROUTING_CORE}" ]]; then
+  ANNOUNCE+=$'\n\n'"ARS routing discipline: apply it before invoking an ARS skill or dispatching an ARS agent for a natural-language request."$'\n\n'"${ROUTING_CORE}"
+fi
 
 # ---------------------------------------------------------------------------
 # Emit the JSON. We assemble it with a here-doc and a sentinel substitution
