@@ -655,6 +655,16 @@ def test_a_link_destination_title_or_named_label_is_not_a_use() -> None:
     assert findings(text) == [("body", 1, "undefined", "RCT")]
 
 
+@pytest.mark.parametrize("target", ["(#trial 'RCT investigator\\'s guide')", '(#trial "RCT \\"guide\\"")',
+                                    "(#trial (RCT \\(draft\\) guide))", "(docs/RCT\\)notes.md)",
+                                    "(<docs/RCT\\>notes.md>)"])
+def test_an_escape_inside_a_link_destination_or_title_does_not_end_it(target: str) -> None:
+    # Only the two shown uses count: the one after the link and the definition.
+    text = f"See the [protocol]{target} and the RCT.\n\nA randomized controlled trial (RCT) ran.\n"
+    [finding] = check(text)["findings"]
+    assert (finding["line"], finding["rule"], finding["occurrences"]) == (1, "defined_after_use", 2)
+
+
 def test_a_link_reference_definition_starts_a_paragraph() -> None:
     text = "[RCT]: https://example.org/design\n\nA randomized controlled trial (RCT) ran.\n"
     assert findings(text) == []

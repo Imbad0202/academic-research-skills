@@ -228,9 +228,10 @@ _YEAR = r"(?:1[89]|20)\d{2}"  # 1800 to 2099, for citations and author lists ali
 _COMMA = r"[,，]"
 _SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank line
 # A link's destination and title, which are not shown: "[the protocol](#RCT)",
-# '[the site](https://example.org "RCT")'. The link text stays.
-_LINK_TARGET = re.compile(rf"(?<=\])\((?:{_SPACE})?(?:<[^<>\n]*>|(?:[^\s()<>]|\([^\s()]*\))*)"
-                          rf"(?:{_SPACE}(?:\"[^\"\n]*\"|'[^'\n]*'|\([^()\n]*\)))?(?:{_SPACE})?\)")
+# '[the site](https://example.org "RCT")', with backslash escapes inside. The link text stays.
+_LINK_TARGET = re.compile(
+    rf"(?<=\])\((?:{_SPACE})?(?:<(?:[^<>\\\n]|\\.)*>|(?:[^\s()<>\\]|\\\S|\((?:[^\s()\\]|\\\S)*\))*)"
+    rf"(?:{_SPACE}(?:\"(?:[^\"\\\n]|\\.)*\"|'(?:[^'\\\n]|\\.)*'|\((?:[^()\\\n]|\\.)*\)))?(?:{_SPACE})?\)")
 # The label of a full reference link, which is not shown: "[the protocol][RCT]".
 _LINK_LABEL = re.compile(r"(?<=\])\[([^\[\]\n]*)\]")
 # "IV" and stage numerals ("IIIB", "IVA") are numerals after a numbering word ("Table IV",
