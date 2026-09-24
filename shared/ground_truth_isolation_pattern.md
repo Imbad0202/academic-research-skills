@@ -142,22 +142,23 @@ text (submission policies, reviewer comments, methods instructions), and none of
 that is blocked. The principle distinguishes *whose* instruction is authoritative,
 not *whether imperative text may appear*.
 
-Agents whose main input is third-party text inline this principle into their own
-context, because an agent does not read a file merely named in its prompt: the
-principle has to be present where that text arrives to matter. The
-retrieval-class agents with the largest external-content surface
-(`source_verification_agent`, `bibliography_agent`) do so, and so does the
-revision coach (`revision_coach_agent`, #883), whose reviewer and committee text
-usually arrives pasted into the user's own message, a channel the Claude Opus 5.5
-system card reports as more susceptible to planted instructions than tool results
-(§6.5.1). #890 adds twelve agents on the dispatch and passport-import paths, where
-third-party text reaches an agent inside its task prompt or through the Material
-Passport rather than through its own tool calls, and copies the sentences into
-two prompts a model receives without the agent file: the claim-audit judge prompt
-and the cross-model devil's advocate prompt. `HOTSPOT_AGENTS` and
+The principle has to be present where third-party text arrives, because an agent
+does not read a file merely named in its prompt. So selected receivers of each
+kind inline it into their own context: agents that retrieve such text through
+their own tool calls (lookups, fetched pages, a source PDF), agents that receive
+it inside a dispatch task prompt or through the Material Passport, the revision
+coach (`revision_coach_agent`, #883), whose reviewer and committee text usually
+arrives pasted into the user's own message, a channel the Claude Opus 5.5 system
+card reports as more susceptible to planted instructions than tool results
+(§6.5.1), and each skill's `SKILL.md`, which the main session of a skill run
+loads on every install path. Prompts that a model receives without the agent
+file around them, such as the claim-audit judge prompt and the cross-model
+prompts, carry the sentences without the markers. `HOTSPOT_AGENTS` and
 `PROMPT_TEMPLATES` in `scripts/check_instruction_data_boundary.py` are the
-authoritative lists; `docs/design/2026-09-23-890-instruction-data-boundary-extension.md`
-records the inventory and the surfaces left uncovered.
+authoritative lists; the design docs
+`docs/design/2026-09-23-890-instruction-data-boundary-extension.md` (#890) and
+`docs/design/2026-09-24-894-instruction-data-boundary-tool-calls.md` (#894)
+record the inventories, the selection rules, and the surfaces left uncovered.
 
 ---
 

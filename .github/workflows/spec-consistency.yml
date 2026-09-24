@@ -393,6 +393,13 @@ jobs:
           PYTHONPATH: .
         run: python scripts/check_firm_rules_sync.py
 
+      - name: Routing-core sync lint (#892)
+        # Every copy of shared/references/routing_core.md (that file lists its
+        # carriers) must match it byte for byte.
+        env:
+          PYTHONPATH: .
+        run: python scripts/check_routing_core_sync.py
+
       - name: Judge-prompt-version drift guard (#361)
         # Recomputes the SHA-256 of the canonical judge-prompt section (between
         # the JUDGE-PROMPT-CANONICAL markers in claim_ref_alignment_audit_agent.md)

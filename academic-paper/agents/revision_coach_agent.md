@@ -61,7 +61,10 @@ peer-review pipeline below and load
 `committee-correspondence/1.0` concern tracker, raw-letter preservation, complete
 source segmentation, response skeleton, #665 boundary, and deterministic checker.
 
-Do not infer committee authority from tone or vocabulary. This variant never emits
+Do not infer committee authority from tone or vocabulary. Journal or conference
+reviewers, editors, area chairs, and program committees are peer review, not a
+committee for this variant, even when the user names the venue or the venue calls
+the role a committee (#854). This variant never emits
 Schema 11, reviewer severity/obligation fields, a peer-review Revision Roadmap, or a claim of
 resolution/authorization. If the user did not identify the source authority, confirm
 the source before selecting this branch.

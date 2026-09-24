@@ -12,20 +12,30 @@ Entry schema: shared/contracts/passport/run_ledger.schema.json.
 
 Usage:
     python3 scripts/run_ledger.py append --passport-path P --entry-file F
-    python3 scripts/run_ledger.py report --passport-path P [--claims F]
+    python3 scripts/run_ledger.py report --passport-path P [--claims F] [--render LANG]
 
 ``append`` validates one entry (a JSON object with ``kind`` and that kind's
 fields), gives it the next ``seq``, the UTC time, the previous entry's hash,
 and its own hash, and replaces the whole ledger atomically under the peer
 lock that /ars-mark-read uses. It refuses to extend an unreadable ledger or
-a broken chain, so a damaged record is never blessed by a later entry.
+a broken chain, so a damaged record is never blessed by a later entry. It
+also hashes the files an entry names (a ``file_reference`` path, and a
+receipt's ``input_paths``, which it stores as ``input_sha256``) and refuses a
+supplied digest that does not match its file (#898). Relative paths resolve
+against the ledger's directory, for the writer and the report alike.
 
 ``report`` checks every hash, then compares the trusted entries with what a
 summary or a subagent report claims (``--claims``, a JSON file). It prints
 one JSON object carrying the four groups of the handoff check
-(``awaiting_answer``, ``cannot_confirm``, ``not_run``, ``missing``) and
-``backed``, the number of examined items the ledger supports, and the latest
-counters grouped by stage ("run" when a progress entry names no stage). Exit
+(``awaiting_answer``, ``cannot_confirm``, ``not_run``, ``missing``),
+``backed``, the number of examined items the ledger supports,
+``step_outcomes``, the recorded outcome of every step whose receipt still
+backs it, and the latest counters grouped by stage ("run" when a progress
+entry names no stage). A receipt whose input files changed or disappeared
+after it was written no longer backs its step, so its step is absent from
+``step_outcomes``. With ``--render en`` or ``--render zh-TW`` it prints
+the finished handoff-check block instead, for the orchestrator to insert
+verbatim, and prints nothing when there is nothing to report (#898). Exit
 0 means there is nothing to report, 1 means the handoff check has items, and
 2 means a usage or environment error.
 
@@ -388,11 +398,65 @@ def _append_errors(entries: list[dict[str, Any]], fields: dict[str, Any]) -> lis
     return errors
 
 
+def _file_status(target: Path, digest: str) -> str | None:
+    """None when the file still has this digest, else "absent" or "changed"."""
+    if not target.is_file():
+        return "absent"
+    return None if _file_sha256(target) == digest else "changed"
+
+
+def _hash_named_files(fields: dict[str, Any], base: Path) -> list[str]:
+    """Fill in the digests of the files an entry names, read from the files.
+
+    A ``file_reference`` gets its ``sha256``; a receipt's ``input_paths``
+    (accepted on input only) become ``input_sha256``. A digest the entry
+    supplies must match its file. Values that are not valid paths are left
+    to the field checks, which refuse them.
+    """
+    kind = fields.get("kind")
+    if kind == "file_reference" and not _path(fields.get("path")):
+        named = {fields["path"]: fields.get("sha256")}
+    elif kind == "tool_receipt":
+        paths = fields.pop("input_paths", [])
+        if not isinstance(paths, list) or len(paths) > LIST_MAX or any(_path(p) for p in paths):
+            return [f"tool_receipt.input_paths must be a list of up to {LIST_MAX} paths"]
+        supplied = fields.get("input_sha256", {})
+        if not isinstance(supplied, dict) or any(_path(name) for name in supplied):
+            return []
+        named = {**dict.fromkeys(paths), **supplied}
+    else:
+        return []
+    errors: list[str] = []
+    digests: dict[str, str] = {}
+    for name, supplied_digest in named.items():
+        target = base / name  # an absolute path replaces the base
+        try:
+            digest = _file_sha256(target) if target.is_file() else None
+        except OSError as exc:
+            errors.append(f"cannot read {name}: {exc}")
+            continue
+        if digest is None:
+            errors.append(f"{name} is not a file beside the ledger or at that absolute path")
+        elif supplied_digest is not None and supplied_digest != digest:
+            errors.append(f"the digest supplied for {name} does not match the file; "
+                          "omit it and the writer computes it")
+        else:
+            digests[name] = digest
+    if errors:
+        return errors
+    if kind == "file_reference":
+        fields["sha256"] = digests[fields["path"]]
+    elif digests:
+        fields["input_sha256"] = digests
+    return []
+
+
 def append_entry(
     passport_path: Path, fields: dict[str, Any], *, now: Callable[[], str] = _now_iso
 ) -> dict[str, Any]:
     """Validate and append one entry under the peer lock; return the entry."""
     path = ledger_path(passport_path)
+    fields = dict(fields)
     with _ledger_lock(path):
         data = load_ledger(path)
         if data is None:
@@ -404,7 +468,7 @@ def append_entry(
                 f"entry {broken} fails validation; refusing to extend a broken "
                 "chain (report it to the user; see the design's rollback limit)"
             )
-        errors = _append_errors(entries, fields)
+        errors = _hash_named_files(fields, path.parent) or _append_errors(entries, fields)
         if errors:
             raise LedgerRefused("; ".join(errors))
         entry: dict[str, Any] = {
@@ -492,6 +556,7 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
     cannot_confirm: list[dict[str, Any]] = []
     not_run: list[dict[str, Any]] = []
     missing: list[dict[str, Any]] = []
+    outcomes: dict[str, str] = {}
     backed = 0
 
     claimed = _group(claims.get("decisions", []), "checkpoint_id", "answer")
@@ -534,11 +599,20 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
     for step in sorted(set(state["receipts"]) | set(claimed_steps) | expected):
         receipt = state["receipts"].get(step)
         statuses = claimed_steps.get(step, [])
-        if receipt is None or receipt["status"] == "not_run":
-            reason = "no receipt" if receipt is None else "the receipt records not_run"
-            not_run += [{"step": step, "claimed": status, "reason": reason}
+        usable = receipt is not None and receipt["status"] != "not_run"
+        changed = [
+            {"path": name, "reason": reason}
+            for name, digest in sorted(receipt.get("input_sha256", {}).items())
+            if (reason := _file_status(path.parent / name, digest))
+        ] if usable else []
+        if not usable or changed:
+            reason = ("the receipt's inputs changed after it was written" if changed
+                      else "no receipt" if receipt is None else "the receipt records not_run")
+            extra = {"changed_inputs": changed} if changed else {}
+            not_run += [{"step": step, "claimed": status, "reason": reason, **extra}
                         for status in statuses or [None]]
         else:
+            outcomes[step] = receipt["status"]
             differing = [status for status in statuses if status != receipt["status"]]
             cannot_confirm += [{
                 "item": "step", "step": step, "claimed": status,
@@ -549,11 +623,9 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
                 backed += 1
 
     for recorded_path, ref in state["files"].items():
-        target = path.parent / recorded_path  # an absolute path replaces the parent
-        if not target.is_file():
-            missing.append({"path": recorded_path, "role": ref["role"], "reason": "absent"})
-        elif _file_sha256(target) != ref["sha256"]:
-            missing.append({"path": recorded_path, "role": ref["role"], "reason": "changed"})
+        reason = _file_status(path.parent / recorded_path, ref["sha256"])
+        if reason:
+            missing.append({"path": recorded_path, "role": ref["role"], "reason": reason})
         else:
             backed += 1
 
@@ -568,6 +640,7 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
         "not_run": not_run,
         "missing": missing,
         "backed": backed,
+        "step_outcomes": outcomes,
         "counters": state["counters"],
     }
 
@@ -576,6 +649,168 @@ def has_items(report: dict[str, Any]) -> bool:
     return report["ledger_status"] != "ok" or any(
         report[group] for group in ("awaiting_answer", "cannot_confirm", "not_run", "missing")
     )
+
+
+# ---------------------------------------------------------------------------
+# Rendered handoff check (#898). The orchestrator inserts this block verbatim,
+# so a deterministic result is never re-worded by the model. English and
+# Traditional Chinese; the orchestrator picks zh-TW when the user writes in
+# Traditional Chinese and en otherwise. Ledger text (ids, questions, answers,
+# paths, roles) is shown as written: whitespace runs collapse so it stays on its
+# line, and Markdown and HTML characters are escaped so it displays as the JSON
+# holds it.
+# ---------------------------------------------------------------------------
+
+_TEXT: dict[str, dict[str, str]] = {
+    "en": {
+        "title": "### Handoff check",
+        "ledger_missing": "Ledger problem: no {name} beside the Material Passport.",
+        "ledger_unreadable": "Ledger problem: {name} cannot be read.",
+        "ledger_chain_broken": "Ledger problem: entry {seq} fails validation; entries from {seq} on are not used.",
+        "awaiting": "Awaiting your answer ({n})",
+        "cannot_confirm": "Cannot confirm ({n})",
+        "not_run": "Not run ({n})",
+        "missing": "Missing ({n})",
+        "checkpoint": "- {id}, stage {stage} ({type}):",
+        "question": '  "{text}"',
+        "recorded_one": "  1 item recorded: {ids}",
+        "recorded_many": "  {n} items recorded: {ids}",
+        "decision_open": '- Decision {id}: the summary or report says "{claimed}"; the checkpoint is still open in the ledger',
+        "decision_other": '- Decision {id}: the summary or report says "{claimed}"; the ledger records "{recorded}"',
+        "decision_none": '- Decision {id}: the summary or report says "{claimed}"; no answer in your words is recorded',
+        "step_other": "- Step {step}: the summary or report says {claimed}; the receipt records {recorded}",
+        "no_receipt": "- {step}: no receipt",
+        "receipt_not_run": "- {step}: the receipt records not run",
+        "inputs_changed": "- {step}: its inputs changed after the receipt was written ({files})",
+        "claimed_suffix": "; the summary or report says {claimed}",
+        "input_file": "{path}: {state}",
+        "file": "- {path} ({role}): {state}",
+        "absent": "absent", "changed": "changed", "passed": "passed", "failed": "failed",
+        "and": " and ", "sep": "; ",
+        "backed_none": "The ledger backs no items.",
+        "backed_one": "The ledger backs 1 item; it will not be asked again.",
+        "backed_many": "The ledger backs {n} items; they will not be asked again.",
+    },
+    "zh-TW": {
+        "title": "### 交接檢查",
+        "ledger_missing": "紀錄檔問題：Material Passport 旁邊沒有 {name}。",
+        "ledger_unreadable": "紀錄檔問題：{name} 無法讀取。",
+        "ledger_chain_broken": "紀錄檔問題：第 {seq} 筆紀錄驗證失敗，從第 {seq} 筆起都不採用。",
+        "awaiting": "等你回答（{n}）",
+        "cannot_confirm": "無法確認（{n}）",
+        "not_run": "沒跑過（{n}）",
+        "missing": "不見了（{n}）",
+        "checkpoint": "- {id}，階段 {stage}（{type}）：",
+        "question": "  「{text}」",
+        "recorded_one": "  已記下 1 項：{ids}",
+        "recorded_many": "  已記下 {n} 項：{ids}",
+        "decision_open": "- 決定 {id}：摘要或報告寫「{claimed}」，紀錄裡這個檢查點還沒有回答",
+        "decision_other": "- 決定 {id}：摘要或報告寫「{claimed}」，紀錄裡是「{recorded}」",
+        "decision_none": "- 決定 {id}：摘要或報告寫「{claimed}」，紀錄裡沒有你的原話",
+        "step_other": "- 步驟 {step}：摘要或報告寫{claimed}，執行收據記錄的是{recorded}",
+        "no_receipt": "- {step}：沒有執行收據",
+        "receipt_not_run": "- {step}：執行收據記錄為沒跑",
+        "inputs_changed": "- {step}：執行收據寫下後，輸入檔有變動（{files}）",
+        "claimed_suffix": "，摘要或報告寫{claimed}",
+        "input_file": "{path}：{state}",
+        "file": "- {path}（{role}）：{state}",
+        "absent": "檔案不見了", "changed": "檔案被改過", "passed": "通過", "failed": "未通過",
+        "and": "和", "sep": "；",
+        "backed_none": "紀錄沒有確認任何項目。",
+        "backed_one": "紀錄已確認 1 項，這一項不會再問你。",
+        "backed_many": "紀錄已確認 {n} 項，這些不會再問你。",
+    },
+}
+RENDER_LANGUAGES = tuple(_TEXT)
+# build_report's reason strings -> the _TEXT line that shows them.
+_REASON_LINES = {
+    "the checkpoint is still open in the ledger": "decision_open",
+    "the ledger records a different answer": "decision_other",
+    "no answer in the user's words is recorded": "decision_none",
+    "the receipt records a different outcome": "step_other",
+    "no receipt": "no_receipt",
+    "the receipt records not_run": "receipt_not_run",
+    "the receipt's inputs changed after it was written": "inputs_changed",
+}
+
+
+# Always special inline, and "_" where it can open or close emphasis (not
+# between two letters or digits, as in "paper_v2.md").
+_MARKUP = re.compile(r"[\\`*\[\]<>&~]|(?<![^\W_])_|_(?![^\W_])")
+# A value can open a list item's text, where a leading "#", "-", "+", or list
+# number ("1." or "1)") followed by a space or the end of the value would start
+# a heading or a nested list; "2.5" or "#tag" opens nothing.
+_BLOCK_OPENER = re.compile(r"^(?:#{1,6}|[+-]|\d{1,9}[.)])(?=\s|$)")
+
+
+def _one_line(value: Any) -> str:
+    text = _MARKUP.sub(lambda m: "\\" + m.group(0), " ".join(str(value).split()))
+    opener = _BLOCK_OPENER.match(text)
+    if opener is None:
+        return text
+    if opener.group(0)[0].isdigit():  # escape the "." or ")" after the number
+        return f"{text[:opener.end() - 1]}\\{text[opener.end() - 1:]}"
+    return f"\\{text}"
+
+
+def render_block(report: dict[str, Any], lang: str) -> str:
+    """The handoff check as shown to the user, or "" when there is nothing to report."""
+    if not has_items(report):
+        return ""
+    text = _TEXT[lang]
+    lines = [text["title"], ""]
+    if report["ledger_status"] != "ok":
+        lines += [text[f"ledger_{report['ledger_status']}"].format(
+            name=_one_line(Path(report["ledger"]).name), seq=report["untrusted_from_seq"]), ""]
+
+    awaiting: list[str] = []
+    for item in report["awaiting_answer"]:
+        entry = [text["checkpoint"].format(id=_one_line(item["checkpoint_id"]),
+                                           stage=_one_line(item["stage"]),
+                                           type=item["checkpoint_type"]),
+                 text["question"].format(text=_one_line(item["question"]))]
+        answered = item["answered_items"]
+        if answered:
+            key = "recorded_one" if len(answered) == 1 else "recorded_many"
+            entry.append(text[key].format(n=len(answered),
+                                          ids=", ".join(_one_line(i) for i in answered)))
+        awaiting.append("\n".join(entry))
+
+    cannot = [text[_REASON_LINES[item["reason"]]].format(
+        id=_one_line(item.get("checkpoint_id", "")), step=_one_line(item.get("step", "")),
+        claimed=(_one_line(item["claimed"]) if item["item"] == "decision"
+                 else text[item["claimed"]]),
+        recorded=(_one_line(item.get("recorded", "")) if item["item"] == "decision"
+                  else text[item["recorded"]]))
+        for item in report["cannot_confirm"]]
+
+    not_run: list[str] = []
+    by_step: dict[str, list[dict[str, Any]]] = {}
+    for item in report["not_run"]:
+        by_step.setdefault(item["step"], []).append(item)
+    for step, items in by_step.items():
+        files = text["sep"].join(
+            text["input_file"].format(path=_one_line(f["path"]), state=text[f["reason"]])
+            for f in items[0].get("changed_inputs", []))
+        line = text[_REASON_LINES[items[0]["reason"]]].format(step=_one_line(step), files=files)
+        claimed = [text[i["claimed"]] for i in items if i["claimed"] is not None]
+        if claimed:
+            line += text["claimed_suffix"].format(claimed=text["and"].join(claimed))
+        not_run.append(line)
+
+    missing = [text["file"].format(path=_one_line(item["path"]), role=_one_line(item["role"]),
+                                   state=text[item["reason"]])
+               for item in report["missing"]]
+
+    for key, group in (("awaiting", awaiting), ("cannot_confirm", cannot),
+                       ("not_run", not_run), ("missing", missing)):
+        if group:
+            lines += [text[key].format(n=len(group)), *group, ""]
+
+    backed = report["backed"]
+    lines.append(text["backed_none"] if backed == 0 else text["backed_one"] if backed == 1
+                 else text["backed_many"].format(n=backed))
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -610,6 +845,8 @@ def main(argv: list[str] | None = None) -> int:
     report = sub.add_parser("report", help="Check the ledger against claims.")
     report.add_argument("--passport-path", type=Path, required=True)
     report.add_argument("--claims", type=Path, help="JSON file of what a summary or report claims.")
+    report.add_argument("--render", choices=RENDER_LANGUAGES,
+                        help="Print the finished handoff-check block in this language instead of JSON.")
     args = parser.parse_args(argv)
 
     try:
@@ -635,7 +872,12 @@ def main(argv: list[str] | None = None) -> int:
             if problems:
                 raise LedgerRefused("; ".join(problems))
         result = build_report(args.passport_path, claims)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if args.render:
+            block = render_block(result, args.render)
+            if block:
+                print(block)
+        else:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
     except (LedgerRefused, LedgerUnreadable) as exc:
         outcome = "nothing written" if args.command == "append" else "no report"
         print(_err(f"{outcome}: {exc}"), file=sys.stderr)

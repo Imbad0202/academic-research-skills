@@ -34,7 +34,7 @@ Add `--no-publish` to keep the HTML report local. Headline number is Δ
 | 07-neg-landlord-letter-zh | no | non-academic letter | regex + llm + Skill not called |
 
 `skill-fired` (`tool_used: Skill`) on 01–05 is display-only under ablation and
-never moves Δ.
+never moves Δ. So is `no-committee-branch` on 03 (`arm: with-only`, #854).
 
 ## Routing retest (2026-09-21, #854)
 
@@ -52,6 +52,55 @@ not rule out the intermittent failure or close #854. Earlier intermediate
 candidates included timeouts and are not counted as completed passing runs
 here. No committee guard or agent definition changed.
 
+## Committee-branch guard (2026-09-24, #854)
+
+The counts and costs in this section are maintainer-reported: they come from
+local runs whose outputs are not committed (`plugin-evals/results/` is ignored
+by git).
+
+Case 03 gained `no-committee-branch` with the #854 guard (see `CHANGELOG.md`): a
+with-only regex that fails when the answer emits a line of the committee
+variant's output, that is, a concern-tracker or preserved-source heading or bold
+label, a concern-ID heading or comment, the status line, or the blockquoted
+human-subjects footer that `committee_correspondence_protocol.md` requires. A
+heading or bold-label line with "no", "not", "none", "without", or "n/a" in it
+does not count, and an answer that declines the variant in prose passes even
+when it names the variant's parts.
+`scripts/test_check_committee_correspondence.py` runs examples of both through a
+JavaScript `RegExp` with the grader's flags, because the eval runner is a
+JavaScript program. Against the maintainer's 2026-09-12 results it flags the two
+runs named under Known caveats and none of the other nine, the without-plugin
+arms included. Neither flagged run used the protocol's required strings; the
+heading pattern caught both. The grader reads only the answer text, so it misses
+a run that only announces the branch, or only writes the bundle's files, without
+printing their lines. It would flag a peer-review answer that titles a section
+"concern tracker" with no negating word, and a refusal that quotes one of those
+lines on a line of its own.
+
+Retest with Claude Code 2.1.281, `--ablation none --model claude-opus-5-5
+--judge-model sonnet --runs 7 --case '03-*' --no-publish`, from outside the
+plugin checkout: with the guard, **0 of 7** runs took the branch; on unchanged
+`main` with only the new grader added, also **0 of 7** (5 of those 7 read
+`revision_coach_agent.md`). The misroute was seen on `claude-opus-5`, and
+Opus 5.5 did not reproduce it without the guard, so this retest shows no
+effect of the guard; the guard is prompt-level and its effect is unmeasured.
+None of the fourteen runs built the Revision Roadmap or the response skeleton;
+each answered the push-back question directly. Cost: US$2.46 with the guard,
+US$2.70 on `main`. The retest ran on an earlier text of the guard: the sentence
+in `committee_correspondence_protocol.md` came later, and the mode table then
+gave the variant its own row, which the final change dropped. It was also graded
+with an earlier text of `no-committee-branch`; re-graded with the final text,
+the counts are the same.
+
+Case 04 (the ethics-committee letter), 7 runs on the final text with the same
+settings: the skill fired in 2 runs, and both took the committee variant
+(concern IDs and a segmentation for the user to confirm); `tracker-covers-5`
+passed in 1 of 7. In the other 5 runs Opus 5.5 answered without invoking the
+skill. The guard sits in files that load only after the skill fires, and the
+skill descriptions and the SessionStart hook are unchanged from `main`, so those
+5 runs do not test it. The stored 2026-09-12 runs on `claude-opus-5` fired the
+skill in 2 of 2. Cost: US$1.58.
+
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 
 | Channel | Ceiling | Observed max |
@@ -66,10 +115,11 @@ here. No committee guard or agent definition changed.
 - **03 fires since #851.** Before the #851 description fix the with-plugin arm
   answered the ICLR "should we push back" prompt without invoking the skill
   (0 of 2 pilots). After the fix: 7 of 7 verification runs invoked it. One of
-  those seven misrouted ICLR peer reviews into the #668 committee-correspondence
-  branch (the skill forbids inferring committee authority); the other six
-  reasoned explicitly that anonymous conference referees are peer review.
-  Tracked separately from #851.
+  those seven said it was applying the #668 committee-correspondence branch to
+  the ICLR peer reviews (the skill forbids inferring committee authority), and a
+  second produced that branch's shape without naming it; four said the
+  reviewers are peer review and one did not say. Tracked as #854 (see
+  Committee-branch guard above).
 - **Judge style matters.** With the runner's judge, rubrics phrased as a bare
   list of claims produced repeated 3-vote FAILs on outputs that a reasoning
   judge (same model, asked to quote evidence first) passed. Every llm rubric in

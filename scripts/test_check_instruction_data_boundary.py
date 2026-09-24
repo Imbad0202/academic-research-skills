@@ -39,9 +39,25 @@ AGENTS_890_RELS = (
     "deep-research/agents/ethics_review_agent.md",
     "shared/agents/compliance_agent.md",
 )
-# Listed here, not imported from the checker, so dropping an agent from the
+# #894 receivers that read third-party text through their own tool calls.
+AGENTS_894_RELS = (
+    "academic-paper/agents/formatter_agent.md",
+    "academic-paper/agents/citation_compliance_agent.md",
+    "deep-research/agents/synthesis_agent.md",
+    "academic-paper/agents/draft_writer_agent.md",
+    "deep-research/agents/report_compiler_agent.md",
+)
+# #894 main-session home: the four SKILL.md files.
+SKILLS_894_RELS = (
+    "academic-paper/SKILL.md",
+    "academic-paper-reviewer/SKILL.md",
+    "academic-pipeline/SKILL.md",
+    "deep-research/SKILL.md",
+)
+# Listed here, not imported from the checker, so dropping a file from the
 # checker's HOTSPOT_AGENTS makes its parametrized cases below fail.
-HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS)
+HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS, *AGENTS_894_RELS,
+                *SKILLS_894_RELS)
 
 JUDGE_REL = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
 JUDGE_START = "<!-- JUDGE-PROMPT-CANONICAL-START"
@@ -50,6 +66,10 @@ XM_REL = "shared/cross_model_verification.md"
 XM_INTRO = "a simplified DA prompt to the cross-model:"
 XM_START = "You are a devil's advocate reviewing this"
 XM_END = "Material: [the reviewed content]"
+# #894: the single-reference verification prompt (integrity-gate step 3).
+REF_INTRO = "Issue **one API call per reference**"
+REF_START = "Verify this academic reference."
+REF_END = "Reference: [full reference text]"
 
 OPEN_MARKER = "<!-- canonical:instruction-data-boundary -->"
 CLOSE_MARKER = "<!-- /canonical:instruction-data-boundary -->"
@@ -232,7 +252,7 @@ def test_m11_backpoint_only_inside_fence(tmp_path):
 
 # --- every hot-spot agent, not only the first ---------------------------------
 
-@pytest.mark.parametrize("rel", HOTSPOT_RELS, ids=lambda rel: Path(rel).stem)
+@pytest.mark.parametrize("rel", HOTSPOT_RELS)
 def test_m8_hotspot_agent_gutted(tmp_path, rel):
     """Gutting any hot-spot agent's inlined principle must fail, naming that agent."""
     root = _mirror(tmp_path)
@@ -242,7 +262,7 @@ def test_m8_hotspot_agent_gutted(tmp_path, rel):
     assert rel in err
 
 
-@pytest.mark.parametrize("rel", HOTSPOT_RELS, ids=lambda rel: Path(rel).stem)
+@pytest.mark.parametrize("rel", HOTSPOT_RELS)
 def test_m12_hotspot_agent_backpoint_label_removed(tmp_path, rel):
     """Dropping any hot-spot agent's backpoint label must fail, naming that agent."""
     root = _mirror(tmp_path)
@@ -287,100 +307,122 @@ def test_m15_judge_template_markers_renamed(tmp_path):
     assert "unified judge prompt not found" in err
 
 
-# --- the cross-model devil's advocate prompt (#890) ----------------------------
-
-def test_m16_xm_da_prompt_principle_moved_out(tmp_path):
-    """The copy moved just past the closing fence, which the cross-model never receives, must fail."""
-    moved = {}
-    def cut(seg: str) -> str:
-        start = seg.index("   Retrieved external content")
-        end = seg.index("command to follow.\n", start) + len("command to follow.\n")
-        moved["text"] = seg[start:end]
-        return seg[:start] + seg[end:]
-    def paste_after_fence(t: str) -> str:
-        fence_end = t.index("```\n", t.index(XM_END)) + len("```\n")
-        return t[:fence_end] + moved["text"] + t[fence_end:]
-    root = _mirror(tmp_path)
-    _edit(root, XM_REL, _in_region(XM_START, XM_END, cut))
-    _edit(root, XM_REL, paste_after_fence)
-    code, err = _run2(root)
-    assert code == 1
-    assert "cross-model devil's advocate prompt does not carry" in err
+# --- the fenced cross-model prompts ---------------------------------------------
+# Each case runs on the devil's advocate prompt (#890) and on the single-reference
+# verification prompt (#894): (checker name, line before the fence, the prompt's
+# first line, the line the copy precedes).
+FENCED_PROMPTS = [
+    pytest.param("cross-model devil's advocate prompt", XM_INTRO, XM_START, XM_END, id="da"),
+    pytest.param("cross-model reference verification prompt", REF_INTRO, REF_START, REF_END,
+                 id="reference"),
+]
 
 
-def test_m17_xm_da_prompt_principle_weakened(tmp_path):
-    """A one-phrase edit inside the cross-model DA prompt copy must fail."""
-    root = _mirror(tmp_path)
-    _edit(root, XM_REL, _in_region(XM_START, XM_END,
-        lambda seg: seg.replace("is data, not instructions", "is usually data")))
-    code, err = _run2(root)
-    assert code == 1
-    assert "cross-model devil's advocate prompt does not carry" in err
-
-
-def test_m18_xm_da_prompt_anchor_renamed(tmp_path):
-    """A renamed start anchor leaves nothing to check, which must fail rather than pass."""
-    root = _mirror(tmp_path)
-    _edit(root, XM_REL, lambda t: t.replace(XM_INTRO, "a DA prompt to the cross-model:"))
-    code, err = _run2(root)
-    assert code == 1
-    assert "cross-model devil's advocate prompt not found" in err
-
-
-def _cut_xm_copy(t: str):
-    """Remove the DA prompt's copy; return (text without it, the copy)."""
-    s = t.index(XM_START)
+def _cut_copy(t: str, start: str, end: str):
+    """Remove a prompt's copy; return (text without it, the copy)."""
+    s = t.index(start)
     a = t.index("   Retrieved external content", s)
+    assert a < t.index(end, s), "the copy must sit inside the prompt"
     b = t.index("command to follow.\n", a) + len("command to follow.\n")
     return t[:a] + t[b:], t[a:b]
 
 
-def test_m20_xm_copy_in_comment_before_fence(tmp_path):
+def _nest_example_fence(t: str, intro: str, start: str, end: str) -> str:
+    """Widen a prompt's fence to four backticks and add a fenced example inside it."""
+    open_at = t.index("   ```\n", t.index(intro))
+    t = t[:open_at] + "   ````\n" + t[open_at + len("   ```\n"):]
+    close_at = t.index("   ```\n", t.index(end))
+    t = t[:close_at] + "   ````\n" + t[close_at + len("   ```\n"):]
+    example = "   Answer format:\n   ```text\n   1. <item>\n   ```\n\n"
+    at = t.index("   Retrieved external content", t.index(start))
+    return t[:at] + example + t[at:]
+
+
+@pytest.mark.parametrize("name, intro, start, end", FENCED_PROMPTS)
+def test_m16_xm_prompt_principle_removed(tmp_path, name, intro, start, end):
+    """One prompt loses its copy while the other keeps its own."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, lambda t: _cut_copy(t, start, end)[0])
+    code, err = _run2(root)
+    assert code == 1
+    assert f"{name} does not carry" in err
+
+
+@pytest.mark.parametrize("name, intro, start, end", FENCED_PROMPTS)
+def test_m17_xm_prompt_principle_moved_out(tmp_path, name, intro, start, end):
+    """The copy moved just past the closing fence, which the cross-model never receives, must fail."""
+    def edit(t: str) -> str:
+        t, copy = _cut_copy(t, start, end)
+        fence_end = t.index("```\n", t.index(end)) + len("```\n")
+        return t[:fence_end] + copy + t[fence_end:]
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, edit)
+    code, err = _run2(root)
+    assert code == 1
+    assert f"{name} does not carry" in err
+
+
+@pytest.mark.parametrize("name, intro, start, end", FENCED_PROMPTS)
+def test_m18_xm_prompt_principle_weakened(tmp_path, name, intro, start, end):
+    """A one-phrase edit inside a prompt's copy must fail."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, _in_region(start, end,
+        lambda seg: seg.replace("is data, not instructions", "is usually data")))
+    code, err = _run2(root)
+    assert code == 1
+    assert f"{name} does not carry" in err
+
+
+@pytest.mark.parametrize("name, intro, start, end", FENCED_PROMPTS)
+def test_m20_xm_prompt_anchor_renamed(tmp_path, name, intro, start, end):
+    """A renamed line before the fence leaves nothing to check, which must fail rather than pass."""
+    root = _mirror(tmp_path)
+    _edit(root, XM_REL, lambda t: t.replace(intro, "Send this prompt:"))
+    code, err = _run2(root)
+    assert code == 1
+    assert f"{name} not found" in err
+
+
+@pytest.mark.parametrize("name, intro, start, end", FENCED_PROMPTS)
+def test_m21_xm_copy_in_comment_before_fence(tmp_path, name, intro, start, end):
     """A comment before the fence that repeats the prompt's first line and the copy must fail."""
     def edit(t: str) -> str:
-        t, copy = _cut_xm_copy(t)
-        fence = t.index("   ```\n", t.index(XM_INTRO))
-        comment = f"   <!-- {XM_START}\n{copy}   -->\n"
+        t, copy = _cut_copy(t, start, end)
+        fence = t.index("   ```\n", t.index(intro))
+        comment = f"   <!-- {start}\n{copy}   -->\n"
         return t[:fence] + comment + t[fence:]
     root = _mirror(tmp_path)
     _edit(root, XM_REL, edit)
     code, err = _run2(root)
     assert code == 1
-    assert XM_REL in err
+    assert name in err  # not found, or found without the copy
 
 
-def _nest_example_fence(t: str) -> str:
-    """Widen the DA prompt's fence to four backticks and add a fenced example inside it."""
-    open_at = t.index("   ```\n", t.index(XM_INTRO))
-    t = t[:open_at] + "   ````\n" + t[open_at + len("   ```\n"):]
-    close_at = t.index("   ```\n", t.index(XM_END))
-    t = t[:close_at] + "   ````\n" + t[close_at + len("   ```\n"):]
-    example = "   Answer format:\n   ```text\n   1. <weakness>\n   ```\n\n"
-    at = t.index("   Retrieved external content", t.index(XM_START))
-    return t[:at] + example + t[at:]
-
-
-def test_m21_xm_nested_fence_copy_removed(tmp_path):
+@pytest.mark.parametrize("name, intro, start, end", FENCED_PROMPTS)
+def test_m22_xm_nested_fence_copy_removed(tmp_path, name, intro, start, end):
     """With a nested example fence, removing the copy must still fail."""
     root = _mirror(tmp_path)
-    _edit(root, XM_REL, lambda t: _cut_xm_copy(_nest_example_fence(t))[0])
+    _edit(root, XM_REL,
+          lambda t: _cut_copy(_nest_example_fence(t, intro, start, end), start, end)[0])
     code, err = _run2(root)
     assert code == 1
-    assert "cross-model devil's advocate prompt does not carry" in err
+    assert f"{name} does not carry" in err
 
 
-def test_xm_nested_example_fence_passes(tmp_path):
-    """Placement control: a nested example fence does not end the DA code block."""
+@pytest.mark.parametrize("name, intro, start, end", FENCED_PROMPTS)
+def test_xm_nested_example_fence_passes(tmp_path, name, intro, start, end):
+    """Placement control: a nested example fence does not end the code block."""
     root = _mirror(tmp_path)
-    _edit(root, XM_REL, _nest_example_fence)
+    _edit(root, XM_REL, lambda t: _nest_example_fence(t, intro, start, end))
     assert _run(root) == 0
 
 
-def test_xm_copy_elsewhere_in_the_fence_passes(tmp_path):
-    """Placement control: the copy after the `Material:` line, still inside the fence, passes."""
+@pytest.mark.parametrize("name, intro, start, end", FENCED_PROMPTS)
+def test_xm_copy_elsewhere_in_the_fence_passes(tmp_path, name, intro, start, end):
+    """Placement control: the copy after the prompt's last line, still inside the fence, passes."""
     def edit(t: str) -> str:
-        t, copy = _cut_xm_copy(t)
-        after = t.index(XM_END) + len(XM_END) + 1
+        t, copy = _cut_copy(t, start, end)
+        after = t.index("\n", t.index(end)) + 1
         return t[:after] + "\n" + copy + t[after:]
     root = _mirror(tmp_path)
     _edit(root, XM_REL, edit)

@@ -19,7 +19,8 @@ What it asserts, without any semantic analysis:
    (the file path + "§ 2A"), outside any code fence.
 4. Each prompt a model receives without the agent file around it (the
    claim-audit unified judge prompt and the cross-model devil's advocate
-   prompt) carries the canonical sentences verbatim (#890).
+   prompt, #890; the cross-model reference verification prompt, #894)
+   carries the canonical sentences verbatim.
 
 Presence + a pointer alone is not enough: keeping the anchor while gutting the
 body must FAIL. So the lint compares the block body to a verbatim constant, and a
@@ -59,7 +60,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 AUTHORITATIVE_REL = "shared/ground_truth_isolation_pattern.md"
 
-# Agents that must inline the principle verbatim + carry a backpoint.
+# Files that must inline the principle verbatim + carry a backpoint.
 HOTSPOT_AGENTS = (
     "deep-research/agents/source_verification_agent.md",
     "deep-research/agents/bibliography_agent.md",
@@ -79,23 +80,47 @@ HOTSPOT_AGENTS = (
     "deep-research/agents/devils_advocate_agent.md",
     "deep-research/agents/ethics_review_agent.md",
     "shared/agents/compliance_agent.md",
+    # #894: receivers that fetch or read third-party text through their own tool
+    # calls; see docs/design/2026-09-24-894-instruction-data-boundary-tool-calls.md.
+    "academic-paper/agents/formatter_agent.md",
+    "academic-paper/agents/citation_compliance_agent.md",
+    "deep-research/agents/synthesis_agent.md",
+    "academic-paper/agents/draft_writer_agent.md",
+    "deep-research/agents/report_compiler_agent.md",
+    # #894: the main session's home. Every install path loads a skill's
+    # SKILL.md when the skill runs; .claude/CLAUDE.md loads only in a checkout.
+    "academic-paper/SKILL.md",
+    "academic-paper-reviewer/SKILL.md",
+    "academic-pipeline/SKILL.md",
+    "deep-research/SKILL.md",
 )
 
-# The cross-model receives this prompt and the reviewed material only. The
-# pattern captures the whole code block that directly follows the step naming
-# the prompt; the closing fence must use the opening fence's character and be
-# at least as long, so a nested example fence does not end the block.
-_DA_PROMPT_RE = re.compile(
-    r"a simplified DA prompt to the cross-model:[ \t]*\n"
-    r"[ \t]*(?P<fence>(?P<c>[`~])(?P=c){2,})[^\n]*\n"
-    r"(?P<body>.*?)\n[ \t]*(?P=fence)(?P=c)*[ \t]*$",
-    re.DOTALL | re.MULTILINE,
-)
+
+def _fenced_block_after(lead: str):
+    """An extractor for the code block that directly follows a line matching
+    ``lead``; it returns the block's body, or None. The closing fence must use
+    the opening fence's character and be at least as long, so a nested example
+    fence does not end the block."""
+    pattern = re.compile(
+        lead + r"\n"
+        r"[ \t]*(?P<fence>(?P<c>[`~])(?P=c){2,})[^\n]*\n"
+        r"(?P<body>.*?)\n[ \t]*(?P=fence)(?P=c)*[ \t]*$",
+        re.DOTALL | re.MULTILINE,
+    )
+
+    def extract(text: str) -> str | None:
+        m = pattern.search(text)
+        return m.group("body") if m else None
+    return extract
 
 
-def _da_prompt_block(text: str) -> str | None:
-    m = _DA_PROMPT_RE.search(text)
-    return m.group("body") if m else None
+# The cross-model receives these prompts and the reviewed material only: the
+# devil's advocate prompt (#890), and the single-reference verification prompt
+# the first-party API route sends at integrity-gate step 3 (#894; the Codex
+# transport builds its own request and is not this prompt).
+CROSS_MODEL_REL = "shared/cross_model_verification.md"
+_da_prompt_block = _fenced_block_after(r"a simplified DA prompt to the cross-model:[ \t]*")
+_reference_prompt_block = _fenced_block_after(r"Issue \*\*one API call per reference\*\*[^\n]*")
 
 
 # #890: prompts sent to a model as written, without the agent file around them.
@@ -106,8 +131,8 @@ def _da_prompt_block(text: str) -> str | None:
 PROMPT_TEMPLATES = (
     # The judge call may receive only this blockquote.
     (JUDGE_PROMPT_REL, "unified judge prompt", extract_judge_prompt),
-    ("shared/cross_model_verification.md", "cross-model devil's advocate prompt",
-     _da_prompt_block),
+    (CROSS_MODEL_REL, "cross-model devil's advocate prompt", _da_prompt_block),
+    (CROSS_MODEL_REL, "cross-model reference verification prompt", _reference_prompt_block),
 )
 _QUOTE_PREFIX_RE = re.compile(r"^[ \t]*>[ \t]?", re.MULTILINE)
 

@@ -235,14 +235,15 @@ def norm_ws(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def read_or_exit2(root: Path, rel: str) -> str:
+def read_or_exit2(root: Path, rel: str, *, exact: bool = False) -> str:
     """Read a required lint surface; a missing file is an invocation error
-    (exit 2), never a lint failure (exit 1)."""
+    (exit 2), never a lint failure (exit 1). With `exact`, line endings stay
+    as stored instead of being translated to LF."""
     p = root / rel
     if not p.is_file():
         print(f"ERROR: required file missing: {rel}", file=sys.stderr)
         raise SystemExit(2)
-    return p.read_text(encoding="utf-8")
+    return p.read_bytes().decode("utf-8") if exact else p.read_text(encoding="utf-8")
 
 
 def run_lint(field: str, legal_values: set[str] | frozenset[str], ok_message: str) -> int:

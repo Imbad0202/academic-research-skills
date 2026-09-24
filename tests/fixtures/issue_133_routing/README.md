@@ -18,7 +18,7 @@ This is acceptable for **routing discipline** (which is a calibration target, no
 
 ## Acceptance criterion (v3.9.2 ship gate)
 
-- **100% pass on the current primary model** — the inherited Claude Code session model (Opus 4.7 at the v3.9.2 ship; Fable 5 at the 2026-06 recalibration; Claude Opus 5.5 and Claude Fable 5.1, the two supported session models, at the 2026-09-23 calibration in `CALIBRATION_LOG.md`, #889, repo-clone install only)
+- **100% pass on the current primary model** — the inherited Claude Code session model (Opus 4.7 at the v3.9.2 ship; Fable 5 at the 2026-06 recalibration; Claude Opus 5.5 and Claude Fable 5.1, the two supported session models, at the 2026-09-23 calibration in `CALIBRATION_LOG.md`, #889, repo-clone install only; at the 2026-09-24 pass, #892, also the plugin install, where Claude Fable 5.1 still fails fixture 06 and fixture 05 passes on both models only under two scoring readings the log records)
 - **≥ 75% pass on Claude Sonnet 5 and GPT-6 Astra** (degradation flagged but non-blocking ship; not run at the 2026-09-23 calibration)
 - Cross-model divergence > 1 fixture between primary and Sonnet/GPT → recalibrate routing prose
 
@@ -68,6 +68,7 @@ notes: <optional free-text>
 Until v3.10 conductor brings deterministic dispatch, these fixtures are run **manually against a live ARS session**:
 
 1. Start a fresh Claude Code session for each fixture in a standalone clone of this repository, outside your home directory, with ARS loaded from that clone through `--plugin-dir`, no user-level configuration (an empty `CLAUDE_CONFIG_DIR` and an environment allowlist), and the write and network tools disallowed; `CALIBRATION_LOG.md` (the 2026-09-23 Condition section) lists each setting and why it is needed
+   - For the plugin-install condition, start the session in an empty folder outside the clone instead, so `.claude/CLAUDE.md` does not load (the 2026-09-24 Condition section)
 2. Paste the `input.md` content as the first message
 3. Score every field of `expected.yaml`: routing class, destination, escape-hatch behavior, and the stripped message where one is expected (scoring rules in `CALIBRATION_LOG.md`)
 4. Record the model id, effort, date, the deciding part of each response, and pass or fail per field in `CALIBRATION_LOG.md`

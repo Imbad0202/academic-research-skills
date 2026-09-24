@@ -82,7 +82,12 @@ instructions that an agent follows as if they came from the user.
   gates, literature intake, reviewer Phase 0 and the editorial synthesis,
   systematic-review risk of bias, temporal extraction, and deep-research
   `review` mode) and in two prompts a model receives without the agent file,
-  the claim-audit judge prompt and the cross-model devil's advocate prompt
+  the claim-audit judge prompt and the cross-model devil's advocate prompt;
+  since #894, in five agents that read third-party text through their own tool
+  calls (the formatter, citation compliance, and the three citation emitters),
+  in the single-reference verification prompt the integrity gates send to a
+  cross-model verifier on the API route, and in the four `SKILL.md` files,
+  which every install path loads when a skill runs
   (`scripts/check_instruction_data_boundary.py` lists each);
   the reviewer-side untrusted-materials rule (`academic-paper-reviewer/SKILL.md`)
   and its manuscript fence in the five panel agents (pinned by
@@ -101,26 +106,22 @@ instructions that an agent follows as if they came from the user.
   tool result (§6.5.1; rates and product-side caveats in
   `audits/harness-retirement-2026-09-opus-5-5.md` DG-1). The #675 scenarios
   include pasted reviewer and committee comments. The prompt-level boundary,
-  including the interim #890 extension, is trust-based; its effect on this
-  regression is unmeasured, and #676 stays open with its structural requirements
-  unmet. The #890 inventory, ranking, and placement are in
-  `docs/design/2026-09-23-890-instruction-data-boundary-extension.md`. Surfaces
-  it leaves uncovered: agents whose dispatch carries third-party text only as
-  quotations inside artifacts from covered agents (for example
-  `synthesis_agent`, `draft_writer_agent`, `meta_analysis_agent`); agents whose
-  input is the user's own text or dialogue; the advisory collaboration-depth
-  observer; the cross-model result at the design-freeze checkpoint; requests a
-  fallback model serves; receivers whose third-party text arrives only through
-  their own tool calls (the formatter's journal-guideline lookup, citation
-  compliance's Retraction Watch and DOI checks, a citation emitter's local PDF
-  read, and the cross-model reference check's own search), the retrieval surface
-  the #272 design left as future scope; and the main session of a skill run,
-  which reads text the user pastes before it loads any agent file (of the four
-  `SKILL.md` files, only the reviewer's carries an untrusted-materials rule).
-  The #675 seed runs one generic guided prompt
-  rather than any agent's prompt, so as seeded it evaluates none of the #890
-  paths; a measured claim for a path needs a #675 scenario that loads that
-  agent's assembled prompt.
+  including the interim #890 and #894 extensions, is trust-based; its effect on
+  this regression is unmeasured, and #676 stays open with its structural
+  requirements unmet. The inventories, ranking, and placement are in
+  `docs/design/2026-09-23-890-instruction-data-boundary-extension.md` (#890)
+  and `docs/design/2026-09-24-894-instruction-data-boundary-tool-calls.md`
+  (#894). Surfaces they leave uncovered: agents whose dispatch carries
+  third-party text only as quotations inside artifacts from covered agents
+  (for example `meta_analysis_agent` and `argument_builder_agent`); agents
+  whose input is the user's own text or dialogue; the advisory
+  collaboration-depth observer and monitoring agent; the cross-model result at
+  the design-freeze checkpoint; requests a fallback model serves; the
+  ChatGPT-subscription transport's instructions to the verifier; and the
+  routing decision a session makes before it loads a `SKILL.md`. The #675 seed
+  runs one generic guided prompt rather than any agent's prompt, so as seeded
+  it evaluates none of these paths; a measured claim for a path needs a #675
+  scenario that loads that agent's assembled prompt.
 
 ### R4 — Unpublished-content exposure via cross-model transport
 
@@ -276,9 +277,10 @@ differently: fabricating a decision is R11's risk; this row covers losing one.
   passport reset for MANDATORY decisions
   (`academic-pipeline/references/passport_as_reset_boundary.md`).
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — how the
-  report reads a ledger is CI-pinned by six synthetic scenarios
-  (`scripts/test_run_ledger.py`); whether the orchestrator writes the entries is not
-  measured on any session model.
+  report reads a ledger is CI-pinned by six synthetic scenarios, and the handoff-check
+  block it renders in English and Traditional Chinese by line-exact tests (#898,
+  `scripts/test_run_ledger.py`); whether the orchestrator writes the entries and inserts
+  the block unchanged is not measured on any session model.
 - **Residual gap**: anything lost before its entry is written cannot be recovered; the
   hashes catch accidental damage, not deliberate edits, a lost tail, or a restored older
   copy of the ledger
