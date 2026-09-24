@@ -158,5 +158,8 @@ assembled prompt.
   `academic-pipeline/SKILL.md` in `scripts/check_pipeline_boundary_semantics.py`.
 - `scripts/check_instruction_data_boundary.py`, `scripts/test_check_instruction_data_boundary.py`:
   the new files, with the existing mutation tests parametrized over them, and the
-  reference prompt as a third prompt template, with four mutation tests.
+  reference prompt as a third prompt template that shares the devil's advocate
+  prompt's extractor and its mutation tests.
+- `shared/ground_truth_isolation_pattern.md` § 2A: where the copies sit, by kind of
+  receiver.
 - `docs/RISK_REGISTER.md` R3, `CHANGELOG.md`.

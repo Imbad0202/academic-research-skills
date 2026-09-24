@@ -95,37 +95,32 @@ HOTSPOT_AGENTS = (
     "deep-research/SKILL.md",
 )
 
-# The cross-model receives this prompt and the reviewed material only. The
-# pattern captures the whole code block that directly follows the step naming
-# the prompt; the closing fence must use the opening fence's character and be
-# at least as long, so a nested example fence does not end the block.
-_DA_PROMPT_RE = re.compile(
-    r"a simplified DA prompt to the cross-model:[ \t]*\n"
-    r"[ \t]*(?P<fence>(?P<c>[`~])(?P=c){2,})[^\n]*\n"
-    r"(?P<body>.*?)\n[ \t]*(?P=fence)(?P=c)*[ \t]*$",
-    re.DOTALL | re.MULTILINE,
-)
+
+def _fenced_block_after(lead: str):
+    """An extractor for the code block that directly follows a line matching
+    ``lead``; it returns the block's body, or None. The closing fence must use
+    the opening fence's character and be at least as long, so a nested example
+    fence does not end the block."""
+    pattern = re.compile(
+        lead + r"\n"
+        r"[ \t]*(?P<fence>(?P<c>[`~])(?P=c){2,})[^\n]*\n"
+        r"(?P<body>.*?)\n[ \t]*(?P=fence)(?P=c)*[ \t]*$",
+        re.DOTALL | re.MULTILINE,
+    )
+
+    def extract(text: str) -> str | None:
+        m = pattern.search(text)
+        return m.group("body") if m else None
+    return extract
 
 
-def _da_prompt_block(text: str) -> str | None:
-    m = _DA_PROMPT_RE.search(text)
-    return m.group("body") if m else None
-
-
-# #894: the single-reference verification prompt the first-party API route sends
-# (integrity-gate step 3). Same fence rule as the DA prompt; the Codex transport
-# builds its own request and is not this prompt.
-_REFERENCE_PROMPT_RE = re.compile(
-    r"Issue \*\*one API call per reference\*\*[^\n]*\n"
-    r"[ \t]*(?P<fence>(?P<c>[`~])(?P=c){2,})[^\n]*\n"
-    r"(?P<body>.*?)\n[ \t]*(?P=fence)(?P=c)*[ \t]*$",
-    re.DOTALL | re.MULTILINE,
-)
-
-
-def _reference_prompt_block(text: str) -> str | None:
-    m = _REFERENCE_PROMPT_RE.search(text)
-    return m.group("body") if m else None
+# The cross-model receives these prompts and the reviewed material only: the
+# devil's advocate prompt (#890), and the single-reference verification prompt
+# the first-party API route sends at integrity-gate step 3 (#894; the Codex
+# transport builds its own request and is not this prompt).
+CROSS_MODEL_REL = "shared/cross_model_verification.md"
+_da_prompt_block = _fenced_block_after(r"a simplified DA prompt to the cross-model:[ \t]*")
+_reference_prompt_block = _fenced_block_after(r"Issue \*\*one API call per reference\*\*[^\n]*")
 
 
 # #890: prompts sent to a model as written, without the agent file around them.
@@ -136,10 +131,8 @@ def _reference_prompt_block(text: str) -> str | None:
 PROMPT_TEMPLATES = (
     # The judge call may receive only this blockquote.
     (JUDGE_PROMPT_REL, "unified judge prompt", extract_judge_prompt),
-    ("shared/cross_model_verification.md", "cross-model devil's advocate prompt",
-     _da_prompt_block),
-    ("shared/cross_model_verification.md", "cross-model reference verification prompt",
-     _reference_prompt_block),
+    (CROSS_MODEL_REL, "cross-model devil's advocate prompt", _da_prompt_block),
+    (CROSS_MODEL_REL, "cross-model reference verification prompt", _reference_prompt_block),
 )
 _QUOTE_PREFIX_RE = re.compile(r"^[ \t]*>[ \t]?", re.MULTILINE)
 

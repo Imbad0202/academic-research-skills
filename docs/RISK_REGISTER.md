@@ -106,9 +106,9 @@ instructions that an agent follows as if they came from the user.
   tool result (§6.5.1; rates and product-side caveats in
   `audits/harness-retirement-2026-09-opus-5-5.md` DG-1). The #675 scenarios
   include pasted reviewer and committee comments. The prompt-level boundary,
-  including the interim #890 extension, is trust-based; its effect on this
-  regression is unmeasured, and #676 stays open with its structural requirements
-  unmet. The inventories, ranking, and placement are in
+  including the interim #890 and #894 extensions, is trust-based; its effect on
+  this regression is unmeasured, and #676 stays open with its structural
+  requirements unmet. The inventories, ranking, and placement are in
   `docs/design/2026-09-23-890-instruction-data-boundary-extension.md` (#890)
   and `docs/design/2026-09-24-894-instruction-data-boundary-tool-calls.md`
   (#894). Surfaces they leave uncovered: agents whose dispatch carries
@@ -117,14 +117,11 @@ instructions that an agent follows as if they came from the user.
   whose input is the user's own text or dialogue; the advisory
   collaboration-depth observer and monitoring agent; the cross-model result at
   the design-freeze checkpoint; requests a fallback model serves; the
-  ChatGPT-subscription transport's instructions to the verifier, which the
-  #787 bakeoff measured, so a change there is a maintainer decision; and the
-  routing decision a session makes before it loads a `SKILL.md` (the startup
-  announce does not carry the rule, because the #892 routing fixtures measured
-  its text). The #675 seed runs one generic guided prompt rather than any
-  agent's prompt, so as seeded it evaluates none of these paths; a measured
-  claim for a path needs a #675 scenario that loads that agent's assembled
-  prompt.
+  ChatGPT-subscription transport's instructions to the verifier; and the
+  routing decision a session makes before it loads a `SKILL.md`. The #675 seed
+  runs one generic guided prompt rather than any agent's prompt, so as seeded
+  it evaluates none of these paths; a measured claim for a path needs a #675
+  scenario that loads that agent's assembled prompt.
 
 ### R4 — Unpublished-content exposure via cross-model transport
 
