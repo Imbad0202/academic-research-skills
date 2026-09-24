@@ -143,6 +143,19 @@ def test_a_line_break_at_any_space_reads_as_the_space(text: str) -> None:
             assert _outcome(wrapped) == expected, wrapped
 
 
+@pytest.mark.parametrize("text", [
+    "本研究採隨機對照試驗（RCT）。RCT 有效。",
+    "本研究使用 RCT（隨機對照試驗）。RCT 有效。",
+    "RCT 有效。本研究採隨機對照試驗（RCT）。",
+])
+def test_a_line_break_between_chinese_characters_changes_nothing(text: str) -> None:
+    expected = _outcome(text + "\n")
+    for i in range(1, len(text)):
+        if "\u3400" <= text[i - 1] <= "\u9fff" and "\u3400" <= text[i] <= "\u9fff":
+            wrapped = text[:i] + "\n" + text[i:] + "\n"
+            assert _outcome(wrapped) == expected, wrapped
+
+
 def test_a_parenthetical_it_cannot_confirm_is_a_coverage_limit() -> None:
     report = check("We compared several methods (RCT). The RCT ended.\n")
     assert report["findings"] == []
@@ -272,6 +285,7 @@ def test_whole_token_matching() -> None:
     ("authors joined by and", "Smith AB and Jones EF (2020) reported this.\n"),
     ("serial and", "Smith AB, Jones EF, and Lee GH (2020) agreed.\n"),
     ("ampersand", "Smith AB & Jones EF (2020) agreed.\n"),
+    ("vietnamese surnames", "Nguyễn AB and Trần EF (2020) reported this.\n"),
     ("statistical symbol", "The SD was 2.1 and the CI was narrow.\n"),
 ])
 def test_exclusions(label: str, text: str) -> None:

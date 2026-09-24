@@ -58,7 +58,8 @@ and author initials in author lists, whose names are joined by commas,
 ``and``, or ``&`` (``Smith JA, García BC, McDonald EF, and van der Berg GH
 (2020)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
 (2020)``, is read as one. In definitions, citations, group-author brackets,
-and author lists, a line break inside a paragraph reads as a space.
+and author lists, a line break inside a paragraph reads as a space, and a line
+break or space between two Chinese characters is ignored.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
@@ -137,10 +138,12 @@ _TABLE = re.compile(r"^\s*\|")
 _TABLE_DELIMITER = re.compile(r"^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 _IMAGE = re.compile(r"!\[")
 _EMPH = r"(?:\*{1,2}|_{1,2})?"
-# Capital and small letters in the Latin, Greek, and Cyrillic blocks, so an author
-# name such as "García" or "Öztürk" reads as a name.
-_UPPER = "".join(c for c in map(chr, range(0x530)) if c.isalpha() and c.isupper())
-_LOWER = "".join(c for c in map(chr, range(0x530)) if c.isalpha() and c.islower())
+# Capital and small letters in the Latin, Greek, and Cyrillic blocks, with Latin
+# Extended Additional and Greek Extended, so an author name such as "García",
+# "Öztürk", or "Nguyễn" reads as a name.
+_NAME_LETTERS = [chr(c) for block in (range(0x530), range(0x1E00, 0x2000)) for c in block]
+_UPPER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.isupper())
+_LOWER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.islower())
 _CAPTION = re.compile(rf"^\s*{_EMPH}(?:Figure|Fig\.?|Table|圖|表)\s*(?:[A-Z][.-]?)?\d+(?:\.\d+)*[A-Za-z]?"
                       rf"{_EMPH}(?:[.:：](?!\d)|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
@@ -200,6 +203,7 @@ _RUN_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
 _PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
 _CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
 _CJK_RUN = re.compile(r"[㐀-鿿]+$")
+_CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space inside Chinese text
 _NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱", "例如")
 
@@ -518,7 +522,7 @@ def _expansion(before: str, acronym: str) -> str | None:
     shortest run of Latin words ending its clause that starts with the acronym's
     first letter and spells it. None when neither is there."""
     head = _CLAUSE_BREAK.split(before)[-1].strip().rstrip("*_\"'”’")
-    cjk = _CJK_RUN.search(head)
+    cjk = _CJK_RUN.search(_CJK_GAP.sub("", head))
     if cjk:
         return cjk.group(0)[-20:]
     if not re.search(r"[A-Za-z]$", head):
@@ -546,8 +550,9 @@ def _reverse_definition(acronym: str, content: str) -> bool:
     words = content.split()
     if not words or acronym in content or words[0].casefold().rstrip(",，") in _NOT_EXPANSION:
         return False
-    if _CJK_RUN.fullmatch(content):
-        return not content.startswith(_NOT_EXPANSION_ZH)
+    joined = _CJK_GAP.sub("", content)
+    if _CJK_RUN.fullmatch(joined):
+        return not joined.startswith(_NOT_EXPANSION_ZH)
     return _spells(acronym, content)
 
 
