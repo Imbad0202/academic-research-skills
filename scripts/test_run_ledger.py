@@ -46,6 +46,7 @@ OPENED = {"kind": "checkpoint_opened", "checkpoint_id": "x", "stage": "1",
           "checkpoint_type": "FULL", "question": "q"}
 RECEIPT = {"kind": "tool_receipt", "step": "s", "command": "c", "status": "passed",
            "exit_status": 0, "retries_used": 0}
+REFERENCE = {"kind": "file_reference", "path": "raw.bin", "role": "r"}
 
 
 class _Clock:
@@ -288,12 +289,9 @@ class DigestAtWriteTest(_LedgerCase):
         self.write("raw.bin")
         (self.root / "folder").mkdir()
         cases = {
-            "wrong file digest": ({"kind": "file_reference", "path": "raw.bin", "sha256": "0" * 64,
-                                   "role": "r"}, "does not match the file"),
-            "absent file": ({"kind": "file_reference", "path": "gone.bin", "role": "r"},
-                            "gone.bin is not a file"),
-            "a directory": ({"kind": "file_reference", "path": "folder", "role": "r"},
-                            "folder is not a file"),
+            "wrong file digest": ({**REFERENCE, "sha256": "0" * 64}, "does not match the file"),
+            "absent file": ({**REFERENCE, "path": "gone.bin"}, "gone.bin is not a file"),
+            "a directory": ({**REFERENCE, "path": "folder"}, "folder is not a file"),
             "wrong input digest": ({**RECEIPT, "input_sha256": {"raw.bin": "0" * 64}},
                                    "does not match the file"),
             "absent input": ({**RECEIPT, "input_paths": ["gone.md"]}, "gone.md is not a file"),
@@ -302,8 +300,8 @@ class DigestAtWriteTest(_LedgerCase):
             "input_paths too long": ({**RECEIPT, "input_paths": ["raw.bin"] * (run_ledger.LIST_MAX + 1)},
                                      "input_paths must be a list"),
             "empty input path": ({**RECEIPT, "input_paths": [""]}, "input_paths must be a list"),
-            "input_paths on another kind": ({"kind": "file_reference", "path": "raw.bin", "role": "r",
-                                             "input_paths": ["raw.bin"]}, "unknown field input_paths"),
+            "input_paths on another kind": ({**REFERENCE, "input_paths": ["raw.bin"]},
+                                            "unknown field input_paths"),
         }
         for label, (fields, message) in cases.items():
             with self.subTest(label):
@@ -471,6 +469,7 @@ class RenderTest(_LedgerCase):
         paper = self.root / "paper.md"
         paper.write_text("v1", encoding="utf-8")
         self.receipt("evidence_rows", "passed", input_paths=["paper.md"])
+        self.receipt("check_revision_token_conservation", "not_run")
         paper.unlink()
         report = self.report({
             "decisions": [{"checkpoint_id": "stage-3-branch", "answer": "revise"},
@@ -493,13 +492,15 @@ class RenderTest(_LedgerCase):
                       "(paper.md: absent); the summary or report says passed", en)
         self.assertIn("- verify_submission_package: no receipt; the summary or report says "
                       "passed and failed", en)
-        self.assertIn("Not run (2)", en)
+        self.assertIn("- check_revision_token_conservation: the receipt records not run", en)
+        self.assertIn("Not run (3)", en)
         self.assertEqual(en[-1], "The ledger backs no items.")
         zh = run_ledger.render_block(report, "zh-TW").split("\n")
         self.assertIn("- 步驟 check_panel_synthesis：摘要或報告寫通過，執行收據記錄的是未通過", zh)
         self.assertIn("- evidence_rows：執行收據寫下後，輸入檔有變動（paper.md：檔案不見了），"
                       "摘要或報告寫通過", zh)
         self.assertIn("- verify_submission_package：沒有執行收據，摘要或報告寫通過和未通過", zh)
+        self.assertIn("- check_revision_token_conservation：執行收據記錄為沒跑", zh)
 
     def test_one_backed_item_is_singular(self) -> None:
         self.open_checkpoint("stage-2-config", stage="2", checkpoint_type="FULL", question="q")

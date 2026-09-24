@@ -74,7 +74,6 @@ ERR_PREFIX = "[ARS-RUN-LEDGER ERROR:"
 
 CHECKPOINT_TYPES = ("FULL", "SLIM", "MANDATORY")
 RECEIPT_STATUSES = ("passed", "failed", "not_run")
-RENDER_LANGUAGES = ("en", "zh-TW")
 WRITER_FIELDS = ("seq", "at", "prev_hash", "hash")
 BASE_FIELDS = ("kind",) + WRITER_FIELDS
 WORDS_MAX = 20000
@@ -597,15 +596,15 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
     for step in sorted(set(state["receipts"]) | set(claimed_steps) | expected):
         receipt = state["receipts"].get(step)
         statuses = claimed_steps.get(step, [])
-        changed = [] if receipt is None or receipt["status"] == "not_run" else [
+        usable = receipt is not None and receipt["status"] != "not_run"
+        changed = [
             {"path": name, "reason": reason}
             for name, digest in sorted(receipt.get("input_sha256", {}).items())
             if (reason := _file_status(path.parent / name, digest))
-        ]
-        if receipt is None or receipt["status"] == "not_run" or changed:
-            reason = ("no receipt" if receipt is None
-                      else "the receipt records not_run" if not changed
-                      else "the receipt's inputs changed after it was written")
+        ] if usable else []
+        if not usable or changed:
+            reason = ("the receipt's inputs changed after it was written" if changed
+                      else "no receipt" if receipt is None else "the receipt records not_run")
             extra = {"changed_inputs": changed} if changed else {}
             not_run += [{"step": step, "claimed": status, "reason": reason, **extra}
                         for status in statuses or [None]]
@@ -659,9 +658,9 @@ def has_items(report: dict[str, Any]) -> bool:
 _TEXT: dict[str, dict[str, str]] = {
     "en": {
         "title": "### Handoff check",
-        "missing_ledger": "Ledger problem: no {name} beside the Material Passport.",
-        "unreadable": "Ledger problem: {name} cannot be read.",
-        "chain_broken": "Ledger problem: entry {seq} fails validation; entries from {seq} on are not used.",
+        "ledger_missing": "Ledger problem: no {name} beside the Material Passport.",
+        "ledger_unreadable": "Ledger problem: {name} cannot be read.",
+        "ledger_chain_broken": "Ledger problem: entry {seq} fails validation; entries from {seq} on are not used.",
         "awaiting": "Awaiting your answer ({n})",
         "cannot_confirm": "Cannot confirm ({n})",
         "not_run": "Not run ({n})",
@@ -688,9 +687,9 @@ _TEXT: dict[str, dict[str, str]] = {
     },
     "zh-TW": {
         "title": "### 交接檢查",
-        "missing_ledger": "紀錄檔問題：Material Passport 旁邊沒有 {name}。",
-        "unreadable": "紀錄檔問題：{name} 無法讀取。",
-        "chain_broken": "紀錄檔問題：第 {seq} 筆紀錄驗證失敗，從第 {seq} 筆起都不採用。",
+        "ledger_missing": "紀錄檔問題：Material Passport 旁邊沒有 {name}。",
+        "ledger_unreadable": "紀錄檔問題：{name} 無法讀取。",
+        "ledger_chain_broken": "紀錄檔問題：第 {seq} 筆紀錄驗證失敗，從第 {seq} 筆起都不採用。",
         "awaiting": "等你回答（{n}）",
         "cannot_confirm": "無法確認（{n}）",
         "not_run": "沒跑過（{n}）",
@@ -716,10 +715,16 @@ _TEXT: dict[str, dict[str, str]] = {
         "backed_many": "紀錄已確認 {n} 項，這些不會再問你。",
     },
 }
-_DECISION_LINES = {
+RENDER_LANGUAGES = tuple(_TEXT)
+# build_report's reason strings -> the _TEXT line that shows them.
+_REASON_LINES = {
     "the checkpoint is still open in the ledger": "decision_open",
     "the ledger records a different answer": "decision_other",
     "no answer in the user's words is recorded": "decision_none",
+    "the receipt records a different outcome": "step_other",
+    "no receipt": "no_receipt",
+    "the receipt records not_run": "receipt_not_run",
+    "the receipt's inputs changed after it was written": "inputs_changed",
 }
 
 
@@ -732,56 +737,42 @@ def render_block(report: dict[str, Any], lang: str) -> str:
     if not has_items(report):
         return ""
     text = _TEXT[lang]
-    word = lambda value: text.get(value, _one_line(value))  # noqa: E731
     lines = [text["title"], ""]
-    name = Path(report["ledger"]).name
-    status = report["ledger_status"]
-    if status == "missing":
-        lines += [text["missing_ledger"].format(name=name), ""]
-    elif status == "unreadable":
-        lines += [text["unreadable"].format(name=name), ""]
-    elif status == "chain_broken":
-        lines += [text["chain_broken"].format(seq=report["untrusted_from_seq"]), ""]
+    if report["ledger_status"] != "ok":
+        lines += [text[f"ledger_{report['ledger_status']}"].format(
+            name=Path(report["ledger"]).name, seq=report["untrusted_from_seq"]), ""]
 
     awaiting: list[str] = []
     for item in report["awaiting_answer"]:
-        awaiting.append(text["checkpoint"].format(
-            id=_one_line(item["checkpoint_id"]), stage=_one_line(item["stage"]),
-            type=item["checkpoint_type"]))
-        awaiting.append(text["question"].format(text=_one_line(item["question"])))
+        entry = [text["checkpoint"].format(id=_one_line(item["checkpoint_id"]),
+                                           stage=_one_line(item["stage"]),
+                                           type=item["checkpoint_type"]),
+                 text["question"].format(text=_one_line(item["question"]))]
         answered = item["answered_items"]
         if answered:
             key = "recorded_one" if len(answered) == 1 else "recorded_many"
-            ids = ", ".join(_one_line(i) for i in answered)
-            awaiting.append(text[key].format(n=len(answered), ids=ids))
+            entry.append(text[key].format(n=len(answered),
+                                          ids=", ".join(_one_line(i) for i in answered)))
+        awaiting.append("\n".join(entry))
 
-    cannot: list[str] = []
-    for item in report["cannot_confirm"]:
-        if item["item"] == "decision":
-            cannot.append(text[_DECISION_LINES[item["reason"]]].format(
-                id=_one_line(item["checkpoint_id"]), claimed=_one_line(item["claimed"]),
-                recorded=_one_line(item.get("recorded", ""))))
-        else:
-            cannot.append(text["step_other"].format(
-                step=_one_line(item["step"]), claimed=word(item["claimed"]),
-                recorded=word(item["recorded"])))
+    cannot = [text[_REASON_LINES[item["reason"]]].format(
+        id=_one_line(item.get("checkpoint_id", "")), step=_one_line(item.get("step", "")),
+        claimed=(_one_line(item["claimed"]) if item["item"] == "decision"
+                 else text[item["claimed"]]),
+        recorded=(_one_line(item.get("recorded", "")) if item["item"] == "decision"
+                  else text[item["recorded"]]))
+        for item in report["cannot_confirm"]]
 
     not_run: list[str] = []
     by_step: dict[str, list[dict[str, Any]]] = {}
     for item in report["not_run"]:
         by_step.setdefault(item["step"], []).append(item)
     for step, items in by_step.items():
-        first = items[0]
-        if first["reason"] == "no receipt":
-            line = text["no_receipt"].format(step=_one_line(step))
-        elif first["reason"] == "the receipt records not_run":
-            line = text["receipt_not_run"].format(step=_one_line(step))
-        else:
-            files = text["sep"].join(
-                text["input_file"].format(path=_one_line(f["path"]), state=text[f["reason"]])
-                for f in first["changed_inputs"])
-            line = text["inputs_changed"].format(step=_one_line(step), files=files)
-        claimed = [word(i["claimed"]) for i in items if i["claimed"] is not None]
+        files = text["sep"].join(
+            text["input_file"].format(path=_one_line(f["path"]), state=text[f["reason"]])
+            for f in items[0].get("changed_inputs", []))
+        line = text[_REASON_LINES[items[0]["reason"]]].format(step=_one_line(step), files=files)
+        claimed = [text[i["claimed"]] for i in items if i["claimed"] is not None]
         if claimed:
             line += text["claimed_suffix"].format(claimed=text["and"].join(claimed))
         not_run.append(line)
@@ -790,12 +781,10 @@ def render_block(report: dict[str, Any], lang: str) -> str:
                                    state=text[item["reason"]])
                for item in report["missing"]]
 
-    for key, group, count in (("awaiting", awaiting, len(report["awaiting_answer"])),
-                              ("cannot_confirm", cannot, len(cannot)),
-                              ("not_run", not_run, len(not_run)),
-                              ("missing", missing, len(missing))):
+    for key, group in (("awaiting", awaiting), ("cannot_confirm", cannot),
+                       ("not_run", not_run), ("missing", missing)):
         if group:
-            lines += [text[key].format(n=count), *group, ""]
+            lines += [text[key].format(n=len(group)), *group, ""]
 
     backed = report["backed"]
     lines.append(text["backed_none"] if backed == 0 else text["backed_one"] if backed == 1
