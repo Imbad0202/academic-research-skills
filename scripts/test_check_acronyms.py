@@ -208,6 +208,20 @@ def test_the_expansion_is_the_shortest_run_that_spells_it(text: str, expansion: 
     assert (finding["rule"], finding["expansion"]) == ("defined_after_use", expansion)
 
 
+@pytest.mark.parametrize("definition, expansion", [
+    ("國際疾病及相關健康問題統計分類第十次修訂版（ICD）", "國際疾病及相關健康問題統計分類第十次修訂版"),  # 21 characters
+    ("本研究採用結構方程模型（SEM）", "本研究採用結構方程模型"),
+    ("2型糖尿病（T2D）", "型糖尿病"),
+])
+def test_a_chinese_expansion_is_the_run_of_chinese_characters_before_it(definition: str,
+                                                                        expansion: str) -> None:
+    acronym = definition[definition.index("（") + 1:-1]
+    for text, rule in ((f"{acronym} 很常用。{definition}。\n", "defined_after_use"),
+                       (f"{definition}。{definition}。\n", "defined_again")):
+        [finding] = check(text)["findings"]
+        assert (finding["rule"], finding["acronym"], finding["expansion"]) == (rule, acronym, expansion)
+
+
 # --- allowlist -------------------------------------------------------------
 
 

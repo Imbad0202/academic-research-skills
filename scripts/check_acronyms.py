@@ -17,9 +17,14 @@ when the words before it spell the acronym: ``randomized controlled trial
 trial, RCT）``. Chinese words spell any acronym, and quotation marks around
 the words are ignored (``「大型語言模型」（LLM）``); Latin words spell it when
 the first starts with the acronym's first letter and their initials contain
-its letters in order. The expansion is the shortest such run of words. Two
-kinds of acronym get no finding in their scope and are listed as coverage
-limits: one whose parenthetical the words do not spell
+its letters in order. The expansion is the shortest such run of words. For
+Chinese words before the parenthetical, which have no spaces between them, it
+is the whole run of Chinese characters there, read across a space or line
+break between two of them; any other character, such as punctuation, a digit,
+or a Latin letter, ends the run, so it can hold words before the term
+(``本研究採用結構方程模型（SEM）``) or lose a part of it (``2型糖尿病（T2D）``
+gives ``型糖尿病``). Two kinds of acronym get no finding in their scope and
+are listed as coverage limits: one whose parenthetical the words do not spell
 (``several methods (RCT)``), which this check cannot confirm as a definition,
 and one followed by its expansion in parentheses (``RCT (randomized controlled
 trial)``, ``RCT（隨機對照試驗）``), a definition form this check does not
@@ -689,7 +694,7 @@ def _expansion(before: str, acronym: str) -> str | None:
     head = _CLAUSE_BREAK.split(before)[-1].strip().rstrip("*_\"'”’」』")
     cjk = _CJK_RUN.search(_CJK_GAP.sub("", head))
     if cjk:
-        return cjk.group(0)[-20:]
+        return cjk.group(0)
     if not re.search(r"[A-Za-z]$", head):
         return None
     return _spelled_run(head, acronym)
