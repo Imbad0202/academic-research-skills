@@ -119,8 +119,9 @@ runtime graceful-degradation mechanisms is
    that no skill picks up gets no routing guard, and a clarifying question can come only
    after a skill call. As with note 7, these are prompt-level instructions, not runtime
    enforcement. The #133 routing fixtures were run with the plugin loaded, in sessions
-   started inside and outside the checkout
-   ([`CALIBRATION_LOG.md`](../tests/fixtures/issue_133_routing/CALIBRATION_LOG.md)); the
+   started inside and outside the checkout; outside it, Claude Fable 5.1 still failed one
+   fixture (a mid-message `[direct-mode]` token)
+   ([`CALIBRATION_LOG.md`](../tests/fixtures/issue_133_routing/CALIBRATION_LOG.md)). The
    other channels are covered only by the copy check (`scripts/check_routing_core_sync.py`).
 
 ## Environment degradations within a channel

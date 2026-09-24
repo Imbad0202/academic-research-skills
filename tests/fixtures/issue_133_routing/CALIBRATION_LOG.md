@@ -201,3 +201,106 @@ still fails goes to a follow-up issue with the deciding quote.
 - Not covered: plugin and skills-copy installs, where the routing prose does not load
   (#892); any effort setting other than the CLI default; and the README's secondary
   targets, which no pass ran.
+
+## 2026-09-24 pass (#892): plugin install and repo clone
+
+### Condition
+
+- **Question.** Does the routing core reach a session when ARS is loaded as a plugin and
+  the session starts outside the checkout, where `.claude/CLAUDE.md` does not load?
+- **Subjects.** Baseline: a standalone clone at `bff05339` (`main` before #892).
+  Post-fix: a standalone clone at `271e45f2` (this change). Both sit outside the home
+  directory.
+- **Conditions.** *Plugin install*: the session's working directory is an empty folder
+  outside the checkout, with no `CLAUDE.md` on its path, and ARS loads through
+  `--plugin-dir`. *Repo clone*: the working directory is the checkout, the 2026-09-23
+  condition. The fence, tools, and credential are the 2026-09-23 settings; each session
+  also wrote a Claude Code debug log. Claude Code 2.1.281.
+- **Runs.** Baseline plugin install on Claude Opus 5.5 (12 fixtures). Post-fix plugin
+  install and repo clone on Claude Opus 5.5 and Claude Fable 5.1 (48). One probe per
+  model and condition first.
+- **Scoring and acceptance, fixed before the run.** The scoring rules above, unchanged.
+  Acceptance: on the post-fix subject, plugin install matches repo clone on each model,
+  fixture by fixture, and the SessionStart output carries the routing core in every
+  plugin-install session. A fixture that fails on the baseline and passes after the fix
+  is evidence that the gap closed; one that passes in both says nothing about the fix.
+- **Reads in the plugin-install condition.** The plugin's files sit outside the working
+  directory, so the permission check refused every read of them. An attempted read of the
+  target agent's file is scored as reading it (fixture 05).
+
+### Probes and checks
+
+- Plugin install, both subjects: no instruction file, no routing heading, no output
+  style, no user-level instruction. Repo clone: the project `.claude/CLAUDE.md` only,
+  routing heading version 3.9.2. Every init event showed the requested model, output
+  style `default`, and no API key source.
+- The post-fix SessionStart output carried the routing core byte for byte in all 48
+  post-fix sessions; the baseline output carried none of it in its 12.
+- No tool call or tool result in any of the 65 streams contains `issue_133_routing`,
+  `expected.yaml`, `rationale.md`, or `CALIBRATION_LOG`.
+- No Skill argument carried the `[direct-mode]` token. Fixture 07's Skill arguments
+  carried the stripped message word for word in all five cells. Fixture 05's were
+  paraphrased in both post-fix plugin-install cells ("bibliography_agent on 30 PDFs about
+  scaling laws" on Opus 5.5; "direct-mode: run bibliography_agent on 30 PDFs about scaling
+  laws (...)" on Fable 5.1). The rule does not say whether a paraphrase carries the
+  stripped message; these two are recorded, not failed. Read word for word, both would
+  fail that field, and fixture 05 would differ between the conditions on both models.
+
+### Results: Claude Opus 5.5
+
+| Fixture | Expected | Baseline, plugin install | Post-fix, plugin install | Post-fix, repo clone |
+|---|---|---|---|---|
+| 01 cross-phase | clarify | **fail (RC, D)**: a seven-point critique of the abstract, then three next steps to choose from | pass: a-d workflow options, no Skill call | pass: a-d workflow options |
+| 02 literature only | `academic-paper:lit-review` | pass | pass | pass |
+| 03 no materials | clarify | pass | pass | pass |
+| 04 slash command | `academic-paper:lit-review` | pass, on `claude-sonnet-5`: "I'm staying in `academic-paper` / `lit-review` mode" | pass, on `claude-sonnet-5` | pass, on `claude-sonnet-5` |
+| 05 direct mode | `bibliography_agent` | **fail (D)**: "`bibliography_agent` isn't something I can call on its own"; neither read nor dispatched it | pass: "I'm treating this as a direct request to run `bibliography_agent`"; read attempted | pass: read the agent file |
+| 06 token mid-message | clarify | **fail (RC)**: "I know you asked me not to ask anything, but I need the source files"; no workflow choice | pass: "`[direct-mode]` didn't take effect"; a-d options | pass: "it doesn't count"; a-d options |
+| 07 token, capitalized | `academic-paper:abstract` | pass | pass | pass |
+| 08 draft + abstract + literature + reviews | clarify | pass | pass | pass |
+| 09 Korean revise | `academic-paper:revision` | **fail (RC)**: Skill `academic-paper`, "mode: revision", then options A-C, one of them a simulated review by `academic-paper-reviewer` | pass | pass |
+| 10 Korean review | `academic-paper-reviewer:full` | pass | pass | pass |
+| 11 Spanish revise | `academic-paper:revision` | **fail (RC)**: Skill `academic-paper`, revision, then "conviene decidir cómo pulirlo" with a simulated-review option | pass: "ese modo también sirve para pulir un borrador" | pass |
+| 12 Spanish review | `academic-paper-reviewer:full` | **fail (RC)**: Skill reviewer "full", then "'revisa' puede significar dos cosas. ¿Cuál quieres?" | pass | pass |
+| **Total** | | **6 of 12** | **12 of 12** | **12 of 12** |
+
+### Results: Claude Fable 5.1
+
+| Fixture | Expected | Post-fix, plugin install | Post-fix, repo clone |
+|---|---|---|---|
+| 01, 02, 03, 04 (on `claude-sonnet-5`), 05, 07, 08, 09, 10, 11, 12 | as above | pass (all eleven) | pass (all eleven) |
+| 06 token mid-message | clarify | **fail (RC, D)**: "I'll honor the `[direct-mode]` prefix and route straight to bibliography_agent"; Skill `deep-research` | pass: "The direct-mode token was not honored"; a-d options |
+| **Total** | | **11 of 12** | **12 of 12** |
+
+No baseline plugin-install run was made on Fable 5.1.
+
+### Follow-up probe: fixture 06 on Fable 5.1
+
+The rule for this probe was written after the pass was scored and before the probe ran:
+fixture 06 only, five more sessions per condition, same subject, runner, fence, and
+scoring; reported apart from the pass, which is neither re-run nor replaced.
+
+| Condition | Pass | Probe | Together |
+|---|---|---|---|
+| Plugin install | fail | 1 of 5 pass | 1 of 6 pass |
+| Repo clone | pass | 5 of 5 pass | 6 of 6 pass |
+
+Two of the four failing probe sessions forwarded the token inside their Skill arguments
+("[direct-mode] honored"). Every repo-clone session read
+`shared/references/intent_clarification_protocol.md` before answering; that file says a
+token after any non-whitespace character does not qualify. In the plugin-install
+condition the same file sits outside the working directory, and only the one passing
+session looked for it. That pattern is an observation from twelve sessions, not a
+tested cause.
+
+### What this pass shows
+
+- Without the fix, a plugin-install session on Opus 5.5 failed 6 of 12 fixtures. With
+  the fix it passed all 12, as the repo clone did. The routing core now reaches plugin
+  installs before any skill loads.
+- On Fable 5.1 the plugin install matched the repo clone on 11 of 12 fixtures. On
+  fixture 06 it honored a mid-message `[direct-mode]` token in 5 of 6 sessions, where the
+  repo clone never did, so the acceptance rule is not met for that fixture. This change
+  makes no further prose edit; the gap stays open under #892.
+- As before, one session per fixture is a smoke test, not a rate, and the pass is not
+  held out.

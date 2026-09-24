@@ -32,6 +32,8 @@ _MIRRORED_FILES = (
     "pi/README.md",
     "shared/cross_model_verification.md",
     "shared/contracts/degradation_registry.json",
+    "shared/references/routing_core.md",
+    "tests/fixtures/issue_133_routing/CALIBRATION_LOG.md",
 )
 
 
