@@ -210,7 +210,9 @@ still fails goes to a follow-up issue with the deciding quote.
   the session starts outside the checkout, where `.claude/CLAUDE.md` does not load?
 - **Subjects.** Baseline: a standalone clone at `bff05339` (`main` before #892).
   Post-fix: a standalone clone at `271e45f2` (this change). Both sit outside the home
-  directory.
+  directory. Later commits in the same change left the measured text unchanged: the
+  startup announce, the copies, and the `.claude/CLAUDE.md` lead-in are byte-identical;
+  only the compaction and resume lead-in and the lint changed.
 - **Conditions.** *Plugin install*: the session's working directory is an empty folder
   outside the checkout, with no `CLAUDE.md` on its path, and ARS loads through
   `--plugin-dir`. *Repo clone*: the working directory is the checkout, the 2026-09-23

@@ -5,10 +5,10 @@ This file is the single source of the cross-skill routing core: the rules that d
 A Claude Code session loads the repository's `.claude/CLAUDE.md` only when its working directory is inside the ARS checkout, and Claude Code does not load a plugin's `CLAUDE.md` as project context. So the block between the markers below reaches a session through three carriers:
 
 - `.claude/CLAUDE.md` § Routing Discipline (v3.9.2), for sessions started inside a clone of this repository;
-- `scripts/announce-ars-loaded.sh`, which reads the block from this file at every SessionStart (startup, clear, resume, compaction), so plugin installs have it before any skill loads;
-- the four `SKILL.md` files, so every install path has it once a skill loads.
+- `scripts/announce-ars-loaded.sh`, which reads the block from this file at every SessionStart (startup, clear, resume, compaction), so plugin installs have it before any skill loads; after compaction or resume its lead-in limits the block to a new request;
+- the `SKILL.md` of every skill (four today), so every install path has it once a skill loads.
 
-`scripts/check_routing_core_sync.py` fails CI when a copy differs from this block by a single byte. Change the rules here and copy the block to the carriers in the same commit. The message template, the phase table, and worked examples are in `shared/references/intent_clarification_protocol.md`.
+`scripts/check_routing_core_sync.py` fails CI when a copy differs from this block by a single byte or a skill's `SKILL.md` lacks it. Change the rules here and copy the block to the carriers in the same commit. The message template, the phase table, and worked examples are in `shared/references/intent_clarification_protocol.md`.
 
 <!-- routing-core:begin -->
 **Step 0 — Escape hatch check (before any classification):** If the user's first message begins with `[direct-mode]` (case-insensitive byte-0 token, optionally preceded by whitespace/newlines that are stripped on parse), record this fact, strip the prefix and surrounding whitespace from the message, and skip directly to **Step 1 explicit-intent handling** on the stripped content. The literal `[direct-mode]` is NOT passed through to the dispatched agent. If the stripped message itself has no clear skill named, Step 1 falls through to Step 3 clarification (the escape hatch bypasses cross-phase clarification (Step 2), not all routing). When the token is honored and the named agent or skill needs inputs the message does not supply, read that agent's or skill's file and ask for what it requires, in its terms. Without the byte-0 token, naming an agent is not explicit intent: such a message goes through Steps 1-3 like any other, so cross-phase materials still get Step 2 clarification.

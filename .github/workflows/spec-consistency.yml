@@ -394,12 +394,8 @@ jobs:
         run: python scripts/check_firm_rules_sync.py
 
       - name: Routing-core sync lint (#892)
-        # The routing core (Routing Discipline Steps 0-3 + the #133 anti-pattern)
-        # has one canonical home, shared/references/routing_core.md; the
-        # .claude/CLAUDE.md and four SKILL.md copies must match it byte for
-        # byte, and the SessionStart announce must read it at runtime. The
-        # pytest companion `test_check_routing_core_sync.py` (unified manifest)
-        # also runs the announce for every SessionStart source.
+        # Every copy of shared/references/routing_core.md (that file lists its
+        # carriers) must match it byte for byte.
         env:
           PYTHONPATH: .
         run: python scripts/check_routing_core_sync.py

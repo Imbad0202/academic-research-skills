@@ -1,28 +1,17 @@
 #!/usr/bin/env python3
 """Routing-core sync lint (#892).
 
-The cross-skill routing core (Routing Discipline v3.9.2: Step 0, Steps 1-3,
-and the #133 anti-pattern) has to reach a session on every install path.
-Claude Code loads the repository's `.claude/CLAUDE.md` only when the session's
-working directory is inside the checkout, so the block has one canonical home,
-`shared/references/routing_core.md`, and three carriers:
-
-- `.claude/CLAUDE.md` (sessions started inside a clone): a verbatim copy;
-- the four `SKILL.md` files (every install path, once a skill loads):
-  verbatim copies;
-- `scripts/announce-ars-loaded.sh` (plugin SessionStart): reads the canonical
-  file at runtime and holds no copy.
+`shared/references/routing_core.md` holds the cross-skill routing core and
+says which files carry it and why. This lint keeps the verbatim copies in
+`.claude/CLAUDE.md` and in every top-level `SKILL.md` byte-identical to it.
+The SessionStart announce reads the canonical file at runtime;
+`test_check_routing_core_sync.py` runs the announce to check the block arrives.
 
 Checks:
   RC-1  The canonical file holds exactly one begin marker and one end marker,
         each alone on its line, begin before end, around a non-empty block.
-  RC-2  Every copy carrier holds exactly one such marker pair, and its block
-        is byte-identical to the canonical block.
-  RC-3  The announce script names the canonical path and both markers, which
-        is how it finds the block at runtime.
-
-The companion `test_check_routing_core_sync.py` runs the announce script for
-every SessionStart source and checks the block reaches the emitted context.
+  RC-2  Every copy holds exactly one such marker pair, and its block is
+        byte-identical to the canonical block.
 
 Usage:
     python scripts/check_routing_core_sync.py [--root PATH]
@@ -35,15 +24,11 @@ import argparse
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _skill_lint import iter_skill_files, read_or_exit2  # noqa: E402
+
 CANONICAL = Path("shared/references/routing_core.md")
-COPIES = (
-    Path(".claude/CLAUDE.md"),
-    Path("academic-paper/SKILL.md"),
-    Path("academic-paper-reviewer/SKILL.md"),
-    Path("deep-research/SKILL.md"),
-    Path("academic-pipeline/SKILL.md"),
-)
-ANNOUNCE = Path("scripts/announce-ars-loaded.sh")
+CLAUDE_MD = Path(".claude/CLAUDE.md")
 BEGIN = "<!-- routing-core:begin -->"
 END = "<!-- routing-core:end -->"
 
@@ -77,21 +62,20 @@ def first_difference(copy: str, canonical: str) -> str:
     return (f"block has {len(copy_lines)} lines, canonical has {len(canon_lines)}")
 
 
+def copies(root: Path) -> list[Path]:
+    """`.claude/CLAUDE.md` and every top-level SKILL.md, relative to `root`."""
+    return [CLAUDE_MD, *(path.relative_to(root) for path in iter_skill_files(root))]
+
+
 def check(root: Path) -> list[str]:
-    """Run RC-1..RC-3 under `root`; raise FileNotFoundError for a missing file."""
-    canonical, errors = extract_block(
-        (root / CANONICAL).read_text(encoding="utf-8"), f"RC-1 {CANONICAL}")
-    for rel in COPIES:
-        block, copy_errors = extract_block(
-            (root / rel).read_text(encoding="utf-8"), f"RC-2 {rel}")
+    """Run RC-1 and RC-2 under `root`; a missing file exits 2."""
+    canonical, errors = extract_block(read_or_exit2(root, str(CANONICAL)), f"RC-1 {CANONICAL}")
+    for rel in copies(root):
+        block, copy_errors = extract_block(read_or_exit2(root, str(rel)), f"RC-2 {rel}")
         errors += copy_errors
         if block is not None and canonical is not None and block != canonical:
             errors.append(f"RC-2 {rel}: routing-core block differs from {CANONICAL} "
                           f"({first_difference(block, canonical)})")
-    script = (root / ANNOUNCE).read_text(encoding="utf-8")
-    for needle in (str(CANONICAL), BEGIN, END):
-        if needle not in script:
-            errors.append(f"RC-3 {ANNOUNCE}: does not name {needle}")
     return errors
 
 
@@ -99,17 +83,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
     args = parser.parse_args(argv)
-    try:
-        errors = check(args.root)
-    except FileNotFoundError as exc:
-        print(f"check_routing_core_sync: missing file: {exc.filename}", file=sys.stderr)
-        return 2
+    errors = check(args.root)
     if errors:
         for error in errors:
             print(error, file=sys.stderr)
         return 1
-    print(f"check_routing_core_sync: OK ({len(COPIES)} copies match {CANONICAL}; "
-          f"{ANNOUNCE} reads it at runtime)")
+    print(f"check_routing_core_sync: OK ({len(copies(args.root))} copies match {CANONICAL})")
     return 0
 
 

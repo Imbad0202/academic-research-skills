@@ -112,22 +112,27 @@ ROUTING="ARS routing: the mode slash commands above are for the user to type. Fo
 ANNOUNCE+=$'\n\n'"${ROUTING}"
 
 # ---------------------------------------------------------------------------
-# #892 routing core. A plugin install runs in the user's own project folder,
-# where Claude Code does not load this repository's .claude/CLAUDE.md, so the
-# announce carries the cross-skill routing core for every SessionStart source
-# (compaction and resume included). It is read at runtime from its single
-# source, located from this script's own path so the block needs no second
-# copy here. A missing or unreadable file degrades to no block: the announce
-# must never break.
+# #892 routing core, read at runtime from its single source (see that file for
+# why every SessionStart source carries it). A missing or unreadable file
+# degrades to no block: the announce must never break. After compaction or
+# resume the lead-in limits it to a new request, so a run under way is not
+# routed again.
 # ---------------------------------------------------------------------------
-ROUTING_CORE=""
-_ARS_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd) || _ARS_ROOT=""
-_CORE_FILE="${_ARS_ROOT}/shared/references/routing_core.md"
-if [[ -n "${_ARS_ROOT}" && -r "${_CORE_FILE}" ]]; then
-  ROUTING_CORE=$(sed -n '/^<!-- routing-core:begin -->$/,/^<!-- routing-core:end -->$/p' "${_CORE_FILE}" 2>/dev/null | sed '1d;$d') || ROUTING_CORE=""
-fi
+# Parameter expansion, not dirname: the announce must run on a minimal PATH.
+_ARS_DIR="${BASH_SOURCE[0]%/*}"
+if [[ "${_ARS_DIR}" == "${BASH_SOURCE[0]}" ]]; then _ARS_DIR="."; fi
+_CORE_FILE="${_ARS_DIR}/../shared/references/routing_core.md"
+ROUTING_CORE=$(sed -n '/^<!-- routing-core:begin -->$/,/^<!-- routing-core:end -->$/p' "${_CORE_FILE}" 2>/dev/null | sed '1d;$d') || ROUTING_CORE=""
 if [[ -n "${ROUTING_CORE}" ]]; then
-  ANNOUNCE+=$'\n\n'"ARS routing discipline: apply it before invoking an ARS skill or dispatching an ARS agent for a natural-language request."$'\n\n'"${ROUTING_CORE}"
+  case "${SOURCE}" in
+    compact|resume)
+      LEAD="ARS routing discipline, for a new natural-language request: apply it before invoking an ARS skill or dispatching an ARS agent. Messages inside a workflow already under way go to that workflow's active skill and are not routed again."
+      ;;
+    *)
+      LEAD="ARS routing discipline: apply it before invoking an ARS skill or dispatching an ARS agent for a natural-language request."
+      ;;
+  esac
+  ANNOUNCE+=$'\n\n'"${LEAD}"$'\n\n'"${ROUTING_CORE}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -160,7 +165,10 @@ escape_json() {
   printf '%s' "${raw}"
 }
 
-ESCAPED=$(escape_json "${ANNOUNCE}")
+# C locale: bash 3.2 runs ${var//a/b} far slower on UTF-8 text, and the
+# characters escaped here are single bytes that never occur inside a UTF-8
+# sequence, so the output bytes are the same.
+ESCAPED=$(LC_ALL=C; escape_json "${ANNOUNCE}")
 
 cat <<JSON
 {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"${ESCAPED}"}}
