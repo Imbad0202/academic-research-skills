@@ -73,39 +73,41 @@ Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
 backslash or a comment marker inside a span is literal), HTML comments
 (including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math (inline math
-within one line), URLs, link reference definitions
-(``[RCT]: https://example.org``), ATX and setext headings, tables (with or
-without outer pipes, up to a blank line, heading, list item, blockquote, or
-thematic break), image lines, caption, note, and keyword paragraphs (from a
-line that starts a paragraph or follows an image and opens with a label such
-as ``Figure 2.``, ``Table S1.``, ``TABLE III``, ``Supplementary Table 2.``,
-``Box 1.``, ``Figure 1 |``, ``圖 2-1：``, ``表一：``, ``Note.``, or
-``Keywords:``, up to a blank line; the number must end the line or come before
-a period, colon, pipe, or dash, but a dash that starts a range and an unspaced
-hyphen (``Table 1-based``) open no label, and neither do ``Figure 1.2 shows``
-and ``Fig. 1 Flow diagram``; a range end is a number or a labeled number
-(``Figure 1 – 3``, ``Table 1–Table 3``, ``圖1–圖3``), an end of the number's
-own kind (a letter after ``1A``, a Roman numeral up to 20 above a Roman start,
-a Chinese numeral after a Chinese one: ``Figure 1A – C``, ``Table XXXIX–XL``,
-``圖一–三``) that no hyphen follows (``Table I – X-ray findings`` is a title),
-or a single letter right after an unspaced dash (``Figure 1–C shows``), so a
-caption title that starts that way is read as prose), the reference list,
-author-year citations whose author part is a run of names, whose dates are
-years from 1800 to 2099, year pairs or ranges, ``n.d.``, or ``in press``
-(``2020a``, ``1900/1953``, ``n.d.-a``), and whose locator, if any, is a page,
-paragraph, chapter, or section (``(WHO, 2020)``, ``(see Smith et al., 2020,
-pp. 4, 6; Lee, 2019)``, and the citations after the acronym in
-``(RCTs; Smith, 2020)``), a bracketed abbreviation right after a capitalized
-word, as in an APA group author (``World Health Organization [WHO]``), but not
-a link (``[RCT](#design)``, or ``[RCT]`` when a link reference definition
-names it), and author initials in author lists, whose names are joined by
-commas, ``and``, or ``&`` and come before ``et al.`` or a date in a form a
-citation takes (``Smith JA, García BC, McDonald EF, and van der Berg GH
-(2020a)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
-(2020)``, is read as one. In definitions, the leading words above, citations,
-group-author brackets, and author lists, a line break inside a paragraph reads
-as a space, and a line break or space between two Chinese characters is
-ignored.
+within one line), URLs, link destinations and titles
+(``[the protocol](#RCT)``, ``[the site](https://example.org "RCT")``), link
+reference definitions (``[RCT]: https://example.org``) and the labels that
+name them in full reference links (``[the protocol][RCT]``), ATX and setext
+headings, tables (with or without outer pipes, up to a blank line, heading,
+list item, blockquote, or thematic break), image lines, caption, note, and
+keyword paragraphs (from a line that starts a paragraph or follows an image
+and opens with a label such as ``Figure 2.``, ``Table S1.``, ``TABLE III``,
+``Supplementary Table 2.``, ``Box 1.``, ``Figure 1 |``, ``圖 2-1：``,
+``表一：``, ``Note.``, or ``Keywords:``, up to a blank line; the number must
+end the line or come before a period, colon, pipe, or dash, but a dash that
+starts a range and an unspaced hyphen (``Table 1-based``) open no label, and
+neither do ``Figure 1.2 shows`` and ``Fig. 1 Flow diagram``; a range end is a
+number or a labeled number (``Figure 1 – 3``, ``Table 1–Table 3``,
+``圖1–圖3``), an end of the number's own kind (a letter after ``1A``, a Roman
+numeral up to 20 above a Roman start, a Chinese numeral after a Chinese one:
+``Figure 1A – C``, ``Table XXXIX–XL``, ``圖一–三``) that no hyphen follows
+(``Table I – X-ray findings`` is a title), or a single letter right after an
+unspaced dash (``Figure 1–C shows``), so a caption title that starts that way
+is read as prose), the reference list, author-year citations whose author part
+is a run of names, whose dates are years from 1800 to 2099, year pairs or
+ranges, ``n.d.``, or ``in press`` (``2020a``, ``1900/1953``, ``n.d.-a``), and
+whose locator, if any, is a page, paragraph, chapter, or section
+(``(WHO, 2020)``, ``(see Smith et al., 2020, pp. 4, 6; Lee, 2019)``, and the
+citations after the acronym in ``(RCTs; Smith, 2020)``), a bracketed
+abbreviation right after a capitalized word, as in an APA group author
+(``World Health Organization [WHO]``), but not a link (``[RCT](#design)``, or
+``[RCT]`` when a link reference definition names it), and author initials in
+author lists, whose names are joined by commas, ``and``, or ``&`` and come
+before ``et al.`` or a date in a form a citation takes (``Smith JA, García BC,
+McDonald EF, and van der Berg GH (2020a)``); prose shaped like such a list, as
+in ``Delphi RCT and Bayesian SEM (2020)``, is read as one. In definitions, the
+leading words above, citations, group-author brackets, and author lists, a
+line break inside a paragraph reads as a space, and a line break or space
+between two Chinese characters is ignored.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
@@ -225,6 +227,12 @@ _TRAILING_PAREN = re.compile(rf"\s*{_PAREN.pattern}\s*$")
 _YEAR = r"(?:1[89]|20)\d{2}"  # 1800 to 2099, for citations and author lists alike
 _COMMA = r"[,，]"
 _SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank line
+# A link's destination and title, which are not shown: "[the protocol](#RCT)",
+# '[the site](https://example.org "RCT")'. The link text stays.
+_LINK_TARGET = re.compile(rf"(?<=\])\((?:{_SPACE})?(?:<[^<>\n]*>|(?:[^\s()<>]|\([^\s()]*\))*)"
+                          rf"(?:{_SPACE}(?:\"[^\"\n]*\"|'[^'\n]*'|\([^()\n]*\)))?(?:{_SPACE})?\)")
+# The label of a full reference link, which is not shown: "[the protocol][RCT]".
+_LINK_LABEL = re.compile(r"(?<=\])\[([^\[\]\n]*)\]")
 # "IV" and stage numerals ("IIIB", "IVA") are numerals after a numbering word ("Table IV",
 # "stage IIIB", "phases III and IV", "stage-IV", "Fig. IV", "第IV期"), never across a sentence
 # end or a blank line.
@@ -579,7 +587,10 @@ class Manuscript:
         for bracket in _GROUP_AUTHOR.finditer("".join(chars)):
             if _link_label(bracket.group(1)[1:-1]) not in self.link_labels:
                 _blank(chars, bracket.start(1), bracket.end(1))
-        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _URL, _CITATION, _TRAILING_CITATION):
+        for label in _LINK_LABEL.finditer("".join(chars)):
+            if _link_label(label.group(1)) in self.link_labels:
+                _blank(chars, label.start(), label.end())
+        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _LINK_TARGET, _URL, _CITATION, _TRAILING_CITATION):
             _blank_pattern(chars, pattern)
         _blank_author_initials(chars)
         self.masked = "".join(chars)

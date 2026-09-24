@@ -282,7 +282,8 @@ _FUZZ_PIECES = ["(", ")", "（", "）", ",", "，", "、", ";", "/", "-", " and 
                 "(WHO, n.d.-a)", "[WHO]", "\n", "\n\n", "# Abstract\n", "## 摘要\n", "## References\n",
                 "| a | b |\n|---|---|\n", "- ", "> ", "```\n", "![img](x.png)\n", "***\n", "===\n", "\\",
                 "*", "Keywords: ", "\r\n", "\u2028", "and/or", "1", "2020", "et al.", "hereafter ", "以下簡稱",
-                "i.e., ", "「", "」", "“", "'", " – ", "Figure 1A", "stage IV", "第IV期", "圖1–圖"]
+                "i.e., ", "「", "」", "“", "'", " – ", "Figure 1A", "stage IV", "第IV期", "圖1–圖",
+                "](#RCT)", "][RCT]", "[RCT]: https://x.org\n", "(<a b>"]
 
 
 def test_mixed_constructs_never_crash_the_check() -> None:
@@ -502,6 +503,9 @@ def test_whole_token_matching() -> None:
     ("citation page list", "Earlier work (WHO, 2020, pp. 4, 6) supported this.\n"),
     ("citation section", "As defined (APA, 2020, Section 8.1; WHO, 2019, ch. 3), it held.\n"),
     ("link reference definition", "[RCT]: https://example.org/design\n"),
+    ("link destination", "See the [trial protocol](#RCT) and the [notes](<RCT notes.md>).\n"),
+    ("link title", "See [the site](https://example.org \"RCT protocol\") and [the page](#a 'RCT').\n"),
+    ("full reference link label", "See the [trial protocol][RCT].\n\n[RCT]: https://example.org\n"),
     ("pipe-less table", "Design | Arms\n--- | ---\nRCT | 2\nSEM | 1\n"),
     ("multi-line note", "*Note.* RCT = randomized\ncontrolled trial; SEM = structural model.\n"),
     ("multi-line caption", "Figure 1. The RCT flow,\nwith SEM paths.\n"),
@@ -640,6 +644,15 @@ def test_a_link_label_is_not_a_group_author() -> None:
     # A link whose destination is a URL.
     text = "See [RCT](https://example.org/design). A randomized controlled trial (RCT) ran.\n"
     assert findings(text) == [("body", 1, "defined_after_use", "RCT")]
+
+
+def test_a_link_destination_title_or_named_label_is_not_a_use() -> None:
+    text = ("See the [trial protocol][RCT] and [the design](#RCT \"RCT\").\n\n"
+            "A randomized controlled trial (RCT) ran.\n\n[rct]: https://example.org/protocol\n")
+    assert findings(text) == []
+    # A label that no link reference definition names is shown as text, and so is link text.
+    text = "See [1][RCT] and [RCT][1].\n\n[1]: https://example.org\n"
+    assert findings(text) == [("body", 1, "undefined", "RCT")]
 
 
 def test_a_link_reference_definition_starts_a_paragraph() -> None:
