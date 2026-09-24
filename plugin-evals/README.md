@@ -54,16 +54,25 @@ here. No committee guard or agent definition changed.
 
 ## Committee-branch guard (2026-09-24, #854)
 
+The counts and costs in this section are maintainer-reported: they come from
+local runs whose outputs are not committed (`plugin-evals/results/` is ignored
+by git).
+
 Case 03 gained `no-committee-branch` with the #854 guard (see `CHANGELOG.md`):
-a with-only regex that fails on a concern-tracker or preserved-source heading or
-bold label, on the concern IDs, status line, and human-subjects footer that
-`committee_correspondence_protocol.md` requires, or on the committee bundle's
-file names. Against the stored 2026-09-12 results it flags the two runs named
-under Known caveats and none of the other nine, the without-plugin arms
-included. Neither flagged run used the protocol's required strings; the heading
-pattern caught both. The grader misses a run that only announces the branch
-without building its output, and it would flag a peer-review answer that titles
-a section "concern tracker".
+a with-only regex that fails when the answer applies the committee variant, that
+is, on a concern-tracker or preserved-source heading or bold label, on the
+concern IDs, status line, and bold human-subjects footer that
+`committee_correspondence_protocol.md` requires, or on a path into the committee
+bundle's directory. A heading or bold label with "no", "not", or "without" in it
+does not count, and neither does naming the variant or its files, so an answer
+that explains why it did not use the variant passes;
+`scripts/test_check_committee_correspondence.py` holds examples of both. Against
+the maintainer's 2026-09-12 results it flags the two runs named under Known
+caveats and none of the other nine, the without-plugin arms included. Neither
+flagged run used the protocol's required strings; the heading pattern caught
+both. The grader misses a run that only announces the branch without building
+its output, and it would flag a peer-review answer that titles a section
+"concern tracker" with no negating word.
 
 Retest with Claude Code 2.1.281, `--ablation none --model claude-opus-5-5
 --judge-model sonnet --runs 7 --case '03-*' --no-publish`, from outside the
@@ -76,7 +85,9 @@ None of the fourteen runs built the Revision Roadmap or the response skeleton;
 each answered the push-back question directly. Cost: US$2.46 with the guard,
 US$2.70 on `main`. The retest ran on an earlier text of the guard: the sentence
 in `committee_correspondence_protocol.md` came later, and the mode table then
-gave the variant its own row, which the final change dropped.
+gave the variant its own row, which the final change dropped. It was also graded
+with an earlier text of `no-committee-branch`; re-graded with the final text,
+the counts are the same.
 
 Case 04 (the ethics-committee letter), 7 runs on the final text with the same
 settings: the skill fired in 2 runs, and both took the committee variant

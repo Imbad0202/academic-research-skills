@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -66,12 +67,10 @@ def test_revision_coach_entrypoint_and_protocol_are_wired() -> None:
             "Committee-Correspondence Variant (#668)",
             "references/committee_correspondence_protocol.md",
             "never emits",
-            "program committees are peer review",
         ),
         "academic-paper/SKILL.md": (
             "Committee-correspondence routing:",
             "separate #668 concern tracker",
-            "committees are peer review, not a committee for this variant",
         ),
         "commands/ars-revision-coach.md": (
             "committee-correspondence variant",
@@ -81,7 +80,6 @@ def test_revision_coach_entrypoint_and_protocol_are_wired() -> None:
             "source_letter.txt",
             "committee-correspondence/1.0",
             BOUNDARY_LINE,
-            "area chairs, and program committees are",
         ),
     }
     for relative, needles in requirements.items():
@@ -89,6 +87,58 @@ def test_revision_coach_entrypoint_and_protocol_are_wired() -> None:
         for needle in needles:
             assert needle in text, f"{relative}: missing {needle!r}"
 
+
+
+_PEER_REVIEW_EXCLUSION = (
+    "Journal or conference reviewers, editors, area chairs, and program committees are "
+    "peer review, {extra}even when the user names the venue or the venue calls the role "
+    "a committee (#854)."
+)
+
+
+@pytest.mark.parametrize("relative, extra", [
+    ("academic-paper/agents/revision_coach_agent.md", "not a committee for this variant, "),
+    ("academic-paper/SKILL.md", "not a committee for this variant, "),
+    ("academic-paper/references/committee_correspondence_protocol.md", ""),
+])
+def test_peer_review_exclusion_sentence_is_whole(relative: str, extra: str) -> None:
+    # The sentence wraps differently in each file, so compare with whitespace collapsed.
+    text = " ".join((REPO_ROOT / relative).read_text(encoding="utf-8").split())
+    assert _PEER_REVIEW_EXCLUSION.format(extra=extra) in text
+
+
+def _grader_pattern() -> re.Pattern[str]:
+    grader = REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-committee-branch.md"
+    front, body = grader.read_text(encoding="utf-8").split("---\n")[1:3]
+    assert "flags: im" in front and "match: not_contains" in front
+    return re.compile(body.strip(), re.IGNORECASE | re.MULTILINE)
+
+
+@pytest.mark.parametrize("answer", [
+    "## 1. Source preservation",  # heading shapes of the two #853 misroutes
+    "# 00 — Preserved source",
+    "**Concern tracker**",
+    "<!-- concern:CC-001 -->",
+    "### Concern CC-001",
+    "> **Human-subjects boundary:** This output does not authorize recruitment.",
+    "Status: drafting aid — no concern is asserted resolved.",
+    "Saved to committee_correspondence/0123456789ab/concern_tracker.json",
+])
+def test_no_committee_branch_grader_flags_the_branch(answer: str) -> None:
+    assert _grader_pattern().search(answer)
+
+
+@pytest.mark.parametrize("answer", [
+    "I will not use committee-correspondence/1.0.",
+    "**Routing:** These are peer reviews; no concern tracker is needed.",
+    "## No concern tracker needed",
+    "No human-subjects boundary applies here.",
+    "I did not create concern_tracker.json or source_letter.txt.",
+    "This is ICLR peer review, not a committee letter, so I used the normal path.",
+    "## Revision Roadmap",
+])
+def test_no_committee_branch_grader_passes_a_rejection(answer: str) -> None:
+    assert not _grader_pattern().search(answer)
 
 def test_fixture_proves_compound_multi_label_and_degraded_mode() -> None:
     tracker = _load(FIXTURE / TRACKER_NAME)
