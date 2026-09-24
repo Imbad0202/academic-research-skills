@@ -239,6 +239,16 @@ def test_a_plural_counts_as_its_base(word: str, expected: str | None) -> None:
     assert base_form(word) == expected
 
 
+@pytest.mark.parametrize("text", [
+    "We compared error measures (SDs, RMSE). The RMSE decreased.\n",
+    "We compared error measures (SE, RMSE). The RMSE decreased.\n",
+    "Gases rose (CO2, NOx) in the NOx series.\n",
+])
+def test_a_list_with_excluded_tokens_is_a_use(text: str) -> None:
+    acronym = "NOx" if "NOx" in text else "RMSE"
+    assert findings(text) == [("body", 1, "undefined", acronym)]
+
+
 def test_plural_and_possessive_count_as_the_base() -> None:
     text = "Large language models (LLMs) help. The LLM's output and two LLMs' outputs.\n"
     report = check(text)

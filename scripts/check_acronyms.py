@@ -23,9 +23,9 @@ which this check cannot confirm as a definition, and one followed by its
 expansion in parentheses (``RCT (randomized controlled trial)``,
 ``RCT（隨機對照試驗）``), a definition form this check does not read. A
 parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, or ``viz.``, or
-made only of acronyms (``(SEM, RCT)``), is a use, and so are Chinese words
-after an acronym that open with ``見``, ``參見``, ``詳見``, ``參閱``, or
-``例如`` (``RCT（見第二節）``).
+made only of acronyms, counting excluded ones (``(SEM, RCT)``, ``(SDs,
+RMSE)``), is a use, and so are Chinese words after an acronym that open with
+``見``, ``參見``, ``詳見``, ``參閱``, or ``例如`` (``RCT（見第二節）``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -268,6 +268,12 @@ def _is_formula(token: str) -> bool:
     parts = list(_ELEMENT_PART.finditer(token))
     return ("".join(m.group(0) for m in parts) == token
             and all(m.group(1) in ELEMENTS for m in parts))
+
+
+def _acronym_shaped(word: str) -> bool:
+    """True when a word, or its singular, has a candidate's shape, excluded or
+    not (``RCTs``, ``SD``, ``CO2``)."""
+    return _candidate_shape(word) or (word.endswith("s") and _candidate_shape(word[:-1]))
 
 
 def base_form(word: str) -> str | None:
@@ -589,8 +595,8 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             continue
         if len(items) > 1:
             words = " ".join(items[:-1]).split()
-            if all(base_form(w) for w in words) or words[0].casefold() in _NOT_EXPANSION:
-                continue  # "(e.g., RCT)" and "(SEM, RCT)" are uses
+            if all(_acronym_shaped(w) for w in words) or words[0].casefold() in _NOT_EXPANSION:
+                continue  # "(e.g., RCT)", "(SEM, RCT)", and "(SD, RMSE)" are uses
             expansion = _CJK_GAP.sub("", " ".join(words))
             if not _CJK_RUN.search(expansion):
                 expansion = _spelled_run(expansion, acronym) or ""
