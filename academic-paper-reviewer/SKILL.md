@@ -229,7 +229,7 @@ User: "Review this paper"
 
 The dispatching session adds the acronym check to the Editorial Decision Letter as the letter's last write: after `scripts/check_panel_synthesis.py` exits 0 (`references/sprint_contract_protocol.md` §8.1), and after any #518 cross-model decision check has added its line or its divergence subsection (Step 4b of `agents/editorial_synthesizer_agent.md`). It runs `python3 scripts/check_acronyms.py --input <manuscript file> --lang <en|zh-TW>` on the reviewed manuscript, in the user's language, and appends the printed report, unchanged, under `## Attachment: Acronym Check (advisory, #849)`. With no manuscript file, or when the script cannot run, the section is one line saying the acronym check did not run.
 
-No call that writes the decision, the roadmap, or the letter sees the report. It is script output, not a reviewer finding: no weakness, consensus item, revision, or roadmap entry comes from it, and it asks for no reply. A later re-review reads it as `references/re_review_mode_protocol.md` input 7 says.
+No call that writes this round's decision, roadmap, or letter sees the report. Later readers of the letter see it but take nothing from it: it is script output, not a reviewer finding, so no weakness, consensus item, revision, or roadmap entry comes from it, and it asks for no reply. A re-review reads it as `references/re_review_mode_protocol.md` input 7 says.
 
 ### Review-target criteria binding (#684)
 
