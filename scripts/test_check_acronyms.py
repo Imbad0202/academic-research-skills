@@ -548,7 +548,8 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     for label in ("Figure 5–", "Figure 6–Comparison. ", "Figure 1 – A ", "圖1–流程。",
                   "Figure 1 – T cell counts. ", "Table I – A summary. ", "Figure 1 – Box plots. ",
                   "Figure 1A – Comparison. ", "圖1 – 圖示流程。", "表1 – 表現比較。",
-                  "TABLE II – CI estimates. "):
+                  "TABLE II – CI estimates. ", "TABLE I – X-ray findings. ",
+                  "Figure 1A – C-reactive protein. ", "TABLE I – XXII cohorts. "):
         text = f"{label}Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
@@ -613,6 +614,13 @@ def test_a_link_reference_definition_starts_a_paragraph() -> None:
     assert findings("We ran it.\n[RCT]: see the design.\n") == [("body", 2, "undefined", "RCT")]
 
 
+def test_a_roman_range_above_xxxix_is_prose() -> None:
+    # XL stays a candidate (larger numerals are also acronyms), so it is reported too.
+    text = "Table XXXIX–XL shows the RCT arms.\n\nA randomized controlled trial (RCT) ran.\n"
+    assert sorted(findings(text)) == [("body", 1, "defined_after_use", "RCT"),
+                                      ("body", 1, "undefined", "XL")]
+
+
 def test_caption_word_at_sentence_start_is_still_prose() -> None:
     for text in ("Table 2 shows the RCT arm.\n", "Figure 2-1 shows the RCT arm.\n",
                  "Table III shows the RCT arm.\n", "Box 1 lists the RCT arm.\n",
@@ -628,6 +636,7 @@ def test_caption_word_at_sentence_start_is_still_prose() -> None:
                  "Figure 1—C show the RCT arm.\n", "圖一 – 三顯示 RCT 的流程。\n",
                  "Figure 1 – Figure 3 show the RCT.\n", "圖1–圖3顯示 RCT 的流程。\n",
                  "圖一 – 圖三顯示 RCT 的流程。\n", "表S1—表S3列出 RCT 的分組。\n",
+                 "Table I – XXI list the RCT arms.\n",
                  "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 

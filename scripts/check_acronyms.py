@@ -77,24 +77,27 @@ a period, colon, pipe, or dash, but a dash that starts a range and an unspaced
 hyphen (``Table 1-based``) open no label, and neither do ``Figure 1.2 shows``
 and ``Fig. 1 Flow diagram``; a range end is a number or a labeled number
 (``Figure 1 – 3``, ``Table 1–Table 3``, ``圖1–圖3``), an end of the number's
-own kind (``Figure 1A – C``, ``Table I—III``, ``圖一–三``), or a single letter
-right after an unspaced dash (``Figure 1–C shows``), so a caption title that
-starts that way is read as prose), the reference list, author-year citations
-whose author part is a run of names, whose dates are years from 1800 to 2099,
-year pairs or ranges, ``n.d.``, or ``in press`` (``2020a``, ``1900/1953``,
-``n.d.-a``), and whose locator, if any, is a page, paragraph, chapter, or
-section (``(WHO, 2020)``, ``(see Smith et al., 2020, pp. 4, 6; Lee, 2019)``,
-and the citations after the acronym in ``(RCTs; Smith, 2020)``), a bracketed
-abbreviation right after a capitalized word, as in an APA group author
-(``World Health Organization [WHO]``), but not a link (``[RCT](#design)``, or
-``[RCT]`` when a link reference definition names it), and author initials in
-author lists, whose names are joined by commas, ``and``, or ``&`` and come
-before ``et al.`` or a date in a form a citation takes (``Smith JA, García BC,
-McDonald EF, and van der Berg GH (2020a)``); prose shaped like such a list, as
-in ``Delphi RCT and Bayesian SEM (2020)``, is read as one. In definitions, the
-leading words above, citations, group-author brackets, and author lists, a
-line break inside a paragraph reads as a space, and a line break or space
-between two Chinese characters is ignored.
+own kind (a letter after ``1A``, a Roman numeral up to 20 above a Roman start,
+a Chinese numeral after a Chinese one: ``Figure 1A – C``, ``Table XXXIX–XL``,
+``圖一–三``) that no hyphen follows (``Table I – X-ray findings`` is a title),
+or a single letter right after an unspaced dash (``Figure 1–C shows``), so a
+caption title that starts that way is read as prose), the reference list,
+author-year citations whose author part is a run of names, whose dates are
+years from 1800 to 2099, year pairs or ranges, ``n.d.``, or ``in press``
+(``2020a``, ``1900/1953``, ``n.d.-a``), and whose locator, if any, is a page,
+paragraph, chapter, or section (``(WHO, 2020)``, ``(see Smith et al., 2020,
+pp. 4, 6; Lee, 2019)``, and the citations after the acronym in
+``(RCTs; Smith, 2020)``), a bracketed abbreviation right after a capitalized
+word, as in an APA group author (``World Health Organization [WHO]``), but not
+a link (``[RCT](#design)``, or ``[RCT]`` when a link reference definition
+names it), and author initials in author lists, whose names are joined by
+commas, ``and``, or ``&`` and come before ``et al.`` or a date in a form a
+citation takes (``Smith JA, García BC, McDonald EF, and van der Berg GH
+(2020a)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
+(2020)``, is read as one. In definitions, the leading words above, citations,
+group-author brackets, and author lists, a line break inside a paragraph reads
+as a space, and a line break or space between two Chinese characters is
+ignored.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
@@ -193,9 +196,10 @@ _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*(?P<id>{_CAPTION_ID})"
 _RANGE_ANY = re.compile(rf"\s*(?:[A-Z]?[.-]?\d"
                         rf"|(?:{_CAPTION_WORD}|附?[圖表])\s*(?:{_CAPTION_ID}|{_ZH_NUMERAL})(?![A-Za-z0-9]))")
 _SUBFIGURE = re.compile(r"(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*[A-Za-z]|(?![IVXLC])[A-Z]")
-_ROMAN_ID = re.compile(r"[IVXLC]+")
-_RANGE_LETTER = re.compile(r"\s*[A-Za-z](?![A-Za-z0-9])")
-_RANGE_ROMAN = re.compile(rf"\s*(?=[IVX])(?:{_ROMAN.pattern})(?![A-Za-z0-9])")  # not "CI"
+_RANGE_LETTER = re.compile(r"\s*[A-Za-z](?![A-Za-z0-9-])")  # not "C-reactive"
+_RANGE_ROMAN = re.compile(r"\s*([IVXLCDM]+)(?![A-Za-z0-9-])")  # not "X-ray"
+_STANDARD_ROMAN = re.compile(r"(?=[MDCLXVI])M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})")
+_ROMAN_VALUES = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
 _RANGE_ZH = re.compile(rf"\s*{_ZH_NUMERAL}")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
@@ -369,20 +373,32 @@ def _example_led(words: list[str]) -> bool:
     return bool(_EXAMPLE_LEAD.match(" ".join(words).casefold()))
 
 
+def _roman_value(numeral: str) -> int:
+    """The value of a Roman numeral in standard form (``XL`` is 40), or 0."""
+    if not _STANDARD_ROMAN.fullmatch(numeral):
+        return 0
+    values = [_ROMAN_VALUES[char] for char in numeral]
+    return sum(-value if value < after else value for value, after in zip(values, values[1:] + [0]))
+
+
 def _caption_label(line: str) -> bool:
     """True when the line opens with a caption label. A dash after the label's
     number opens none when a range end follows it: a number or a labeled number
     (``Figure 1 – 3``, ``Table S1–S3``, ``Table 1–Table 3``), an end of the
-    number's own kind (``Figure 1A – C``, ``Table I—III``, ``圖一–三``), or a
-    single letter right after an unspaced dash (``Figure 1–C shows``)."""
+    number's own kind (a letter after ``1A``, a Roman numeral up to 20 above a
+    Roman start, a Chinese numeral after a Chinese one: ``Figure 1A – C``,
+    ``Table XXXIX–XL``, ``圖一–三``), or a single letter right after an unspaced
+    dash (``Figure 1–C shows``). A letter or Roman end followed by a hyphen
+    starts a title instead (``Table I – X-ray findings``)."""
     found = _CAPTION.match(line)
     if not found or found.group("dash") is None:
         return bool(found)
     start, after = found.group("id") or found.group("zh"), line[found.end():]
     tight = not found.group("dash")[0].isspace() and not after[:1].isspace()
+    roman, first = _RANGE_ROMAN.match(after), _roman_value(start)
     return not (_RANGE_ANY.match(after)
                 or ((_SUBFIGURE.fullmatch(start) or tight) and _RANGE_LETTER.match(after))
-                or (_ROMAN_ID.fullmatch(start) and _RANGE_ROMAN.match(after))
+                or (roman and first and first < _roman_value(roman.group(1)) <= first + 20)
                 or (re.fullmatch(_ZH_NUMERAL, start) and _RANGE_ZH.match(after)))
 
 
