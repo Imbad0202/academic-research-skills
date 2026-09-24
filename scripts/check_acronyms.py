@@ -43,15 +43,15 @@ https://example.org``), ATX and setext headings, tables (with or without outer
 pipes, up to a blank line, heading, list item, blockquote, or thematic break),
 image lines, caption, note, and keyword paragraphs (from a line that starts a
 paragraph or follows an image and opens with a label such as ``Figure 2.``,
-``Note.``, or ``Keywords:``, up to a blank line), the reference list,
-author-year citations whose author part is a run of names and whose locator,
-if any, is a page, paragraph, chapter, or section (``(WHO, 2020)``, ``(see
-Smith et al., 2020, pp. 4, 6; Lee, 2019)``, and the citations after the
+``Table S1.``, ``Note.``, or ``Keywords:``, up to a blank line), the reference
+list, author-year citations whose author part is a run of names and whose
+locator, if any, is a page, paragraph, chapter, or section (``(WHO, 2020)``,
+``(see Smith et al., 2020, pp. 4, 6; Lee, 2019)``, and the citations after the
 acronym in ``(RCTs; Smith, 2020)``), a bracketed abbreviation right after a
 capitalized word, as in an APA group author (``World Health Organization
 [WHO]``), but not a link (``[RCT](#design)``, or ``[RCT]`` when a link
 reference definition names it), and author initials in author lists (``Smith
-JA, Jones BC (2020)``). In definitions, citations, group-author brackets, and
+JA, García BC (2020)``). In definitions, citations, group-author brackets, and
 author lists, a line break inside a paragraph reads as a space.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
@@ -131,7 +131,12 @@ _TABLE = re.compile(r"^\s*\|")
 _TABLE_DELIMITER = re.compile(r"^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 _IMAGE = re.compile(r"!\[")
 _EMPH = r"(?:\*{1,2}|_{1,2})?"
-_CAPTION = re.compile(rf"^\s*{_EMPH}(?:Figure|Fig\.?|Table|圖|表)\s*\d+[A-Za-z]?{_EMPH}(?:[.:：]|\s*$)")
+# Capital and small letters in the Latin, Greek, and Cyrillic blocks, so an author
+# name such as "García" or "Öztürk" reads as a name.
+_UPPER = "".join(c for c in map(chr, range(0x530)) if c.isalpha() and c.isupper())
+_LOWER = "".join(c for c in map(chr, range(0x530)) if c.isalpha() and c.islower())
+_CAPTION = re.compile(rf"^\s*{_EMPH}(?:Figure|Fig\.?|Table|圖|表)\s*(?:[A-Z][.-]?)?\d+(?:\.\d+)*[A-Za-z]?"
+                      rf"{_EMPH}(?:[.:：]|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
 
@@ -153,7 +158,7 @@ _SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank l
 # particle), then a year and an optional page, paragraph, chapter, or section
 # locator. "(Smith et al., 2020, pp. 4, 6; Lee, 2019)" and "(WHO, 2020)" match;
 # "(LLM in 2020)" and "(LLM use began in May 2020)" do not.
-_NAME = (rf"(?:[A-Z][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\]|[㐀-鿿]+|&|and|et{_SPACE}al\.?"
+_NAME = (rf"(?:[{_UPPER}][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\]|[㐀-鿿]+|&|and|et{_SPACE}al\.?"
          r"|(?:van|von|de|der|den|du|da|di|del|la|le)(?=\s))")
 _LOCATOR = (rf"(?:(?:p|pp|paras?|ch|chap|secs?)\.\s*|(?:Chapter|Section){_SPACE})[\w.–-]+"
             rf"(?:\s*{_COMMA}\s*[\w.–-]*\d[\w.–-]*)*")
@@ -166,9 +171,9 @@ _CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
 _TRAILING_CITATION = re.compile(rf"[;；]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*(?=[)）])")
 # "World Health Organization [WHO]": a bracket after a capitalized word, not a
 # Markdown link ("[RCT](#design)", "[RCT][1]", or "[RCT]" with a definition).
-_GROUP_AUTHOR = re.compile(rf"\b[A-Z][a-z]+{_SPACE}(\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\])(?![(\[:])")
+_GROUP_AUTHOR = re.compile(rf"\b[{_UPPER}][{_LOWER}]+{_SPACE}(\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\])(?![(\[:])")
 # Author initials in an author list: "Smith JA, Jones BC (2019)", "Lee KM et al.".
-_AUTHOR = re.compile(rf"([A-Z][a-z]+){_SPACE}([A-Z]{{1,3}})\b")
+_AUTHOR = re.compile(rf"([{_UPPER}][{_LOWER}]+){_SPACE}([A-Z]{{1,3}})\b")
 _AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:\s*,\s*{_AUTHOR.pattern})*"
                           rf"(?=\s*(?:,\s*)?(?:et\s+al\b|\(?{_YEAR}\b))")
 # One "Word ABC (2020)" is prose, not an author, when the word opens a sentence.

@@ -244,6 +244,10 @@ def test_whole_token_matching() -> None:
     ("multi-line caption", "Figure 1. The RCT flow,\nwith SEM paths.\n"),
     ("group author", "The World Health Organization [WHO] said so.\n"),
     ("author initials", "Smith JA, Jones BC (2019) agreed, as did Lee KM et al.\n"),
+    ("accented author initials", "García AB, Jones EF (2020) agreed.\n"),
+    ("accented citation author", "As reported (WHO & Öztürk, 2020), it held.\n"),
+    ("supplementary caption", "Figure S1. The RCT flow\n"),
+    ("appendix table caption", "Table A.1. The SEM fit\n"),
     ("statistical symbol", "The SD was 2.1 and the CI was narrow.\n"),
 ])
 def test_exclusions(label: str, text: str) -> None:
@@ -280,6 +284,9 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
     text = "The effect held, as in\nFigure 2. The RCT ran.\nNote. The SEM fit.\n"
     assert findings(text) == [("body", 2, "undefined", "RCT"), ("body", 3, "undefined", "SEM")]
     assert findings("![Flow](flow.png)\nFigure 1. The RCT flow.\n\nThe study ended.\n") == []
+    # A supplementary caption's definition does not reach the body.
+    text = "Figure S1. Randomized controlled trial (RCT) flow.\n\nThe RCT ended.\n"
+    assert findings(text) == [("body", 3, "undefined", "RCT")]
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
     assert findings("Intro.\n\n***\nFigure 2. The RCT flow\n\nBody text.\n") == []
     text = "See [RCT].\nA randomized controlled trial (RCT) ran.\n***\n[RCT]: https://example.org\n"
