@@ -61,23 +61,25 @@ line that starts a paragraph or follows an image and opens with a label such
 as ``Figure 2.``, ``Table S1.``, ``TABLE III``, ``Supplementary Table 2.``,
 ``Box 1.``, ``Figure 1 |``, ``圖 2-1：``, ``表一：``, ``Note.``, or
 ``Keywords:``, up to a blank line; the number must end the line or come before
-a period, colon, pipe, or dash, so ``Figure 1.2 shows`` and
-``Fig. 1 Flow diagram`` open no label), the reference list, author-year
-citations whose author part is a run of names, whose dates are years from 1800
-to 2099, year pairs or ranges, ``n.d.``, or ``in press`` (``2020a``,
-``1900/1953``, ``n.d.-a``), and whose locator, if any, is a page, paragraph,
-chapter, or section (``(WHO, 2020)``, ``(see Smith et al., 2020, pp. 4, 6;
-Lee, 2019)``, and the citations after the acronym in ``(RCTs; Smith, 2020)``),
-a bracketed abbreviation right after a capitalized word, as in an APA group
-author (``World Health Organization
-[WHO]``), but not a link (``[RCT](#design)``, or ``[RCT]`` when a link
-reference definition names it), and author initials in author lists, whose
-names are joined by commas, ``and``, or ``&`` and come before ``et al.`` or a
-date in a form a citation takes (``Smith JA, García BC, McDonald EF, and van
-der Berg GH (2020a)``); prose shaped like such a list, as in ``Delphi RCT and
-Bayesian SEM (2020)``, is read as one. In definitions, citations, group-author
-brackets, and author lists, a line break inside a paragraph reads as a space,
-and a line break or space between two Chinese characters is ignored.
+a period, colon, pipe, or dash, but a dash that starts a range
+(``Figure 1–3``, ``Figure 1A–C``, ``Table I–III``, ``Table 1–Table 3``) and an
+unspaced hyphen (``Table 1-based``) open no label, and neither do
+``Figure 1.2 shows`` and ``Fig. 1 Flow diagram``), the reference list,
+author-year citations whose author part is a run of names, whose dates are
+years from 1800 to 2099, year pairs or ranges, ``n.d.``, or ``in press``
+(``2020a``, ``1900/1953``, ``n.d.-a``), and whose locator, if any, is a page,
+paragraph, chapter, or section (``(WHO, 2020)``, ``(see Smith et al., 2020,
+pp. 4, 6; Lee, 2019)``, and the citations after the acronym in
+``(RCTs; Smith, 2020)``), a bracketed abbreviation right after a capitalized
+word, as in an APA group author (``World Health Organization [WHO]``), but not
+a link (``[RCT](#design)``, or ``[RCT]`` when a link reference definition
+names it), and author initials in author lists, whose names are joined by
+commas, ``and``, or ``&`` and come before ``et al.`` or a date in a form a
+citation takes (``Smith JA, García BC, McDonald EF, and van der Berg GH
+(2020a)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
+(2020)``, is read as one. In definitions, citations, group-author brackets,
+and author lists, a line break inside a paragraph reads as a space, and a line
+break or space between two Chinese characters is ignored.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
@@ -168,9 +170,13 @@ _LOWER = "".join(c for c in _NAME_LETTERS if c.isalpha() and c.islower())
 _CAPTION_ID = r"(?:(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*[A-Za-z]?|[IVXLC]+|[A-Z])"
 _CAPTION_WORD = (r"(?i:(?:(?:Supplementary|Supplemental|Suppl?\.|Extended\s+Data|Appendix"
                  r"|Online)\s*)?(?:Figure|Fig\.?|Table|Box|Scheme|Plate|Chart|Exhibit))")
+_ZH_NUMERAL = "[一二三四五六七八九十百零〇]+"
+# What follows a range dash: "Figure 1–3", "1A–C", "S1–S3", "I–III", "圖一–三", "Table 1–Table 3".
+_RANGE_END = rf"\s*(?:{_CAPTION_WORD}|(?:{_CAPTION_ID}|{_ZH_NUMERAL})(?![A-Za-z0-9]))"
 _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*{_CAPTION_ID}"
-                      rf"|附?[圖表]\s*(?:{_CAPTION_ID}|[一二三四五六七八九十百零〇]+))"
-                      rf"{_EMPH}(?:[.:：](?!\d)|\s*\||(?:\s+[–-]\s|\s*—)(?!\s*\d)|\s*$)")
+                      rf"|附?[圖表]\s*(?:{_CAPTION_ID}|{_ZH_NUMERAL}))"
+                      rf"{_EMPH}(?:[.:：](?!\d)|\s*\||(?:\s+[–-]\s|\s*—)(?!\s*\d)"
+                      rf"|–(?!{_RANGE_END})|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
 
