@@ -139,6 +139,7 @@ def _outcome(text: str) -> tuple[list[tuple], list[tuple]]:
     "Structural equation modeling (that is, SEM) was used. Structural equation modeling (SEM) ran.",
     "The SEM (i.e., structural equation modeling) was used. Two designs (namely RCT) ran.",
     "We tried methods (for instance, NMF). Nonnegative matrix factorization (NMF) won.",
+    "Structural equation modeling (i. e., SEM) was used. The RCT (e. g., a pilot trial) ran.",
     "The RCT (including recruitment, consent, and treatment) lasted six months.",
 ])
 def test_a_line_break_at_any_space_reads_as_the_space(text: str) -> None:
@@ -286,7 +287,8 @@ def test_symbols_numbers_and_unread_items_leave_a_use(item: str) -> None:
     assert findings(f"We compared fit statistics ({item}, AIC).\n") == [("body", 1, "undefined", "AIC")]
 
 
-@pytest.mark.parametrize("lead", ["for example,", "such as", "including PCA,", "that is,", "namely"])
+@pytest.mark.parametrize("lead", ["for example,", "e. g.,", "such as", "including PCA,", "that is,",
+                                  "namely"])
 def test_an_example_led_list_is_a_use(lead: str) -> None:
     text = f"We tried methods ({lead} NMF). Nonnegative matrix factorization (NMF) won.\n"
     assert ("body", 1, "defined_after_use", "NMF") in findings(text)
@@ -300,7 +302,7 @@ def test_an_example_led_parenthetical_after_an_acronym_is_a_use(text: str) -> No
     assert findings(text) == [("body", 1, "undefined", "RCT")]
 
 
-@pytest.mark.parametrize("lead", ["i.e.,", "i.e.", "ie", "viz.", "namely,", "That is,"])
+@pytest.mark.parametrize("lead", ["i.e.,", "i.e.", "i. e.,", "ie", "viz.", "namely,", "That is,"])
 def test_a_restatement_lead_is_read_without_its_words(lead: str) -> None:
     assert findings(f"Structural equation modeling ({lead} SEM) was used.\n") == []
     report = check(f"The SEM ({lead} structural equation modeling) was used.\n")

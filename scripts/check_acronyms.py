@@ -22,20 +22,21 @@ one whose parenthetical the words do not spell (``several methods (RCT)``),
 which this check cannot confirm as a definition, and one followed by its
 expansion in parentheses (``RCT (randomized controlled
 trial)``, ``RCT（隨機對照試驗）``), a definition form this check does not
-read. A parenthetical is a use, not a definition, when it opens with
-``e.g.``, ``see``, ``cf.``, ``for example``, ``for instance``, ``such as``,
-``including``, ``例如``, ``比如``, ``諸如``, or ``包括``, before or after the
-acronym (``(e.g., RCT)``, ``RCT (including recruitment)``), or when it is made
-only of acronyms, counting excluded ones, symbols, numbers, and joining words
-or marks (``(SEM, RCT)``, ``(SDs, RMSE)``, ``(R², AIC, BIC)``, ``(n = 120,
-RCT)``, ``(PCA/ICA, NMF)``, ``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``,
-``（PCA與ICA，NMF）``). So are Chinese words after an acronym that open with
-``見``, ``參見``, ``詳見``, or ``參閱`` (``RCT（見第二節）``). A parenthetical
-that opens with ``i.e.``, ``viz.``, ``namely``, ``that is``, ``即``, ``亦即``,
-or ``也就是`` is read without those words (``structural equation modeling
-(i.e., SEM)`` and ``結構方程模型（即 SEM）`` define ``SEM``), except that one
-ending with the acronym is a use when the words before it do not spell the
-acronym (``two designs (namely RCT)``).
+read. A parenthetical is a use, not a definition, when it opens with ``e.g.``
+or ``e. g.``, ``see``, ``cf.``, ``for example``, ``for instance``,
+``such as``, ``including``, ``例如``, ``比如``, ``諸如``, or ``包括``, before
+or after the acronym (``(e.g., RCT)``, ``RCT (including recruitment)``), or
+when it is made only of acronyms, counting excluded ones, symbols, numbers,
+and joining words or marks (``(SEM, RCT)``, ``(SDs, RMSE)``,
+``(R², AIC, BIC)``, ``(n = 120, RCT)``, ``(PCA/ICA, NMF)``,
+``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``). So are
+Chinese words after an acronym that open with ``見``, ``參見``, ``詳見``, or
+``參閱`` (``RCT（見第二節）``). A parenthetical that opens with ``i.e.`` or
+``i. e.``, ``viz.``, ``namely``, ``that is``, ``即``, ``亦即``, or ``也就是``
+is read without those words (``structural equation modeling (i.e., SEM)`` and
+``結構方程模型（即 SEM）`` define ``SEM``), except that one ending with the
+acronym is a use when the words before it do not spell the acronym
+(``two designs (namely RCT)``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -77,9 +78,10 @@ names it), and author initials in author lists, whose names are joined by
 commas, ``and``, or ``&`` and come before ``et al.`` or a date in a form a
 citation takes (``Smith JA, García BC, McDonald EF, and van der Berg GH
 (2020a)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
-(2020)``, is read as one. In definitions, citations, group-author brackets,
-and author lists, a line break inside a paragraph reads as a space, and a line
-break or space between two Chinese characters is ignored.
+(2020)``, is read as one. In definitions, the leading words above, citations,
+group-author brackets, and author lists, a line break inside a paragraph reads
+as a space, and a line break or space between two Chinese characters is
+ignored.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
 Markdown the rules do not name, such as an HTML block, can be read as prose or
@@ -242,13 +244,12 @@ _CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space insi
 _LIST_JOINER = re.compile(r"[\W_]+|[與和及或]")  # "PCA/ICA", "ARIMA+LSTM", "PCA與ICA"
 _LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus"}  # lowercase only: "OR" is an acronym
 _WORDLIKE = re.compile(r"[A-Za-z]{3,}|[㐀-鿿]")  # not a symbol or number ("R²", "df", "p", "3.2")
-_NOT_EXPANSION = {"e.g.", "eg", "see", "cf."}
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱")
-# Leads read across a wrap, as definitions do: "that\nis", "包\n括".
-_EXAMPLE_LEAD = re.compile(r"(?:for\s+example|for\s+instance|such\s+as|including)\b"
-                           r"|例\s*如|比\s*如|諸\s*如|包\s*括")
+# Leads read across a wrap, as definitions do: "that\nis", "e. g.", "包\n括".
+_EXAMPLE_LEAD = re.compile(r"(?:e\.\s*g\.|eg|see|cf\.|for\s+example|for\s+instance|such\s+as|including)"
+                           r"(?![A-Za-z0-9])|例\s*如|比\s*如|諸\s*如|包\s*括")
 # Case-sensitive, so the acronym "IE" is not read as "ie".
-_RESTATEMENT_LEAD = re.compile(r"\s*(?:(?:[Ii]\.e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat\s+is)(?![A-Za-z0-9])"
+_RESTATEMENT_LEAD = re.compile(r"\s*(?:(?:[Ii]\.\s*e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat\s+is)(?![A-Za-z0-9])"
                                r"|亦\s*即|也\s*就\s*是|即)[,，:：]?\s*")
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
@@ -320,8 +321,7 @@ def _acronym_list(words: list[str]) -> bool:
 def _example_led(words: list[str]) -> bool:
     """True when words open with an example or cross-reference marker (``e.g.``,
     ``for example``, ``including``, ``例如``), so they are not an expansion."""
-    return (words[0].casefold().rstrip(",，") in _NOT_EXPANSION
-            or bool(_EXAMPLE_LEAD.match(" ".join(words).casefold())))
+    return bool(_EXAMPLE_LEAD.match(" ".join(words).casefold()))
 
 
 def base_form(word: str) -> str | None:
