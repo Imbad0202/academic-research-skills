@@ -249,6 +249,14 @@ def test_a_list_with_excluded_tokens_is_a_use(text: str) -> None:
     assert findings(text) == [("body", 1, "undefined", acronym)]
 
 
+def test_acronyms_joined_by_a_slash_or_hyphen_form_a_list() -> None:
+    text = ("Principal component analysis (PCA) and independent component analysis (ICA) ran.\n"
+            "We compared them (PCA/ICA, NMF). Nonnegative matrix factorization (NMF) won.\n")
+    assert findings(text) == [("body", 2, "defined_after_use", "NMF")]
+    text = "Cases rose (COVID-19, ARDS) in the ARDS unit.\n"
+    assert findings(text, allow=DEFAULT_ALLOWLIST | {"COVID"}) == [("body", 1, "undefined", "ARDS")]
+
+
 def test_plural_and_possessive_count_as_the_base() -> None:
     text = "Large language models (LLMs) help. The LLM's output and two LLMs' outputs.\n"
     report = check(text)
@@ -315,6 +323,8 @@ def test_whole_token_matching() -> None:
     ("serial and", "Smith AB, Jones EF, and Lee GH (2020) agreed.\n"),
     ("ampersand", "Smith AB & Jones EF (2020) agreed.\n"),
     ("vietnamese surnames", "Nguyễn AB and Trần EF (2020) reported this.\n"),
+    ("author initials before other date forms",
+     "Smith AB and Jones EF (2020a) agreed, as did Lee KM (n.d.) and Park JH (1900/1953).\n"),
     ("statistical symbol", "The SD was 2.1 and the CI was narrow.\n"),
     ("plural statistical symbols", "We report 95% CIs, SDs, and SEs.\n"),
 ])

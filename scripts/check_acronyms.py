@@ -23,9 +23,11 @@ which this check cannot confirm as a definition, and one followed by its
 expansion in parentheses (``RCT (randomized controlled trial)``,
 ``RCT（隨機對照試驗）``), a definition form this check does not read. A
 parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, or ``viz.``, or
-made only of acronyms, counting excluded ones (``(SEM, RCT)``, ``(SDs,
-RMSE)``), is a use, and so are Chinese words after an acronym that open with
-``見``, ``參見``, ``詳見``, ``參閱``, or ``例如`` (``RCT（見第二節）``).
+made only of acronyms, counting excluded ones and acronyms that a slash or a
+hyphen joins to each other or to a number (``(SEM, RCT)``, ``(SDs, RMSE)``,
+``(PCA/ICA, NMF)``, ``(COVID-19, ARDS)``), is a use, and so are Chinese words
+after an acronym that open with ``見``, ``參見``, ``詳見``, ``參閱``, or
+``例如`` (``RCT（見第二節）``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -59,9 +61,10 @@ et al., 2020, pp. 4, 6; Lee, 2019)``, and the citations after the acronym in
 word, as in an APA group author (``World Health Organization [WHO]``), but not
 a link (``[RCT](#design)``, or ``[RCT]`` when a link reference definition
 names it), and author initials in author lists, whose names are joined by
-commas, ``and``, or ``&`` (``Smith JA, García BC, McDonald EF, and van der
-Berg GH (2020)``); prose shaped like such a list, as in ``Delphi RCT and
-Bayesian SEM (2020)``, is read as one. In definitions, citations, group-author
+commas, ``and``, or ``&`` and come before ``et al.`` or a date in a form a
+citation takes (``Smith JA, García BC, McDonald EF, and van der Berg GH
+(2020a)``); prose shaped like such a list, as in ``Delphi RCT and Bayesian SEM
+(2020)``, is read as one. In definitions, citations, group-author
 brackets, and author lists, a line break inside a paragraph reads as a space,
 and a line break or space between two Chinese characters is ignored.
 
@@ -202,7 +205,7 @@ _SURNAME = rf"[{_UPPER}](?:[{_LOWER}]|['’-]?[{_UPPER}](?=[{_LOWER}]))*[{_LOWER
 _AUTHOR = re.compile(rf"(?:{_PARTICLE}{_SPACE})*({_SURNAME}){_SPACE}([A-Z]{{1,3}})\b")
 _AUTHOR_SEP = rf"(?:\s*,\s*(?:(?:and|&){_SPACE})?|{_SPACE}(?:and|&){_SPACE})"
 _AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:{_AUTHOR_SEP}{_AUTHOR.pattern})*"
-                          rf"(?=\s*(?:,\s*)?(?:et\s+al\b|\(?{_YEAR}\b))")
+                          rf"(?=\s*(?:,\s*)?(?:et\s+al\b|\(?{_DATE}(?!\w)))")
 # One "Word ABC (2020)" is prose, not an author, when the word opens a sentence.
 _SENTENCE_WORDS = frozenset({"A", "All", "An", "At", "Both", "By", "Each", "Every", "For",
                              "From", "In", "Its", "No", "On", "One", "Our", "Some", "That",
@@ -216,6 +219,7 @@ _PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
 _CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
 _CJK_RUN = re.compile(r"[㐀-鿿]+$")
 _CJK_GAP = re.compile(r"(?<=[㐀-鿿])\s+(?=[㐀-鿿])")  # a wrap or space inside Chinese text
+_LIST_JOINER = re.compile(r"[/–-]")  # "PCA/ICA", "COVID-19" in an acronym list
 _NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱", "例如")
 
@@ -274,6 +278,14 @@ def _acronym_shaped(word: str) -> bool:
     """True when a word, or its singular, has a candidate's shape, excluded or
     not (``RCTs``, ``SD``, ``CO2``)."""
     return _candidate_shape(word) or (word.endswith("s") and _candidate_shape(word[:-1]))
+
+
+def _acronym_list(words: list[str]) -> bool:
+    """True when words hold only acronyms, excluded or not, which a slash or a
+    hyphen may join to each other or to a number (``PCA/ICA``, ``COVID-19``)."""
+    parts = [part for word in words for part in _LIST_JOINER.split(word) if part]
+    return (any(_acronym_shaped(part) for part in parts)
+            and all(_acronym_shaped(part) or part.isdigit() for part in parts))
 
 
 def base_form(word: str) -> str | None:
@@ -595,8 +607,8 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             continue
         if len(items) > 1:
             words = " ".join(items[:-1]).split()
-            if all(_acronym_shaped(w) for w in words) or words[0].casefold() in _NOT_EXPANSION:
-                continue  # "(e.g., RCT)", "(SEM, RCT)", and "(SD, RMSE)" are uses
+            if _acronym_list(words) or words[0].casefold() in _NOT_EXPANSION:
+                continue  # "(e.g., RCT)", "(SEM, RCT)", and "(PCA/ICA, NMF)" are uses
             expansion = _CJK_GAP.sub("", " ".join(words))
             if not _CJK_RUN.search(expansion):
                 expansion = _spelled_run(expansion, acronym) or ""
