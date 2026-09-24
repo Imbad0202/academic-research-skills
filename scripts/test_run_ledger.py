@@ -495,7 +495,7 @@ class RenderTest(_LedgerCase):
                       {"step": "verify_submission_package", "status": "failed"}],
         })
         en = run_ledger.render_block(report, "en").split("\n")
-        self.assertIn('  "# A heading and a second line"', en)
+        self.assertIn('  "\\# A heading and a second line"', en)
         self.assertIn("  2 items recorded: E6-1, E6-3", en)
         self.assertIn('- Decision stage-3-branch: the summary or report says "revise"; '
                       'the ledger records "abort"', en)
@@ -535,6 +535,29 @@ class RenderTest(_LedgerCase):
         html = MarkdownIt("commonmark").render("\n".join(en))
         self.assertIn("Keep &lt;draft&gt; or *draft*.md? [a] &amp; `b` ~c~", html)
         self.assertIn("drafts/_v2_.md (draft_v2 &amp; notes)", html)
+
+    def test_a_value_that_opens_a_line_item_stays_text(self) -> None:
+        self.open_checkpoint("# gate", question="q")
+        draft = self.root / "- draft.md"
+        draft.write_text("v1", encoding="utf-8")
+        self.append(kind="file_reference", path="- draft.md", role="draft")
+        draft.unlink()
+        self.receipt("1. evidence", "not_run")
+        report = self.report()
+        for lang in run_ledger.RENDER_LANGUAGES:
+            with self.subTest(lang):
+                block = run_ledger.render_block(report, lang)
+                for shown in ("\\# gate", "\\- draft.md", "1\\. evidence"):
+                    self.assertIn(shown, block)
+                try:
+                    from markdown_it import MarkdownIt
+                except ImportError:
+                    continue
+                html = MarkdownIt("commonmark").render(block)
+                self.assertNotIn("<h1>", html)
+                self.assertNotIn("<ol", html)
+                for shown in ("# gate", "- draft.md", "1. evidence"):
+                    self.assertIn(shown, html)
 
     def test_one_backed_item_is_singular(self) -> None:
         self.open_checkpoint("stage-2-config", stage="2", checkpoint_type="FULL", question="q")

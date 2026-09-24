@@ -737,10 +737,20 @@ _REASON_LINES = {
 # Always special inline, and "_" where it can open or close emphasis (not
 # between two letters or digits, as in "paper_v2.md").
 _MARKUP = re.compile(r"[\\`*\[\]<>&~]|(?<![^\W_])_|_(?![^\W_])")
+# A value can open a list item's text, where a leading "#", "-", "+", or list
+# number ("1." or "1)") followed by a space or the end of the value would start
+# a heading or a nested list; "2.5" or "#tag" opens nothing.
+_BLOCK_OPENER = re.compile(r"^(?:#{1,6}|[+-]|\d{1,9}[.)])(?=\s|$)")
 
 
 def _one_line(value: Any) -> str:
-    return _MARKUP.sub(lambda m: "\\" + m.group(0), " ".join(str(value).split()))
+    text = _MARKUP.sub(lambda m: "\\" + m.group(0), " ".join(str(value).split()))
+    opener = _BLOCK_OPENER.match(text)
+    if opener is None:
+        return text
+    if opener.group(0)[0].isdigit():  # escape the "." or ")" after the number
+        return f"{text[:opener.end() - 1]}\\{text[opener.end() - 1:]}"
+    return f"\\{text}"
 
 
 def render_block(report: dict[str, Any], lang: str) -> str:
