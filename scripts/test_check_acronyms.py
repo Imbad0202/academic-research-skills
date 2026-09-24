@@ -367,14 +367,18 @@ def test_quotation_marks_around_a_chinese_expansion_are_ignored() -> None:
                                   "Stage IIA, IIB, and IIIA tumors.\n",
                                   "Stage IIIB and IV disease.\n", "stage IVA disease.\n",
                                   "As shown in Table\nIV, the arms differ.\n",
-                                  "Stages III and\nIV were pooled.\n"])
+                                  "Stages III and\nIV were pooled.\n",
+                                  "Patients with stage IIID melanoma enrolled.\n",
+                                  "Stages IIID and IV were included.\n",
+                                  "Stages IA1, IA2, and IA3 were pooled.\n"])
 def test_iv_and_stage_numerals_after_a_numbering_word_are_numerals(text: str) -> None:
     assert findings(text) == []
 
 
 @pytest.mark.parametrize(("text", "acronym"), [
     ("Patients received IV fluids.\n", "IV"), ("Two types of IV access were used.\n", "IV"),
-    ("病人接受 IV 注射。\n", "IV"), ("Patients with IIIB disease.\n", "IIIB")])
+    ("病人接受 IV 注射。\n", "IV"), ("Patients with IIIB disease.\n", "IIIB"),
+    ("Patients with IIID disease.\n", "IIID")])
 def test_iv_and_stage_numerals_elsewhere_are_acronyms(text: str, acronym: str) -> None:
     assert findings(text) == [("body", 1, "undefined", acronym)]
 

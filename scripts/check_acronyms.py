@@ -52,14 +52,14 @@ two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
 inside ``AIDS``. Not candidates: chemical formulas, meaning tokens with a
 digit that read as element symbols and counts (``H2O``, ``CO2``, but not
 ``RCT2``); Roman numerals up to ``XXXIX`` (``II``, ``XII``); ``IV`` and stage
-numerals with a letter (``IIIB``, ``IVA``) only right after a numbering word,
-or after a list of numerals that follows one, in the same sentence, or in a
-Chinese stage (``Table IV``, ``stage IIIB``, ``stages I through IV``,
-``第IV期``, ``IV 期``), since ``IV`` alone is a common acronym; and the
-statistical symbols ``SD``, ``SE``, and ``CI``. Larger numerals stay
-candidates, because letter strings such as ``CD``, ``DC``, ``MI``, and ``LV``
-are also common acronyms. The plural of an excluded token is excluded too
-(``CIs``, ``SDs``).
+numerals with a letter from A to D and an optional digit (``IIIB``, ``IIID``,
+``IA1``) only right after a numbering word, or after a list of numerals that
+follows one, in the same sentence, or in a Chinese stage (``Table IV``,
+``stage IIIB``, ``stages I through IV``, ``第IV期``, ``IV 期``), since ``IV``
+alone is a common acronym; and the statistical symbols ``SD``, ``SE``, and
+``CI``. Larger numerals stay candidates, because letter strings such as
+``CD``, ``DC``, ``MI``, and ``LV`` are also common acronyms. The plural of an
+excluded token is excluded too (``CIs``, ``SDs``).
 
 Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
@@ -216,14 +216,14 @@ _SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank l
 # "IV" and stage numerals ("IIIB", "IVA") are numerals after a numbering word ("Table IV",
 # "stage IIIB", "phases III and IV", "stage-IV", "Fig. IV", "第IV期"), never across a sentence
 # end or a blank line.
-_ROMAN_STAGE = re.compile(r"(?=[IVX])(?:X{0,3})(?:IX|IV|V?I{0,3})[A-Ca-c]?")
+_ROMAN_STAGE = re.compile(r"(?=[IVX])(?:X{0,3})(?:IX|IV|V?I{0,3})(?:[A-Da-d]\d?)?")  # "IIID", "IB2"
 _NUMBERING_WORD = (r"(?i:\b(?:(?:table|figure|box|section|chapter|part|appendix|volume|phase|stage"
                    r"|grade|type|class|level|tier|category|study|experiment|wave|round|model)s?"
                    r"|(?:figs?|vols?)\.?))")
 _ROMAN_JOIN = (rf"(?:(?:{_SPACE})?[,&–—/-](?:{_SPACE})?(?:(?:and|or){_SPACE})?"
                rf"|{_SPACE}(?:and|or|to|through){_SPACE})")
 _NUMBERING_BEFORE = re.compile(
-    rf"(?:{_NUMBERING_WORD}(?:{_SPACE}|-)(?:[IVXLC]+[A-Ca-c]?{_ROMAN_JOIN})*|第(?:{_SPACE})?)\Z")
+    rf"(?:{_NUMBERING_WORD}(?:{_SPACE}|-)(?:[IVXLC]+(?:[A-Da-d]\d?)?{_ROMAN_JOIN})*|第(?:{_SPACE})?)\Z")
 _NUMBERING_AFTER = re.compile(rf"(?:{_SPACE})?[期級型類]")
 # An author-year citation: items whose author part is a run of names (capitalized
 # words, a bracketed group abbreviation, CJK, "&", "and", "et al.", or a name
