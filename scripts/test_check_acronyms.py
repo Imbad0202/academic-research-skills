@@ -472,7 +472,9 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
                   "Figure 3—", "Figure 4 -"):
         text = f"{label} Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
-    for label in ("Figure 5–", "Figure 6–Comparison. ", "Figure 1 – A ", "圖1–流程。"):
+    for label in ("Figure 5–", "Figure 6–Comparison. ", "Figure 1 – A ", "圖1–流程。",
+                  "Figure 1 – T cell counts. ", "Table I – A summary. ", "Figure 1 – Box plots. ",
+                  "Figure 1A – Comparison. "):
         text = f"{label}Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
@@ -547,6 +549,10 @@ def test_caption_word_at_sentence_start_is_still_prose() -> None:
                  "Table I–III list the RCT arms.\n", "Figure 1—3 show the RCT arm.\n",
                  "圖一–三顯示 RCT 的流程。\n", "Table 1–Table 3 list the RCT arms.\n",
                  "Figure 1–C show the RCT arm.\n", "Table 1-based estimates of the RCT.\n",
+                 "Figure 1A – C shows the RCT arm.\n", "Figure 1A—C shows the RCT arm.\n",
+                 "Table I – III list the RCT arms.\n", "Table I—III list the RCT arms.\n",
+                 "Figure 1—C show the RCT arm.\n", "圖一 – 三顯示 RCT 的流程。\n",
+                 "Figure 1 – Figure 3 show the RCT.\n",
                  "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
