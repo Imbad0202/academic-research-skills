@@ -136,6 +136,10 @@ def _outcome(text: str) -> tuple[list[tuple], list[tuple]]:
     "Randomized controlled trials (RCTs; Smith, 2020, Chapter 3) help. The RCT ended.",
     "The effect held, as in Figure 2. The RCT ran. A randomized controlled trial (RCT) is a design.",
     "本研究採隨機對照試驗（randomized controlled trial, RCT）。The RCT ended.",
+    "Structural equation modeling (that is, SEM) was used. Structural equation modeling (SEM) ran.",
+    "The SEM (i.e., structural equation modeling) was used. Two designs (namely RCT) ran.",
+    "We tried methods (for instance, NMF). Nonnegative matrix factorization (NMF) won.",
+    "The RCT (including recruitment, consent, and treatment) lasted six months.",
 ])
 def test_a_line_break_at_any_space_reads_as_the_space(text: str) -> None:
     expected = _outcome(text + "\n")
@@ -150,6 +154,10 @@ def test_a_line_break_at_any_space_reads_as_the_space(text: str) -> None:
     "本研究使用 RCT（隨機對照試驗）。RCT 有效。",
     "RCT 有效。本研究採隨機對照試驗（RCT）。",
     "RCT 有效。此設計（隨機對照試驗，RCT）。",
+    "RCT（包括招募與同意）持續六個月。",
+    "多種方法（例如 PCA，NMF）。非負矩陣分解（NMF）表現最好。",
+    "結構方程模型（亦即 SEM）被使用。結構方程模型（也就是 SEM）再次被使用。",
+    "SEM（也就是結構方程模型）被使用。",
 ])
 def test_a_line_break_between_chinese_characters_changes_nothing(text: str) -> None:
     expected = _outcome(text + "\n")

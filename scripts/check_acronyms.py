@@ -244,10 +244,12 @@ _LIST_WORDS = {"and", "or", "&", "vs", "vs.", "versus"}  # lowercase only: "OR" 
 _WORDLIKE = re.compile(r"[A-Za-z]{3,}|[㐀-鿿]")  # not a symbol or number ("R²", "df", "p", "3.2")
 _NOT_EXPANSION = {"e.g.", "eg", "see", "cf."}
 _NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱")
-_EXAMPLE_LEAD = re.compile(r"(?:for example|for instance|such as|including)\b|例如|比如|諸如|包括")
+# Leads read across a wrap, as definitions do: "that\nis", "包\n括".
+_EXAMPLE_LEAD = re.compile(r"(?:for\s+example|for\s+instance|such\s+as|including)\b"
+                           r"|例\s*如|比\s*如|諸\s*如|包\s*括")
 # Case-sensitive, so the acronym "IE" is not read as "ie".
-_RESTATEMENT_LEAD = re.compile(r"\s*(?:(?:[Ii]\.e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat is)(?![A-Za-z0-9])"
-                               r"|亦即|也就是|即)[,，:：]?\s*")
+_RESTATEMENT_LEAD = re.compile(r"\s*(?:(?:[Ii]\.e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat\s+is)(?![A-Za-z0-9])"
+                               r"|亦\s*即|也\s*就\s*是|即)[,，:：]?\s*")
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
