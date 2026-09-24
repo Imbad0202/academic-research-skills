@@ -14,13 +14,14 @@ A definition is a parenthetical whose last item is the acronym, placed after
 text in the same paragraph (a line break inside a paragraph reads as a space),
 when the words before it spell the acronym: ``randomized controlled trial
 (RCT)``, ``大型語言模型（LLM）``, or ``隨機對照試驗（randomized controlled
-trial, RCT）``. Chinese words spell any acronym; Latin words spell it when the
-first starts with the acronym's first letter and their initials contain its
-letters in order. The expansion is the shortest such run of words. Two kinds
-of acronym get no finding in their scope and are listed as coverage limits:
-one whose parenthetical the words do not spell (``several methods (RCT)``),
-which this check cannot confirm as a definition, and one followed by its
-expansion in parentheses (``RCT (randomized controlled
+trial, RCT）``. Chinese words spell any acronym, and quotation marks around
+the words are ignored (``「大型語言模型」（LLM）``); Latin words spell it when
+the first starts with the acronym's first letter and their initials contain
+its letters in order. The expansion is the shortest such run of words. Two
+kinds of acronym get no finding in their scope and are listed as coverage
+limits: one whose parenthetical the words do not spell
+(``several methods (RCT)``), which this check cannot confirm as a definition,
+and one followed by its expansion in parentheses (``RCT (randomized controlled
 trial)``, ``RCT（隨機對照試驗）``), a definition form this check does not
 read. A parenthetical is a use, not a definition, when it opens with ``e.g.``
 or ``e. g.``, ``see``, ``cf.``, ``for example``, ``for instance``,
@@ -50,11 +51,13 @@ two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
 (``RCTs``, ``RCT's``). Matching is whole token, so ``AI`` is never found
 inside ``AIDS``. Not candidates: chemical formulas, meaning tokens with a
 digit that read as element symbols and counts (``H2O``, ``CO2``, but not
-``RCT2``); Roman numerals up to ``XXXIX`` (``II``, ``XII``, but not ``IV``);
-and the statistical symbols ``SD``, ``SE``, and ``CI``. Larger numerals stay
-candidates, because letter strings such as ``CD``, ``DC``, ``MI``, and ``LV``
-are also common acronyms. The plural of an excluded token is excluded too
-(``CIs``, ``SDs``).
+``RCT2``); Roman numerals up to ``XXXIX`` (``II``, ``XII``), with ``IV`` only
+after a numbering word or in a Chinese stage (``Table IV``, ``stage IV``,
+``phases III and IV``, ``第IV期``, ``IV 期``), since ``IV`` alone is a common
+acronym; and the statistical symbols ``SD``, ``SE``, and ``CI``. Larger
+numerals stay candidates, because letter strings such as ``CD``, ``DC``,
+``MI``, and ``LV`` are also common acronyms. The plural of an excluded token
+is excluded too (``CIs``, ``SDs``).
 
 Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
@@ -71,12 +74,12 @@ as ``Figure 2.``, ``Table S1.``, ``TABLE III``, ``Supplementary Table 2.``,
 a period, colon, pipe, or dash, but a dash that starts a range and an unspaced
 hyphen (``Table 1-based``) open no label, and neither do ``Figure 1.2 shows``
 and ``Fig. 1 Flow diagram``; a range end is a number or a labeled number
-(``Figure 1 – 3``, ``Table 1–Table 3``), an end of the number's own kind
-(``Figure 1A – C``, ``Table I—III``, ``圖一–三``), or a single letter right
-after an unspaced dash (``Figure 1–C shows``), so a caption title that starts
-that way is read as prose), the reference list, author-year citations whose
-author part is a run of names, whose dates are years from 1800 to 2099, year
-pairs or ranges, ``n.d.``, or ``in press`` (``2020a``, ``1900/1953``,
+(``Figure 1 – 3``, ``Table 1–Table 3``, ``圖1–圖3``), an end of the number's
+own kind (``Figure 1A – C``, ``Table I—III``, ``圖一–三``), or a single letter
+right after an unspaced dash (``Figure 1–C shows``), so a caption title that
+starts that way is read as prose), the reference list, author-year citations
+whose author part is a run of names, whose dates are years from 1800 to 2099,
+year pairs or ranges, ``n.d.``, or ``in press`` (``2020a``, ``1900/1953``,
 ``n.d.-a``), and whose locator, if any, is a page, paragraph, chapter, or
 section (``(WHO, 2020)``, ``(see Smith et al., 2020, pp. 4, 6; Lee, 2019)``,
 and the citations after the acronym in ``(RCTs; Smith, 2020)``), a bracketed
@@ -150,6 +153,12 @@ DEFAULT_ALLOWLIST = frozenset({
 STAT_SYMBOLS = frozenset({"SD", "SE", "CI"})
 
 _ROMAN = re.compile(r"(?:X{0,3})(?:IX|V?I{0,3}|IV)")
+# "IV" is a numeral after a numbering word ("Table IV", "stage IV", "phases III and IV", "第IV期").
+_NUMBERING_BEFORE = re.compile(
+    r"(?:(?i:\b(?:table|figure|fig|box|section|chapter|part|appendix|volume|vol|phase|stage|grade|type"
+    r"|class|level|tier|category|study|experiment|wave|round|model)s?\.?)\s+"
+    r"(?:[IVXLC]+\s*(?:,\s*(?:and\s+|or\s+)?|and\s+|or\s+|&\s*|to\s+|[–—/-]\s*))*|第\s*)$")
+_NUMBERING_AFTER = re.compile(r"\s*[期級型類]")
 _ELEMENT_PART = re.compile(r"([A-Z][a-z]?)\d*")
 ELEMENTS = frozenset("""
 H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As
@@ -186,11 +195,11 @@ _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*(?P<id>{_CAPTION_ID})"
                       rf"{_EMPH}(?:[.:：](?!\d)|\s*\||(?P<dash>\s*[–—]|\s+-\s)|\s*$)")
 # Range ends after a caption dash (see _caption_label).
 _RANGE_ANY = re.compile(rf"\s*(?:[A-Z]?[.-]?\d"
-                        rf"|{_CAPTION_WORD}\s*(?:{_CAPTION_ID}|{_ZH_NUMERAL})(?![A-Za-z0-9]))")
+                        rf"|(?:{_CAPTION_WORD}|附?[圖表])\s*(?:{_CAPTION_ID}|{_ZH_NUMERAL})(?![A-Za-z0-9]))")
 _SUBFIGURE = re.compile(r"(?:[A-Z][.-]?)?\d+(?:[.-]\d+)*[A-Za-z]|(?![IVXLC])[A-Z]")
 _ROMAN_ID = re.compile(r"[IVXLC]+")
 _RANGE_LETTER = re.compile(r"\s*[A-Za-z](?![A-Za-z0-9])")
-_RANGE_ROMAN = re.compile(r"\s*[IVXLC]+(?![A-Za-z0-9])")
+_RANGE_ROMAN = re.compile(rf"\s*(?=[IVX])(?:{_ROMAN.pattern})(?![A-Za-z0-9])")  # not "CI"
 _RANGE_ZH = re.compile(rf"\s*{_ZH_NUMERAL}")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
@@ -273,8 +282,9 @@ _RESTATEMENT_LEAD = re.compile(
     r"\s*(?:(?:[Ii]\.\s*e\.|ie|[Vv]iz\.|[Nn]amely|[Tt]hat\s+is(?:\s+to\s+say)?|[Ii]n\s+other\s+words)"
     rf"(?![A-Za-z0-9])|(?:{_zh('亦即', '也就是', '即')})(?:\s*為)?)[,，:：]?\s*")
 _NAMING_LEAD = re.compile(
-    r"\s*(?:(?:(?:(?:[Hh]ere(?:in)?after|[Hh]enceforth|[Aa]lso)\s+)?(?:referred\s+to\s+as|known\s+as|called"
-    r"|termed|abbreviated(?:\s+(?:as|to))?)|[Hh]ere(?:in)?after|[Hh]enceforth|a\.?k\.?a\.?)(?![A-Za-z0-9])"
+    r"\s*(?:(?:(?:(?:[Hh]ere(?:in)?after|[Hh]enceforth|[Aa]lso)\s+)?(?:[Rr]eferred\s+to\s+as|[Kk]nown\s+as"
+    r"|[Cc]alled|[Tt]ermed|[Aa]bbreviated(?:\s+(?:as|to))?)|[Hh]ere(?:in)?after|[Hh]enceforth"
+    r"|[Aa]\.?k\.?a\.?)(?![A-Za-z0-9])"
     rf"|(?:{_zh('以下簡稱', '以下稱', '下稱', '簡稱', '又稱', '亦稱', '或稱', '稱為', '縮寫', '英文縮寫', '英文簡稱')})"
     r"(?:\s*為)?)[,，:：]?\s*")
 _QUOTES = re.compile(r"^[\s'\"‘’“”「」『』]+|[\s'\"‘’“”「」『』]+$")
@@ -649,7 +659,7 @@ def _expansion(before: str, acronym: str) -> str | None:
     """The words a definition spells out: the CJK run just before it, or the
     shortest run of Latin words ending its clause that starts with the acronym's
     first letter and spells it. None when neither is there."""
-    head = _CLAUSE_BREAK.split(before)[-1].strip().rstrip("*_\"'”’")
+    head = _CLAUSE_BREAK.split(before)[-1].strip().rstrip("*_\"'”’」』")
     cjk = _CJK_RUN.search(_CJK_GAP.sub("", head))
     if cjk:
         return cjk.group(0)[-20:]
@@ -678,7 +688,7 @@ def _reverse_definition(acronym: str, content: str) -> bool:
     words = content.split()
     if not words or acronym in content or _example_led(words):
         return False
-    joined = _CJK_GAP.sub("", content)
+    joined = _QUOTES.sub("", _CJK_GAP.sub("", content))
     if _CJK_RUN.fullmatch(joined):
         return not joined.startswith(_NOT_EXPANSION_ZH)
     return _spells(acronym, content)
@@ -722,6 +732,10 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
         if word.start() in defined:
             occurrences.append(defined[word.start()])
             continue
+        if word.group(0) == "IV" and (_NUMBERING_AFTER.match(text, word.end())
+                                      or _NUMBERING_BEFORE.search(text, max(0, word.start() - 120),
+                                                                  word.start())):
+            continue  # a numeral, not intravenous
         unread = _UNREAD.match(text, word.end())
         kind = ("unread_definition" if unread and _reverse_definition(acronym, unread.group(1))
                 else "use")

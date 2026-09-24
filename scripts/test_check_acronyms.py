@@ -268,7 +268,7 @@ _FUZZ_PIECES = ["(", ")", "（", "）", ",", "，", "、", ";", "/", "-", " and 
                 "(WHO, n.d.-a)", "[WHO]", "\n", "\n\n", "# Abstract\n", "## 摘要\n", "## References\n",
                 "| a | b |\n|---|---|\n", "- ", "> ", "```\n", "![img](x.png)\n", "***\n", "===\n", "\\",
                 "*", "Keywords: ", "\r\n", "\u2028", "and/or", "1", "2020", "et al.", "hereafter ", "以下簡稱",
-                "i.e., ", "「", "」", "“", "'", " – ", "Figure 1A"]
+                "i.e., ", "「", "」", "“", "'", " – ", "Figure 1A", "stage IV", "第IV期", "圖1–圖"]
 
 
 def test_mixed_constructs_never_crash_the_check() -> None:
@@ -325,7 +325,8 @@ def test_a_chinese_restatement_lead_is_read_without_its_words(lead: str) -> None
 
 @pytest.mark.parametrize("lead", ["hereafter", "Hereafter,", "hereinafter", "henceforth", "abbreviated as",
                                   "referred to as", "hereafter referred to as", "also known as", "aka",
-                                  "a.k.a.", "called", "termed"])
+                                  "a.k.a.", "called", "termed", "Called", "Known as", "Abbreviated as",
+                                  "Aka"])
 def test_a_naming_lead_is_read_without_its_words(lead: str) -> None:
     assert findings(f"Structural equation modeling ({lead} SEM) was used.\n") == []
     assert findings(f"A new method (structural equation modeling, {lead} SEM) was used.\n") == []
@@ -345,6 +346,28 @@ def test_a_chinese_naming_lead_is_read_without_its_words(lead: str) -> None:
                                   "Structural equation modeling ('SEM') was used.\n"])
 def test_quotation_marks_around_a_defined_acronym_are_ignored(text: str) -> None:
     assert findings(text) == []
+
+
+def test_quotation_marks_around_a_chinese_expansion_are_ignored() -> None:
+    assert findings("本研究採用「結構方程模型」（SEM）。\n") == []
+    assert findings("本研究採用『結構方程模型』（SEM）。\n") == []
+    report = check("SEM（「結構方程模型」）被使用。\n")
+    assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unread_definition_form"
+
+
+@pytest.mark.parametrize("text", ["As shown in Table IV, the arms differ.\n",
+                                  "Patients with stage IV cancer enrolled.\n",
+                                  "This phase IV trial ran.\n", "Grade IV glioma was rare.\n",
+                                  "Stages III and IV were pooled.\n", "Grades III–IV toxicity was rare.\n",
+                                  "Tables II, III, and IV list arms.\n", "第IV期病人較少。\n", "IV 期病人較少。\n"])
+def test_iv_after_a_numbering_word_is_a_numeral(text: str) -> None:
+    assert findings(text) == []
+
+
+@pytest.mark.parametrize("text", ["Patients received IV fluids.\n", "Two types of IV access were used.\n",
+                                  "病人接受 IV 注射。\n"])
+def test_iv_elsewhere_is_an_acronym(text: str) -> None:
+    assert findings(text) == [("body", 1, "undefined", "IV")]
 
 
 def test_acronyms_shaped_like_leads_stay_acronyms() -> None:
@@ -502,7 +525,8 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     for label in ("Figure 5–", "Figure 6–Comparison. ", "Figure 1 – A ", "圖1–流程。",
                   "Figure 1 – T cell counts. ", "Table I – A summary. ", "Figure 1 – Box plots. ",
-                  "Figure 1A – Comparison. "):
+                  "Figure 1A – Comparison. ", "圖1 – 圖示流程。", "表1 – 表現比較。",
+                  "TABLE II – CI estimates. "):
         text = f"{label}Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
@@ -580,7 +604,8 @@ def test_caption_word_at_sentence_start_is_still_prose() -> None:
                  "Figure 1A – C shows the RCT arm.\n", "Figure 1A—C shows the RCT arm.\n",
                  "Table I – III list the RCT arms.\n", "Table I—III list the RCT arms.\n",
                  "Figure 1—C show the RCT arm.\n", "圖一 – 三顯示 RCT 的流程。\n",
-                 "Figure 1 – Figure 3 show the RCT.\n",
+                 "Figure 1 – Figure 3 show the RCT.\n", "圖1–圖3顯示 RCT 的流程。\n",
+                 "圖一 – 圖三顯示 RCT 的流程。\n", "表S1—表S3列出 RCT 的分組。\n",
                  "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
