@@ -23,27 +23,30 @@ limits: one whose parenthetical the words do not spell
 (``several methods (RCT)``), which this check cannot confirm as a definition,
 and one followed by its expansion in parentheses (``RCT (randomized controlled
 trial)``, ``RCT（隨機對照試驗）``), a definition form this check does not
-read. A parenthetical is a use, not a definition, when it opens with ``e.g.``
-or ``e. g.``, ``see``, ``cf.``, ``for example``, ``for instance``,
+read. Words after the acronym count as its expansion when they spell it, so a
+list whose initials spell it counts too (``ML (MARS, LASSO, and random
+forests)``). A parenthetical is a use, not a definition, when it opens with
+``e.g.`` or ``e. g.``, ``see``, ``cf.``, ``for example``, ``for instance``,
 ``such as``, ``including``, ``例如``, ``比如``, ``諸如``, or ``包括``, before
 or after the acronym (``(e.g., RCT)``, ``RCT (including recruitment)``), or
 when it is made only of acronyms, counting excluded ones, symbols, numbers,
-and joining words or marks (``(SEM, RCT)``, ``(SDs, RMSE)``,
-``(R², AIC, BIC)``, ``(n = 120, RCT)``, ``(PCA/ICA, NMF)``,
-``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``). So are
-Chinese words after an acronym that open with ``見``, ``參見``, ``詳見``, or
-``參閱`` (``RCT（見第二節）``). A lead at the start of a parenthetical or of
-its last item is read as if absent, and so are quotation marks around the
-acronym. A lead is a restatement (such as ``i.e.`` or ``i. e.``, ``viz.``,
-``namely``, ``that is``, ``in other words``, ``即``, ``亦即``, ``也就是``) or
-a naming lead (such as ``hereafter``, ``henceforth``, ``abbreviated as``,
-``referred to as``, ``also known as``, ``aka``, ``called``, ``以下簡稱``,
-``下稱``, ``簡稱``, ``又稱``, ``稱為``, ``縮寫為``). So ``structural equation
-modeling (i.e., SEM)``, ``structural equation modeling (hereafter SEM)``, and
-``結構方程模型（structural equation modeling，以下簡稱「SEM」）`` define
-``SEM``. After a restatement, an acronym the words before it do not spell is a
-use (``two designs (namely RCT)``); after a naming lead, it is a definition
-this check cannot confirm (``two designs (hereafter RCT)``).
+and joining words or marks, before or after the acronym (``(SEM, RCT)``,
+``ML (MARS, LASSO)``, ``(SDs, RMSE)``, ``(R², AIC, BIC)``, ``(n = 120, RCT)``,
+``(PCA/ICA, NMF)``, ``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``,
+``（PCA與ICA，NMF）``). So are Chinese words after an acronym that open with
+``見``, ``參見``, ``詳見``, or ``參閱`` (``RCT（見第二節）``). A lead at the
+start of a parenthetical or of its last item is read as if absent, and so are
+quotation marks around the acronym. A lead is a restatement (such as ``i.e.``
+or ``i. e.``, ``viz.``, ``namely``, ``that is``, ``in other words``, ``即``,
+``亦即``, ``也就是``) or a naming lead (such as ``hereafter``, ``henceforth``,
+``abbreviated as``, ``referred to as``, ``also known as``, ``aka``,
+``called``, ``以下簡稱``, ``下稱``, ``簡稱``, ``又稱``, ``稱為``, ``縮寫為``).
+So ``structural equation modeling (i.e., SEM)``, ``structural equation
+modeling (hereafter SEM)``, and ``結構方程模型（structural equation
+modeling，以下簡稱「SEM」）`` define ``SEM``. After a restatement, an acronym
+the words before it do not spell is a use (``two designs (namely RCT)``);
+after a naming lead, it is a definition this check cannot confirm
+(``two designs (hereafter RCT)``).
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -710,8 +713,8 @@ def _reverse_definition(acronym: str, content: str) -> bool:
     form this check does not read. A cross-reference is not one."""
     content = _lead(content.strip())[0]
     words = content.split()
-    if not words or acronym in content or _example_led(words):
-        return False
+    if not words or acronym in content or _example_led(words) or _acronym_list(words):
+        return False  # "RCT (see Section 2)", "ML (MARS, LASSO)", "RCT (n = 120)" are uses
     joined = _QUOTES.sub("", _CJK_GAP.sub("", content))
     if _CJK_RUN.fullmatch(joined):
         return not joined.startswith(_NOT_EXPANSION_ZH)

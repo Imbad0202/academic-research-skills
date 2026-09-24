@@ -305,6 +305,27 @@ def test_an_example_led_parenthetical_after_an_acronym_is_a_use(text: str) -> No
     assert findings(text) == [("body", 1, "undefined", "RCT")]
 
 
+_MARS_LASSO = ("Multivariate adaptive regression splines (MARS) and the least absolute shrinkage and\n"
+               "selection operator (LASSO) ran.\n\n")
+
+
+@pytest.mark.parametrize("text, rule", [
+    ("We compared ML (MARS, LASSO). Machine learning (ML) won.\n", "defined_after_use"),
+    ("我們比較 ML（MARS, LASSO）。機器學習（ML）較好。\n", "defined_after_use"),
+    ("We compared ML (MARS, LASSO).\n", "undefined"),
+    ("Machine learning (ML) ran. We compared ML (MARS, LASSO). Machine learning (ML) won.\n",
+     "defined_again"),
+])
+def test_an_acronym_list_after_an_acronym_is_a_use(text: str, rule: str) -> None:
+    # The initials of "MARS, LASSO" spell ML, but a list of acronyms is not its expansion.
+    assert findings(_MARS_LASSO + text) == [("body", 4, rule, "ML")]
+
+
+def test_a_list_after_an_acronym_whose_initials_spell_it_is_a_coverage_limit() -> None:
+    report = check(_MARS_LASSO + "We compared ML (MARS, LASSO, and random forests).\n")
+    assert rows(report) == [] and [limit["acronym"] for limit in report["coverage_limits"]] == ["ML"]
+
+
 @pytest.mark.parametrize("lead", ["i.e.,", "i.e.", "i. e.,", "ie", "viz.", "namely,", "That is,",
                                   "that is to say,", "in other words,"])
 def test_a_restatement_lead_is_read_without_its_words(lead: str) -> None:
