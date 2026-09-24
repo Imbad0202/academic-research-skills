@@ -17,12 +17,15 @@ when the words before it spell the acronym: ``randomized controlled trial
 trial, RCT）``. Chinese words spell any acronym; Latin words spell it when the
 first starts with the acronym's first letter and their initials contain its
 letters in order. The expansion is the shortest such run of words. Two kinds
-of acronym get no finding in their scope and are listed as coverage limits: one
-whose parenthetical the words do not spell (``several methods (RCT)``), which
-this check cannot confirm as a definition, and one followed by its expansion
-in parentheses (``RCT (randomized controlled trial)``), a definition form this
-check does not read. A parenthetical led by ``e.g.``, ``i.e.``, ``see``,
-``cf.``, or ``viz.``, or made only of acronyms (``(SEM, RCT)``), is a use.
+of acronym get no finding in their scope and are listed as coverage limits:
+one whose parenthetical the words do not spell (``several methods (RCT)``),
+which this check cannot confirm as a definition, and one followed by its
+expansion in parentheses (``RCT (randomized controlled trial)``,
+``RCT（隨機對照試驗）``), a definition form this check does not read. A
+parenthetical led by ``e.g.``, ``i.e.``, ``see``, ``cf.``, or ``viz.``, or
+made only of acronyms (``(SEM, RCT)``), is a use, and so are Chinese words
+after an acronym that open with ``見``, ``參見``, ``詳見``, ``參閱``, or
+``例如`` (``RCT（見第二節）``).
 
 Candidates are 2-6 letters or digits with at least two capitals and no more
 lowercase than uppercase letters (``RCT``, ``eGFR``, ``qPCR``). Plural and
@@ -43,15 +46,16 @@ https://example.org``), ATX and setext headings, tables (with or without outer
 pipes, up to a blank line, heading, list item, blockquote, or thematic break),
 image lines, caption, note, and keyword paragraphs (from a line that starts a
 paragraph or follows an image and opens with a label such as ``Figure 2.``,
-``Table S1.``, ``Note.``, or ``Keywords:``, up to a blank line), the reference
-list, author-year citations whose author part is a run of names and whose
-locator, if any, is a page, paragraph, chapter, or section (``(WHO, 2020)``,
-``(see Smith et al., 2020, pp. 4, 6; Lee, 2019)``, and the citations after the
-acronym in ``(RCTs; Smith, 2020)``), a bracketed abbreviation right after a
-capitalized word, as in an APA group author (``World Health Organization
-[WHO]``), but not a link (``[RCT](#design)``, or ``[RCT]`` when a link
-reference definition names it), and author initials in author lists (``Smith
-JA, García BC (2020)``). In definitions, citations, group-author brackets, and
+``Table S1.``, ``Note.``, or ``Keywords:``, up to a blank line; ``Figure 1.2
+shows`` opens no label), the reference list, author-year citations whose
+author part is a run of names and whose locator, if any, is a page, paragraph,
+chapter, or section (``(WHO, 2020)``, ``(see Smith et al., 2020, pp. 4, 6;
+Lee, 2019)``, and the citations after the acronym in ``(RCTs; Smith, 2020)``),
+a bracketed abbreviation right after a capitalized word, as in an APA group
+author (``World Health Organization [WHO]``), but not a link
+(``[RCT](#design)``, or ``[RCT]`` when a link reference definition names it),
+and author initials in author lists (``Smith JA, García BC, McDonald EF, van
+der Berg GH (2020)``). In definitions, citations, group-author brackets, and
 author lists, a line break inside a paragraph reads as a space.
 
 These rules read Markdown line by line; this is not a full CommonMark parser.
@@ -63,9 +67,9 @@ Scopes come from headings: ``Abstract`` or ``English Abstract`` starts the
 English abstract, ``摘要``, ``中文摘要`` or ``Chinese Abstract`` the Chinese
 one, and each runs to the next heading of the same or a higher level.
 Everything else is the body. A scope is in the input only when a line this
-check reads there has a letter. An abstract in another language is a section this
-check does not read, listed as a coverage limit, and so is a requested scope
-the input does not contain.
+check reads there has a letter. An abstract in another language is a section
+this check does not read, listed as a coverage limit, and so is a requested
+scope the input does not contain.
 
 Usage:
     python3 scripts/check_acronyms.py --input FILE
@@ -77,9 +81,9 @@ Prints the Markdown report in ``--lang`` and writes the JSON report to
 Exit 0: the requested scopes were read (``checked``, or ``partial`` with
 coverage limits); findings never change the exit status.
 Exit 2: nothing was checked (``not_checked``: unsupported format, unreadable
-input or allowlist, an unknown scope name, or none of the requested scopes in the input),
-and the report says so. A missing report or any other exit status also means
-not checked; it is never a clean result.
+input or allowlist, an unknown scope name, or none of the requested scopes in
+the input), and the report says so. A missing report or any other exit status
+also means not checked; it is never a clean result.
 """
 from __future__ import annotations
 
@@ -136,7 +140,7 @@ _EMPH = r"(?:\*{1,2}|_{1,2})?"
 _UPPER = "".join(c for c in map(chr, range(0x530)) if c.isalpha() and c.isupper())
 _LOWER = "".join(c for c in map(chr, range(0x530)) if c.isalpha() and c.islower())
 _CAPTION = re.compile(rf"^\s*{_EMPH}(?:Figure|Fig\.?|Table|圖|表)\s*(?:[A-Z][.-]?)?\d+(?:\.\d+)*[A-Za-z]?"
-                      rf"{_EMPH}(?:[.:：]|\s*$)")
+                      rf"{_EMPH}(?:[.:：](?!\d)|\s*$)")
 _NOTE = re.compile(rf"^\s*{_EMPH}(?:Notes?{_EMPH}[.:]|(?:註|注|資料來源)[：:])")
 _KEYWORDS = re.compile(rf"^\s*{_EMPH}(?:Keywords|Key words|關鍵詞|關鍵字){_EMPH}\s*[:：]", re.I)
 
@@ -158,8 +162,9 @@ _SPACE = r"(?:[ \t]+\n?|\n)[ \t]*"  # a space or one line break, never a blank l
 # particle), then a year and an optional page, paragraph, chapter, or section
 # locator. "(Smith et al., 2020, pp. 4, 6; Lee, 2019)" and "(WHO, 2020)" match;
 # "(LLM in 2020)" and "(LLM use began in May 2020)" do not.
+_PARTICLE = r"(?:[vV]an|[vV]on|[dD]e|[dD]er|[dD]en|[dD]u|[dD]a|[dD]i|[dD]el|[lL]a|[lL]e)"
 _NAME = (rf"(?:[{_UPPER}][\w'’.-]*|\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\]|[㐀-鿿]+|&|and|et{_SPACE}al\.?"
-         r"|(?:van|von|de|der|den|du|da|di|del|la|le)(?=\s))")
+         rf"|{_PARTICLE}(?=\s))")
 _LOCATOR = (rf"(?:(?:p|pp|paras?|ch|chap|secs?)\.\s*|(?:Chapter|Section){_SPACE})[\w.–-]+"
             rf"(?:\s*{_COMMA}\s*[\w.–-]*\d[\w.–-]*)*")
 _CITE_ITEM = (rf"\s*(?:(?:see(?:{_SPACE}also)?|e\.g\.|cf\.|i\.e\.)\s*{_COMMA}?\s*)?"
@@ -173,7 +178,11 @@ _TRAILING_CITATION = re.compile(rf"[;；]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*(?=[
 # Markdown link ("[RCT](#design)", "[RCT][1]", or "[RCT]" with a definition).
 _GROUP_AUTHOR = re.compile(rf"\b[{_UPPER}][{_LOWER}]+{_SPACE}(\[[A-Za-z][A-Za-z0-9]{{1,5}}s?\])(?![(\[:])")
 # Author initials in an author list: "Smith JA, Jones BC (2019)", "Lee KM et al.".
-_AUTHOR = re.compile(rf"([{_UPPER}][{_LOWER}]+){_SPACE}([A-Z]{{1,3}})\b")
+# A surname may hold a capital that starts a new run of small letters, after an
+# apostrophe or hyphen or not ("McDonald", "O'Brien", "Smith-Jones"), and may
+# follow name particles ("van der Berg").
+_SURNAME = rf"[{_UPPER}](?:[{_LOWER}]|['’-]?[{_UPPER}](?=[{_LOWER}]))*[{_LOWER}]"
+_AUTHOR = re.compile(rf"(?:{_PARTICLE}{_SPACE})*({_SURNAME}){_SPACE}([A-Z]{{1,3}})\b")
 _AUTHOR_LIST = re.compile(rf"\b{_AUTHOR.pattern}(?:\s*,\s*{_AUTHOR.pattern})*"
                           rf"(?=\s*(?:,\s*)?(?:et\s+al\b|\(?{_YEAR}\b))")
 # One "Word ABC (2020)" is prose, not an author, when the word opens a sentence.
@@ -184,10 +193,12 @@ _LOOKBACK = 300  # characters of context read before a parenthetical
 _LETTER = re.compile(r"[^\W\d_]")  # a scope with no letter has no prose
 _BACKTICKS = re.compile(r"`+")
 _LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
+_RUN_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
 _PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
 _CLAUSE_BREAK = re.compile(r"[.;:!?。；：！？,，、]")
 _CJK_RUN = re.compile(r"[㐀-鿿]+$")
 _NOT_EXPANSION = {"e.g.", "eg", "i.e.", "ie", "see", "cf.", "viz."}
+_NOT_EXPANSION_ZH = ("見", "詳見", "參見", "參閱", "例如")
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
@@ -509,7 +520,14 @@ def _expansion(before: str, acronym: str) -> str | None:
         return cjk.group(0)[-20:]
     if not re.search(r"[A-Za-z]$", head):
         return None
-    words = _LATIN_WORD.findall(head)
+    return _spelled_run(head, acronym)
+
+
+def _spelled_run(text: str, acronym: str) -> str | None:
+    """The shortest run of words ending ``text`` whose first word starts with
+    the acronym's first letter and whose initials spell it. Numbers stay in the
+    run (``type 2 diabetes``); markup and quotation marks do not."""
+    words = _RUN_WORD.findall(text)
     for start in range(len(words) - 1, -1, -1):
         run = " ".join(words[start:])
         if run[0].lower() == acronym[0].lower() and _spells(acronym, run):
@@ -534,8 +552,8 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             if all(base_form(w) for w in words) or words[0].casefold() in _NOT_EXPANSION:
                 continue  # "(e.g., RCT)" and "(SEM, RCT)" are uses
             expansion = " ".join(words)
-            if not (_CJK_RUN.search(expansion) or _spells(acronym, expansion)):
-                expansion = ""
+            if not _CJK_RUN.search(expansion):
+                expansion = _spelled_run(expansion, acronym) or ""
         else:
             expansion = _expansion(before, acronym) or ""
         offset = paren.start(1) + content.rfind(last)
@@ -551,8 +569,10 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
             occurrences.append(defined[word.start()])
             continue
         unread = _UNREAD.match(text, word.end())
-        kind = ("unread_definition" if unread and acronym not in unread.group(1)
-                and _spells(acronym, unread.group(1)) else "use")
+        content = unread.group(1).strip() if unread else ""
+        kind = ("unread_definition" if unread and acronym not in content
+                and ((_CJK_RUN.fullmatch(content) and not content.startswith(_NOT_EXPANSION_ZH))
+                     or _spells(acronym, content)) else "use")
         occurrences.append(Occurrence(doc.line_of(word.start()), acronym, kind))
     return occurrences
 

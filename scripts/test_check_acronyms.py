@@ -88,6 +88,15 @@ def test_unread_definition_form_is_a_coverage_limit_not_a_finding() -> None:
                                           "reason": "unread_definition_form"}]
 
 
+def test_chinese_words_after_an_acronym_are_an_unread_definition_form() -> None:
+    report = check("本研究使用 RCT（隨機對照試驗）。RCT 有效。\n")
+    assert report["findings"] == []
+    assert report["coverage_limits"] == [{"scope": "body", "line": 1, "acronym": "RCT",
+                                          "reason": "unread_definition_form"}]
+    # A cross-reference is a use, as "see" is in English.
+    assert findings("本研究的 RCT（見第二節）有效。\n") == [("body", 1, "undefined", "RCT")]
+
+
 def test_a_parenthetical_whose_words_do_not_spell_the_acronym_is_a_use() -> None:
     assert findings("The RCT (n = 120) ran. The LLM (see Section 2) helped.\n") == [
         ("body", 1, "undefined", "LLM"), ("body", 1, "undefined", "RCT")]
@@ -117,6 +126,7 @@ def _outcome(text: str) -> tuple[list[tuple], list[tuple]]:
     "Designs vary (e.g. randomized controlled trials, RCTs). A randomized controlled trial (RCT) ran.",
     "As reported (see also Smith et al., 2020, pp. 4, 6; WHO, 2019), the SEM held.",
     "Smith JA, Jones BC (2019) agreed, as did Lee KM et al. about the IRT.",
+    "Smith AB, McDonald EF, van der Berg GH (2020) agreed about the IRT.",
     "The World Health Organization [WHO] said so. The LLM helped.",
     "Randomized controlled trials (RCTs; Smith, 2020, Chapter 3) help. The RCT ended.",
     "The effect held, as in Figure 2. The RCT ran. A randomized controlled trial (RCT) is a design.",
@@ -158,6 +168,10 @@ def test_example_and_list_parentheticals_are_uses(text: str, expected: list[tupl
     ("The RCTs ended.\nRandomized controlled trials (RCTs; Smith, 2020) help.\n",
      "Randomized controlled trials"),
     ("The RCT ended.\nA *randomized controlled trial* (RCT) ran.\n", "randomized controlled trial"),
+    ("The eGFR fell.\nWe measured (the estimated glomerular filtration rate, eGFR).\n",
+     "estimated glomerular filtration rate"),
+    ("The T2D rose.\nPatients had type 2 diabetes (T2D).\n", "type 2 diabetes"),
+    ("The T2D rose.\nPatients had (type 2 diabetes, T2D).\n", "type 2 diabetes"),
 ])
 def test_the_expansion_is_the_shortest_run_that_spells_it(text: str, expansion: str) -> None:
     [finding] = check(text)["findings"]
@@ -248,6 +262,10 @@ def test_whole_token_matching() -> None:
     ("accented citation author", "As reported (WHO & Öztürk, 2020), it held.\n"),
     ("supplementary caption", "Figure S1. The RCT flow\n"),
     ("appendix table caption", "Table A.1. The SEM fit\n"),
+    ("dotted caption", "Figure 1.2. The RCT flow\n"),
+    ("compound surname initials", "Smith AB, McDonald EF (2020) reported this.\n"),
+    ("apostrophe and hyphen surnames", "O'Brien AB, Smith-Jones EF (2020) agreed.\n"),
+    ("surname particles", "Smith AB, van der Berg EF, Van Dyke GH (2020) agreed.\n"),
     ("statistical symbol", "The SD was 2.1 and the CI was narrow.\n"),
 ])
 def test_exclusions(label: str, text: str) -> None:
@@ -297,6 +315,12 @@ def test_a_fence_closes_only_on_a_matching_closer() -> None:
     text = ("````\nRCT\n```\nLLM\n~~~~\nSEM\n````  \nThe IRT held.\n"
             "```python\nNLP\n```python\nABC\n    ```\nXYZ\n```\nThe GLM fit.\n")
     assert findings(text) == [("body", 8, "undefined", "IRT"), ("body", 16, "undefined", "GLM")]
+
+
+def test_a_dotted_figure_number_opening_a_sentence_is_prose() -> None:
+    text = "Figure S1.2 shows the RCT arm.\n\nA randomized controlled trial (RCT) ran.\n"
+    assert findings(text) == [("body", 1, "defined_after_use", "RCT")]
+    assert findings("Table 2.1 lists the SEM fit.\n") == [("body", 1, "undefined", "SEM")]
 
 
 def test_sentence_start_word_before_an_acronym_is_not_an_author() -> None:
