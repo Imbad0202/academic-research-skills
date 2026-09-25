@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.22.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.22.1)
+[![Version](https://img.shields.io/badge/version-v3.22.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.22.2)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -254,7 +254,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，采用 **逐准则、证据锚定的叙事判断**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 与 Schema 6 package 一律为 `NOT_CALIBRATED`；完整 calibration 可产生有界候选 profile，但尚未接入 live review。不得以固定总分映射接受、小修、大修或退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.22.1)
+### Academic Pipeline (v3.22.2)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 规则（由 agent 按流程遵守，不是运行时保证）：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）把每一项审查意见对应到作者的修订主张，并记录复审是否验证通过。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -322,6 +322,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 这里只列最近三个版本。完整更新记录在英文版 [CHANGELOG.md](CHANGELOG.md)。到 v3.21.2 为止的简体中文版本摘要已冻结存放于 [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)，之后不再更新。
 
+### v3.22.2（2026-09-25）— 运行记录与交接检查、缩写检查、扩大 instruction/data 边界，以及路由与首页修复
+
+> **两个确定性检查由合成测试固定；提示层变更的效果尚未测量：**v3.22.2 新增运行记录（#887）。pipeline 有 passport 文件时，orchestrator 会把用户的初始指示、每个 checkpoint 的提问与用户原话的回答、步骤回执与文件哈希，追加到 passport 旁的本地记录文件。发生 compaction、续跑或 subagent 返回之后，`scripts/run_ledger.py report` 会比对记录与摘要或报告的声明，列出差异；现在它会自己以英文或繁体中文打印这份交接检查，并在写入记录时计算该条记录所指文件的哈希（#898）。记录文件保存用户的原话，`docs/DATA_FLOWS.md` 列出这个文件与删除方式。本版也新增 `scripts/check_acronyms.py`（#849，由 @reiropke 提议），不调用模型，报告未定义、先用后定义或重复定义的缩写；提示会让调用方在保存好的草稿与摘要上运行它，审稿时则把报告附在 Editorial Decision Letter 最后，作为参考附件，审稿决定、修订路线图与复审准则都不引用它。两个脚本都由合成测试固定；实际运行时是否写入记录、是否调用检查，尚未测量。instruction/data 边界现在覆盖派工与 passport 导入中的第三方文字（#890）、接收端通过自己的工具调用读到的文字，以及每个 skill 的主 session（#894）；lint 固定每一份副本，效果尚未测量（可选的 claim-audit 裁判提示也随之改变，旧提示的缓存判定不再沿用）。修复：路由核心现在也送达 plugin 与 skills 复制安装（#892）；模式惯用的输入缺失时，明确的请求仍视为明确（#889）；`/ars-lit-review` 不再把进行中的运行导向别的流程（#897）；修订教练不再把同行评审导入委员会往来变体（#854）；orchestrator 把「权威」skill 输出限定为交付物的归属（#888）；首页与 showcase 的说法与来源一致（#908）。路由结果来自每个 fixture 一个 session，只是初步验证，不代表比率。新增一个描述记录文件的 schema；没有任何既有 schema、指令模型或推理强度设置的变更。
+
 ### v3.22.1（2026-09-23）— 模型现况对齐（Opus 5.5）、引用检查加载与中文 APA 7 修复、Pi 包装器修正
 
 > **模型现况对齐与修复，新增提示层防线的效果尚未测量：**v3.22.1 在两个模型各自通读 Opus 5.5 system card 的审计之后，把 Claude Opus 5.5 与 Claude Fable 5.1 并列为受支持的 session 模型，审计没有退役任何防护（#883）。文档新增推理强度建议（Claude Code 让 Opus 5.5 以 `medium` 起步，重度任务应使用 `high` 及以上）、两个模型共用的一段标价换算，以及分层说明：阶梯顺序是厂商的产品排序，不是能力排序。card 指出 Opus 5.5 比先前的模型更常照做粘贴文字里的指令，因此修订教练现在把粘贴的审稿与委员会文字当作数据处理，并由 lint 固定；这道提示层防线的效果尚未测量。本版也修复模式加载与引用检查：13 个 plugin 模式命令直接调用其命名空间下的核心 skill，并从 plugin 根目录解析附带的参考文件，恢复引用检查的加载（#857）；中文 APA 7 检查会找出正文缺少的作者简称，保留歧义例外与完整的参考文献作者字段，只在有笔画排序颠倒的证据时才建议重排（#882）；引用检查整体也把可见的语法错误与未经核实的解析或来源声明分开（#882）；新增的英文、繁体中文与韩文触发词会把请求引导到引用检查，CI 也把每份 skill 描述限制在 1,024 个 code point 以内（#858、#864）。Pi 包装器可接受字符串数组形式的 system prompt（#880）。没有任何 schema、命令模型或推理强度设置的变更。
@@ -329,7 +333,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.22.0（2026-09-16）— 输出语言对契约、语系轨、plugin eval 套件与 Windows／传输修复
 
 > **加的是结构，证据保持有界：**v3.22.0 让一次运行可以通过注册表键控的 Schema 4 字段声明输出语言对，字段缺席时旧有文件逐字重现（#862 Phase 1、PR #869），并围绕它建立语系轨：@didacrios 贡献的 es-ES README 与保守的触发词、社区维护的语系包政策，以及单一 owner 的暂定申请路径。两套 `claude plugin eval` 套件（revision-coach、citation-check）与 reviewer-calibration harness 仅作为回归防线与派发基底发布，均不声称测得的提升或校准值。修复：`/ars-mark-read` 与其余五个锁点通过一个共用的 `msvcrt` 后端在 Windows 可用、OpenAI 请求不再发送 GPT-6 Astra 拒收的参数、受限的 Codex 传输拒绝 `effort=ultra`、审计来源记录实际的裁判身份、苏格拉底路径 F6 不再预选方向、无来源支撑的声明不能再靠 hedge 过关。README 只保留最近三版；Gartenberg 等人与 Wang、Li 等人加入 human-in-the-loop 锚点。Roadmap Phase 4（阶段级证据上限）本版未交付，窗口顺延。
-
-### v3.21.2（2026-09-06）— 模型现况对齐（Fable 5.1 / GPT-6 Astra）、检查点决策来源与 CJK 标题匹配修复
-
-> **对齐现况与决策来源，不是新能力：**v3.21.2 依据两份 2026 年 9 月的厂商 system card 对齐套件。`gpt-6-astra` 以 provisional 身份进入跨模型表（两条传输均如此），并依世代现况政策成为推荐的 OpenAI 验证模型；`gpt-5.6-sol` 保留其在 ChatGPT 订阅引用传输上的 validated 身份，本版不声称任何新的 bakeoff 结果。受限的 Codex 传输 reasoning-effort 集合新增 `ultra`。新增两道 guardrail，均为 prompt 层、由厂商文档而非 ARS 测量驱动：检查点决策来源（只有用户回合算决策；决策逐字转交子代理；风险 R11），以及供应商端监控或安全介入一律视为传输失败、永远不是判定。针对两份卡片的 harness 淘汰审计没有淘汰任何东西（0 条 prompt 文字淘汰；8 条 keep-as-debt 项目补上卡片引注）。修复：CJK 标题不再在四个索引解析器的精确标题门失败（#798），外层引号只在构成单一平衡单位时才剥除（#800）；autolink round-trip 测试明示其依赖（#801）；`check_surface_form_parity` 改为指名坏掉的环境而非 manifest；新增 skill 清单一致性 lint（#809）；R10 残余缺口去过时化（#813）；修正一行 MLA 规则（#805）。套件／pipeline → v3.21.2；deep-research → v2.12.1；academic-paper → v3.3.1；academic-paper-reviewer → v1.11.1。

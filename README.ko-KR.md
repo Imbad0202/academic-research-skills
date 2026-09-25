@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.22.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.22.1)
+[![Version](https://img.shields.io/badge/version-v3.22.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.22.2)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -261,7 +261,7 @@ You: "status"
 
 기준별 증거에 연결된 **서술형 판단**을 수행하는 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. 현재 live review와 Schema 6 package는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다. 고정 총점을 Accept / Minor Revision / Major Revision / Reject에 매핑하지 않습니다. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.22.1)
+### Academic Pipeline (v3.22.2)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 규칙(에이전트가 따르는 프로토콜이며 실행 시 보장이 아님): 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 MANDATORY이며 기록 없는 우회 경로가 없고(모든 오버라이드는 Stage 6를 위해 사용자 사유 기록을 요구), R&R Traceability Matrix(Schema 11)는 각 심사 의견을 저자의 수정 주장에 대응시키고 재심사에서 그것이 검증되었는지를 기록합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -352,6 +352,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 여기에는 최근 3개 릴리스만 실려 있습니다. 전체 변경 이력은 영어판 [CHANGELOG.md](CHANGELOG.md)를 참조하세요. v3.21.2까지의 한국어 릴리스 요약은 [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)에 동결 보관되며 이후 갱신되지 않습니다.
 
+### v3.22.2 (2026-09-25) — 실행 원장과 인계 점검, 약어 검사, instruction/data 경계 확대, 라우팅 및 첫 페이지 수정
+
+> **두 결정론적 검사는 합성 테스트로 고정, 프롬프트 수준 변경은 효과 미측정:** v3.22.2는 실행 원장을 추가합니다(#887). 파이프라인에 passport 파일이 있으면 orchestrator가 사용자의 초기 지시, 각 체크포인트의 질문과 사용자의 원문 답변, 단계 영수증, 파일 해시를 passport 옆의 로컬 원장에 덧붙입니다. compaction, 재개, subagent 반환 뒤에는 `scripts/run_ledger.py report`가 원장과 요약 또는 보고서의 주장을 대조해 차이를 나열합니다. 이제 이 스크립트가 인계 점검을 영어 또는 번체 중국어로 직접 출력하고, 항목을 기록할 때 그 항목이 가리키는 파일의 해시를 계산합니다(#898). 원장에는 사용자의 원문이 저장되므로 `docs/DATA_FLOWS.md`에 이 파일과 삭제 방법을 적어 두었습니다. 이번 릴리스는 `scripts/check_acronyms.py`도 추가합니다(#849, @reiropke 제안). 모델을 호출하지 않고 정의되지 않은 약어, 처음 사용한 뒤에 정의된 약어, 두 번 정의된 약어를 보고합니다. 프롬프트는 호출 측이 저장된 초안과 초록에 이를 실행하도록 하고, 심사에서는 보고서를 Editorial Decision Letter 끝에 참고용 첨부로 붙입니다. 심사 결정, 수정 로드맵, 재심사 기준은 이 첨부를 근거로 삼지 않습니다. 두 스크립트는 합성 테스트로 고정되어 있지만, 실제 실행에서 원장이 기록되는지와 검사가 호출되는지는 측정되지 않았습니다. instruction/data 경계는 디스패치와 passport 가져오기에 들어 있는 제3자 텍스트(#890), 수신 측이 자신의 도구 호출로 읽는 텍스트, 각 skill의 메인 session(#894)으로 넓어졌습니다. lint가 모든 사본을 고정하지만 효과는 측정되지 않았습니다(선택형 claim-audit 판정 프롬프트도 함께 바뀌어 이전 프롬프트의 캐시 판정은 재사용되지 않습니다). 수정: 라우팅 핵심이 plugin 및 skills 복사 설치에도 전달됩니다(#892). 모드의 일반적인 입력이 없어도 명시적 요청은 명시적으로 유지됩니다(#889). `/ars-lit-review`는 진행 중인 실행을 다른 워크플로로 안내하지 않습니다(#897). 수정 코치는 동료 심사를 위원회 서신 변형으로 보내지 않습니다(#854). orchestrator는 "권위 있는" skill 출력의 의미를 산출물 소유로 한정합니다(#888). 첫 페이지와 showcase의 서술이 출처와 일치합니다(#908). 라우팅 결과는 fixture마다 session 하나로 한 초기 확인이며 비율이 아닙니다. 원장을 기술하는 schema 하나가 추가되었고, 기존 schema, 명령 모델, 추론 강도 설정은 바뀌지 않았습니다.
+
 ### v3.22.1 (2026-09-23) — 모델 현황 정렬(Opus 5.5), citation-check 로딩 및 중국어 APA 7 수정, Pi 래퍼 수정
 
 > **모델 현황 정렬과 수리, 새 프롬프트 수준 방어는 효과 미측정:** v3.22.1은 두 모델이 각각 Opus 5.5 system card 전문을 읽은 감사를 거쳐 Claude Opus 5.5를 Claude Fable 5.1과 나란히 지원 session 모델로 지정합니다. 감사에서 퇴역한 가드레일은 없습니다(#883). 문서에는 추론 강도(effort) 지침(Claude Code는 Opus 5.5를 `medium`으로 시작하므로 무거운 작업에는 `high` 이상을 권장), 두 모델을 함께 다루는 정가 환산, 그리고 계층 설명(사다리 순서는 벤더의 제품 라인업 순서이지 능력 순위가 아님)을 추가했습니다. card에 따르면 Opus 5.5는 이전 모델보다 붙여넣은 텍스트 속 지시를 더 자주 따르므로, revision coach는 이제 붙여넣은 심사위원·위원회 텍스트를 데이터로 취급하며 lint로 고정됩니다. 이 프롬프트 수준 방어의 효과는 아직 측정되지 않았습니다. 모드 로딩과 인용 검사도 수리했습니다: 13개 plugin 모드 명령이 네임스페이스가 붙은 핵심 skill을 직접 호출하고 번들된 참조 파일을 plugin 루트에서 찾아 citation-check 로딩을 복구합니다(#857). 중국어 APA 7 검사는 본문 저자 약칭 누락을 잡아내고, 모호성 예외와 참고문헌 목록의 저자 필드를 온전히 보존하며, 획수 순서 역전의 근거가 있을 때만 재정렬을 제안합니다(#882). 인용 검사 전반도 눈에 보이는 구문 오류와 검증되지 않은 해석·출처 주장을 구분합니다(#882). 영어·번체 중국어·한국어 트리거 문구를 추가해 citation-check로 안내하며, CI가 각 skill 설명을 1,024 코드 포인트 이내로 제한합니다(#858, #864). Pi 래퍼는 문자열 배열 형태의 system prompt를 받아들입니다(#880). 스키마, 명령 모델, effort 설정 변경은 없습니다.
@@ -359,7 +363,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.22.0 (2026-09-16) — 출력 언어 쌍 계약, 로케일 트랙, plugin eval 스위트, Windows/전송 수정
 
 > **추가되는 것은 구조, 증거는 범위 제한 유지:** v3.22.0에서는 레지스트리 키 기반 Schema 4 필드로 한 번의 실행이 출력 언어 쌍을 선언할 수 있으며, 필드가 없으면 기존 파일이 그대로 재현됩니다(#862 Phase 1, PR #869). 그 주위에 로케일 트랙을 세웠습니다: @didacrios가 기여한 es-ES README와 보수적인 트리거 문구, 커뮤니티가 유지하는 로케일 팩 정책과 단독 소유자 잠정 신청 경로입니다. 두 `claude plugin eval` 스위트(revision-coach, citation-check)와 reviewer-calibration harness는 회귀 가드와 dispatch 기반으로만 출하되며, 측정된 향상이나 보정값을 주장하지 않습니다. 수정: `/ars-mark-read`와 나머지 다섯 잠금 지점이 공용 `msvcrt` 백엔드로 Windows에서 동작, OpenAI 요청은 GPT-6 Astra가 거부하는 매개변수를 보내지 않음, 격리된 Codex 전송은 `effort=ultra`를 거부, 감사 출처는 실제 판정자 신원을 기록, 소크라테스 경로 F6은 방향을 미리 고르지 않음, 근거 없는 주장은 hedge로 구제되지 않음. README는 최근 3개 릴리스만 유지하고, Gartenberg 외와 Wang, Li 외가 human-in-the-loop 앵커에 합류했습니다. Roadmap Phase 4(단계별 증거 상한)는 이번 릴리스에서 제공되지 않으며 기간은 이월됩니다.
-
-### v3.21.2 (2026-09-06) — 모델 현황 정렬(Fable 5.1 / GPT-6 Astra), 체크포인트 결정 출처, CJK 제목 매칭 수정
-
-> **새 기능이 아니라 현황 정렬과 출처 명시:** v3.21.2는 2026년 9월에 나온 두 벤더 system card에 스위트를 정렬합니다. `gpt-6-astra`는 두 전송 경로 모두에서 provisional로 교차 모델 표에 들어가며, 세대 현황 정책에 따라 권장 OpenAI 검증 모델이 됩니다. `gpt-5.6-sol`은 ChatGPT 구독 인용 전송 경로에서의 validated 상태를 유지하며, 새로운 bakeoff 결과는 주장하지 않습니다. 격리된 Codex 전송 경로의 reasoning-effort 집합에 `ultra`가 추가됩니다. 두 가지 가드레일을 추가하되 둘 다 프롬프트 수준이며 ARS 측정이 아닌 벤더 문서에 근거합니다. 체크포인트 결정 출처(사용자 턴만 결정으로 간주하고, 결정은 서브에이전트에 그대로 재전달. 위험 R11), 그리고 제공자 측 모니터링이나 안전 개입을 전송 실패로 다루고 결코 판정으로 보지 않는 규정입니다. 두 카드에 대한 harness-retirement 감사는 아무것도 폐기하지 않았습니다(프롬프트 문구 폐기 0건. keep-as-debt 8건에 카드 인용 추가). 수정: CJK 제목이 네 인덱스 리졸버의 정확 제목 게이트에서 더 이상 실패하지 않으며(#798), 바깥 괄호는 하나의 균형 잡힌 단위를 이룰 때만 제거합니다(#800). autolink 왕복 테스트가 의존성을 선언하고(#801), `check_surface_form_parity`는 매니페스트 대신 깨진 환경을 지목하며, skill 목록 일치 lint를 추가하고(#809), R10 잔여 격차를 최신화하고(#813), MLA 규칙 한 줄을 바로잡았습니다(#805). 스위트/pipeline → v3.21.2; deep-research → v2.12.1; academic-paper → v3.3.1; academic-paper-reviewer → v1.11.1.
