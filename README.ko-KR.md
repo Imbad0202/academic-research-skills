@@ -18,7 +18,7 @@
 
 그런 다음 `/ars-plan`을 실행해 소크라테스식 대화로 논문 구조를 짜보거나, 사전 요건과 전통적인 심볼릭 링크 방식을 보려면 [빠른 설치](#빠른-설치)로 이동하세요.
 
-> **AI는 부조종사이지 조종사가 아닙니다.** 이 도구는 논문을 대신 써 주지 않습니다. 참고문헌 탐색, 인용 형식 정리, 데이터 검증, 논리적 일관성 점검과 같은 반복적이고 소모적인 작업을 지원하여, 실제로 사람의 판단이 필요한 부분 — 질문 정의, 방법 선택, 데이터가 의미하는 바의 해석, 그리고 "나는 ~라고 주장한다" 다음에 오는 문장을 쓰는 일 — 에 집중할 수 있게 합니다.
+> **AI는 부조종사이지 조종사가 아닙니다.** 이 도구는 글의 초안을 쓸 수 있고, full 모드에서는 논문 전체의 초안도 씁니다. 하지만 결정은 사용자가 내리며, 파이프라인은 모든 단계에서 사용자의 확인을 기다립니다. 참고문헌 탐색, 인용 형식 정리, 데이터 검증, 논리적 일관성 점검과 같은 반복적이고 소모적인 작업을 지원하여, 실제로 사람의 판단이 필요한 부분(질문 정의, 방법 선택, 데이터가 의미하는 바의 해석, 그리고 "나는 ~라고 주장한다" 다음에 무엇을 쓸지 정하는 일)에 집중할 수 있게 합니다. 저자는 사용자이며, 제출하는 모든 주장에 대한 책임도 사용자에게 있습니다.
 >
 > 휴머나이저(humanizer)와 달리, 이 도구는 AI를 사용했다는 사실을 숨기도록 돕지 않습니다. 더 잘 쓰도록 돕습니다. Style Calibration은 과거 작업에서 사용자의 문체를 학습합니다. Writing Quality Check는 기계가 생성한 듯한 느낌을 주는 패턴을 잡아냅니다. 목표는 품질이지 부정행위가 아닙니다.
 
@@ -30,7 +30,7 @@ ARS는 **AI의 지원을 받는 인간 연구자가 인간이나 AI가 단독으
 
 [**Zhao et al.**](https://arxiv.org/abs/2605.07723) (2026-05)은 arXiv, bioRxiv, SSRN, PMC의 250만 편 논문에 걸친 1억 1,100만 건의 참고문헌을 대규모로 점검했습니다. 이들의 보수적 추정치는 2025년 한 해에만 146,932건의 환각된 인용이며, 2024년 중반에 변곡점이 관찰되었습니다. bioRxiv-to-PMC 쌍에 대해서는 85.3%의 preprint-to-published 지속성을 보고합니다. 이 논문은 "인용된 참고문헌이 실제로는 뒷받침하지 않는 주장을 지지하기 위해 배치된 진짜 인용"을 미해결 과제로 기술합니다. ARS v3.7.1은 출처 provenance를 위한 trust-chain frontmatter를 추가했고, v3.7.3은 향후 주장 수준 감사를 위한 locator 인프라(3계층 인용 앵커)를 추가하고 인용 시점에 참고용 위험 신호를 표시합니다(ARS는 이 주장-충실성 격차를 내부적으로 "L3"로 라벨링합니다. 이는 ARS 용어이며 논문의 용어가 아닙니다). v3.7.x는 Zhao et al.의 코퍼스 규모 발견에 동기를 두며, ARS 자체에 대한 코퍼스 규모 평가는 향후 과제로 남아 있습니다.
 
-v3.8은 L3 격차의 나머지 절반을 메웁니다. v3.7.3은 모든 인용이 locator 앵커를 갖도록 했고, v3.8은 각 앵커에 대해 인용된 출처를 가져와 주장이 실제로 뒷받침되는지 판단하는 옵트인 감사 패스(`ARS_CLAIM_AUDIT=1`)를 추가합니다. 다섯 개의 새로운 HIGH-WARN 클래스(claim-not-supported, negative-constraint-violation, fabricated-reference, anchorless, constraint-violation-uncited)의 출력을 formatter terminal hard gate가 거부합니다. 캘리브레이션은 FNR<0.15 + FPR<0.10 합격 임계값을 갖는 20개 항목으로 구성된 골드셋으로 제공됩니다. 단계적 활성화 계획은 v3.8 명세 §5에 따라 캘리브레이션 후 증거가 나올 때까지 보류됩니다.
+v3.8은 L3 격차의 나머지 절반을 메웁니다. v3.7.3은 모든 인용이 locator 앵커를 갖도록 했고, v3.8은 각 앵커에 대해 인용된 출처를 가져와 주장이 실제로 뒷받침되는지 판단하는 옵트인 감사 패스(`ARS_CLAIM_AUDIT=1`)를 추가합니다. 다섯 개의 새로운 HIGH-WARN 클래스(claim-not-supported, negative-constraint-violation, fabricated-reference, anchorless, constraint-violation-uncited)의 출력을 formatter terminal hard gate가 거부합니다. 캘리브레이션 러너는 25개 항목의 합성 골드셋과 FNR<0.15 + FPR<0.10 합격 임계값과 함께 제공됩니다. 함께 제공되는 테스트는 골드 레이블을 그대로 돌려주는 스텁 심판으로 러너를 실행하므로, 검증 대상은 도구 자체이지 실제 심판이 아닙니다. 실제 심판의 캘리브레이션 결과는 아직 기록되지 않았으며, 단계적 활성화 계획은 v3.8 명세 §5에 따라 그 결과를 기다립니다.
 
 v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfister & Yoon, 2026, Google)에서 영감을 받았습니다: Semantic Scholar API 검증, anti-leakage 프로토콜, VLM 그림 검증, 수정 궤적 추적. 현재 ARS는 수치 델타 대신 기준별 증거 기반 서술형 회귀 점검을 수행하며, typed trajectory carrier는 아직 구현되지 않았습니다.
 
@@ -74,7 +74,7 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 ## 성능 & 비용
 
-**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — 모드별 토큰 예산, 전체 파이프라인 추정치(15,000 단어 논문 기준 약 $4–6), 권장 Claude Code 설정(Auto 모드. Agent Team 선택).
+**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — 모드별 토큰 예산, 전체 파이프라인 추정치(15,000 단어 논문 기준, 2026-09 정가로 약 US$3–7, 캐시 할인 전), 권장 Claude Code 설정(Auto 모드. Agent Team 선택).
 
 ## 가이드 & 글
 
@@ -101,7 +101,9 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 ## 쇼케이스: 실제 파이프라인 출력
 
-실제 10단계 파이프라인 실행에서 나온 완전한 산출물 — 동료 심사 보고서, 무결성 검증 보고서, 최종 논문 — 을 확인하세요:
+실제 파이프라인 실행에서 나온 완전한 산출물(동료 심사 보고서, 무결성 검증 보고서, 최종 논문)을 확인하세요:
+
+> **2026년 3월의 기록이며, 현재 성능이 아닙니다.** 이 실행(2026-03-07~03-08)은 academic-pipeline v2.3으로 이루어졌으며, ARS가 v3.3에서 Semantic Scholar 대조를, v3.11에서 결정론적 4개 인덱스 인용 게이트를 추가하기 전입니다. 여기의 수치는 그 버전을 나타내며, 현재 게이트는 이 논문에서 아직 측정되지 않았습니다. 저자란이 Claude(Anthropic)로 되어 있는 것은 연구자가 이 실험 중에 그렇게 요청했기 때문입니다. 이 논문은 Anthropic의 출판물이 아니며, ARS는 도구가 연구자를 대신하지 않고 저자권을 주장하지도 않는다는 입장입니다([POSITIONING.md](POSITIONING.md#what-this-is-not) 참조).
 
 **[모든 파이프라인 산출물 둘러보기 →](examples/showcase/)**
 
@@ -109,13 +111,13 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 |---|---|
 | [Final Paper (EN)](examples/showcase/full_paper_apa7.pdf) | APA 7.0 형식, LaTeX 컴파일 |
 | [Final Paper (ZH)](examples/showcase/full_paper_zh_apa7.pdf) | 중국어 버전, APA 7.0 |
-| [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: 날조된 참고문헌 15건 + 통계 오류 3건 적발 |
+| [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: 문제 있는 참고문헌 15건(서지 오류 8건, 날조 의심 6~8건) + 통계 오류 3건 지적 |
 | [Integrity Report — Final](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5: 회귀 없음 확인 |
 | [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 리뷰어 3명 + Devil's Advocate |
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | 수정 후 검증 |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | 후속 심사 |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | 항목별 저자 응답 |
-| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | 독립적 전체 참고문헌 감사: 3회의 무결성 점검이 놓친 21/68 문제 발견 |
+| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Claude Code + WebSearch로 별도 수행한 전체 참고문헌 감사: 최종 68건 중 21건에 3회의 무결성 점검이 놓친 문제가 남아 있음 |
 
 ---
 
@@ -261,7 +263,7 @@ You: "status"
 
 ### Academic Pipeline (v3.22.1)
 
-무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 보장: 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 MANDATORY이며 기록 없는 우회 경로가 없고(모든 오버라이드는 Stage 6를 위해 사용자 사유 기록을 요구), R&R Traceability Matrix(Schema 11)는 저자의 수정 주장을 독립적으로 검증합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
+무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 규칙(에이전트가 따르는 프로토콜이며 실행 시 보장이 아님): 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 MANDATORY이며 기록 없는 우회 경로가 없고(모든 오버라이드는 Stage 6를 위해 사용자 사유 기록을 요구), R&R Traceability Matrix(Schema 11)는 각 심사 의견을 저자의 수정 주장에 대응시키고 재심사에서 그것이 검증되었는지를 기록합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
 ---
 

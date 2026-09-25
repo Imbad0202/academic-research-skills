@@ -18,7 +18,7 @@
 
 その後、`/ars-plan` を試してソクラテス式対話で論文構成を整理するか、前提条件と従来のシンボリックリンク方式については [クイックインストール](#クイックインストール) を参照してください。
 
-> **AI はあなたの副操縦士であり、操縦士ではありません。** このツールはあなたの代わりに論文を書きません。参考文献の探索、引用のフォーマット、データ検証、論理的整合性チェックといった泥臭い作業を引き受けることで、本当に頭を使う必要のある部分 — 問いの定義、手法の選択、データの意味の解釈、「私はこう主張する」に続く文を書くこと — にあなたが集中できるようにします。
+> **AI はあなたの副操縦士であり、操縦士ではありません。** 文章の下書きはでき、full モードでは論文全体を下書きすることもあります。しかし判断を下すのはあなたで、パイプラインは各ステージであなたの確認を待ちます。参考文献の探索、引用のフォーマット、データ検証、論理的整合性チェックといった泥臭い作業を引き受けることで、本当に頭を使う必要のある部分（問いの定義、手法の選択、データの意味の解釈、「私はこう主張する」の後に何を続けるかの判断）にあなたが集中できるようにします。著者はあなたであり、提出するすべての主張に責任を負うのもあなたです。
 >
 > 「humanizer」とは異なり、このツールは AI を使った事実を隠すためのものではありません。より良い文章を書くための助けです。Style Calibration は過去の作品からあなたの声を学習します。Writing Quality Check は機械的に見える文章のパターンを検出します。目的は品質であって、ごまかしではありません。
 
@@ -30,7 +30,7 @@ ARS は **人間の研究者を AI が支援する形式が、どちらか単独
 
 [**Zhao ら**](https://arxiv.org/abs/2605.07723)（2026-05）は arXiv、bioRxiv、SSRN、PMC の 2.5M 論文にわたる 111M 件の参考文献を監査しました。彼らの保守的見積りでは、2025年だけで 146,932 件のハルシネーション引用が観測され、2024年中頃に変曲点が観測されています。bioRxiv-to-PMC ペアリングでは、プレプリントから出版物への持続率は 85.3% と報告されています。論文は「引用された参考文献が実際には主張していない主張を支持するために配置された実在の引用」を未解決の課題として記述しています。ARS v3.7.1 はソース来歴のための trust-chain frontmatter を追加し、v3.7.3 は将来の主張レベル監査のためのロケーターインフラストラクチャ（三層引用アンカー）を追加し、引用時に advisory リスクシグナルを表面化します（ARS は主張忠実性ギャップを内部で「L3」とラベル付けしています。これは論文の用語ではなく ARS の用語です）。v3.7.x は Zhao らのコーパス規模の発見に動機付けられています。ARS 自体のコーパス規模評価は今後の課題として残されています。
 
-v3.8 は L3 ギャップの後半を閉じます。v3.7.3 は全引用にロケーターアンカーを持たせ、v3.8 はオプトインの監査パス（`ARS_CLAIM_AUDIT=1`）を追加します。これは各アンカーに対して引用元を取得し、主張が実際に裏付けられているかを判断します。5 つの新しい HIGH-WARN クラス（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）は、formatter ターミナルハードゲートを通じて出力を gate-refuse します。キャリブレーションは 20-tuple のゴールドセットと共に FNR<0.15 + FPR<0.10 の受容閾値で出荷されます。ramp-on 計画は v3.8 spec §5 に従いキャリブレーション後の証拠まで保留されます。
+v3.8 は L3 ギャップの後半を閉じます。v3.7.3 は全引用にロケーターアンカーを持たせ、v3.8 はオプトインの監査パス（`ARS_CLAIM_AUDIT=1`）を追加します。これは各アンカーに対して引用元を取得し、主張が実際に裏付けられているかを判断します。5 つの新しい HIGH-WARN クラス（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）は、formatter ターミナルハードゲートを通じて出力を gate-refuse します。キャリブレーションランナーは 25-tuple の合成ゴールドセットと FNR<0.15 + FPR<0.10 の受容閾値と共に出荷されます。同梱のテストはゴールドラベルをそのまま返すスタブのジャッジでランナーを動かすため、検証しているのはツールであり、実際のジャッジではありません。実ジャッジによるキャリブレーション結果はまだ記録されておらず、ramp-on 計画は v3.8 spec §5 に従いその結果を待ちます。
 
 v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）に触発されました: Semantic Scholar API 検証、アンチリーケージプロトコル、VLM 図表検証、改訂軌跡追跡。ARS の現行実装は、数値デルタではなく、基準ごとの証拠に基づくナラティブな退行チェックを行います。型付き軌跡キャリアは未実装です。
 
@@ -73,7 +73,7 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 ## パフォーマンス＆コスト
 
-**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — モードごとのトークン予算、フルパイプライン見積り（15k 語の論文で約 $4-6）、推奨 Claude Code 設定（Auto モード; Agent Team オプション）。
+**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — モードごとのトークン予算、フルパイプライン見積り（15k 語の論文で、2026-09 の定価で約 US$3〜7、キャッシュ割引前）、推奨 Claude Code 設定（Auto モード; Agent Team オプション）。
 
 ## ガイド＆記事
 
@@ -100,7 +100,9 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 ## ショーケース: 実際のパイプライン出力
 
-実際の 10 ステージパイプライン実行からの完全な成果物を参照してください — ピアレビューレポート、整合性検証レポート、最終論文:
+実際のパイプライン実行からの完全な成果物（ピアレビューレポート、整合性検証レポート、最終論文）を参照してください:
+
+> **2026 年 3 月の記録であり、現在の性能ではありません。** この実行（2026-03-07〜03-08）は academic-pipeline v2.3 によるもので、ARS が v3.3 で Semantic Scholar 照合を、v3.11 で決定論的な 4 インデックス引用ゲートを追加する前のものです。ここの数値はその版を表しており、現行のゲートはこの論文ではまだ測定されていません。著者欄が Claude（Anthropic）になっているのは、研究者がこの実験中にそう依頼したためです。この論文は Anthropic の出版物ではありません。ARS の位置づけは、ツールは研究者に取って代わらず、著者であるとも主張しないというものです（[POSITIONING.md](POSITIONING.md#what-this-is-not) を参照）。
 
 **[すべてのパイプライン成果物を見る →](examples/showcase/)**
 
@@ -108,13 +110,13 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 |---|---|
 | [Final Paper (EN)](examples/showcase/full_paper_apa7.pdf) | APA 7.0 フォーマット、LaTeX コンパイル済み |
 | [Final Paper (ZH)](examples/showcase/full_paper_zh_apa7.pdf) | 中国語版、APA 7.0 |
-| [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: 捏造参照 15 件 + 統計エラー 3 件を捕捉 |
+| [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: 問題のある参照 15 件（書誌エラー 8 件、捏造の疑い 6〜8 件）+ 統計エラー 3 件を指摘 |
 | [Integrity Report — Final](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5: ゼロリグレッションを確認 |
 | [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 3 Reviewers + Devil's Advocate |
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | 改訂後の検証 |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | フォローアップレビュー |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | ポイントごとの著者回答 |
-| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | 独立した完全参照監査: 3 回の整合性チェックで見逃された 21/68 件の問題を発見 |
+| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Claude Code + WebSearch で別途行った全参照監査: 最終的な 68 件のうち 21 件に、3 回の整合性チェックで見逃された問題が残っていた |
 
 ---
 
@@ -254,7 +256,7 @@ You: "status"
 
 ### Academic Pipeline（v3.22.1）
 
-整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプライン保証: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）は MANDATORY であり、記録されないバイパス経路は存在しない（すべてのオーバーライドは Stage 6 のためにユーザーの理由の記録を要する）。R&R Traceability Matrix（Schema 11）は著者の改訂主張を独立に検証する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
+整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプラインのルール（エージェントが従うプロトコルであり、実行時の保証ではない）: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）は MANDATORY であり、記録されないバイパス経路は存在しない（すべてのオーバーライドは Stage 6 のためにユーザーの理由の記録を要する）。R&R Traceability Matrix（Schema 11）は各査読コメントを著者の改訂主張に対応づけ、再審査でそれが検証されたかどうかを記録する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
 ---
 

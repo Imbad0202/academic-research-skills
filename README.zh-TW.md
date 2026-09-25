@@ -18,7 +18,7 @@
 
 裝完跑 `/ars-plan`，ARS 會用蘇格拉底對話幫你規劃章節結構。需要前置條件或傳統 symlink 安裝請看 [快速安裝](#快速安裝)。
 
-> **AI 是你的副駕駛，不是機長。** 這工具不會幫你寫論文。它處理苦工 — 搜文獻、排格式、驗數據、查邏輯一致性 — 讓你專注在真正需要你腦子的事：定義問題、選方法、詮釋數據的意義、寫出「我認為」後面那句話。
+> **AI 是你的副駕駛，不是機長。** 它可以起草文字，full mode 甚至會起草整篇論文；但決定權在你，pipeline 每個階段都會停下來等你確認。它處理苦工（搜文獻、排格式、驗數據、查邏輯一致性），讓你專注在真正需要你腦子的事：定義問題、選方法、詮釋數據的意義、決定「我認為」後面要接什麼。作者是你，送出的每一個主張都由你負責。
 >
 > 跟 humanizer 不同，這工具不是幫你隱藏用 AI 協作的事實，而是幫你把關文章品質。風格校準從你過去的文章學習你的聲音，寫作品質檢查抓出讓文字讀起來像機器產的模式。目標是品質，不是遮掩。
 
@@ -30,7 +30,7 @@ ARS 建立在這個前提上：**人類研究者 + AI 的組合，比純自動�
 
 [**Zhao 等人**](https://arxiv.org/abs/2605.07723)（2026-05）盤點了 arXiv、bioRxiv、SSRN、PMC 上 250 萬篇論文裡的 1.11 億筆引用，保守估計 2025 年單年就有 146,932 筆幻覺引用，並觀察到 2024 年中是上升的拐點；bioRxiv-to-PMC 這條配對的「預印本進到正式發表」幻覺存活率達 85.3%。他們把「真實引用被用來支撐被引文獻其實沒有提出的主張」描述為當前未解的問題。ARS v3.7.1 為來源 provenance 加上 trust-chain frontmatter，v3.7.3 為未來的 claim-level 稽核鋪上 locator 基礎建設（三層引用 anchor），並在引用時段帶出 advisory 風險訊號（ARS 內部把這條 claim-faithfulness 缺口標記為「L3」，此為 ARS 的用詞，不是論文的用詞）。v3.7.x 的設計動機來自 Zhao 等人的 corpus-scale 發現；ARS 本身的 corpus-scale 評估仍是未來工作。
 
-v3.8 補上 L3 缺口的另一半。v3.7.3 讓每一筆引用都帶 locator anchor，v3.8 在這個基礎上加一道 opt-in 稽核（`ARS_CLAIM_AUDIT=1`）：抓回每一個 anchor 指向的原始文本，判斷論文裡的 claim 是否真有被該引用支撐。五類新的 HIGH-WARN annotation（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）會在 formatter terminal hard gate 直接攔下輸出。Calibration 隨 release 出 20 筆 gold set，採 FNR<0.15、FPR<0.10 雙閾值；正式放大投入前要先有 calibration 證據（v3.8 spec §5）。
+v3.8 補上 L3 缺口的另一半。v3.7.3 讓每一筆引用都帶 locator anchor，v3.8 在這個基礎上加一道 opt-in 稽核（`ARS_CLAIM_AUDIT=1`）：抓回每一個 anchor 指向的原始文本，判斷論文裡的 claim 是否真有被該引用支撐。五類新的 HIGH-WARN annotation（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）會在 formatter terminal hard gate 直接攔下輸出。Calibration runner 隨 release 附一組 25 筆的合成 gold set，採 FNR<0.15、FPR<0.10 雙閾值。隨附的測試用的是直接回傳標準答案的替身裁判，所以它驗證的是工具本身，不是真正的 AI 裁判；目前還沒有真裁判的 calibration 結果，正式放大投入要等這份證據（v3.8 spec §5）。
 
 [**Ren 等人**](https://arxiv.org/abs/2607.13104)（2026，*Self-Improvements in Modern Agentic Systems: A Survey*）補上第三個、survey 層級的錨點。其科學發現章節的綜合結論（§7.4）指出：發現型 agent 難以自行驗證 novelty、正確性與可重現性，反而可能鑽弱代理指標的漏洞；證據管理必須跨異質工具與文獻維持；並帶有治理疑慮——「證據薄弱時，科學寫作也會放大錯誤資訊」。其生成迴圈章節（§5.1–§5.2）把人工稽核與保留人類標註列為自生成評估迴圈的實務防護；歷史章節（§2.2）則記下同一課題最早的版本：Lenat 的 EURISKO 的實務成功高度依賴使用者充當外部評估訊號、修剪無效的 heuristic 漂移——survey 明言此限制延續到現代 agentic 系統。ARS 引用這篇 survey 作為 human-in-the-loop 立場的設計依據，而非「人機協作必然勝過全自動」的實證證明；survey 對 ARS 可落地的增量記錄在 #539–#541 與 #547–#550。
 
@@ -79,7 +79,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 ## 效能與費用
 
-**👉 [docs/PERFORMANCE.zh-TW.md](docs/PERFORMANCE.zh-TW.md)** — 各模式 token 預算、完整 pipeline 估算（一篇 15k 字論文約 ~$4–6），以及建議的 Claude Code 設定（Auto 模式；Agent Team 選用）。
+**👉 [docs/PERFORMANCE.zh-TW.md](docs/PERFORMANCE.zh-TW.md)** — 各模式 token 預算、完整 pipeline 估算（一篇 15k 字論文，以 2026-09 牌價計約 US$3–7，未計 cache 折扣），以及建議的 Claude Code 設定（Auto 模式；Agent Team 選用）。
 
 ## 使用指南與文章
 
@@ -106,7 +106,9 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 ## 實際產出展示
 
-查看完整 10 階段 pipeline 的實際產出 — 包含**同儕審查報告、誠信驗證報告、完稿論文**：
+查看一次完整 pipeline 執行的實際產出，包含**同儕審查報告、誠信驗證報告、完稿論文**：
+
+> **這是 2026 年 3 月的紀錄，不代表現在的表現。** 這次執行（2026-03-07 至 03-08）用的是 academic-pipeline v2.3，當時 ARS 還沒有在 v3.3 加入 Semantic Scholar 核對，也還沒有在 v3.11 加入確定性的四索引引用閘門。這裡的數字描述的是那個版本，現行閘門還沒有在這篇論文上量過。作者欄寫 Claude（Anthropic），是因為研究者在這次實驗中這樣要求。這篇論文不是 Anthropic 的出版品；ARS 的定位是工具不取代研究者，也不主張作者身分（見 [POSITIONING.md](POSITIONING.md#what-this-is-not)）。
 
 **[瀏覽所有 pipeline 產出 →](examples/showcase/)**
 
@@ -114,13 +116,13 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 |---|---|
 | [完稿論文（英文）](examples/showcase/full_paper_apa7.pdf) | APA 7.0 格式，LaTeX 編譯 |
 | [完稿論文（中文）](examples/showcase/full_paper_zh_apa7.pdf) | 中文版，APA 7.0 |
-| [誠信報告 — 審稿前](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5：抓出 15 個虛構引用 + 3 個統計錯誤 |
+| [誠信報告 — 審稿前](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5：標出 15 筆有問題的引用（8 筆書目錯誤、6–8 筆疑似虛構）+ 3 個統計錯誤 |
 | [誠信報告 — 最終](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5：確認零回歸 |
 | [同儕審查第一輪](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 3 審查者 + 魔鬼代言人 |
 | [複審](examples/showcase/stage3prime_rereview_report.pdf) | 修訂後驗證審查 |
 | [同儕審查第二輪](examples/showcase/stage3_review_report_r2.pdf) | 追蹤審查 |
 | [回覆審查意見](examples/showcase/response_to_reviewers_r2.pdf) | 逐點回覆 |
-| [出版後稽核報告](examples/showcase/post_publication_audit_2026-03-09.pdf) | 獨立全引用稽核：發現 21/68 篇問題，通過了 3 輪誠信審查仍漏網 |
+| [出版後稽核報告](examples/showcase/post_publication_audit_2026-03-09.pdf) | 另行以 Claude Code + WebSearch 稽核全部引用：最後 68 筆中仍有 21 筆有問題，3 輪誠信審查都沒抓到 |
 
 ---
 
@@ -260,7 +262,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 ### Academic Pipeline (v3.22.1)
 
-10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 保證：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）為 MANDATORY 且沒有不留紀錄的繞過路徑（所有覆寫都須記錄使用者理由、供 Stage 6 使用）；R&R 追溯矩陣（Schema 11）獨立驗證作者修訂宣稱。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
+10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 規則（由 agent 依流程遵守，不是執行期保證）：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）為 MANDATORY 且沒有不留紀錄的繞過路徑（所有覆寫都須記錄使用者理由、供 Stage 6 使用）；R&R 追溯矩陣（Schema 11）把每一項審查意見對應到作者的修訂宣稱，並記錄複審是否驗證通過。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
 ---
 

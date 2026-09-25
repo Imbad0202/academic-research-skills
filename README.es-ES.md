@@ -18,7 +18,7 @@ Un conjunto completo de skills para Claude Code dedicadas a la investigación ac
 
 Después prueba `/ars-plan` para revisar la estructura de tu artículo mediante diálogo socrático, o ve directamente a [Instalación rápida](#instalación-rápida) si necesitas los prerrequisitos y el flujo tradicional con enlaces simbólicos.
 
-> **La IA es tu copiloto, no el piloto.** Esta herramienta no escribe tu artículo por ti. Se ocupa del trabajo pesado: buscar referencias, formatear citas, verificar datos, comprobar la coherencia lógica. Así puedes concentrarte en lo que de verdad requiere tu cabeza: definir la pregunta, elegir el método, interpretar qué significan los datos y escribir la frase que va después de «sostengo que».
+> **La IA es tu copiloto, no el piloto.** Puede redactar borradores, incluido un artículo completo en el modo full, pero las decisiones son tuyas y el pipeline se detiene en cada etapa para que las confirmes. Se ocupa del trabajo pesado: buscar referencias, formatear citas, verificar datos, comprobar la coherencia lógica. Así puedes concentrarte en lo que de verdad requiere tu cabeza: definir la pregunta, elegir el método, interpretar qué significan los datos y decidir qué va después de «sostengo que». La autoría es tuya, y respondes de cada afirmación que envíes.
 >
 > A diferencia de un humanizador, esta herramienta no te ayuda a ocultar que has usado IA. Te ayuda a escribir mejor. Style Calibration aprende tu voz a partir de trabajos anteriores. Writing Quality Check detecta los patrones que hacen que un texto se sienta generado por una máquina. El objetivo es la calidad, no hacer trampa.
 
@@ -30,7 +30,7 @@ ARS parte de la premisa de que **un investigador humano aumentado por IA evita e
 
 [**Zhao et al.**](https://arxiv.org/abs/2605.07723) (2026-05) auditó 111 M de referencias en 2,5 M de artículos de arXiv, bioRxiv, SSRN y PMC. Su estimación conservadora es de 146.932 citas alucinadas solo en 2025, con un punto de inflexión observado a mediados de 2024; para el emparejamiento bioRxiv-PMC reportan una persistencia del 85,3 % de preprint a publicación. El artículo describe como problema abierto el uso de «citas reales desplegadas para sostener afirmaciones que las referencias citadas no sostienen realmente». ARS v3.7.1 añadió trust-chain frontmatter para la procedencia de las fuentes; v3.7.3 añadió infraestructura de localizadores (anclas de cita en tres capas) para futuras auditorías a nivel de afirmación y muestra señales de riesgo advertidas en el momento de citar (ARS llama internamente «L3» a esa brecha de fidelidad entre afirmación y fuente; es terminología de ARS, no del artículo). v3.7.x responde a los hallazgos a escala de corpus de Zhao et al.; la evaluación a escala de corpus del propio ARS sigue siendo trabajo futuro.
 
-v3.8 cierra la segunda mitad de la brecha L3. v3.7.3 hizo que cada cita llevara un ancla de localizador; v3.8 añade una pasada de auditoría opcional (`ARS_CLAIM_AUDIT=1`) que recupera la fuente citada contra cada ancla y juzga si la afirmación está realmente sostenida. Cinco nuevas clases HIGH-WARN (claim-not-supported, negative-constraint-violation, fabricated-reference, anchorless, constraint-violation-uncited) bloquean mediante gate la salida de la hard gate terminal del formatter. La calibración se publica como un gold set de 20 tuplas con umbrales de aceptación FNR<0,15 + FPR<0,10; el plan de ramp-on se aplaza hasta tener evidencia post-calibración, según la especificación de v3.8 §5.
+v3.8 cierra la segunda mitad de la brecha L3. v3.7.3 hizo que cada cita llevara un ancla de localizador; v3.8 añade una pasada de auditoría opcional (`ARS_CLAIM_AUDIT=1`) que recupera la fuente citada contra cada ancla y juzga si la afirmación está realmente sostenida. Cinco nuevas clases HIGH-WARN (claim-not-supported, negative-constraint-violation, fabricated-reference, anchorless, constraint-violation-uncited) bloquean mediante gate la salida de la hard gate terminal del formatter. Un runner de calibración se publica con un gold set sintético de 25 tuplas y umbrales de aceptación FNR<0,15 + FPR<0,10. Su test incluido ejecuta el runner con un juez simulado que devuelve las etiquetas del gold set, así que comprueba la herramienta y no un juez real; todavía no hay registrado ningún resultado de calibración con un juez real, y el plan de ramp-on espera a tenerlo, según la especificación de v3.8 §5.
 
 [**Ren et al.**](https://arxiv.org/abs/2607.13104) (2026, *Self-Improvements in Modern Agentic Systems: A Survey*) aporta una tercera ancla, a nivel de survey. Su síntesis sobre descubrimiento científico (§7.4) concluye que los agentes de descubrimiento no pueden verificar por sí mismos novedad, corrección o reproducibilidad y que pueden apoyarse en proxies débiles, que deben gestionar evidencia entre herramientas y literaturas heterogéneas y que plantean problemas de gobernanza: "la escritura científica también puede amplificar desinformación cuando la evidencia es débil". Sus capítulos sobre el bucle de generación (§5.1–§5.2) incluyen la auditoría humana y los anclas humanas conservadas entre las salvaguardas prácticas para bucles de evaluación autogenerados, y su capítulo histórico (§2.2) registra la forma más antigua de esa misma lección: el éxito práctico de EURISKO de Lenat dependía en gran medida de que el usuario actuara como señal externa de evaluación, podando la deriva improductiva de heurísticas; una limitación que el survey documenta como persistente en los sistemas agénticos modernos. ARS cita el survey como justificación de diseño de su postura de humano en el bucle, no como prueba empírica de que los pipelines con humano en el bucle superen a los autónomos; las mejoras accionables del survey para ARS se siguen en #539–#541 y #547–#550.
 
@@ -86,7 +86,7 @@ El documento de arquitectura sustituye a la extensa descripción del pipeline qu
 
 ## Rendimiento y coste
 
-**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — presupuestos de tokens por modo, estimación del pipeline completo (unos 4–6 $ por un artículo de 15k palabras) y ajustes recomendados de Claude Code (Auto mode; Agent Team opcional).
+**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — presupuestos de tokens por modo, estimación del pipeline completo (unos 3–7 US$ por un artículo de 15k palabras a precios de lista de 2026-09, antes de descuentos de caché) y ajustes recomendados de Claude Code (Auto mode; Agent Team opcional).
 
 ## Guías y artículos
 
@@ -115,7 +115,9 @@ El documento de arquitectura sustituye a la extensa descripción del pipeline qu
 
 ## Escaparate: salida real del pipeline
 
-Consulta los artefactos completos de una ejecución real del pipeline de 10 etapas: informes de revisión por pares, informes de verificación de integridad y el artículo final.
+Consulta los artefactos completos de una ejecución real del pipeline: informes de revisión por pares, informes de verificación de integridad y el artículo final.
+
+> **Un registro de marzo de 2026, no el rendimiento actual.** Esta ejecución (del 2026-03-07 al 03-08) usó academic-pipeline v2.3, antes de que ARS añadiera la comprobación con Semantic Scholar en v3.3 y la puerta determinista de citas con cuatro índices en v3.11. Sus cifras describen esa versión, y las puertas actuales no se han medido con este artículo. La autoría figura a nombre de Claude (Anthropic) porque la persona investigadora lo pidió durante el experimento. El artículo no es una publicación de Anthropic, y la posición de ARS es que la herramienta no sustituye a quien investiga ni reclama la autoría (consulta [POSITIONING.md](POSITIONING.md#what-this-is-not)).
 
 **[Ver todos los artefactos del pipeline →](examples/showcase/)**
 
@@ -123,13 +125,13 @@ Consulta los artefactos completos de una ejecución real del pipeline de 10 etap
 |---|---|
 | [Final Paper (EN)](examples/showcase/full_paper_apa7.pdf) | Formateado en APA 7.0, compilado con LaTeX |
 | [Final Paper (ZH)](examples/showcase/full_paper_zh_apa7.pdf) | Versión en chino, APA 7.0 |
-| [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Etapa 2.5: detectó 15 referencias fabricadas + 3 errores estadísticos |
+| [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Etapa 2.5: señaló 15 referencias con problemas (8 con errores bibliográficos, 6–8 probablemente fabricadas) + 3 errores estadísticos |
 | [Integrity Report — Final](examples/showcase/integrity_report_stage4.5.pdf) | Etapa 4.5: cero regresiones confirmadas |
 | [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 3 revisores + Devil's Advocate |
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | Verificación tras las revisiones |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | Revisión de seguimiento |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | Respuesta puntual de los autores |
-| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Auditoría independiente de todas las referencias: encontró 21 de 68 problemas que se escaparon en 3 rondas de comprobaciones de integridad |
+| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Auditoría de todas las referencias hecha aparte con Claude Code + WebSearch: 21 de las 68 referencias finales seguían con problemas tras 3 rondas de comprobaciones de integridad |
 
 ---
 
@@ -275,7 +277,7 @@ Revisión multiperspectiva con 7 agentes y **juicios narrativos atados a criteri
 
 ### Academic Pipeline (v3.22.1)
 
-Orquestador de 10 etapas con verificación de integridad, revisión en dos fases, coaching socrático y evaluación de la colaboración. Garantías del pipeline: cada etapa requiere un checkpoint de confirmación del usuario; la verificación de integridad (Etapa 2.5 + 4.5) es OBLIGATORIA y sin bypass no registrado (toda excepción requiere que quede registrada la justificación del usuario para la Etapa 6); la Matriz de Trazabilidad R&R (Schema 11) verifica de forma independiente las afirmaciones de revisión de los autores. v3.4 añadió el Compliance Agent (PRISMA-trAIce + RAISE) en las Etapas 2.5 / 4.5. v3.5 añade el **Collaboration Depth Observer** (`collaboration_depth_agent`, solo advisory, nunca bloquea) en cada checkpoint FULL/SLIM y al completar el pipeline. Las puertas de integridad OBLIGATORIAS (2.5 / 4.5) saltan explícitamente el observador para que las comprobaciones de cumplimiento no queden diluidas. Basado en Wang & Zhang (2026), IJETHE 23:11. Matriz etapa por etapa con agentes, artefactos y puertas: consulta ARCHITECTURE.md §3.
+Orquestador de 10 etapas con verificación de integridad, revisión en dos fases, coaching socrático y evaluación de la colaboración. Reglas del pipeline (protocolo que siguen los agentes, no garantías en tiempo de ejecución): cada etapa requiere un checkpoint de confirmación del usuario; la verificación de integridad (Etapa 2.5 + 4.5) es OBLIGATORIA y sin bypass no registrado (toda excepción requiere que quede registrada la justificación del usuario para la Etapa 6); la Matriz de Trazabilidad R&R (Schema 11) vincula cada observación de la revisión con el cambio que declara el equipo autor y registra si la re-revisión lo verificó. v3.4 añadió el Compliance Agent (PRISMA-trAIce + RAISE) en las Etapas 2.5 / 4.5. v3.5 añade el **Collaboration Depth Observer** (`collaboration_depth_agent`, solo advisory, nunca bloquea) en cada checkpoint FULL/SLIM y al completar el pipeline. Las puertas de integridad OBLIGATORIAS (2.5 / 4.5) saltan explícitamente el observador para que las comprobaciones de cumplimiento no queden diluidas. Basado en Wang & Zhang (2026), IJETHE 23:11. Matriz etapa por etapa con agentes, artefactos y puertas: consulta ARCHITECTURE.md §3.
 
 ---
 

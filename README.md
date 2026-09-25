@@ -18,7 +18,7 @@ A comprehensive suite of Claude Code skills for academic research, covering the 
 
 Then try `/ars-plan` to walk through your paper structure via Socratic dialogue, or jump to [Quick install](#quick-install) for prerequisites and the traditional symlink flow.
 
-> **AI is your copilot, not the pilot.** This tool won't write your paper for you. It handles the grunt work — hunting down references, formatting citations, verifying data, checking logical consistency — so you can focus on the parts that actually require your brain: defining the question, choosing the method, interpreting what the data means, and writing the sentence after "I argue that."
+> **AI is your copilot, not the pilot.** It can draft text, including a whole paper in full mode, but the decisions stay yours, and the pipeline stops for your confirmation at every stage. It handles the grunt work (hunting down references, formatting citations, verifying data, checking logical consistency) so you can focus on the parts that actually require your brain: defining the question, choosing the method, interpreting what the data means, and deciding what comes after "I argue that." You remain the author, and you answer for every claim you submit.
 >
 > Unlike a humanizer, this tool doesn't help you hide the fact that you used AI. It helps you write better. Style Calibration learns your voice from past work. Writing Quality Check catches the patterns that make prose feel machine-generated. The goal is quality, not cheating.
 
@@ -30,7 +30,7 @@ ARS is built on the premise that **a human researcher augmented by AI avoids the
 
 [**Zhao et al.**](https://arxiv.org/abs/2605.07723) (2026-05) audited 111M references across 2.5M papers on arXiv, bioRxiv, SSRN, and PMC. Their conservative estimate is 146,932 hallucinated citations for 2025 alone, with an observed mid-2024 inflection; for the bioRxiv-to-PMC pairing they report 85.3% preprint-to-published persistence. The paper describes "real citations deployed to support claims the cited references do not actually make" as an open challenge. ARS v3.7.1 added trust-chain frontmatter for source provenance; v3.7.3 added locator infrastructure (three-layer citation anchors) for future claim-level audits and surfaces advisory risk signals at cite time (ARS labels the claim-faithfulness gap internally as "L3"; this is ARS terminology, not the paper's). v3.7.x is motivated by Zhao et al.'s corpus-scale findings; corpus-scale evaluation of ARS itself remains future work.
 
-v3.8 closes the second half of the L3 gap. v3.7.3 made every citation carry a locator anchor; v3.8 adds an opt-in audit pass (`ARS_CLAIM_AUDIT=1`) that fetches the cited source against each anchor and judges whether the claim is actually supported. Five new HIGH-WARN classes (claim-not-supported, negative-constraint-violation, fabricated-reference, anchorless, constraint-violation-uncited) gate-refuse output through the formatter terminal hard gate. Calibration is shipped as a 20-tuple gold set with FNR<0.15 + FPR<0.10 acceptance thresholds; ramp-on plan is deferred to post-calibration evidence per v3.8 spec §5.
+v3.8 closes the second half of the L3 gap. v3.7.3 made every citation carry a locator anchor; v3.8 adds an opt-in audit pass (`ARS_CLAIM_AUDIT=1`) that fetches the cited source against each anchor and judges whether the claim is actually supported. Five new HIGH-WARN classes (claim-not-supported, negative-constraint-violation, fabricated-reference, anchorless, constraint-violation-uncited) gate-refuse output through the formatter terminal hard gate. A calibration runner ships with a 25-tuple synthetic gold set and FNR<0.15 + FPR<0.10 acceptance thresholds. Its shipped test drives the runner with a stub judge that returns the gold labels, so it checks the tooling, not a live judge; no live-judge calibration result is recorded yet, and the ramp-on plan waits for one (v3.8 spec §5).
 
 [**Ren et al.**](https://arxiv.org/abs/2607.13104) (2026, *Self-Improvements in Modern Agentic Systems: A Survey*) supplies a third, survey-level anchor. Its scientific-discovery synthesis (§7.4) concludes that discovery agents cannot easily verify novelty, correctness, or reproducibility on their own and may exploit weak proxies instead, must manage evidence across heterogeneous tools and literature, and raise governance issues — "scientific writing can also amplify misinformation when the evidence is weak." Its generation-loop chapters (§5.1–§5.2) list human auditing and retained human anchors among the practical safeguards for self-generated evaluation loops, and its historical chapter (§2.2) records the oldest form of the same lesson: the practical success of Lenat's EURISKO depended heavily on the user serving as the external evaluation signal, pruning unproductive heuristic drift — a limitation the survey notes persists in modern agentic systems. ARS cites the survey as design rationale for its human-in-the-loop stance, not as empirical proof that human-in-the-loop pipelines outperform autonomous ones; the survey's actionable deltas for ARS are tracked in #539–#541 and #547–#550.
 
@@ -86,7 +86,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 ## Performance & cost
 
-**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — per-mode token budgets, full-pipeline estimate (~$4–6 for a 15k-word paper), and recommended Claude Code settings (Auto mode; Agent Team optional).
+**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — per-mode token budgets, full-pipeline estimate (about US$3–7 for a 15k-word paper at 2026-09 list prices, before cache discounts), and recommended Claude Code settings (Auto mode; Agent Team optional).
 
 ## Guides & articles
 
@@ -115,7 +115,9 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 ## Showcase: real pipeline output
 
-See the complete artifacts from a real 10-stage pipeline run — peer review reports, integrity verification reports, and the final paper:
+See the complete artifacts from a real pipeline run, including peer review reports, integrity verification reports, and the final paper:
+
+> **A March 2026 record, not current performance.** This run (2026-03-07 to 03-08) used academic-pipeline v2.3, before ARS v3.3 added the Semantic Scholar check and v3.11 added the deterministic four-index citation gate. Its numbers describe that version; the current gates have not been measured on this paper. The byline names Claude (Anthropic) as author because the researcher asked for that during the experiment. The paper is not an Anthropic publication, and ARS's positioning is that the tool does not replace the researcher and does not claim authorship ([POSITIONING.md](POSITIONING.md#what-this-is-not)).
 
 **[Browse all pipeline artifacts →](examples/showcase/)**
 
@@ -123,13 +125,13 @@ See the complete artifacts from a real 10-stage pipeline run — peer review rep
 |---|---|
 | [Final Paper (EN)](examples/showcase/full_paper_apa7.pdf) | APA 7.0 formatted, LaTeX-compiled |
 | [Final Paper (ZH)](examples/showcase/full_paper_zh_apa7.pdf) | Chinese version, APA 7.0 |
-| [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: caught 15 fabricated refs + 3 statistical errors |
+| [Integrity Report — Pre-Review](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5: flagged 15 problem references (8 with bibliographic errors, 6–8 likely fabricated) + 3 statistical errors |
 | [Integrity Report — Final](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5: zero regressions confirmed |
 | [Peer Review Round 1](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 3 Reviewers + Devil's Advocate |
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | Verification after revisions |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | Follow-up review |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | Point-by-point author response |
-| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Independent full-reference audit: found 21/68 issues missed by 3 rounds of integrity checks |
+| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Full-reference audit run separately with Claude Code + WebSearch: 21 of the 68 final references still had problems after 3 rounds of integrity checks |
 
 ---
 
@@ -275,7 +277,7 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 
 ### Academic Pipeline (v3.22.1)
 
-10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline guarantees: every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) is MANDATORY with no unrecorded bypass (every override requires user reasoning recorded for Stage 6); R&R Traceability Matrix (Schema 11) independently verifies author revision claims. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
+10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline rules (protocol the agents follow, not runtime guarantees): every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) is MANDATORY with no unrecorded bypass (every override requires user reasoning recorded for Stage 6); R&R Traceability Matrix (Schema 11) maps each reviewer concern to the author's revision claim and records whether the re-review verified it. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
 
 ---
 

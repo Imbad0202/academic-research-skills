@@ -61,7 +61,7 @@ You: "I want to produce a complete research paper about how agentic AI
       is reshaping student learning outcome measurement"
 ```
 
-This triggers the full 10-stage pipeline. Budget ~$4-6 in API costs and 2-4 hours of collaborative work.
+This triggers the full 10-stage pipeline, which stops at every stage for your confirmation. API cost is an estimated US$3–7 per run at 2026-09 list prices, before cache discounts ([docs/PERFORMANCE.md](docs/PERFORMANCE.md)). Expect the collaborative work to span hours to days, depending on how closely you review each stage.
 
 ## Which mode should I use?
 
@@ -73,7 +73,7 @@ This triggers the full 10-stage pipeline. Budget ~$4-6 in API costs and 2-4 hour
 | Write a paper from scratch | `academic-paper` full mode |
 | Plan a paper chapter by chapter | `academic-paper` plan mode |
 | Get my paper reviewed | `academic-paper-reviewer` full mode |
-| Do everything end-to-end | `academic-pipeline` — say "I want a complete research paper" |
+| Go from question to finished paper, confirming each stage | `academic-pipeline` — say "I want a complete research paper" |
 
 ## What's next?
 

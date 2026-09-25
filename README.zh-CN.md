@@ -18,7 +18,7 @@
 
 安装后运行 `/ars-plan`，ARS 会用苏格拉底式对话帮你规划章节结构。需要前置条件或传统 symlink 安装，请看 [快速安装](#快速安装)。
 
-> **AI 是你的副驾驶，不是机长。** 这个工具不会替你写论文。它处理繁琐工作：搜文献、排格式、验数据、查逻辑一致性。这样你就能专注在真正需要思考的事上：定义问题、选择方法、解读数据意义、写出「我认为」后面那句话。
+> **AI 是你的副驾驶，不是机长。** 它可以起草文字，full mode 甚至会起草整篇论文；但决定权在你，pipeline 每个阶段都会停下来等你确认。它处理繁琐工作（搜文献、排格式、验数据、查逻辑一致性），让你专注在真正需要思考的事上：定义问题、选择方法、解读数据意义、决定「我认为」后面要接什么。作者是你，提交的每一个主张都由你负责。
 >
 > 和 humanizer 不同，这个工具不是帮你隐藏使用 AI 协作的事实，而是帮你把关文章质量。风格校准会从你过去的文章中学习你的声音，写作质量检查会识别让文字读起来像机器生成的模式。目标是质量，不是掩饰。
 
@@ -30,7 +30,7 @@ ARS 建立在这个前提上：**人类研究者 + AI 的组合，比纯自动�
 
 [**Zhao 等人**](https://arxiv.org/abs/2605.07723)（2026-05）盘点了 arXiv、bioRxiv、SSRN、PMC 上 250 万篇论文中的 1.11 亿条引用，保守估计 2025 年单年就有 146,932 条幻觉引用，并观察到 2024 年中是上升的拐点；bioRxiv-to-PMC 这条配对的「预印本进入正式发表版本」幻觉存活率达 85.3%。他们把「真实引用被用来支撑被引文献其实没有提出的主张」描述为当前未解的问题。ARS v3.7.1 为来源 provenance 加上 trust-chain frontmatter，v3.7.3 为未来的 claim-level 审计铺设 locator 基础设施（三层引用 anchor），并在引用阶段呈现 advisory 风险信号（ARS 内部把这条 claim-faithfulness 缺口标记为「L3」，此为 ARS 的用词，不是论文的用词）。v3.7.x 的设计动机来自 Zhao 等人的 corpus-scale 发现；ARS 本身的 corpus-scale 评估仍是未来工作。
 
-v3.8 补上 L3 缺口的另一半。v3.7.3 让每一条引用都带 locator anchor，v3.8 在这个基础上加一道 opt-in 审计（`ARS_CLAIM_AUDIT=1`）：获取每个 anchor 指向的原始文本，判断论文里的 claim 是否真有被该引用支撑。五类新的 HIGH-WARN annotation（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）会在 formatter terminal hard gate 直接阻止输出。Calibration 随 release 提供 20 条 gold set，采用 FNR<0.15、FPR<0.10 双阈值；正式放大投入前要先有 calibration 证据（v3.8 spec §5）。
+v3.8 补上 L3 缺口的另一半。v3.7.3 让每一条引用都带 locator anchor，v3.8 在这个基础上加一道 opt-in 审计（`ARS_CLAIM_AUDIT=1`）：获取每个 anchor 指向的原始文本，判断论文里的 claim 是否真有被该引用支撑。五类新的 HIGH-WARN annotation（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）会在 formatter terminal hard gate 直接阻止输出。Calibration runner 随 release 附一组 25 条的合成 gold set，采用 FNR<0.15、FPR<0.10 双阈值。随附的测试使用直接返回标准答案的替身裁判，所以它验证的是工具本身，不是真正的 AI 裁判；目前还没有真实裁判的 calibration 结果，正式放大投入要等这份证据（v3.8 spec §5）。
 
 v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pfister & Yoon, 2026, Google）：Semantic Scholar API 验证、反泄露协议、VLM 图表验证、修订轨迹追踪。ARS 当前以分类式、证据锚定的准则轨迹实现最后一项，不计算分数差。
 
@@ -73,7 +73,7 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 ## 性能与费用
 
-**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — 各模式 token 预算、完整 pipeline 估算（一篇 15k 字论文约 ~$4–6），以及建议的 Claude Code 设置（Auto 模式；Agent Team 选用）。
+**👉 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)** — 各模式 token 预算、完整 pipeline 估算（一篇 15k 字论文，按 2026-09 牌价约 US$3–7，未计 cache 折扣），以及建议的 Claude Code 设置（Auto 模式；Agent Team 选用）。
 
 ## 使用指南与文章
 
@@ -100,7 +100,9 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 ## 实际产出展示
 
-查看完整 10 阶段 pipeline 的实际产出 — 包含**同行评审报告、学术诚信验证报告、完稿论文**：
+查看一次完整 pipeline 运行的实际产出，包含**同行评审报告、学术诚信验证报告、完稿论文**：
+
+> **这是 2026 年 3 月的记录，不代表现在的表现。** 这次运行（2026-03-07 至 03-08）使用的是 academic-pipeline v2.3，当时 ARS 还没有在 v3.3 加入 Semantic Scholar 核对，也还没有在 v3.11 加入确定性的四索引引用闸门。这里的数字描述的是那个版本，现行闸门还没有在这篇论文上测量过。作者栏写 Claude（Anthropic），是因为研究者在这次实验中这样要求。这篇论文不是 Anthropic 的出版物；ARS 的定位是工具不取代研究者，也不主张作者身份（见 [POSITIONING.md](POSITIONING.md#what-this-is-not)）。
 
 **[浏览所有 pipeline 产出 →](examples/showcase/)**
 
@@ -108,13 +110,13 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 |---|---|
 | [完稿论文（英文）](examples/showcase/full_paper_apa7.pdf) | APA 7.0 格式，LaTeX 编译 |
 | [完稿论文（中文）](examples/showcase/full_paper_zh_apa7.pdf) | 中文版，APA 7.0 |
-| [学术诚信报告 — 审稿前](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5：发现 15 个虚构引用 + 3 个统计错误 |
+| [学术诚信报告 — 审稿前](examples/showcase/integrity_report_stage2.5.pdf) | Stage 2.5：标出 15 条有问题的引用（8 条书目错误、6–8 条疑似虚构）+ 3 个统计错误 |
 | [学术诚信报告 — 最终](examples/showcase/integrity_report_stage4.5.pdf) | Stage 4.5：确认零回归 |
 | [同行评审第一轮](examples/showcase/stage3_review_report.pdf) | Journal-Fit Reviewer + 3 审查者 + 魔鬼代言人 |
 | [再审](examples/showcase/stage3prime_rereview_report.pdf) | 修订后验证审查 |
 | [同行评审第二轮](examples/showcase/stage3_review_report_r2.pdf) | 跟踪审查 |
 | [回复审查意见](examples/showcase/response_to_reviewers_r2.pdf) | 逐点回复 |
-| [出版后审计报告](examples/showcase/post_publication_audit_2026-03-09.pdf) | 独立全引用审计：发现 21/68 篇问题，在 3 轮学术诚信审查后仍被漏掉 |
+| [出版后审计报告](examples/showcase/post_publication_audit_2026-03-09.pdf) | 另行用 Claude Code + WebSearch 审计全部引用：最后 68 条中仍有 21 条有问题，3 轮学术诚信审查都没发现 |
 
 ---
 
@@ -254,7 +256,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 ### Academic Pipeline (v3.22.1)
 
-10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 保证：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）独立验证作者修订主张。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
+10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 规则（由 agent 按流程遵守，不是运行时保证）：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）把每一项审查意见对应到作者的修订主张，并记录复审是否验证通过。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
 ---
 
