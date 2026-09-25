@@ -122,7 +122,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 | [複審](examples/showcase/stage3prime_rereview_report.pdf) | 修訂後驗證審查 |
 | [同儕審查第二輪](examples/showcase/stage3_review_report_r2.pdf) | 追蹤審查 |
 | [回覆審查意見](examples/showcase/response_to_reviewers_r2.pdf) | 逐點回覆 |
-| [出版後稽核報告](examples/showcase/post_publication_audit_2026-03-09.pdf) | 另行以 Claude Code + WebSearch 稽核全部引用：最後 68 筆中仍有 21 筆有問題，3 輪誠信審查都沒抓到 |
+| [出版後稽核報告](examples/showcase/post_publication_audit_2026-03-09.pdf) | 另行以 Claude Code + WebSearch 稽核全部引用：經過 3 輪誠信審查後，最後 68 筆引用中仍有 21 筆有問題 |
 
 ---
 

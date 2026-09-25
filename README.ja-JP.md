@@ -116,7 +116,7 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | 改訂後の検証 |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | フォローアップレビュー |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | ポイントごとの著者回答 |
-| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Claude Code + WebSearch で別途行った全参照監査: 最終的な 68 件のうち 21 件に、3 回の整合性チェックで見逃された問題が残っていた |
+| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Claude Code + WebSearch で別途行った全参照監査: 3 回の整合性チェック後も、最終的な 68 件の参照のうち 21 件に問題が残っていた |
 
 ---
 

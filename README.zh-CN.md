@@ -116,7 +116,7 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 | [再审](examples/showcase/stage3prime_rereview_report.pdf) | 修订后验证审查 |
 | [同行评审第二轮](examples/showcase/stage3_review_report_r2.pdf) | 跟踪审查 |
 | [回复审查意见](examples/showcase/response_to_reviewers_r2.pdf) | 逐点回复 |
-| [出版后审计报告](examples/showcase/post_publication_audit_2026-03-09.pdf) | 另行用 Claude Code + WebSearch 审计全部引用：最后 68 条中仍有 21 条有问题，3 轮学术诚信审查都没发现 |
+| [出版后审计报告](examples/showcase/post_publication_audit_2026-03-09.pdf) | 另行用 Claude Code + WebSearch 审计全部引用：经过 3 轮学术诚信审查后，最后 68 条引用中仍有 21 条有问题 |
 
 ---
 

@@ -117,7 +117,7 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 | [Re-Review](examples/showcase/stage3prime_rereview_report.pdf) | 수정 후 검증 |
 | [Peer Review Round 2](examples/showcase/stage3_review_report_r2.pdf) | 후속 심사 |
 | [Response to Reviewers](examples/showcase/response_to_reviewers_r2.pdf) | 항목별 저자 응답 |
-| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Claude Code + WebSearch로 별도 수행한 전체 참고문헌 감사: 최종 68건 중 21건에 3회의 무결성 점검이 놓친 문제가 남아 있음 |
+| [Post-Publication Audit Report](examples/showcase/post_publication_audit_2026-03-09.pdf) | Claude Code + WebSearch로 별도 수행한 전체 참고문헌 감사: 3회의 무결성 점검 후에도 최종 참고문헌 68건 중 21건에 문제가 남아 있음 |
 
 ---
 
