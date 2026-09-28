@@ -2,7 +2,6 @@
 disable-model-invocation: true
 name: ars-citation-check
 description: ARS academic-paper `citation-check` mode — citation error report
-model: sonnet
 ---
 
 First invoke the Skill tool with `skill: "academic-research-skills:academic-paper"`. Pass the mode and the user's request described below as its arguments. Use the loaded skill and its supporting files before producing the result.

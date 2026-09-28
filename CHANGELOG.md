@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `/ars-citation-check` inherits the session model instead of pinning `sonnet`. On the closed-book factuality benchmark in the Sonnet 5.5 system card (§6.3.2.1, AA-Omniscience), Sonnet 5.5 gives an incorrect answer on 27% of questions, against 17% for Opus 5.5 and 21% for Mythos 5.1, which shares Fable 5.1's weights. Citation checking depends on recalling authors, years, and venues correctly. The other twelve light commands keep the `sonnet` pin. A run on a Sonnet session still runs on Sonnet; a run on another session now runs, and is billed, on that session's model. The citation-check eval cases keep `model: sonnet` as a fixed eval model, so their scores stay comparable across runs.
+
 ### Added
 
 - `THIRD_PARTY.md` lists an OpenClaw port of the four skills, which @ChunkyPanda29 maintains in a separate repository (#910).

@@ -28,8 +28,9 @@ claude plugin eval . --eval-dir plugin-evals-citation-check --ablation with-with
 
 Add `--no-publish` to keep the HTML report local. Headline number is Δ
 (with-plugin score − without-plugin score). `runs: 3` per case. Cases pin
-`model: sonnet` (the `/ars-citation-check` command pins sonnet itself), so the
-judge must be a different, larger model — the runner's default judge is haiku,
+`model: sonnet` as a fixed, reproducible eval model (the `/ars-citation-check`
+command itself inherits the session model), so the judge must be a different,
+larger model — the runner's default judge is haiku,
 which is both too small and never to be used here.
 
 ## Cases

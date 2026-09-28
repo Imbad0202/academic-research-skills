@@ -76,7 +76,7 @@ case "${SOURCE}" in
     fi
     ANNOUNCE="${UPDATE_LINE}ARS (academic-research-skills) plugin loaded.
 
-Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy modes inherit the session model (the v3.7.0 opus floor was retired in the 2026-06 harness pass):
+Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy modes and /ars-citation-check inherit the session model (the v3.7.0 opus floor was retired in the 2026-06 harness pass):
   /ars-full              inherit Full pipeline (research → write → review → revise → finalize)
   /ars-revision-coach    inherit Parse reviewer comments → Revision Roadmap + Response Letter skeleton
   /ars-reviewer          inherit academic-paper-reviewer full mode — simulated peer-review panel
@@ -88,7 +88,7 @@ Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy m
   /ars-lit-review        sonnet  Annotated bibliography in paper format
   /ars-3w                sonnet  WHY / HOW / WHAT three-way paper scan (lighter than lit-review)
   /ars-format-convert    sonnet  Convert paper between LaTeX / DOCX / PDF / Markdown
-  /ars-citation-check    sonnet  Citation error report
+  /ars-citation-check    inherit Citation error report
   /ars-disclosure        sonnet  venue status bundle / policy-anchor render
   /ars-mark-read         sonnet  Record human-read signal for one or more citation keys
   /ars-unmark-read       sonnet  Rescind a prior human-read mark for one or more citation keys
