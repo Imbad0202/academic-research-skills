@@ -47,6 +47,18 @@ def clean(text: str) -> bool:
     return report["findings"] == [] and report["coverage_limits"] == []
 
 
+def only_finding(text: str) -> tuple[str, str | None]:
+    """The rule and expansion of the text's one finding."""
+    [finding] = check(text)["findings"]
+    return finding["rule"], finding["expansion"]
+
+
+def only_limit(text: str) -> str | None:
+    """The reason of the text's first coverage limit, or None when it has a finding."""
+    report = check(text)
+    return None if report["findings"] else report["coverage_limits"][0]["reason"]
+
+
 # --- rules ---------------------------------------------------------------
 
 
@@ -404,10 +416,9 @@ def test_quotation_marks_around_a_chinese_expansion_are_ignored() -> None:
                                    "*「結構方程模型」*"])
 def test_emphasis_around_a_chinese_expansion_inside_the_parenthetical_is_ignored(words: str) -> None:
     assert clean(f"我們使用（{words}，SEM）分析資料。SEM 的配適良好。\n")
-    [finding] = check(f"結構方程模型（SEM）很常見。我們使用（{words}，SEM）。\n")["findings"]
-    assert (finding["rule"], finding["expansion"]) == ("defined_again", "結構方程模型")
-    report = check(f"本研究使用 SEM（{words}）。SEM 有效。\n")  # the reverse form, as without emphasis
-    assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unread_definition_form"
+    assert only_finding(f"結構方程模型（SEM）很常見。我們使用（{words}，SEM）。\n") == ("defined_again", "結構方程模型")
+    # The reverse form, as without emphasis.
+    assert only_limit(f"本研究使用 SEM（{words}）。SEM 有效。\n") == "unread_definition_form"
 
 
 @pytest.mark.parametrize("lead", ["i.e.", "namely", "that is", "即"])
@@ -423,10 +434,8 @@ def test_a_naming_lead_set_off_as_its_own_item_is_read_as_if_absent(lead: str) -
     for comma in (",", "，"):
         text = ("We used structural equation modeling (SEM). Then "
                 f"(structural equation modeling{comma} {lead}{comma} SEM) again.\n")
-        [finding] = check(text)["findings"]
-        assert (finding["rule"], finding["expansion"]) == ("defined_again", "structural equation modeling")
-        report = check(f"Two designs (a design{comma} {lead}{comma} RCT) ran.\n")
-        assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unconfirmed_definition"
+        assert only_finding(text) == ("defined_again", "structural equation modeling")
+        assert only_limit(f"Two designs (a design{comma} {lead}{comma} RCT) ran.\n") == "unconfirmed_definition"
 
 
 @pytest.mark.parametrize("reference", ["see Section 2", "See Table 1", "see also Section 2", "cf. Section 2",
@@ -436,8 +445,8 @@ def test_a_cross_reference_before_the_acronym_is_read_as_if_absent(reference: st
         assert clean(f"We used randomized controlled trials ({reference}{comma} RCT). "
                      "The RCT results were stable.\n")
         assert clean(f"我們採用隨機對照試驗（{reference}{comma}RCT）。RCT 的結果穩定。\n")
-        [finding] = check(f"隨機對照試驗（RCT）很常見。隨機對照試驗（{reference}{comma}RCT）再次出現。\n")["findings"]
-        assert (finding["rule"], finding["expansion"]) == ("defined_again", "隨機對照試驗")
+        text = f"隨機對照試驗（RCT）很常見。隨機對照試驗（{reference}{comma}RCT）再次出現。\n"
+        assert only_finding(text) == ("defined_again", "隨機對照試驗")
         # As after a restatement, words that do not spell the acronym leave a use.
         assert findings(f"Two designs ({reference}{comma} RCT) ran.\n") == [("body", 1, "undefined", "RCT")]
 
@@ -454,8 +463,7 @@ def test_a_cross_reference_lead_with_no_target_stays_an_example_lead() -> None:
 def test_a_chinese_word_that_starts_with_the_cross_reference_character_is_an_expansion() -> None:
     assert clean("The first group (見習醫學生，MS) completed the test.\n")
     text = "見習醫學生（MS）參與前測。第二階段納入（見習醫學生，MS）參與後測。\n"
-    [finding] = check(text)["findings"]
-    assert (finding["rule"], finding["expansion"]) == ("defined_again", "見習醫學生")
+    assert only_finding(text) == ("defined_again", "見習醫學生")
     assert clean("本研究採用隨機對照試驗（見 Table 1，RCT）。RCT 有效。\n")
 
 
@@ -473,8 +481,7 @@ def test_citations_before_the_acronym_are_not_read(citations: str) -> None:
         assert clean(text), text
         assert clean(f"隨機對照試驗（{citations}{semicolon}RCT）很常見。RCT 有效。\n")
         # As with citations after the acronym, words that do not spell it leave a limit.
-        report = check(f"Several trials ({citations}{semicolon} RCT) ran.\n")
-        assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unconfirmed_definition"
+        assert only_limit(f"Several trials ({citations}{semicolon} RCT) ran.\n") == "unconfirmed_definition"
 
 
 @pytest.mark.parametrize("text", ["As shown in Table IV, the arms differ.\n",

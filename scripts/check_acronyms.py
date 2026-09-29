@@ -283,10 +283,11 @@ _CITE_ITEM = (rf"\s*(?:(?:see(?:{_SPACE}also)?|e\.g\.|cf\.|i\.e\.)\s*(?:{_COMMA}
               rf"{_NAME}(?:(?:\s*[,，、]\s*|\s+){_NAME})*\s*(?:{_COMMA}\s*)?"
               rf"{_DATE}(?:\s*{_COMMA}\s*{_DATE})*"
               rf"(?:\s*{_COMMA}\s*{_LOCATOR})?\s*")
-_CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
+_CITE_RUN = rf"{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*"
+_CITATION = re.compile(rf"[(（]{_CITE_RUN}[)）]")
 # The citations after an acronym in "(RCTs; Smith, 2020)" and before it in "(Smith, 2020; RCTs)".
-_TRAILING_CITATION = re.compile(rf"[;；]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*(?=[)）])")
-_LEADING_CITATION = re.compile(rf"(?<=[(（]){_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[;；]")
+_TRAILING_CITATION = re.compile(rf"[;；]{_CITE_RUN}(?=[)）])")
+_LEADING_CITATION = re.compile(rf"(?<=[(（]){_CITE_RUN}[;；]")
 # "World Health Organization [WHO]": a bracket after a capitalized word, not a
 # Markdown link ("[RCT](#design)", "[RCT][1]", or "[RCT]" with a definition).
 _GROUP_AUTHOR = re.compile(rf"\b[{_UPPER}][{_LOWER}]+{_SPACE}({_GROUP_ABBR})(?![(\[:])")
@@ -343,8 +344,9 @@ _NAMING_LEAD = re.compile(
 # it also starts words ("見習醫學生").
 _CROSS_REFERENCE = re.compile(rf"(?:[Ss]ee(?:\s+also)?(?![A-Za-z0-9])|[Cc]f\.)|{_zh('參見', '詳見', '參閱')}"
                               r"|見(?=\s*[第表圖附章節註頁上下前後本A-Za-z0-9])")
-_QUOTES = re.compile(r"^[\s'\"‘’“”「」『』]+|[\s'\"‘’“”「」『』]+$")
-_WRAPPERS = re.compile(r"^[\s'\"‘’“”「」『』*_]+|[\s'\"‘’“”「」『』*_]+$")  # quotation and emphasis marks
+_QUOTE_CHARS = r"\s'\"‘’“”「」『』"
+_QUOTES = re.compile(rf"^[{_QUOTE_CHARS}]+|[{_QUOTE_CHARS}]+$")
+_WRAPPERS = re.compile(rf"^[{_QUOTE_CHARS}*_]+|[{_QUOTE_CHARS}*_]+$")  # quotation and emphasis marks
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
