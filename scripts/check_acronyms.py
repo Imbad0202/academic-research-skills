@@ -14,8 +14,9 @@ A definition is a parenthetical whose last item is the acronym, placed after
 text in the same paragraph (a line break inside a paragraph reads as a space),
 when the words before it spell the acronym: ``randomized controlled trial
 (RCT)``, ``大型語言模型（LLM）``, or ``隨機對照試驗（randomized controlled
-trial, RCT）``. Chinese words spell any acronym, and quotation marks around
-the words are ignored (``「大型語言模型」（LLM）``); Latin words spell it when
+trial, RCT）``. Chinese words spell any acronym, and quotation and emphasis
+marks around the words are ignored (``「大型語言模型」（LLM）``,
+``（*大型語言模型*，LLM）``); Latin words spell it when
 the first starts with the acronym's first letter and their initials contain
 its letters in order. The expansion is the shortest such run of words. For
 Chinese words before the parenthetical, which have no spaces between them, it
@@ -41,8 +42,9 @@ or after the acronym (``(SEM, RCT)``, ``ML (MARS, LASSO)``, ``(SDs, RMSE)``,
 ``(COVID-19, ARDS)``, ``(PCA and ICA, NMF)``, ``（PCA與ICA，NMF）``). So are
 Chinese words after an acronym that open with ``見``, ``參見``, ``詳見``, or
 ``參閱`` (``RCT（見第二節）``). A lead at the start of a parenthetical or of
-its last item is read as if absent, and so are quotation marks around the
-acronym. A lead is a restatement (such as ``i.e.`` or ``i. e.``, ``viz.``,
+its last item, or set off as the item before its last (``the model, i.e.,
+SEM``), is read as if absent, and so are quotation marks around the acronym.
+A lead is a restatement (such as ``i.e.`` or ``i. e.``, ``viz.``,
 ``namely``, ``that is``, ``in other words``, ``即``, ``亦即``, ``也就是``) or
 a naming lead (such as ``hereafter``, ``henceforth``, ``abbreviated as``,
 ``referred to as``, ``also known as``, ``aka``, ``called``, ``以下簡稱``,
@@ -51,7 +53,12 @@ modeling (i.e., SEM)``, ``structural equation modeling (hereafter SEM)``, and
 ``結構方程模型（structural equation modeling，以下簡稱「SEM」）`` define
 ``SEM``. After a restatement, an acronym the words before it do not spell is a
 use (``two designs (namely RCT)``); after a naming lead, it is a definition
-this check cannot confirm (``two designs (hereafter RCT)``).
+this check cannot confirm (``two designs (hereafter RCT)``). A cross-reference
+with a target before the acronym (``see Section 2``, ``cf. Table 1``,
+``見第二節``, with every item before the acronym read as part of it) is read
+as a restatement is: ``randomized controlled trials (see Section 2, RCT)`` and
+``隨機對照試驗（見第二節，RCT）`` define ``RCT``, and ``two designs (see
+Section 2, RCT)`` uses it.
 
 Candidates are 2-6 letters or digits, starting with a letter, with at least
 two capitals and no more lowercase than uppercase letters (``RCT``, ``eGFR``,
@@ -73,7 +80,8 @@ Not read, with line numbers kept: front matter, code fences, code spans (a
 backtick run pairs with the next run of the same length on its line, and a
 backslash or a comment marker inside a span is literal), HTML comments
 (including ``<!--ref:...-->`` and ``<!--anchor:...-->``), math (inline math
-within one line), URLs, link destinations and titles
+within one line; ``\\$`` is a dollar sign, and ``\\\\$`` a backslash before
+math), URLs, link destinations and titles
 (``[the protocol](#RCT)``, ``[the site](https://example.org "RCT")``), link
 reference definitions (``[RCT]: https://example.org``) and the labels that
 name them in full reference links (``[the protocol][RCT]``), ATX and setext
@@ -87,9 +95,11 @@ end the line or come before a period, colon, pipe, or dash, but a dash that
 starts a range and an unspaced hyphen (``Table 1-based``) open no label, and
 neither do ``Figure 1.2 shows`` and ``Fig. 1 Flow diagram``; a range end is a
 number or a labeled number (``Figure 1 – 3``, ``Table 1–Table 3``,
-``圖1–圖3``), an end of the number's own kind (a letter after ``1A``, a Roman
-numeral up to 20 above a Roman start, a Chinese numeral after a Chinese one:
-``Figure 1A – C``, ``Table XXXIX–XL``, ``圖一–三``) that no hyphen follows
+``圖1–圖3``), an end of the number's own kind (a letter after ``1A`` or after
+a letter label, a Roman numeral up to 20 above a Roman start, a Chinese
+numeral after a Chinese one: ``Figure 1A – C``, ``Table C – D``,
+``Table XXXIX–XL``, ``圖一–三``; the label letters ``I``, ``V``, and ``X``
+are Roman numerals, and ``C`` and ``L`` are letters) that no hyphen follows
 (``Table I – X-ray findings`` is a title), or a single letter right after an
 unspaced dash (``Figure 1–C shows``), so a caption title that starts that way
 is read as prose), the reference list, author-year citations whose author part
@@ -97,7 +107,8 @@ is a run of names, whose dates are years from 1800 to 2099, year pairs or
 ranges, ``n.d.``, or ``in press`` (``2020a``, ``1900/1953``, ``n.d.-a``), and
 whose locator, if any, is a page, paragraph, chapter, or section
 (``(WHO, 2020)``, ``(see Smith et al., 2020, pp. 4, 6; Lee, 2019)``, and the
-citations after the acronym in ``(RCTs; Smith, 2020)``), a bracketed
+citations before or after the acronym in ``(Smith, 2020; RCTs)`` and
+``(RCTs; Smith, 2020)``), a bracketed
 abbreviation right after a capitalized word, as in an APA group author
 (``World Health Organization [WHO]``), but not a link (``[RCT](#design)``, or
 ``[RCT]`` when a link reference definition names it), and author initials in
@@ -128,7 +139,9 @@ Usage:
         [--allow-file FILE] [--lang en|zh-TW] [--json-out FILE]
 
 Prints the Markdown report in ``--lang`` and writes the JSON report to
-``--json-out``, which may be neither the input nor the allowlist file.
+``--json-out``, which may be neither the input nor the allowlist file. The
+Markdown report shows a control or bidirectional character in a heading it
+names as its ``\\uXXXX`` escape; the JSON report keeps the heading as written.
 Exit 0: the requested scopes were read (``checked``, or ``partial`` with
 coverage limits); findings never change the exit status.
 Exit 2: nothing was checked (``not_checked``: unsupported format, unreadable
@@ -206,7 +219,7 @@ _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*(?P<id>{_CAPTION_ID})"
 # Range ends after a caption dash (see _caption_label).
 _RANGE_ANY = re.compile(rf"\s*(?:[A-Z]?[.-]?\d"
                         rf"|(?:{_CAPTION_WORD}|附?[圖表])\s*(?:{_CAPTION_ID}|{_ZH_NUMERAL})(?![A-Za-z0-9]))")
-_SUBFIGURE = re.compile(rf"{_ARABIC_ID}[A-Za-z]|(?![IVXLC])[A-Z]")
+_SUBFIGURE = re.compile(rf"{_ARABIC_ID}[A-Za-z]|(?![IVX])[A-Z]")  # "Table C" is a letter, "Table V" a numeral
 _RANGE_LETTER = re.compile(r"\s*[A-Za-z](?![A-Za-z0-9-])")  # not "C-reactive"
 _RANGE_ROMAN = re.compile(r"\s*([IVXLCDM]+)(?![A-Za-z0-9-])")  # not "X-ray"
 _STANDARD_ROMAN = re.compile(r"(?=[MDCLXVI])M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})")
@@ -219,7 +232,7 @@ _COMMENT_OR_BACKTICKS = re.compile(r"<!--|`+")
 # A link reference definition ("[RCT]: https://example.org"), which is not shown.
 _LINK_DEFINITION = re.compile(r"^ {0,3}\[([^\]\n]+)\]:[ \t]*\S")
 _DISPLAY_MATH = re.compile(r"\$\$.*?\$\$", re.S)
-_INLINE_MATH = re.compile(r"(?<!\\)\$(?=\S)[^$\n]+?(?<=\S)\$")
+_INLINE_MATH = re.compile(r"(?<!\\)(?:\\\\)*\$(?=\S)[^$\n]+?(?<=\S)\$")  # "\\$x$" is math
 _URL = re.compile(r"\((?:https?|ftp)://[^)\s]*\)|(?:https?|ftp)://\S+")
 _PAREN = re.compile(r"[(（]([^()（）]*)[)）]")
 _ITEM_BREAK = re.compile(r"[,，;；、]")
@@ -269,8 +282,9 @@ _CITE_ITEM = (rf"\s*(?:(?:see(?:{_SPACE}also)?|e\.g\.|cf\.|i\.e\.)\s*(?:{_COMMA}
               rf"{_DATE}(?:\s*{_COMMA}\s*{_DATE})*"
               rf"(?:\s*{_COMMA}\s*{_LOCATOR})?\s*")
 _CITATION = re.compile(rf"[(（]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[)）]")
-# The citations after an acronym in "(RCTs; Smith, 2020)".
+# The citations after an acronym in "(RCTs; Smith, 2020)" and before it in "(Smith, 2020; RCTs)".
 _TRAILING_CITATION = re.compile(rf"[;；]{_CITE_ITEM}(?:[;；]{_CITE_ITEM})*(?=[)）])")
+_LEADING_CITATION = re.compile(rf"(?<=[(（]){_CITE_ITEM}(?:[;；]{_CITE_ITEM})*[;；]")
 # "World Health Organization [WHO]": a bracket after a capitalized word, not a
 # Markdown link ("[RCT](#design)", "[RCT][1]", or "[RCT]" with a definition).
 _GROUP_AUTHOR = re.compile(rf"\b[{_UPPER}][{_LOWER}]+{_SPACE}({_GROUP_ABBR})(?![(\[:])")
@@ -321,7 +335,11 @@ _NAMING_LEAD = re.compile(
     r"|[Aa]\.?k\.?a\.?)(?![A-Za-z0-9])"
     rf"|(?:{_zh('以下簡稱', '以下稱', '下稱', '簡稱', '又稱', '亦稱', '或稱', '稱為', '縮寫', '英文縮寫', '英文簡稱')})"
     r"(?:\s*為)?)[,，:：]?\s*")
+# A cross-reference before an acronym, read as if absent when it names a target (see _cross_reference).
+# Case-sensitive, as the leads above are, so the acronyms SEE and CF stay.
+_CROSS_REFERENCE = re.compile(rf"(?:[Ss]ee(?:\s+also)?(?![A-Za-z0-9])|[Cc]f\.)|{_zh('見', '參見', '詳見', '參閱')}")
 _QUOTES = re.compile(r"^[\s'\"‘’“”「」『』]+|[\s'\"‘’“”「」『』]+$")
+_WRAPPERS = re.compile(r"^[\s'\"‘’“”「」『』*_]+|[\s'\"‘’“”「」『』*_]+$")  # quotation and emphasis marks
 
 _EN_ABSTRACT = {"abstract", "english abstract", "英文摘要"}
 _ZH_ABSTRACT = {"摘要", "中文摘要", "chinese abstract"}
@@ -409,8 +427,9 @@ def _caption_label(line: str) -> bool:
     """True when the line opens with a caption label. A dash after the label's
     number opens none when a range end follows it: a number or a labeled number
     (``Figure 1 – 3``, ``Table S1–S3``, ``Table 1–Table 3``), an end of the
-    number's own kind (a letter after ``1A``, a Roman numeral up to 20 above a
-    Roman start, a Chinese numeral after a Chinese one: ``Figure 1A – C``,
+    number's own kind (a letter after ``1A`` or after a letter label other than
+    ``I``, ``V``, or ``X``, a Roman numeral up to 20 above a Roman start, a
+    Chinese numeral after a Chinese one: ``Figure 1A – C``, ``Table C – D``,
     ``Table XXXIX–XL``, ``圖一–三``), or a single letter right after an unspaced
     dash (``Figure 1–C shows``). A letter or Roman end followed by a hyphen
     starts a title instead (``Table I – X-ray findings``)."""
@@ -424,6 +443,13 @@ def _caption_label(line: str) -> bool:
                 or ((_SUBFIGURE.fullmatch(start) or tight) and _RANGE_LETTER.match(after))
                 or (roman and first and first < _roman_value(roman.group(1)) <= first + 20)
                 or (re.fullmatch(_ZH_NUMERAL, start) and _RANGE_ZH.match(after)))
+
+
+def _cross_reference(item: str) -> bool:
+    """True when the item is a cross-reference with a target (``see Section 2``,
+    ``cf. Table 1``, ``見第二節``); ``see`` alone is an example lead."""
+    found = _CROSS_REFERENCE.match(item)
+    return found is not None and bool(item[found.end():].strip())
 
 
 def _lead(text: str) -> tuple[str, str]:
@@ -603,7 +629,8 @@ class Manuscript:
         for label in _LINK_LABEL.finditer("".join(chars)):
             if _link_label(label.group(1)) in self.link_labels:
                 _blank(chars, label.start(), label.end())
-        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _LINK_TARGET, _URL, _CITATION, _TRAILING_CITATION):
+        for pattern in (_DISPLAY_MATH, _INLINE_MATH, _LINK_TARGET, _URL, _CITATION, _TRAILING_CITATION,
+                        _LEADING_CITATION):
             _blank_pattern(chars, pattern)
         _blank_author_initials(chars)
         self.masked = "".join(chars)
@@ -743,8 +770,9 @@ def _not_expansion(words: list[str]) -> bool:
 
 
 def _unquoted(text: str) -> str:
-    """The text without wraps between Chinese characters or outer quotation marks."""
-    return _QUOTES.sub("", _CJK_GAP.sub("", text))
+    """The text without wraps between Chinese characters or outer quotation and
+    emphasis marks."""
+    return _WRAPPERS.sub("", _CJK_GAP.sub("", text))
 
 
 def _reverse_definition(acronym: str, content: str) -> bool:
@@ -768,6 +796,13 @@ def find_occurrences(doc: Manuscript) -> list[Occurrence]:
         content = paren.group(1)
         rest, kind = _lead(content)  # "(i.e., SEM)", "(hereafter SEM)"
         items = [item.strip() for item in _ITEM_BREAK.split(rest)]
+        if len(items) > 1 and _cross_reference(items[0]):
+            items, kind = items[-1:], kind or "restated"  # "(see Section 2, RCT)", "（見第二節，RCT）"
+        elif len(items) > 2:
+            lone, lone_kind = _lead(items[-2])
+            if lone_kind and not lone:  # "(a model, i.e., SEM)", "(the model, hereafter, SEM)"
+                del items[-2]
+                kind = kind or lone_kind
         last, last_kind = _lead(items[-1])  # "（structural equation modeling，以下簡稱 SEM）"
         kind = kind or last_kind
         last = _QUOTES.sub("", last)  # "（以下簡稱「SEM」）"
@@ -867,6 +902,16 @@ def _finding(scope: str, line: int, rule: str, acronym: str, expansion: str | No
 # Chinese, chosen by the language the user writes in.
 # ---------------------------------------------------------------------------
 
+# Control characters and bidirectional marks in echoed text, shown as escapes.
+_CONTROL = re.compile("[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]")
+
+
+def _shown(text: str) -> str:
+    """Text from the manuscript, with each control or bidirectional character
+    replaced by its ``\\uXXXX`` escape."""
+    return _CONTROL.sub(lambda char: f"\\u{ord(char.group(0)):04x}", text)
+
+
 _ZH_SCOPES = {"body": "正文", "abstract_en": "英文摘要", "abstract_zh": "中文摘要"}
 _TEXT = {
     "en": {
@@ -944,7 +989,7 @@ def render(report: dict[str, Any], lang: str) -> str:
                                        acronym=item["acronym"],
                                        why=text["limit_reasons"][item["reason"]])
                   for item in report["coverage_limits"]]
-        lines += [text["section"].format(line=item["line"], heading=item["heading"])
+        lines += [text["section"].format(line=item["line"], heading=_shown(item["heading"]))
                   for item in report["unread_sections"]]
     if not report["findings"]:
         lines.append(text["none"])

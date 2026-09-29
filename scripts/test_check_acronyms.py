@@ -41,6 +41,12 @@ def findings(text: str, **kwargs) -> list[tuple]:
     return rows(check(text, **kwargs))
 
 
+def clean(text: str) -> bool:
+    """True when the text has neither a finding nor a coverage limit."""
+    report = check(text)
+    return report["findings"] == [] and report["coverage_limits"] == []
+
+
 # --- rules ---------------------------------------------------------------
 
 
@@ -282,7 +288,9 @@ _FUZZ_PIECES = ["(", ")", "（", "）", ",", "，", "、", ";", "/", "-", " and 
                 "| a | b |\n|---|---|\n", "- ", "> ", "```\n", "![img](x.png)\n", "***\n", "===\n", "\\",
                 "*", "Keywords: ", "\r\n", "\u2028", "and/or", "1", "2020", "et al.", "hereafter ", "以下簡稱",
                 "i.e., ", "「", "」", "“", "'", " – ", "Figure 1A", "stage IV", "第IV期", "圖1–圖",
-                "](#RCT)", "][RCT]", "[RCT]: https://x.org\n", "(<a b>"]
+                "](#RCT)", "][RCT]", "[RCT]: https://x.org\n", "(<a b>",
+                "see Section 2, ", "cf. ", "（見第二節，", "Smith, 2020; ", "*結構方程模型*", ", i.e., ",
+                "Table C – D ", "\\\\$x$", "## Spanish abstract (\x1b[31mES)\n"]
 
 
 def test_mixed_constructs_never_crash_the_check() -> None:
@@ -392,6 +400,72 @@ def test_quotation_marks_around_a_chinese_expansion_are_ignored() -> None:
     assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unread_definition_form"
 
 
+@pytest.mark.parametrize("words", ["*結構方程模型*", "**結構方程模型**", "_結構方程模型_", "「*結構方程模型*」",
+                                   "*「結構方程模型」*"])
+def test_emphasis_around_a_chinese_expansion_inside_the_parenthetical_is_ignored(words: str) -> None:
+    assert clean(f"我們使用（{words}，SEM）分析資料。SEM 的配適良好。\n")
+    [finding] = check(f"結構方程模型（SEM）很常見。我們使用（{words}，SEM）。\n")["findings"]
+    assert (finding["rule"], finding["expansion"]) == ("defined_again", "結構方程模型")
+    report = check(f"本研究使用 SEM（{words}）。SEM 有效。\n")  # the reverse form, as without emphasis
+    assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unread_definition_form"
+
+
+@pytest.mark.parametrize("lead", ["i.e.", "namely", "that is", "即"])
+def test_a_restatement_lead_set_off_as_its_own_item_is_read_as_if_absent(lead: str) -> None:
+    for comma in (",", "，"):
+        assert findings(f"We fit a model (a model{comma} {lead}{comma} SEM). SEM fit well.\n") == [
+            ("body", 1, "undefined", "SEM")]
+        assert clean(f"We fit (structural equation modeling{comma} {lead}{comma} SEM).\n")
+
+
+@pytest.mark.parametrize("lead", ["hereafter", "abbreviated as", "以下簡稱", "簡稱"])
+def test_a_naming_lead_set_off_as_its_own_item_is_read_as_if_absent(lead: str) -> None:
+    for comma in (",", "，"):
+        text = ("We used structural equation modeling (SEM). Then "
+                f"(structural equation modeling{comma} {lead}{comma} SEM) again.\n")
+        [finding] = check(text)["findings"]
+        assert (finding["rule"], finding["expansion"]) == ("defined_again", "structural equation modeling")
+        report = check(f"Two designs (a design{comma} {lead}{comma} RCT) ran.\n")
+        assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unconfirmed_definition"
+
+
+@pytest.mark.parametrize("reference", ["see Section 2", "See Table 1", "see also Section 2", "cf. Section 2",
+                                       "see Sections 2, 3", "見第二節", "參見附錄A", "詳見第二節", "參閱表1"])
+def test_a_cross_reference_before_the_acronym_is_read_as_if_absent(reference: str) -> None:
+    for comma in (",", "，"):
+        assert clean(f"We used randomized controlled trials ({reference}{comma} RCT). "
+                     "The RCT results were stable.\n")
+        assert clean(f"我們採用隨機對照試驗（{reference}{comma}RCT）。RCT 的結果穩定。\n")
+        [finding] = check(f"隨機對照試驗（RCT）很常見。隨機對照試驗（{reference}{comma}RCT）再次出現。\n")["findings"]
+        assert (finding["rule"], finding["expansion"]) == ("defined_again", "隨機對照試驗")
+        # As after a restatement, words that do not spell the acronym leave a use.
+        assert findings(f"Two designs ({reference}{comma} RCT) ran.\n") == [("body", 1, "undefined", "RCT")]
+
+
+def test_a_cross_reference_lead_with_no_target_stays_an_example_lead() -> None:
+    for text in ("Randomized controlled trials (see, e.g., RCT) ran.\n",
+                 "Randomized controlled trials (see, RCT) ran.\n"):
+        assert findings(text) == [("body", 1, "undefined", "RCT")], text
+
+
+def test_acronyms_shaped_like_cross_references_stay_acronyms() -> None:
+    for text, other in (("Randomized controlled trials (SEE model, RCT) ran.\n", "SEE"),
+                        ("Randomized controlled trials (CF. cohort, RCT) ran.\n", "CF")):
+        assert sorted(findings(text)) == sorted([("body", 1, "undefined", other), ("body", 1, "undefined", "RCT")])
+
+
+@pytest.mark.parametrize("citations", ["Smith, 2020", "Smith, 2020; Lee, 2019", "see Smith et al., 2020, p. 4",
+                                       "WHO, n.d."])
+def test_citations_before_the_acronym_are_not_read(citations: str) -> None:
+    for semicolon in (";", "；"):
+        text = f"We pooled randomized controlled trials ({citations}{semicolon} RCTs). The RCTs were small.\n"
+        assert clean(text), text
+        assert clean(f"隨機對照試驗（{citations}{semicolon}RCT）很常見。RCT 有效。\n")
+        # As with citations after the acronym, words that do not spell it leave a limit.
+        report = check(f"Several trials ({citations}{semicolon} RCT) ran.\n")
+        assert rows(report) == [] and report["coverage_limits"][0]["reason"] == "unconfirmed_definition"
+
+
 @pytest.mark.parametrize("text", ["As shown in Table IV, the arms differ.\n",
                                   "Patients with stage IV cancer enrolled.\n",
                                   "This phase IV trial ran.\n", "Grade IV glioma was rare.\n",
@@ -495,6 +569,7 @@ def test_whole_token_matching() -> None:
     ("keywords", "**Keywords**: RCT, LLM\n"),
     ("chinese keywords", "關鍵詞：RCT、LLM\n"),
     ("inline math", "The effect $F_{RCT}$ held.\n"),
+    ("math after an escaped backslash", "The value \\\\$RCT$ is fine.\n"),
     ("display math", "$$\nRCT = 1\n$$\n"),
     ("url", "See https://example.org/RCT and [a link](https://example.org/LLM).\n"),
     ("year citation", "As reported (WHO, 2020), it held.\n"),
@@ -563,6 +638,7 @@ def test_code_spans_pair_equal_backtick_runs(text: str, expected: list[tuple]) -
     "An escaped \\<!-- marker. The RCT worked. -->\n",   # an escaped "<" opens nothing
     "<!-- a `note --> The RCT worked.\n",                # a comment that starts first holds the backtick
     "It cost \\$5 per RCT arm and \\$10 per site.\n",       # an escaped dollar opens no math
+    "A path \\\\\\$RCT$ is text.\n",                       # an escaped backslash, then an escaped dollar
 ])
 def test_comment_and_math_markers_follow_markdown(text: str) -> None:
     assert findings(text) == [("body", 1, "undefined", "RCT")]
@@ -584,7 +660,8 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
                   "圖1–流程。", "Figure 1 – T cell counts. ", "Table I – A summary. ",
                   "Figure 1 – Box plots. ", "Figure 1A – Comparison. ", "圖1 – 圖示流程。", "表1 – 表現比較。",
                   "TABLE II – CI estimates. ", "TABLE I – X-ray findings. ",
-                  "Figure 1A – C-reactive protein. ", "TABLE I – XXII cohorts. "):
+                  "Figure 1A – C-reactive protein. ", "TABLE I – XXII cohorts. ",
+                  "Table I – T cell counts. ", "TABLE X – A review. ", "Table V – B cells. "):
         text = f"{label}Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
@@ -691,6 +768,7 @@ def test_caption_word_at_sentence_start_is_still_prose() -> None:
                  "Figure 1 – Figure 3 show the RCT.\n", "圖1–圖3顯示 RCT 的流程。\n",
                  "圖一 – 圖三顯示 RCT 的流程。\n", "表S1—表S3列出 RCT 的分組。\n",
                  "Table I – XXI list the RCT arms.\n",
+                 "Table C – D show the RCT arms.\n", "Table L - M list the RCT arms.\n",
                  "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
@@ -747,6 +825,16 @@ def test_unread_abstract_section_makes_coverage_partial() -> None:
     report = check("## Resumen\n\nUn ECA.\n\n## Body\n\nText.\n")
     assert report["unread_sections"] == [{"line": 1, "heading": "Resumen"}]
     assert report["status"] == "partial" and report["findings"] == []
+
+
+@pytest.mark.parametrize("control", ["\x1b[31m", "\x07", "\x7f", "\x9b", "\u202e", "\u2066"])
+def test_control_characters_in_an_unread_heading_are_escaped_in_the_report(control: str) -> None:
+    report = check(f"## Spanish abstract ({control}ES)\n\nUn ECA.\n\n## Body\n\nText.\n")
+    assert report["unread_sections"] == [{"line": 1, "heading": f"Spanish abstract ({control}ES)"}]
+    code = f"\\u{ord(control[0]):04x}"
+    for lang in ("en", "zh-TW"):
+        shown = render(report, lang)
+        assert control[0] not in shown and f"Spanish abstract ({code}{control[1:]}ES)" in shown, lang
 
 
 def test_requested_scope_absent_from_the_input() -> None:
