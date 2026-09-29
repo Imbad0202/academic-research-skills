@@ -451,6 +451,14 @@ def test_a_cross_reference_lead_with_no_target_stays_an_example_lead() -> None:
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
 
+def test_a_chinese_word_that_starts_with_the_cross_reference_character_is_an_expansion() -> None:
+    assert clean("The first group (見習醫學生，MS) completed the test.\n")
+    text = "見習醫學生（MS）參與前測。第二階段納入（見習醫學生，MS）參與後測。\n"
+    [finding] = check(text)["findings"]
+    assert (finding["rule"], finding["expansion"]) == ("defined_again", "見習醫學生")
+    assert clean("本研究採用隨機對照試驗（見 Table 1，RCT）。RCT 有效。\n")
+
+
 def test_acronyms_shaped_like_cross_references_stay_acronyms() -> None:
     for text, other in (("Randomized controlled trials (SEE model, RCT) ran.\n", "SEE"),
                         ("Randomized controlled trials (CF. cohort, RCT) ran.\n", "CF")):

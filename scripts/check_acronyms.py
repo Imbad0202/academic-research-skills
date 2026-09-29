@@ -55,8 +55,9 @@ modeling (i.e., SEM)``, ``structural equation modeling (hereafter SEM)``, and
 use (``two designs (namely RCT)``); after a naming lead, it is a definition
 this check cannot confirm (``two designs (hereafter RCT)``). A cross-reference
 with a target before the acronym (``see Section 2``, ``cf. Table 1``,
-``見第二節``, with every item before the acronym read as part of it) is read
-as a restatement is: ``randomized controlled trials (see Section 2, RCT)`` and
+``參見附錄A``, or ``見`` before a part, page, or place in the text, such as
+``見第二節``, but not the word ``見習醫學生``; every item before the acronym
+is read as part of it) is read as a restatement is: ``randomized controlled trials (see Section 2, RCT)`` and
 ``隨機對照試驗（見第二節，RCT）`` define ``RCT``, and ``two designs (see
 Section 2, RCT)`` uses it.
 
@@ -337,8 +338,11 @@ _NAMING_LEAD = re.compile(
     rf"|(?:{_zh('以下簡稱', '以下稱', '下稱', '簡稱', '又稱', '亦稱', '或稱', '稱為', '縮寫', '英文縮寫', '英文簡稱')})"
     r"(?:\s*為)?)[,，:：]?\s*")
 # A cross-reference before an acronym, read as if absent when it names a target (see _cross_reference).
-# Case-sensitive, as the leads above are, so the acronyms SEE and CF stay.
-_CROSS_REFERENCE = re.compile(rf"(?:[Ss]ee(?:\s+also)?(?![A-Za-z0-9])|[Cc]f\.)|{_zh('見', '參見', '詳見', '參閱')}")
+# Case-sensitive, as the leads above are, so the acronyms SEE and CF stay. "見" alone leads one only
+# before a part, a page, a place in the text, or a Latin letter or digit ("見第二節", "見表1"), since
+# it also starts words ("見習醫學生").
+_CROSS_REFERENCE = re.compile(rf"(?:[Ss]ee(?:\s+also)?(?![A-Za-z0-9])|[Cc]f\.)|{_zh('參見', '詳見', '參閱')}"
+                              r"|見(?=\s*[第表圖附章節註頁上下前後本A-Za-z0-9])")
 _QUOTES = re.compile(r"^[\s'\"‘’“”「」『』]+|[\s'\"‘’“”「」『』]+$")
 _WRAPPERS = re.compile(r"^[\s'\"‘’“”「」『』*_]+|[\s'\"‘’“”「」『』*_]+$")  # quotation and emphasis marks
 
