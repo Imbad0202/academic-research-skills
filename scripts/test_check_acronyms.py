@@ -444,7 +444,10 @@ def test_a_cross_reference_before_the_acronym_is_read_as_if_absent(reference: st
 
 def test_a_cross_reference_lead_with_no_target_stays_an_example_lead() -> None:
     for text in ("Randomized controlled trials (see, e.g., RCT) ran.\n",
-                 "Randomized controlled trials (see, RCT) ran.\n"):
+                 "Randomized controlled trials (see, RCT) ran.\n",
+                 "Randomized controlled trials (see for example, RCT) ran.\n",
+                 "Randomized controlled trials (see e.g. Section 2, RCT) ran.\n",
+                 "Randomized controlled trials (see such as trials, RCT) ran.\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 
 
@@ -661,7 +664,9 @@ def test_a_caption_or_note_starts_a_paragraph() -> None:
                   "Figure 1 – Box plots. ", "Figure 1A – Comparison. ", "圖1 – 圖示流程。", "表1 – 表現比較。",
                   "TABLE II – CI estimates. ", "TABLE I – X-ray findings. ",
                   "Figure 1A – C-reactive protein. ", "TABLE I – XXII cohorts. ",
-                  "Table I – T cell counts. ", "TABLE X – A review. ", "Table V – B cells. "):
+                  "Table I – T cell counts. ", "TABLE X – A review. ", "Table V – B cells. ",
+                  "Table C – T cell counts in the ", "Table L – T cell counts. ", "Table C – B cells. ",
+                  "Table C – A summary. "):
         text = f"{label}Randomized controlled trial (RCT) results.\n\nThe RCT ended.\n"
         assert findings(text) == [("body", 3, "undefined", "RCT")], label
     # A thematic break ends a paragraph, so a caption or a link definition may follow it.
@@ -769,6 +774,8 @@ def test_caption_word_at_sentence_start_is_still_prose() -> None:
                  "圖一 – 圖三顯示 RCT 的流程。\n", "表S1—表S3列出 RCT 的分組。\n",
                  "Table I – XXI list the RCT arms.\n",
                  "Table C – D show the RCT arms.\n", "Table L - M list the RCT arms.\n",
+                 "Table C – F show the RCT arms.\n", "Table I – K list the RCT arms.\n",
+                 "Table V – W list the RCT arms.\n", "Table X — Z list the RCT arms.\n",
                  "表一所示的 RCT 分組。\n"):
         assert findings(text) == [("body", 1, "undefined", "RCT")], text
 

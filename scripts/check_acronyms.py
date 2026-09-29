@@ -97,9 +97,10 @@ neither do ``Figure 1.2 shows`` and ``Fig. 1 Flow diagram``; a range end is a
 number or a labeled number (``Figure 1 – 3``, ``Table 1–Table 3``,
 ``圖1–圖3``), an end of the number's own kind (a letter after ``1A`` or after
 a letter label, a Roman numeral up to 20 above a Roman start, a Chinese
-numeral after a Chinese one: ``Figure 1A – C``, ``Table C – D``,
-``Table XXXIX–XL``, ``圖一–三``; the label letters ``I``, ``V``, and ``X``
-are Roman numerals, and ``C`` and ``L`` are letters) that no hyphen follows
+numeral after a Chinese one: ``Figure 1A – C``, ``Table XXXIX–XL``,
+``圖一–三``; after a label letter that is also a Roman numeral, C, I, L, V,
+or X, a letter one to five after it: ``Table C – D``, but not ``Table C – T
+cell counts``) that no hyphen follows
 (``Table I – X-ray findings`` is a title), or a single letter right after an
 unspaced dash (``Figure 1–C shows``), so a caption title that starts that way
 is read as prose), the reference list, author-year citations whose author part
@@ -219,7 +220,7 @@ _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*(?P<id>{_CAPTION_ID})"
 # Range ends after a caption dash (see _caption_label).
 _RANGE_ANY = re.compile(rf"\s*(?:[A-Z]?[.-]?\d"
                         rf"|(?:{_CAPTION_WORD}|附?[圖表])\s*(?:{_CAPTION_ID}|{_ZH_NUMERAL})(?![A-Za-z0-9]))")
-_SUBFIGURE = re.compile(rf"{_ARABIC_ID}[A-Za-z]|(?![IVX])[A-Z]")  # "Table C" is a letter, "Table V" a numeral
+_SUBFIGURE = re.compile(rf"{_ARABIC_ID}[A-Za-z]|(?![IVXLC])[A-Z]")
 _RANGE_LETTER = re.compile(r"\s*[A-Za-z](?![A-Za-z0-9-])")  # not "C-reactive"
 _RANGE_ROMAN = re.compile(r"\s*([IVXLCDM]+)(?![A-Za-z0-9-])")  # not "X-ray"
 _STANDARD_ROMAN = re.compile(r"(?=[MDCLXVI])M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})")
@@ -427,29 +428,35 @@ def _caption_label(line: str) -> bool:
     """True when the line opens with a caption label. A dash after the label's
     number opens none when a range end follows it: a number or a labeled number
     (``Figure 1 – 3``, ``Table S1–S3``, ``Table 1–Table 3``), an end of the
-    number's own kind (a letter after ``1A`` or after a letter label other than
-    ``I``, ``V``, or ``X``, a Roman numeral up to 20 above a Roman start, a
-    Chinese numeral after a Chinese one: ``Figure 1A – C``, ``Table C – D``,
-    ``Table XXXIX–XL``, ``圖一–三``), or a single letter right after an unspaced
-    dash (``Figure 1–C shows``). A letter or Roman end followed by a hyphen
-    starts a title instead (``Table I – X-ray findings``)."""
+    number's own kind (a letter after ``1A`` or after a letter label, a Roman
+    numeral up to 20 above a Roman start, a Chinese numeral after a Chinese one:
+    ``Figure 1A – C``, ``Table XXXIX–XL``, ``圖一–三``), a letter one to five
+    after a label letter that is also a Roman numeral (C, I, L, V, X:
+    ``Table C – D``, ``Table I – K``, but not ``Table C – T cell counts``), or a
+    single letter right after an unspaced dash (``Figure 1–C shows``). A letter
+    or Roman end followed by a hyphen starts a title instead
+    (``Table I – X-ray findings``)."""
     found = _CAPTION.match(line)
     if not found or found.group("dash") is None:
         return bool(found)
     start, after = found.group("id") or found.group("zh"), line[found.end():]
     tight = not found.group("dash")[0].isspace() and not after[:1].isspace()
     roman, first = _RANGE_ROMAN.match(after), _roman_value(start)
+    letter = _RANGE_LETTER.match(after)
     return not (_RANGE_ANY.match(after)
-                or ((_SUBFIGURE.fullmatch(start) or tight) and _RANGE_LETTER.match(after))
+                or (letter and (_SUBFIGURE.fullmatch(start) or tight
+                                or (len(start) == 1 and 0 < ord(letter.group(0).strip()) - ord(start) <= 5)))
                 or (roman and first and first < _roman_value(roman.group(1)) <= first + 20)
                 or (re.fullmatch(_ZH_NUMERAL, start) and _RANGE_ZH.match(after)))
 
 
 def _cross_reference(item: str) -> bool:
     """True when the item is a cross-reference with a target (``see Section 2``,
-    ``cf. Table 1``, ``見第二節``); ``see`` alone is an example lead."""
+    ``cf. Table 1``, ``見第二節``). ``see`` alone, or before an example lead
+    (``see for example``), is an example lead."""
     found = _CROSS_REFERENCE.match(item)
-    return found is not None and bool(item[found.end():].strip())
+    target = item[found.end():].strip() if found else ""
+    return bool(target) and not _example_led(target.split())
 
 
 def _lead(text: str) -> tuple[str, str]:
