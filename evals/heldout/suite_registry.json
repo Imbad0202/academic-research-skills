@@ -12,5 +12,6 @@
   "tortured_phrase_conformance": "mechanical_match",
   "within_session_ideation_diversity": "paired_controls",
   "unsupported_claim_recovery": "llm_judged",
-  "per_source_method_weaknesses": "llm_judged"
+  "per_source_method_weaknesses": "llm_judged",
+  "experiment_alignment_overclaim": "mechanical_match"
 }
