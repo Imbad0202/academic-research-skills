@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-SKILLS = ("deep-research", "academic-paper", "academic-paper-reviewer", "academic-pipeline", "sr-screener")
+SKILLS = ("deep-research", "academic-paper", "academic-paper-reviewer", "academic-pipeline")
 MAX_LENGTH = 1024
 
 

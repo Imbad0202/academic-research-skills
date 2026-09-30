@@ -74,7 +74,7 @@ El documento de arquitectura sustituye a la extensa descripción del pipeline qu
 
 **👉 [docs/RISK_REGISTER.md](docs/RISK_REGISTER.md)** — los riesgos permanentes que el conjunto conoce, qué controles existentes abordan cada uno, cuál es el estado de la evidencia detrás de esos controles y qué queda abierto.
 
-**¿Usas Claude Science?** Las cinco skills se importan directamente: **Skills → Import from GitHub**, pega `https://github.com/Imbad0202/academic-research-skills`, **Preview** y después **Import** (requiere la v3.14.0+ de este repositorio: el importador lee las rutas explícitas de skill en el manifiesto del marketplace). Las importaciones son capturas puntuales; vuelve a importar cuando ARS se actualice. Las skills importadas conservan la metodología de ARS (protocolos de investigación / escritura / revisión); la maquinaria específica de Claude Code —comandos de barra, hooks, orquestación de subagentes— no se transfiere. Consulta [docs/SETUP.md](docs/SETUP.md), Método 5, para más detalle.
+**¿Usas Claude Science?** Las cuatro skills se importan directamente: **Skills → Import from GitHub**, pega `https://github.com/Imbad0202/academic-research-skills`, **Preview** y después **Import 4 skills** (requiere la v3.14.0+ de este repositorio: el importador lee las rutas explícitas de skill en el manifiesto del marketplace). Las importaciones son capturas puntuales; vuelve a importar cuando ARS se actualice. Las skills importadas conservan la metodología de ARS (protocolos de investigación / escritura / revisión); la maquinaria específica de Claude Code —comandos de barra, hooks, orquestación de subagentes— no se transfiere. Consulta [docs/SETUP.md](docs/SETUP.md), Método 5, para más detalle.
 
 **¿Usas Pi?** Instala el wrapper comunitario mantenido dentro del árbol con `pi install git:github.com/Imbad0202/academic-research-skills`. Mantiene el contenido original de ARS como autoritativo y documenta la orquestación específica de Pi y las limitaciones de hooks. Consulta [`pi/README.md`](pi/README.md).
 
@@ -101,7 +101,6 @@ El documento de arquitectura sustituye a la extensa descripción del pipeline qu
 - **Academic Paper** — escritura de artículos con 12 agentes, con Style Calibration, Writing Quality Check, endurecimiento de LaTeX, visualización, coaching de revisión, conversión de citas, protocolo anti-fuga y verificación de figuras con VLM.
 - **Academic Paper Reviewer** — revisión multiperspectiva con 7 agentes y juicios narrativos atados a criterios y anclados en evidencia (Journal-Fit Reviewer + 3 revisores dinámicos + Devil's Advocate), protocolo de umbral de concesión, preservación de la intensidad de ataque, crítica y calibración opcionales entre modelos, matriz de trazabilidad R&R y restricción de solo lectura. Las revisiones en vivo actuales siguen siendo `NOT_CALIBRATED`; la calibración completa produce un perfil de candidato acotado, pero su aplicación en una revisión en vivo todavía no está conectada.
 - **Academic Pipeline** — orquestador de pipeline de 10 etapas con checkpoints adaptativos, verificación de afirmaciones, Material Passport, `repro_lock` opcional, verificación de integridad opcional entre modelos, refuerzo a mitad de conversación y comprobaciones de regresión narrativas criterio a criterio (el portador tipado de trayectorias queda aplazado).
-- **SR-Screener** — cribado de estudios guiado por protocolo para revisiones sistemáticas, de alcance y rápidas: dos revisores de IA cegados más un tercer revisor que resuelve discrepancias, códigos de exclusión ordenados, ninguna decisión por defecto, lotes reanudables, control de calidad (estudios semilla, revisión de exclusiones dudosas, kappa y PABAK), recuentos PRISMA 2020, grupos RIS para EndNote/Zotero y un `literature_corpus[]` para `academic-paper`. Las decisiones de la IA son un apoyo; el equipo de revisión las verifica.
 - **Metadatos de nivel de acceso a datos** (v3.3.2+) — cada skill declara `data_access_level` (`raw` / `redacted` / `verified_only`); lo aplica `scripts/check_data_access_level.py`. Patrón adaptado del automated-w2s-researcher de Anthropic (2026). Consulta [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md).
 - **Anotación de tipo de tarea** (v3.3.2+) — cada skill declara `task_type` (`open-ended` o `outcome-gradable`). Todas las skills actuales de ARS son `open-ended`.
 - **Esquema de informes de benchmark** (v3.3.5+) — JSON Schema + lint para comparaciones de benchmark honestas. Consulta [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md).
@@ -231,19 +230,6 @@ You: "status"
 
 > El pipeline termina con la **Etapa 6: Process Summary**, que genera automáticamente un registro del proceso de creación del artículo con una evaluación de calidad de la colaboración en 6 dimensiones (puntuación 1–100).
 
-#### SR-Screener (8 modos)
-
-```
-"Turn my proposal into a screening protocol"          → protocol mode
-"Is this abstract eligible for my review?"            → quick mode (triaje con un solo revisor)
-"Pilot the screening with my seed studies"            → pilot mode
-"Screen these database exports"                       → ta-screen mode
-"Screen the full texts of the advanced records"       → ft-screen mode
-"Adjudicate the conflicts in my Rayyan export"        → adjudicate mode
-"Double-check my exclusions"                          → audit mode
-"Give me the PRISMA numbers for the screening"        → report mode
-```
-
 ### Idiomas soportados
 
 - **Chino tradicional** (繁體中文) — valor por defecto cuando el usuario escribe en chino
@@ -292,10 +278,6 @@ Revisión multiperspectiva con 7 agentes y **juicios narrativos atados a criteri
 ### Academic Pipeline (v3.22.2)
 
 Orquestador de 10 etapas con verificación de integridad, revisión en dos fases, coaching socrático y evaluación de la colaboración. Reglas del pipeline (protocolo que siguen los agentes, no garantías en tiempo de ejecución): cada etapa requiere un checkpoint de confirmación del usuario; la verificación de integridad (Etapa 2.5 + 4.5) es OBLIGATORIA y sin bypass no registrado (toda excepción requiere que quede registrada la justificación del usuario para la Etapa 6); la Matriz de Trazabilidad R&R (Schema 11) vincula cada observación de la revisión con el cambio que declara el equipo autor y registra si la re-revisión lo verificó. v3.4 añadió el Compliance Agent (PRISMA-trAIce + RAISE) en las Etapas 2.5 / 4.5. v3.5 añade el **Collaboration Depth Observer** (`collaboration_depth_agent`, solo advisory, nunca bloquea) en cada checkpoint FULL/SLIM y al completar el pipeline. Las puertas de integridad OBLIGATORIAS (2.5 / 4.5) saltan explícitamente el observador para que las comprobaciones de cumplimiento no queden diluidas. Basado en Wang & Zhang (2026), IJETHE 23:11. Matriz etapa por etapa con agentes, artefactos y puertas: consulta ARCHITECTURE.md §3.
-
-### SR-Screener (v1.0.0)
-
-Cribado de estudios con 4 agentes entre `deep-research` (pregunta, protocolo, búsqueda) y `academic-paper` (redacción de la revisión). Modos: protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report. Dos subagentes revisores cegados (solo Read y Grep) evalúan cada registro con el protocolo que confirmó el usuario, un tercer revisor resuelve los conflictos entre avanzar y excluir, y scripts de Python que solo usan la biblioteca estándar analizan exportaciones RIS / PubMed .nbib / Web of Science / CSV, eliminan duplicados, agrupan en lotes, combinan y generan el registro de cribado, los grupos RIS, los recuentos PRISMA 2020, un borrador de métodos con campos `[TO COMPLETE]` y un archivo `literature_corpus[]`. Reglas que siguen los agentes (no garantías en tiempo de ejecución): ningún registro se criba antes de que el usuario confirme el protocolo, ninguna llamada fallida se convierte en una exclusión por defecto y el equipo de revisión verifica las decisiones antes de informar las cifras. Véase [`sr-screener/SKILL.md`](sr-screener/SKILL.md).
 
 ---
 

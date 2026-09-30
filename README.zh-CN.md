@@ -65,7 +65,7 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 **👉 [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)** — 哪些数据会离开你的电脑（书目 resolver、可选且需明确同意的跨模型调用、更新检查）、本地缓存存什么与存多久、每条路径怎么关闭。（英文）
 
-**使用 Claude Science？** 五个 skill 可直接导入：**Skills → Import from GitHub**，粘贴 `https://github.com/Imbad0202/academic-research-skills`，点 **Preview**，再点 **Import**（需本 repo v3.14.0+——导入器读取 marketplace manifest 中显式声明的 skill 路径）。导入是一次性快照：ARS 更新后需重新导入。导入的 skill 承载 ARS 方法论（研究／写作／评审协议）；Claude Code 专属机制——slash commands、hooks、subagent 编排——不会转移。详见 [docs/SETUP.md](docs/SETUP.md) Method 5。
+**使用 Claude Science？** 四个 skill 可直接导入：**Skills → Import from GitHub**，粘贴 `https://github.com/Imbad0202/academic-research-skills`，点 **Preview**，再点 **Import 4 skills**（需本 repo v3.14.0+——导入器读取 marketplace manifest 中显式声明的 skill 路径）。导入是一次性快照：ARS 更新后需重新导入。导入的 skill 承载 ARS 方法论（研究／写作／评审协议）；Claude Code 专属机制——slash commands、hooks、subagent 编排——不会转移。详见 [docs/SETUP.md](docs/SETUP.md) Method 5。
 
 **使用 Pi？** 运行 `pi install git:github.com/Imbad0202/academic-research-skills` 安装仓库内的社区维护 wrapper。它继续以原始 ARS 内容为准，并记录 Pi 在编排和 hooks 方面的限制。详见 [`pi/README.md`](pi/README.md)。
 
@@ -88,7 +88,6 @@ v3.3 的灵感来自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 - **Academic Paper** — 12 个 Agent 的论文撰写团队，含风格校准、写作质量检查、LaTeX 输出强化、可视化、修订教练、引用格式转换、反泄露协议、VLM 图表验证。
 - **Academic Paper Reviewer** — 7 个 Agent 的多视角同行评审，采用逐准则、证据锚定的叙事判断（Journal-Fit Reviewer + 3 位动态审查者 + 魔鬼代言人），含让步门槛协议、攻击强度保持、可选跨模型 DA critique / calibration、R&R 追溯矩阵、只读约束。目前 live review 一律为 `NOT_CALIBRATED`；完整 calibration 只产生有界候选 profile，尚未接入 live review。
 - **Academic Pipeline** — 10 阶段全流程调度器，含自适应 checkpoint、主张验证、材料护照、可选 `repro_lock`、可选跨模型学术诚信验证、中途强化机制，以及逐项准则的叙事退步检查（typed trajectory 尚未实现）。
-- **SR-Screener** — 系统综述、范围综述与快速综述的研究筛选，按用户确认的筛选规则执行：两位盲审 AI 审查者加第三位裁决者、按固定顺序的排除代码、不预设任何决定、可续跑的批次、质量检查（种子研究、近似排除复查、kappa 与 PABAK）、PRISMA 2020 数字、EndNote/Zotero RIS 分组，以及交给 `academic-paper` 的 `literature_corpus[]`。AI 的决定只是辅助，最终由研究团队核查。
 - **数据访问层级标注**（v3.3.2+）— 每个 skill 声明 `data_access_level`（`raw` / `redacted` / `verified_only`），由 `scripts/check_data_access_level.py` 强制执行。设计灵感来自 Anthropic 的 automated-w2s-researcher（2026）。详见 [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md)。
 - **任务类型标注**（v3.3.2+）— 每个 skill 声明 `task_type`（`open-ended` 或 `outcome-gradable`）。目前 ARS 所有 skills 皆为 `open-ended`。
 - **Benchmark 报告 Schema**（v3.3.5+）— JSON Schema + lint script，要求诚实的 benchmark 比较报告。详见 [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md)。
@@ -210,19 +209,6 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 > Pipeline 结束时自动产出 **Stage 6：过程记录** — 含论文创建过程记录与 6 维度协作质量评估（1–100 分）。
 
-#### SR-Screener（研究筛选，8 种模式）
-
-```
-"把我的计划书转成筛选规则"                    → protocol mode
-"这篇摘要符合我的综述纳入条件吗？"            → quick mode（单一审查者初筛）
-"先用种子研究试跑筛选"                        → pilot mode
-"筛选这些数据库导出文件"                      → ta-screen mode
-"筛选晋级记录的全文"                          → ft-screen mode
-"裁决我 Rayyan 导出文件中的冲突"              → adjudicate mode
-"帮我复查排除的记录"                          → audit mode
-"给我这次筛选的 PRISMA 数字"                  → report mode
-```
-
 ### 支持语言
 
 - **繁体中文** — 用户以中文对话时默认使用
@@ -271,10 +257,6 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 ### Academic Pipeline (v3.22.2)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 规则（由 agent 按流程遵守，不是运行时保证）：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）把每一项审查意见对应到作者的修订主张，并记录复审是否验证通过。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
-
-### SR-Screener (v1.0.0)
-
-4 个 agent 的研究筛选，位于 `deep-research`（问题、计划书、检索）与 `academic-paper`（撰写综述）之间。模式：protocol、quick、pilot、ta-screen、ft-screen、adjudicate、audit、report。两位盲审的审查者 subagent（只能用 Read 与 Grep）按用户确认的筛选规则审每一条记录，第三位审查者裁决"晋级 vs. 排除"的冲突；只用标准库的 Python 脚本负责解析 RIS / PubMed .nbib / Web of Science / CSV 导出文件、去重、分批、合并，并产出筛选记录表、RIS 分组、PRISMA 2020 数字、含 `[TO COMPLETE]` 字段的方法段草稿，以及 `literature_corpus[]` 文件。Agent 遵守的规则（不是运行时保证）：用户确认筛选规则前不筛任何记录、失败的调用不会被当成默认"排除"、数字发表前由研究团队核查决定。详见 [`sr-screener/SKILL.md`](sr-screener/SKILL.md)。
 
 ---
 

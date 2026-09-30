@@ -94,7 +94,6 @@ AGENT_DIRS = (
     "academic-paper-reviewer/agents",
     "academic-pipeline/agents",
     "shared/agents",
-    "sr-screener/agents",
     "agents",
 )
 

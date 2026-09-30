@@ -172,11 +172,9 @@ flowchart LR
         Source[User corpus<br/>Zotero / Obsidian /<br/>folder of PDFs / etc.]
         Adapter["Adapter<br/>(reference: scripts/adapters/<br/>folder_scan.py / zotero.py /<br/>obsidian.py — v3.6.4+)"]
         Source --> Adapter
-        Screener["sr-screener report<br/>*_literature_corpus.yaml<br/>(screened records)"]
     end
     Passport["Material Passport<br/>passport.yaml<br/>+ rejection_log.yaml<br/>(literature_corpus[]<br/>optional Schema 9 field)"]
     Adapter --> Passport
-    Screener --> Passport
     subgraph Consumer["Phase 1 ARS runtime (v3.6.5)"]
         BA["📚 deep-research<br/>bibliography_agent<br/>(Phase 1)"]
         LS["📚 academic-paper<br/>literature_strategist_agent<br/>(Phase 1)"]
@@ -190,13 +188,13 @@ flowchart LR
     classDef passport fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px
     classDef consumer fill:#f6ffed,stroke:#52c41a
     classDef report fill:#f9f0ff,stroke:#9254de
-    class Source,Adapter,Screener producer
+    class Source,Adapter producer
     class Passport passport
     class BA,LS consumer
     class SR1,SR2 report
 ```
 
-**Producer side (v3.6.4 input port).** Adapters run out-of-band — before an ARS session, not during. They read a user corpus source and emit `passport.yaml` with `literature_corpus[]` populated and a parallel `rejection_log.yaml` (always emitted; empty when no rejections). Three reference Python adapters ship at `scripts/adapters/{folder_scan,zotero,obsidian}.py`; the `sr-screener` skill's `report` mode writes the records a screening advanced as a ready-to-paste `literature_corpus[]` list (`adapter_name: sr-screener`); users are expected to write their own adapters for non-reference sources following [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md). Schema validated by `scripts/check_literature_corpus_schema.py`.
+**Producer side (v3.6.4 input port).** Adapters run out-of-band — before an ARS session, not during. They read a user corpus source and emit `passport.yaml` with `literature_corpus[]` populated and a parallel `rejection_log.yaml` (always emitted; empty when no rejections). Three reference Python adapters ship at `scripts/adapters/{folder_scan,zotero,obsidian}.py`; users are expected to write their own adapters for non-reference sources following [`academic-pipeline/references/adapters/overview.md`](../academic-pipeline/references/adapters/overview.md). Schema validated by `scripts/check_literature_corpus_schema.py`.
 
 **Consumer side (v3.6.5).** Two Phase 1 literature agents read `literature_corpus[]` via the **corpus-first, search-fills-gap** flow — `deep-research/agents/bibliography_agent.md` and `academic-paper/agents/literature_strategist_agent.md`. The flow is presence-based: it auto-engages when the passport carries a non-empty `literature_corpus[]` and parses cleanly. When the corpus is absent, empty, or fails the minimal shape check, each consumer runs its existing external-DB-only flow unchanged (Iron Rule 4 graceful fallback for the failure cases).
 
@@ -224,7 +222,6 @@ graph TD
     DR[deep-research<br/>13 agents<br/>v2.12.1<br/>+ corpus reader]
     AP[academic-paper<br/>12 agents<br/>v3.3.1<br/>+ corpus reader]
     APR[academic-paper-reviewer<br/>7 agents<br/>v1.11.1]
-    SRS[sr-screener<br/>4 agents<br/>v1.0.0<br/>+ corpus producer]
     Shared[shared/<br/>handoff_schemas.md<br/>ground_truth_isolation<br/>benchmark_report<br/>artifact_reproducibility<br/>cross_model_verification<br/>mode_spectrum<br/>style_calibration<br/>collaboration_depth_rubric<br/>sprint_contract.schema<br/>contracts/passport/reset_ledger_entry<br/>contracts/passport/literature_corpus_entry<br/>contracts/passport/rejection_log<br/>contracts/reviewer/full + methodology_focus]
 
     Pipeline --> DR
@@ -234,21 +231,18 @@ graph TD
     DR -. "RQ Brief + Bibliography + Synthesis" .-> AP
     AP -. "Complete manuscript" .-> APR
     APR -. "Revision Roadmap" .-> AP
-    DR -. "Protocol + database exports" .-> SRS
-    SRS -. "literature_corpus[] + PRISMA counts + methods draft" .-> AP
     DR --- Shared
     AP --- Shared
     APR --- Shared
     Pipeline --- Shared
     Observer --- Shared
-    SRS --- Shared
 
     classDef orch fill:#f0f5ff,stroke:#2f54eb,stroke-width:2px
     classDef skill fill:#e6f4ff,stroke:#1677ff
     classDef shared fill:#f5f5f5,stroke:#595959,stroke-dasharray:5 5
     classDef observer fill:#f6ffed,stroke:#52c41a,stroke-dasharray:3 3
     class Pipeline orch
-    class DR,AP,APR,SRS skill
+    class DR,AP,APR skill
     class Shared shared
     class Observer observer
 ```
@@ -283,7 +277,7 @@ Two classes of gate: **🧑 decision-heavy** (user chooses a branch or approves 
 | Sprint Contract hard gate (Schema 13.2) | 🤖 + 🧑 | 3 (REVIEW) | Each reviewer receives the contract BEFORE the paper (Phase 1 metadata-only), commits triggers only for dimensions where its role is eligible, then emits role-scoped Phase 2 scores. `check_phase_conformance.py` enforces the boundary; `editorial_synthesizer_agent` applies per-dimension eligible-seat quantifiers and emits one four-value decision. Templates: `shared/contracts/reviewer/full.json` (panel 5, six dimensions) + `methodology_focus.json` (panel 2). | Synthesizer rejects post-hoc trigger/fatality edits; user sees the pre-commitment and any DA-CRITICAL-vs-Accept escalation |
 | Passport reset boundary (v3.6.3, opt-in) | 🤖 (orchestrator) | FULL checkpoints | Opt-in via `ARS_PASSPORT_RESET=1`. Promotes every FULL checkpoint to a context-reset boundary. `systematic-review` mode with the flag ON makes reset mandatory; other modes treat reset as the flag-gated default. New `resume_from_passport=<hash>` mode in `academic-pipeline` lets users resume in a fresh session from the Material Passport ledger alone. Schema 9 `reset_boundary[]` append-only ledger with `kind: boundary` + `kind: resume` entry types; hash via JSON Canonical Form + SHA-256 + canonical placeholder for self-reference safety. Concurrency contract: POSIX `fcntl.flock LOCK_EX` + bounded timeout ≤60s + non-POSIX fail-loudly. Authoritative protocol: [`academic-pipeline/references/passport_as_reset_boundary.md`](../academic-pipeline/references/passport_as_reset_boundary.md). Validated by `scripts/check_passport_reset_contract.py`. | Flag OFF preserves pre-v3.6.3 continuation behaviour byte-for-byte |
 | Corpus consumer protocol (v3.6.5) | 🤖 + Phase 1 agents | 1 / 2 (when `literature_corpus[]` present) | Presence-based auto-engage when Material Passport carries non-empty `literature_corpus[]` and parses cleanly. Four Iron Rules (Same criteria / No silent skip / No corpus mutation / Graceful fallback on parse failure). PRE-SCREENED reproducibility block in Search Strategy report (F3 zero-hit + F4a–F4f provenance). Validated by `scripts/check_corpus_consumer_protocol.py` (9 invariants L1-L9 with manifest-driven consumer list). | Parse failure → emit `[CORPUS PARSE FAILURE: <cause>]` and fall back to external-DB-only flow (Iron Rule 4) |
-| Model tiering (v3.16.0, opt-in) | 🤖 (dispatch layer) | All stages (agent dispatch) | **Never blocks.** Opt-in via `ARS_MODEL_TIERING=economy\|quality-boost`. `economy` (frontier-tier session): the 14 execution-type agents dispatch one tier below the session model, floor Opus-class. `quality-boost` (below-frontier session): judgment-type agents at the Stage 2.5/4.5 integrity gates and final-review surfaces step up to the frontier tier; nothing is ever downgraded. Tiers are relative positions, never hard-pinned model ids. Frozen 43-agent classification (29 judgment / 14 execution; sr-screener's screening calls take per-role models from its config) in `scripts/model_tiering_manifest.json` + `shared/model_tiering.md`, pinned to each other and to the agent files by `scripts/check_model_tiering.py`. | Unset = byte-equivalent pre-#517 behaviour; unknown value warns once and behaves as unset (fail-open to the safe default) |
+| Model tiering (v3.16.0, opt-in) | 🤖 (dispatch layer) | All stages (agent dispatch) | **Never blocks.** Opt-in via `ARS_MODEL_TIERING=economy\|quality-boost`. `economy` (frontier-tier session): the 13 execution-type agents dispatch one tier below the session model, floor Opus-class. `quality-boost` (below-frontier session): judgment-type agents at the Stage 2.5/4.5 integrity gates and final-review surfaces step up to the frontier tier; nothing is ever downgraded. Tiers are relative positions, never hard-pinned model ids. Frozen 39-agent classification (26 judgment / 13 execution) in `scripts/model_tiering_manifest.json` + `shared/model_tiering.md`, pinned to each other and to the agent files by `scripts/check_model_tiering.py`. | Unset = byte-equivalent pre-#517 behaviour; unknown value warns once and behaves as unset (fail-open to the safe default) |
 | Stage 5/6 boundary semantics (v3.17.0) | 🤖 + 🧑 | 5 (entry gate), 6 (terminal checkpoint) | Stage 5's "before finalization: always MANDATORY" names exactly one checkpoint — the entry gate between Stage 4.5 PASS and Stage 5 dispatch. Stage 6 gains a defined Stage 5→6 transition, a non-mandatory decline path, a terminal checkpoint after the Process Record is delivered, and canonical terminal-acknowledgement vocabulary (`finish`/`end`/`done`/`confirm`) that sets pipeline global state to `completed`. All five pipeline surfaces (`academic-pipeline/SKILL.md`, `agents/pipeline_orchestrator_agent.md`, `agents/state_tracker_agent.md`, `references/pipeline_state_machine.md`, `references/process_summary_protocol.md`) carry whole-file sha256 content locks in `scripts/check_pipeline_boundary_semantics.py` (66 mutation tests). | Any byte change to a locked surface fails CI until the pinned hash is updated in the same commit |
 | Cross-model handoff envelope (v3.17.0) | 🤖 (dispatch layer) | Design freeze (1), Final editorial decision (3), DA critique (3) | Canonical `[CROSS-MODEL-HANDOFF v1]` envelope + normative Python grammar (`scripts/cross_model_handoff.py`) for the #523 owner→dispatcher→owner transport path. Malformed envelope/result → `[CROSS-MODEL-ERROR]` → outcome `unavailable`, never a fabricated judgment; agreement → mechanical fill with no owner re-invocation; divergence → re-invoke the owner with minimum context. `scripts/check_cross_model_handoff_contract.py` pins the contract across all five surfaces. | `ARS_CROSS_MODEL` unset stays byte-equivalent; malformed transport degrades to `unavailable`, never silently treated as a deliverable |
 
@@ -447,4 +441,3 @@ timeline
 | `academic-paper` v3.3.1 | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit (11) |
 | `academic-paper-reviewer` v1.11.1 | full, re-review, quick, methodology-focus, guided, calibration (6) |
 | `academic-pipeline` v3.22.2 | orchestrator (delegates to sub-skill modes) + `resume_from_passport=<hash>` (v3.6.3 — resume a prior pipeline run from a Material Passport reset boundary; no flag required to invoke. The producing session must have set `ARS_PASSPORT_RESET=1` to emit boundary entries.) + `ARS_CLAIM_AUDIT=1` (v3.8 — opt-in Stage 4→5 L3 claim-faithfulness audit gate; default OFF) + v3.9.4 temporal verification advisory layer (M1 timeline_extraction_agent + M2 5-pass verifier at Phase 4→5 + M3 IRON RULE + M6 first-party Crossref/pdftotext) |
-| `sr-screener` v1.0.0 | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report (8) |

@@ -74,7 +74,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 **👉 [docs/RISK_REGISTER.md](docs/RISK_REGISTER.md)** — the standing risks the suite knows about, which existing controls address each one, the evidence status behind those controls, and what remains open.
 
-**Using Claude Science?** The five skills import directly: **Skills → Import from GitHub**, paste `https://github.com/Imbad0202/academic-research-skills`, **Preview**, then **Import** (requires v3.14.0+ of this repo — the importer reads the explicit skill paths in the marketplace manifest). Imports are point-in-time snapshots: re-import after ARS updates. Imported skills carry the ARS methodology (research / writing / review protocols); Claude Code-specific machinery — slash commands, hooks, subagent orchestration — does not transfer. See [docs/SETUP.md](docs/SETUP.md) Method 5 for details.
+**Using Claude Science?** The four skills import directly: **Skills → Import from GitHub**, paste `https://github.com/Imbad0202/academic-research-skills`, **Preview**, then **Import 4 skills** (requires v3.14.0+ of this repo — the importer reads the explicit skill paths in the marketplace manifest). Imports are point-in-time snapshots: re-import after ARS updates. Imported skills carry the ARS methodology (research / writing / review protocols); Claude Code-specific machinery — slash commands, hooks, subagent orchestration — does not transfer. See [docs/SETUP.md](docs/SETUP.md) Method 5 for details.
 
 **Using Pi?** Install the in-tree, community-maintained wrapper with `pi install git:github.com/Imbad0202/academic-research-skills`. It keeps the original ARS content authoritative and documents Pi-specific orchestration and hook limitations. See [`pi/README.md`](pi/README.md).
 
@@ -101,7 +101,6 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 - **Academic Paper** — 12-agent paper writing with Style Calibration, Writing Quality Check, LaTeX hardening, visualization, revision coaching, citation conversion, anti-leakage protocol, and VLM figure verification.
 - **Academic Paper Reviewer** — 7-agent multi-perspective peer review with criterion-bound, evidence-anchored narrative judgements (Journal-Fit Reviewer + 3 dynamic reviewers + Devil's Advocate), concession threshold protocol, attack intensity preservation, optional cross-model DA critique / calibration, R&R traceability matrix, read-only constraint. Current live reviews remain `NOT_CALIBRATED`; full calibration produces a bounded candidate profile, while live-profile application is not yet wired.
 - **Academic Pipeline** — 10-stage pipeline orchestrator with adaptive checkpoints, claim verification, Material Passport, optional `repro_lock`, optional cross-model integrity verification, mid-conversation reinforcement, and narrative criterion-by-criterion regression checks (the typed trajectory carrier is deferred).
-- **SR-Screener** — protocol-driven study screening for systematic, scoping and rapid reviews: two blinded AI reviewers plus a third-reviewer adjudicator, ordered exclusion codes, no silent defaults, resumable batch runs, QC (seed studies, near-miss rechecks, kappa and PABAK), PRISMA 2020 counts, EndNote/Zotero RIS groups, and a `literature_corpus[]` handoff to `academic-paper`. AI decisions are decision support; the review team verifies them.
 - **Data Access Level Metadata** (v3.3.2+) — every skill declares `data_access_level` (`raw` / `redacted` / `verified_only`); enforced by `scripts/check_data_access_level.py`. Pattern adapted from Anthropic's automated-w2s-researcher (2026). See [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md).
 - **Task Type Annotation** (v3.3.2+) — every skill declares `task_type` (`open-ended` or `outcome-gradable`). All current ARS skills are `open-ended`.
 - **Benchmark Report Schema** (v3.3.5+) — JSON Schema + lint for honest benchmark comparisons. See [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md).
@@ -231,19 +230,6 @@ You: "status"
 
 > Pipeline ends with **Stage 6: Process Summary** — auto-generates a paper creation process record with 6-dimension Collaboration Quality Evaluation (1–100 scoring).
 
-#### SR-Screener (8 modes)
-
-```
-"Turn my proposal into a screening protocol"          → protocol mode
-"Is this abstract eligible for my review?"            → quick mode (single-reviewer triage)
-"Pilot the screening with my seed studies"            → pilot mode
-"Screen these database exports"                       → ta-screen mode
-"Screen the full texts of the advanced records"       → ft-screen mode
-"Adjudicate the conflicts in my Rayyan export"        → adjudicate mode
-"Double-check my exclusions"                          → audit mode
-"Give me the PRISMA numbers for the screening"        → report mode
-```
-
 ### Supported Languages
 
 - **Traditional Chinese** (繁體中文) — default when user writes in Chinese
@@ -292,10 +278,6 @@ Per-agent responsibilities and per-stage artifacts now live in [`docs/ARCHITECTU
 ### Academic Pipeline (v3.22.2)
 
 10-stage orchestrator with integrity verification, two-stage review, Socratic coaching, and collaboration evaluation. Pipeline rules (protocol the agents follow, not runtime guarantees): every stage requires user confirmation checkpoint; integrity verification (Stage 2.5 + 4.5) is MANDATORY with no unrecorded bypass (every override requires user reasoning recorded for Stage 6); R&R Traceability Matrix (Schema 11) maps each reviewer concern to the author's revision claim and records whether the re-review verified it. v3.4 added the Compliance Agent (PRISMA-trAIce + RAISE) at Stage 2.5 / 4.5. v3.5 adds the **Collaboration Depth Observer** (`collaboration_depth_agent`, advisory only — never blocks) at every FULL/SLIM checkpoint and at pipeline completion. MANDATORY integrity gates (2.5 / 4.5) explicitly skip the observer so compliance checks are not diluted. Based on Wang & Zhang (2026), IJETHE 23:11. Stage-by-stage matrix with agents, artifacts, and gates: see ARCHITECTURE.md §3.
-
-### SR-Screener (v1.0.0)
-
-4-agent study screening between `deep-research` (question, protocol, search) and `academic-paper` (writing the review). Modes: protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report. Two blinded reviewer subagents (Read and Grep only) screen every record against the user-confirmed protocol, a third reviewer adjudicates advance-vs-exclude conflicts, and standard-library Python scripts parse RIS / PubMed .nbib / Web of Science / CSV exports, de-duplicate, batch, merge, and build the screening log, RIS groups, PRISMA 2020 counts, a methods draft with `[TO COMPLETE]` slots, and a `literature_corpus[]` file. Rules the agents follow (not runtime guarantees): no record is screened before the user confirms the protocol, no failed call becomes a default "exclude", and the review team verifies the decisions before the numbers are reported. See [`sr-screener/SKILL.md`](sr-screener/SKILL.md).
 
 ---
 

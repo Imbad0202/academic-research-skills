@@ -65,7 +65,7 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 **👉 [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)** — どのデータがマシンの外に出るか（書誌 resolver、明示的な同意を要するオプションのクロスモデル呼び出し、更新チェック）、ローカルキャッシュの内容と保持期間、各経路の無効化方法。（英語）
 
-**Claude Science をお使いですか？** 5 つのスキルは直接インポートできます: **Skills → Import from GitHub** で `https://github.com/Imbad0202/academic-research-skills` を貼り付け、**Preview** → **Import**（本リポジトリ v3.14.0+ が必要 — インポーターは marketplace manifest に明示されたスキルパスを読み取ります）。インポートはその時点のスナップショットです: ARS の更新後は再インポートしてください。インポートされたスキルは ARS の方法論（研究・執筆・査読プロトコル）を伝えます。Claude Code 固有の仕組み — slash commands、hooks、サブエージェントオーケストレーション — は移行されません。詳細は [docs/SETUP.md](docs/SETUP.md) の Method 5 を参照。
+**Claude Science をお使いですか？** 4 つのスキルは直接インポートできます: **Skills → Import from GitHub** で `https://github.com/Imbad0202/academic-research-skills` を貼り付け、**Preview** → **Import 4 skills**（本リポジトリ v3.14.0+ が必要 — インポーターは marketplace manifest に明示されたスキルパスを読み取ります）。インポートはその時点のスナップショットです: ARS の更新後は再インポートしてください。インポートされたスキルは ARS の方法論（研究・執筆・査読プロトコル）を伝えます。Claude Code 固有の仕組み — slash commands、hooks、サブエージェントオーケストレーション — は移行されません。詳細は [docs/SETUP.md](docs/SETUP.md) の Method 5 を参照。
 
 **Pi を使用していますか？** `pi install git:github.com/Imbad0202/academic-research-skills` で、リポジトリ内のコミュニティ管理 wrapper をインストールできます。元の ARS コンテンツを正本として維持し、Pi 固有のオーケストレーションと hook の制限を明記しています。詳細は [`pi/README.md`](pi/README.md) を参照してください。
 
@@ -88,7 +88,6 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 - **Academic Paper** — 12 エージェントの論文執筆。Style Calibration、Writing Quality Check、LaTeX ハードニング、可視化、改訂コーチング、引用変換、アンチリーケージプロトコル、VLM 図表検証付き。
 - **Academic Paper Reviewer** — 基準ごとの証拠に紐づくナラティブ判断を行う 7 エージェントの多視点ピアレビュー（Journal-Fit Reviewer + 3 動的レビュアー + Devil's Advocate）、譲歩閾値プロトコル、攻撃強度保持、オプションのクロスモデル DA 批評/キャリブレーション、R&R トレーサビリティマトリクス、read-only 制約。現在の live review は常に `NOT_CALIBRATED` で、full calibration は有界な候補 profile のみを生成し、live review への適用は未実装です。
 - **Academic Pipeline** — 10 ステージのパイプラインオーケストレーター。適応的チェックポイント、主張検証、Material Passport、オプションの `repro_lock`、オプションのクロスモデル整合性検証、会話中強化、基準ごとのナラティブな退行チェック付き（型付き軌跡キャリアは未実装）。
-- **SR-Screener** — システマティック・スコーピング・ラピッドレビューのための、ユーザーが確定したプロトコルに基づく文献スクリーニング：盲検化された 2 名の AI レビュアーと第三レビュアーによる裁定、順序付きの除外コード、既定値による判定なし、再開可能なバッチ実行、QC（シード研究、ニアミス再確認、kappa と PABAK）、PRISMA 2020 の数値、EndNote/Zotero 用 RIS グループ、`academic-paper` への `literature_corpus[]` 引き継ぎ。AI の判定は意思決定の支援であり、最終確認はレビューチームが行います。
 - **Data Access Level Metadata**（v3.3.2+）— 各スキルが `data_access_level`（`raw` / `redacted` / `verified_only`）を宣言。`scripts/check_data_access_level.py` で強制。Anthropic の automated-w2s-researcher（2026）から適応されたパターン。[`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md) を参照。
 - **Task Type Annotation**（v3.3.2+）— 各スキルが `task_type`（`open-ended` または `outcome-gradable`）を宣言。現在の ARS スキルはすべて `open-ended`。
 - **Benchmark Report Schema**（v3.3.5+）— 誠実なベンチマーク比較のための JSON Schema + lint。[`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md) を参照。
@@ -210,19 +209,6 @@ You: "status"
 
 > パイプラインは **Stage 6: Process Summary** で終了します — 6 次元の Collaboration Quality Evaluation（1-100 採点）付きの論文作成プロセスレコードを自動生成します。
 
-#### SR-Screener（8 モード）
-
-```
-"Turn my proposal into a screening protocol"          → protocol モード
-"Is this abstract eligible for my review?"            → quick モード（単一レビュアーのトリアージ）
-"Pilot the screening with my seed studies"            → pilot モード
-"Screen these database exports"                       → ta-screen モード
-"Screen the full texts of the advanced records"       → ft-screen モード
-"Adjudicate the conflicts in my Rayyan export"        → adjudicate モード
-"Double-check my exclusions"                          → audit モード
-"Give me the PRISMA numbers for the screening"        → report モード
-```
-
 ### サポート言語
 
 - **繁體中文** — ユーザーが中国語で書く場合のデフォルト
@@ -271,10 +257,6 @@ You: "status"
 ### Academic Pipeline（v3.22.2）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプラインのルール（エージェントが従うプロトコルであり、実行時の保証ではない）: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）は MANDATORY であり、記録されないバイパス経路は存在しない（すべてのオーバーライドは Stage 6 のためにユーザーの理由の記録を要する）。R&R Traceability Matrix（Schema 11）は各査読コメントを著者の改訂主張に対応づけ、再審査でそれが検証されたかどうかを記録する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
-
-### SR-Screener（v1.0.0）
-
-`deep-research`（問い、プロトコル、検索）と `academic-paper`（レビュー論文の執筆）の間を担う 4 エージェントの文献スクリーニング。モード: protocol、quick、pilot、ta-screen、ft-screen、adjudicate、audit、report。盲検化された 2 つのレビュアー subagent（Read と Grep のみ）がユーザー確定済みのプロトコルで全レコードを判定し、第三レビュアーが「進める vs. 除外」の不一致を裁定します。標準ライブラリのみの Python スクリプトが RIS / PubMed .nbib / Web of Science / CSV エクスポートの解析、重複除去、バッチ化、統合を行い、スクリーニングログ、RIS グループ、PRISMA 2020 の数値、`[TO COMPLETE]` 欄付きの方法セクション草稿、`literature_corpus[]` ファイルを生成します。エージェントが従うルール（実行時の保証ではありません）: ユーザーがプロトコルを確定するまでスクリーニングしない、失敗した呼び出しを既定の「除外」にしない、数値を報告する前にレビューチームが判定を確認する。詳細は [`sr-screener/SKILL.md`](sr-screener/SKILL.md)。
 
 ---
 

@@ -54,7 +54,7 @@ fi
 # ---------------------------------------------------------------------------
 case "${SOURCE}" in
   compact|resume)
-    ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent, screening_reviewer_agent. If an ARS pipeline run is in progress, run its handoff check before continuing (academic-pipeline orchestrator, section Run ledger and handoff check, #887): compare what the session now shows with the run ledger beside the Material Passport, and ask again for any decision it cannot show in the user's words."
+    ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent. If an ARS pipeline run is in progress, run its handoff check before continuing (academic-pipeline orchestrator, section Run ledger and handoff check, #887): compare what the session now shows with the run ledger beside the Material Passport, and ask again for any decision it cannot show in the user's words."
     ;;
   startup|clear|*)
     # -----------------------------------------------------------------
@@ -94,12 +94,10 @@ Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy m
   /ars-unmark-read       sonnet  Rescind a prior human-read mark for one or more citation keys
   /ars-cache-invalidate  sonnet  Drop cached verification rows for one or more citation keys
 
-Plugin agents (4, model: inherit):
+Plugin agents (3, v3.6.7-hardened, model: inherit, tools allowlist: Read/Write/Edit/Grep/Glob per #514) — dispatched by ARS pipeline:
   synthesis_agent             Cross-source integration, contradiction resolution, gap analysis
   research_architect_agent    Methodology blueprint (paradigm, method, data strategy)
   report_compiler_agent       APA 7.0 report drafting (Phase 4 + Phase 6)
-  screening_reviewer_agent    sr-screener blinded screening reviewer (tools: Read/Grep only)
-The first three are v3.6.7-hardened pipeline agents (tools allowlist: Read/Write/Edit/Grep/Glob per #514); sr-screener's screening workflows dispatch the fourth.
 
 Other ARS agents (bibliography_agent, literature_strategist_agent, field_analyst_agent, etc.) remain in-skill prompt templates loaded via SKILL.md, not plugin agents.
 
@@ -110,7 +108,7 @@ esac
 # Mode commands are manual entry points; announce the actual Skill-tool
 # targets too, including after compaction, so the list above does not send
 # automatic routing into a disable-model-invocation command (#857).
-ROUTING="ARS routing: the mode slash commands above are for the user to type. For a matching natural-language request, invoke the core Skill before answering: academic-research-skills:academic-paper for paper planning, writing, revision, reviewer-response coaching, rebuttal audit, abstracts, literature reviews, format conversion, citation checks, and AI disclosure; academic-research-skills:academic-paper-reviewer for simulated peer review; academic-research-skills:deep-research for research and three-way scans; academic-research-skills:academic-pipeline for the full research-to-finalize pipeline; academic-research-skills:sr-screener for screening records (titles/abstracts, full texts) against a review's eligibility criteria, screening protocols, pilots, conflict adjudication, exclusion audits, and PRISMA selection counts. Pass the requested mode and user request as arguments, then read the selected mode's supporting prompt files from the loaded skill directory. Requests outside academic research and writing do not invoke ARS."
+ROUTING="ARS routing: the mode slash commands above are for the user to type. For a matching natural-language request, invoke the core Skill before answering: academic-research-skills:academic-paper for paper planning, writing, revision, reviewer-response coaching, rebuttal audit, abstracts, literature reviews, format conversion, citation checks, and AI disclosure; academic-research-skills:academic-paper-reviewer for simulated peer review; academic-research-skills:deep-research for research and three-way scans; academic-research-skills:academic-pipeline for the full research-to-finalize pipeline. Pass the requested mode and user request as arguments, then read the selected mode's supporting prompt files from the loaded skill directory. Requests outside academic research and writing do not invoke ARS."
 ANNOUNCE+=$'\n\n'"${ROUTING}"
 
 # ---------------------------------------------------------------------------

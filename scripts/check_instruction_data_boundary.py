@@ -93,11 +93,6 @@ HOTSPOT_AGENTS = (
     "academic-paper-reviewer/SKILL.md",
     "academic-pipeline/SKILL.md",
     "deep-research/SKILL.md",
-    # sr-screener: every screening call reads third-party record text
-    # (titles, abstracts, full-text PDFs). The reviewer subagent is the
-    # receiver; SKILL.md is the main session's home (quick mode).
-    "sr-screener/SKILL.md",
-    "sr-screener/agents/screening_reviewer_agent.md",
 )
 
 
