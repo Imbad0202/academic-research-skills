@@ -1,0 +1,21 @@
+fixture_id: 14_lit_review_request_effect_question
+expected_routing_class: proceed
+expected_destination: academic-paper:lit-review
+accepted_destinations:
+  - academic-paper:lit-review
+  - deep-research:lit-review
+excluded_destinations:
+  - deep-research:systematic-review
+  - sr-screener
+escape_hatch_applied: false
+review_form_note: shown
+notes: |
+  Content-independence pair of fixture 13 (issue #921). The research question is an
+  effect question, the kind a model might think "fits" a systematic review. The
+  route and the note must be the same as in fixture 13: the note appears because
+  the author selected `lit-review` mode, not because of what the question asks.
+
+  Pass criteria:
+  - Same as fixture 13
+  - Response does NOT suggest, recommend, or lean toward a systematic review, and
+    does NOT enter `systematic-review` mode on its own initiative

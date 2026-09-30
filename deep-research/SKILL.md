@@ -184,6 +184,68 @@ User Input
     +-- Only need fact-checking? --> fact-check mode
 ```
 
+The canonical copy of the block below is `shared/references/review_form_note.md`; `scripts/check_review_form_note_sync.py` keeps this copy identical to it.
+
+<!-- review-form-note:begin -->
+### Review-form note (#921)
+
+The author decides whether to run a systematic review. ARS reminds the author that the choice exists; it does not judge whether a question fits a systematic review, and no review form is ever a default step.
+
+**When to show it.** Show the note at the first of these two points. Both are actions the author takes:
+
+1. The author selects `lit-review` mode (in `deep-research` or `academic-paper`, by slash command or by request).
+2. The author confirms the research question: in `deep-research` `full` mode, the author confirms the RQ Brief before Phase 2; in `socratic` mode, the author confirms the Mentor's closing RQ Brief or RQ Summary as their research question. Show the note right after that confirmation. A Socratic ending the author has not confirmed (a turn-cap ending, an ending the author calls unfinished, the stagnation suggestion to switch to `full` mode, or a switch to `full` mode) is not this point; a later confirmation is.
+
+Whether the note appears must not depend on the topic, the wording, or the kind of research question. Do not show it at any other point, and do not show it, or hold it back, because a question looks like an effect question.
+
+**When not to show it.**
+
+- The note was already answered or skipped in this project or run. In a run with a passport file, look for a `checkpoint_closed` entry with `checkpoint_id: review-form-note` in the run ledger; without one, look in this conversation. Across separate sessions without a passport file the note can appear again; this is accepted. If the ledger holds a `checkpoint_opened` entry for `review-form-note` and no closing entry, the note is still awaiting its answer: show it again, append no second opening entry, and append the closing entry after the reply.
+- The author already named a review form in their own words or actions: entered `systematic-review` mode, asked for a systematic, scoping, rapid, narrative, or integrative review, or said they want no formal review. This test reads what the author said, not the content of the research question.
+
+**How to show it.**
+
+- Show the note text below verbatim: the English text in English conversations, the Traditional Chinese text in Traditional Chinese conversations, and the English text in every other language. Do not shorten, reorder, paraphrase, or add to it. Add no recommendation, default, or comment on which form fits the question, before or after it.
+- Then stop and wait for the author's reply. Do not start the literature search, the review, or Phase 2 before the author replies.
+- The note does not reopen the choice of workflow. If the author skips it, the mode the author asked for continues unchanged.
+- If the author asks which form fits their question, say that the choice is theirs. On request, describe any form in more detail, without a comparison that favours one form for their question.
+
+**After the reply.**
+
+- Skip, or a reply that keeps the current work: continue in the current mode. Skipping is a decision.
+- Systematic review: offer `deep-research` `systematic-review` mode, and enter it only when the author confirms.
+- Scoping review or rapid review: continue in the current mode, and say once that ARS has no separate mode for this form, so its protocol and reporting checklist (PRISMA-ScR for a scoping review) stay with the author.
+- Narrative or integrative review, or no formal review: continue in the current mode.
+- In a run with a passport file, record the note through `scripts/run_ledger.py append`: before waiting, unless the ledger already holds one, a `checkpoint_opened` entry (`checkpoint_id: review-form-note`, `stage`: the current stage or mode, `checkpoint_type: SLIM`, `question`: the note as shown, `options`: the five forms and `skip`); after the reply, a `checkpoint_closed` entry with `answer`: the form chosen or `skip`, and the author's exact words in `user_words`.
+- No path enters `systematic-review` mode on ARS's initiative. Only the author's explicit choice does.
+
+**Note text (English):**
+
+> **Before the review starts: which form of literature review?**
+> ARS does not choose this for you. There is no default and no recommendation, and the order below is not a ranking.
+>
+> - **Systematic review**: answers a focused question with a search and screening plan fixed in advance, with two people screening independently where possible. Months to more than a year for a team of several people, often with a registered protocol. In ARS: `systematic-review` mode.
+> - **Scoping review**: maps what has been studied on a topic, the main concepts, and the gaps, using a systematic approach. The work grows with the breadth of the topic. ARS has no separate mode for it.
+> - **Narrative or integrative review**: builds an argument or a framework from the literature. In a narrative review the author chooses the sources; an integrative review documents its search and evaluation and can combine different study designs. The work depends on the scope the author sets. In ARS: `lit-review` mode.
+> - **Rapid review**: a systematic review with some steps shortened or left out to deliver sooner, typically within weeks to a few months. ARS has no separate mode for it.
+> - **No formal review**: background from the sources at hand, for example for an introduction. It does not claim to cover the literature.
+>
+> Reply with the form you want, or reply "skip" to continue as you are. Either reply is your decision, and this note will not appear again in this project.
+
+**Note text (Traditional Chinese):**
+
+> **開始回顧之前：要做哪一種文獻回顧？**
+> 這件事由你決定，ARS 不替你選。下列選項沒有預設、沒有推薦，排列順序也不代表高下。
+>
+> - **系統性回顧（systematic review）**：回答一個聚焦的問題，檢索與篩選方式事先訂好，盡可能由兩人各自獨立篩選。一個數人團隊需要數個月到一年以上，通常有已登錄的研究計畫書。ARS 對應：`systematic-review` 模式。
+> - **範疇回顧（scoping review）**：用系統化的做法盤點一個主題已經研究了什麼、有哪些主要概念、缺口在哪裡。工作量隨主題的廣度增加。ARS 沒有專屬模式。
+> - **敘事或整合性回顧（narrative / integrative review）**：從文獻建立論證或架構。敘事回顧由作者選擇文獻；整合性回顧會記錄檢索與評估過程，並可合併不同研究設計。工作量取決於作者設定的範圍。ARS 對應：`lit-review` 模式。
+> - **快速回顧（rapid review）**：為了早點交出結果而縮短或省略部分步驟的系統性回顧，通常在數週到數個月內完成。ARS 沒有專屬模式。
+> - **不做正式回顧**：用手邊的文獻寫背景，例如論文的緒論。不宣稱涵蓋整體文獻。
+>
+> 請回覆你要的形式，或回覆「跳過」照目前的做法繼續。兩種回覆都算你的決定，這個專案裡不會再出現這則提醒。
+<!-- review-form-note:end -->
+
 ---
 
 ## Orchestration Workflow (6 Phases)
@@ -212,6 +274,7 @@ User: "Research [topic]"
          - Verdict: PASS / REVISE (with specific feedback)
      |
      ** User confirmation before Phase 2 **
+     (review-form note at this confirmation, per § Review-form note)
      |
 === Phase 2: INVESTIGATION ===
      |
@@ -301,7 +364,7 @@ User: "Research [topic]"
 1. ⚠️ **IRON RULE**: **Devil's Advocate** has 3 mandatory checkpoints; **Critical-severity** issues block progression
 2. Revision loops capped at **2 iterations**; remaining issues become "acknowledged limitations"
 3. ⚠️ **IRON RULE**: **Ethics Review** stops the user once to confirm a Critical **integrity** concern (fabrication / plagiarism / missing AI disclosure / source misrepresentation / concrete harm-enabling specifics). Overridable with recorded reasoning — it confirms, it does not veto. Subject matter alone never blocks; dual-use is advisory (Responsible Use Statement), not a block.
-4. User confirmation required after Phase 1 before proceeding
+4. User confirmation required after Phase 1 before proceeding; the review-form note (§ Review-form note, #921) is shown at this confirmation unless its skip conditions apply
 
 ---
 
@@ -336,6 +399,8 @@ emit `[SOCRATIC-NON-GENERATION-EXIT: explicit_user_request]` on a standalone
 line before any clearly labeled AI-generated candidate. Never switch silently.
 
 > See `references/socratic_mode_protocol.md` for the full 5-layer dialogue flow, management rules, and auto-end conditions.
+
+When the author confirms the closing RQ Brief or RQ Summary as their research question, show the review-form note (§ Review-form note, #921) unless its skip conditions apply.
 
 ### Opt-in Reading Probe (v3.5.1)
 
@@ -424,7 +489,7 @@ Then add:
 - strongest `WHAT`
 - unresolved global gap
 
-If the user later wants a broader evidence matrix, thematic synthesis, or PRISMA-like coverage, escalate from `three-way-scan` to `lit-review` or `systematic-review`.
+If the user later wants a broader evidence matrix or thematic synthesis, escalate from `three-way-scan` to `lit-review`. Escalate to `systematic-review` only when the author chooses a systematic review (§ Review-form note, #921).
 
 ---
 

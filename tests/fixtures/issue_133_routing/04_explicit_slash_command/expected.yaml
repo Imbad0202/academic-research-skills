@@ -2,10 +2,16 @@ fixture_id: 04_explicit_slash_command
 expected_routing_class: proceed
 expected_destination: academic-paper:lit-review
 escape_hatch_applied: false
+review_form_note: shown
 notes: |
   Slash command `/ars-lit-review` is an explicit invocation. Per Routing Discipline
   Step 1, route directly with no clarification, no orchestrator detour.
 
+  Since #921, selecting `lit-review` mode is a fixed point for the review-form note,
+  so the response shows the note and waits before the lit-review work starts.
+  Results recorded in CALIBRATION_LOG.md before #921 predate this criterion.
+
   Pass criteria:
-  - Response begins lit-review work
+  - Response enters lit-review mode and shows the English review-form note text
+    verbatim, then waits for the author's reply
   - Response does NOT clarify

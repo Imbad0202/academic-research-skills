@@ -1,0 +1,22 @@
+fixture_id: 16_broader_synthesis_not_systematic
+expected_routing_class: proceed
+expected_destination: deep-research:lit-review
+accepted_destinations:
+  - deep-research:lit-review
+  - academic-paper:lit-review
+excluded_destinations:
+  - deep-research:systematic-review
+  - sr-screener
+escape_hatch_applied: false
+review_form_note: shown
+notes: |
+  Issue #921, from codex review round 1: a wish for a broader evidence matrix or a
+  thematic synthesis after a three-way scan escalates to `lit-review`, never to
+  `systematic-review` (deep-research/SKILL.md, Three-Way Scan Mode, last paragraph).
+  Entering `lit-review` mode is fixed point 1, so the review-form note appears and
+  the response waits; a systematic review starts only if the author then chooses it.
+
+  Pass criteria:
+  - Response routes to a `lit-review` mode, not to `systematic-review` mode
+  - Response shows the English review-form note text verbatim and waits
+  - Response does NOT trigger workflow clarification a-d options

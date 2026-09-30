@@ -407,6 +407,13 @@ jobs:
           PYTHONPATH: .
         run: python scripts/check_method_weaknesses_sync.py
 
+      - name: Review-form note sync lint (#921)
+        # Every surface listed in shared/references/review_form_note.md must
+        # carry its block byte for byte, and the note's options stay unranked.
+        env:
+          PYTHONPATH: .
+        run: python scripts/check_review_form_note_sync.py
+
       - name: Judge-prompt-version drift guard (#361)
         # Recomputes the SHA-256 of the canonical judge-prompt section (between
         # the JUDGE-PROMPT-CANONICAL markers in claim_ref_alignment_audit_agent.md)

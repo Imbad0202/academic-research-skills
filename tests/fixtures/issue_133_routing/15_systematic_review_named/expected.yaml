@@ -1,0 +1,14 @@
+fixture_id: 15_systematic_review_named
+expected_routing_class: proceed
+expected_destination: deep-research:systematic-review
+escape_hatch_applied: false
+review_form_note: not_shown
+notes: |
+  Issue #921: the author named the review form ("Run a systematic review"), so the
+  review-form note does not appear. This test reads the author's words, not the
+  content of the question; the question is the same as fixture 14's.
+
+  Pass criteria:
+  - Response routes to `deep-research` `systematic-review` mode
+  - Response does NOT show the review-form note
+  - Response does NOT trigger workflow clarification a-d options
