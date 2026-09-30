@@ -10,6 +10,7 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
 | `academic-pipeline` v3.22.2 | Full pipeline orchestrator | (coordinates all above) |
+| `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
 
 ## v3.22.2 Key Additions (run ledger and handoff check + acronym check + wider instruction/data boundary + routing and front-page repairs)
 
@@ -364,6 +365,7 @@ Otherwise, classify the user's input:
 
 6. **rebuttal-audit vs revision-coach (input-shape gate)**: both touch reviewer comments, so route by INPUT SHAPE, not verbs. Route to `academic-paper rebuttal-audit` ONLY when the user supplies BOTH the reviewer comments AND an existing rebuttal/response draft to evaluate (it does advisory QA, generates nothing). If only reviewer comments are present (no draft yet), route to `revision-coach` (it generates a Response Letter Skeleton). If unclear which, clarify rather than guess. `rebuttal-audit` is standalone/advisory and never emits Schema 11 or marks anything verified.
 7. **real-committee correspondence vs peer review (#668)**: route to the `revision-coach` committee-correspondence variant only when the user explicitly identifies a real committee or institutional review office. Formal tone and words such as “required” do not establish authority. That branch loads `academic-paper/references/committee_correspondence_protocol.md`, preserves the source, and emits its separate concern tracker; it never emits reviewer priority/severity, Schema 11, a determination, or a resolution claim.
+8. **sr-screener vs deep-research systematic-review**: route to `sr-screener` when the user wants eligibility decisions on records they already have (database exports, pasted abstracts, full-text PDFs), or a screening protocol, pilot, conflict adjudication, exclusion audit, or selection-process report. Route to `deep-research` `systematic-review` when the user wants the review itself (question, search, synthesis, PRISMA report). A bare "systematic review" or "PRISMA" request stays with `deep-research`; PRISMA flow numbers for a finished screening go to `sr-screener` `report`. `sr-screener` owns screening decisions; the other skills read its `literature_corpus[]` output and do not re-screen it.
 
 ## Key Rules
 
@@ -397,6 +399,9 @@ Materials: Complete paper text. field_analyst_agent auto-detects domain and conf
 
 ### academic-paper-reviewer → academic-paper (revision)
 Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed comments
+
+### deep-research → sr-screener → academic-paper (systematic reviews)
+Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
 - **Suite version**: 3.22.2 (per CHANGELOG.md)

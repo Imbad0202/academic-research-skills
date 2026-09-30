@@ -180,7 +180,7 @@ def test_unbindable_count_spelling_fires_d4(tmp_path):
 def test_plugin_exposed_count_drift_fires_d5(tmp_path):
     _write(tmp_path, plugin={
         "name": "f",
-        "description": "39 prompt roles (4 plugin-exposed agents).",
+        "description": "39 prompt roles (5 plugin-exposed agents).",
     })
     _fires(run(tmp_path), "D5")
 
@@ -188,7 +188,7 @@ def test_plugin_exposed_count_drift_fires_d5(tmp_path):
 def test_plugin_exposed_count_matching_passes(tmp_path):
     assert run(_write(tmp_path, plugin={
         "name": "f",
-        "description": "39 prompt roles (3 plugin-exposed agents).",
+        "description": "39 prompt roles (4 plugin-exposed agents).",
     })) == []
 
 
@@ -204,7 +204,7 @@ def test_percentage_case_variant_fires_d3(tmp_path):
 def test_plugin_exposed_case_variant_fires_d5(tmp_path):
     _write(tmp_path, plugin={
         "name": "f",
-        "description": "39 prompt roles (4 Plugin-Exposed agents).",
+        "description": "39 prompt roles (5 Plugin-Exposed agents).",
     })
     _fires(run(tmp_path), "D5")
 

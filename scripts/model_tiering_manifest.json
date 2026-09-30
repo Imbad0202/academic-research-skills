@@ -41,6 +41,10 @@
     {"path": "academic-pipeline/agents/integrity_verification_agent.md", "tier": "judgment"},
     {"path": "academic-pipeline/agents/collaboration_depth_agent.md", "tier": "execution"},
     {"path": "academic-pipeline/agents/state_tracker_agent.md", "tier": "execution"},
-    {"path": "shared/agents/compliance_agent.md", "tier": "judgment"}
+    {"path": "shared/agents/compliance_agent.md", "tier": "judgment"},
+    {"path": "sr-screener/agents/protocol_architect_agent.md", "tier": "judgment"},
+    {"path": "sr-screener/agents/screening_reviewer_agent.md", "tier": "judgment"},
+    {"path": "sr-screener/agents/qc_auditor_agent.md", "tier": "judgment"},
+    {"path": "sr-screener/agents/reporter_agent.md", "tier": "execution"}
   ]
 }

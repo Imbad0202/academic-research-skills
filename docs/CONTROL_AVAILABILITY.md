@@ -34,7 +34,7 @@ applying your channel's channel-wide limitation above.
 
 | Mechanism | Plugin | Skills copy | Repo clone | Cowork | claude.ai Project | Claude Science | Pi port |
 |---|---|---|---|---|---|---|---|
-| Methodology layer (the four skills' `SKILL.md` protocols) | Active | Active | Active | Active | Conditional | Active | Active |
+| Methodology layer (the five skills' `SKILL.md` protocols) | Active | Active | Active | Active | Conditional | Active | Active ⁽¹⁰⁾ |
 | Skill auto-routing (trigger keywords → skill activation) | Active | Active | Active | Active | Absent | Conditional | Conditional |
 | Cross-skill routing discipline (routing core: route directly or ask which workflow, #133 / #892) | Conditional ⁽⁸⁾ ⁽⁹⁾ | Conditional ⁽⁹⁾ | Active ⁽⁹⁾ | Conditional ⁽⁹⁾ | Absent | Conditional ⁽⁹⁾ | Conditional ⁽⁹⁾ |
 | `/ars-*` slash commands | Active ⁽¹⁾ | Absent | Absent | Absent | Absent | Absent | Conditional |
@@ -45,6 +45,7 @@ applying your channel's channel-wide limitation above.
 | Python-backed opt-in features (repo `scripts/`) | Conditional ⁽⁵⁾ | Conditional ⁽⁵⁾ | Conditional ⁽⁵⁾ | Absent | Absent | Absent | Conditional ⁽⁵⁾ |
 | Cross-model verification (consent-gated second model) | Conditional ⁽⁶⁾ | Conditional ⁽⁶⁾ | Conditional ⁽⁶⁾ | Absent | Absent | Absent | Absent |
 | Prompt-level checkpoints and integrity gates | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Conditional | Absent | Conditional | Conditional |
+| sr-screener dual blinded screening (two reviewer subagents + adjudicator) | Active ⁽¹⁰⁾ | Conditional ⁽¹⁰⁾ | Conditional ⁽¹⁰⁾ | Absent ⁽¹⁰⁾ | Absent | Absent ⁽¹⁰⁾ | Absent ⁽¹⁰⁾ |
 
 CI-side checks (mutation-tested lints, content locks, changelog gates) are deliberately
 not a matrix row: they run in this repository's GitHub Actions, protecting the
@@ -127,6 +128,17 @@ runtime graceful-degradation mechanisms is
    models only under two scoring readings
    ([`CALIBRATION_LOG.md`](../tests/fixtures/issue_133_routing/CALIBRATION_LOG.md)). The
    other channels are covered only by the copy check (`scripts/check_routing_core_sync.py`).
+10. sr-screener's dual review needs subagents plus its own Python scripts, which live
+   inside the skill folder (`sr-screener/scripts/`, standard library only), so a copied
+   skill folder carries them. **Plugin:** the `screening_reviewer_agent` (tools: Read,
+   Grep) is wired from `agents/`. **Skills copy / repo clone:** active once
+   `sr-screener/agents/screening_reviewer_agent.md` is copied into `.claude/agents/`
+   and named in `screening_config.json`; with an empty `agent_type` the default
+   workflow subagent runs the reviewers, which works but carries more tools than
+   Read and Grep. **Cowork, Claude Science:** no Task-tool subagent dispatch of this
+   skill's reviewer, so only `quick` mode runs, disclosed as single-reviewer triage (one
+   model reading twice is not two independent reviewers). **Pi port:** the community-maintained wrapper does
+   not yet package this skill.
 
 ## Environment degradations within a channel
 

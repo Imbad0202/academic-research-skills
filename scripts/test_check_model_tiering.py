@@ -58,7 +58,7 @@ class ModelTieringLintTests(unittest.TestCase):
         result = run_script(SCRIPT)
         self.assertEqual(result.returncode, 0, msg=f"stdout: {result.stdout}\nstderr: {result.stderr}")
         self.assertIn("PASS", result.stdout)
-        self.assertIn("39 agents", result.stdout)
+        self.assertIn("43 agents", result.stdout)
 
     def test_clean_fixture_passes(self) -> None:
         with tempfile.TemporaryDirectory() as d:

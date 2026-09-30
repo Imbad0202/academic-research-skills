@@ -707,3 +707,7 @@ path = "scripts/test_run_ledger.py"
 [[pytest]]
 id = "849-acronym-check"
 path = "scripts/test_check_acronyms.py"
+
+[[pytest]]
+id = "sr-screener-pipeline"
+path = "scripts/test_sr_screener_pipeline.py"

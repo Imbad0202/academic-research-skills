@@ -9,7 +9,7 @@ Enforces three invariants:
 1. **Bucket A coverage** — all 23 single-phase agents MUST carry a
    `## Phase Boundary (v3.9.2)` or `## Phase Boundary (v3.9.4)` H2 block.
 
-2. **Bucket B/C/D exclusion** — all 16 multi-phase / phase-orthogonal /
+2. **Bucket B/C/D exclusion** — all 20 multi-phase / phase-orthogonal /
    cross-phase-meta agents MUST NOT carry the block. Adding a fence to
    these agents would either falsely block legitimate cross-phase work
    (Bucket B/C) or defeat orchestration (Bucket D).
@@ -84,8 +84,8 @@ BUCKET_A_AGENTS = [
     "academic-paper-reviewer/agents/editorial_synthesizer_agent.md",
 ]
 
-# Buckets B/C/D — 16 agents that MUST NOT have the block.
-# B (4): multi-phase; C (8): phase-orthogonal; D (4): cross-phase-meta.
+# Buckets B/C/D — 20 agents that MUST NOT have the block.
+# B (4): multi-phase; C (12): phase-orthogonal (8 + sr-screener's 4); D (4): cross-phase-meta.
 BUCKET_BCD_AGENTS = [
     # Bucket B — multi-phase (4)
     "deep-research/agents/devils_advocate_agent.md",          # P1, 3, 5 + Socratic L2, 4
@@ -101,6 +101,12 @@ BUCKET_BCD_AGENTS = [
     "academic-pipeline/agents/collaboration_depth_agent.md",  # FULL/SLIM advisory
     "academic-pipeline/agents/claim_ref_alignment_audit_agent.md",  # opt-in audit
     "shared/agents/compliance_agent.md",                      # cross-skill stage gates
+    # Bucket C — sr-screener (4): its own screening phases 0-6, outside the
+    # numbered pipeline phase-directory axis; none writes a phase<N>_*/ dir.
+    "sr-screener/agents/protocol_architect_agent.md",         # screening Phase 0, main session
+    "sr-screener/agents/screening_reviewer_agent.md",         # screening Phases 2-5, read-only subagent
+    "sr-screener/agents/qc_auditor_agent.md",                 # screening Phases 2 and 5, main session
+    "sr-screener/agents/reporter_agent.md",                   # screening Phase 6, main session
     # Bucket D — cross-phase / meta (4)
     "academic-paper/agents/intake_agent.md",                  # Phase 0 cross-phase config
     "academic-pipeline/agents/pipeline_orchestrator_agent.md",  # orchestrator
@@ -248,10 +254,10 @@ def main() -> int:
             f"BUCKET_A_AGENTS has {len(BUCKET_A_AGENTS)} entries but "
             f"classification doc requires 23 (v3.9.4 added timeline_extraction_agent)"
         )
-    if len(BUCKET_BCD_AGENTS) != 16:
+    if len(BUCKET_BCD_AGENTS) != 20:
         errors.append(
             f"BUCKET_BCD_AGENTS has {len(BUCKET_BCD_AGENTS)} entries but "
-            f"classification doc requires 16"
+            f"classification doc requires 20 (sr-screener added 4 Bucket C agents)"
         )
 
     if errors:
