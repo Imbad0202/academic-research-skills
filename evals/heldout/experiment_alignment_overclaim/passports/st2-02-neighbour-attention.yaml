@@ -6,8 +6,7 @@
 # stored; the PDF is not vendored. The paper's own tables stand in for the
 # scholar-declared provenance. result_file values are table locators, not files.
 #
-# Subject-visible. The expected verdicts live in ../heldout_set.json
-# (hidden fields) and must not be shown to the subject.
+# Subject-visible input.
 
 origin_skill: academic-paper
 origin_mode: full
@@ -84,7 +83,10 @@ claim_intent_manifests:
     emitted_at: "2026-09-30T00:00:00Z"
     claims:
       - claim_id: C-001
-        claim_text: "Comprehensive Ablation Studies. We perform focused ablations confirming the contributions of boundary continuation, sub-band decomposition, temporal gating granularity, safety-scale calibration, spectral loss regularization, neighbour attention, and spectral cutoff sensitivity."
+        # The manuscript sentence lists seven components; this claim carries
+        # only the neighbour-attention part, as a per-claim manifest would.
+        # "[...]" marks the omitted components.
+        claim_text: "We perform focused ablations confirming the contributions of [...] neighbour attention [...]."
         intended_evidence_kind: empirical
         planned_refs: []
         planned_experiment_ids:

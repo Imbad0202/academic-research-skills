@@ -19,7 +19,7 @@
   ],
   "scoring": {
     "suite_class": "mechanical_match",
-    "pass_rule": "A claim passes iff the subject's alignment_verdict for it is in expected_verdicts. An item passes iff every listed claim passes.",
+    "pass_rule": "A claim passes iff the subject's alignment_verdict for it is in expected_verdicts. An item passes iff every listed claim passes. Where two verdicts are listed, both block at the gate; the set records that the #260 enum admits either reading, not a preference.",
     "adjudication": "none; the verdict enum is matched mechanically. A run must file a heldout-measurement/1.1 report per evals/heldout/MEASUREMENT_CONTRACT.md before any result is quoted",
     "reported_measure": "verdict per claim; two cases from one paper are a smoke check, not a detection rate"
   },
@@ -39,13 +39,15 @@
         "claims": {
           "C-001": {
             "expected_verdicts": [
-              "OVERSTATED"
+              "OVERSTATED",
+              "NOT_SUPPORTED_BY_PROVENANCE"
             ],
-            "why": "Electricity test MSE / MAE 0.1135 / 0.2059 vs frozen base 0.1120 / 0.2002; ETTh1 MAE 0.3627 vs 0.3624; bizitobs l2c MAE +0.0004. The calibration evidence is validation-scoped ('eliminates negative transfer on validation splits', p. 65). The provenance supports a validation-scoped or average-case claim, not 'strictly eliminating'."
+            "why": "Electricity test MSE / MAE 0.1135 / 0.2059 vs frozen base 0.1120 / 0.2002; ETTh1 MAE 0.3627 vs 0.3624; bizitobs l2c MAE +0.0004; the calibrated dual-metric guard still regresses on 2 of 7 datasets (Table 7, p. 70). The calibration evidence is validation-scoped ('eliminates negative transfer on validation splits', p. 65). OVERSTATED reads the provenance as supporting a validation-scoped or average-case claim; NOT_SUPPORTED_BY_PROVENANCE reads the test rows as contradicting the unconditional clause. Both block."
           },
           "C-002": {
             "expected_verdicts": [
-              "OVERSTATED"
+              "OVERSTATED",
+              "NOT_SUPPORTED_BY_PROVENANCE"
             ],
             "why": "Same provenance as C-001; 'strictly preventing negative transfer' is unconditional."
           },
@@ -53,7 +55,7 @@
             "expected_verdicts": [
               "ALIGNED"
             ],
-            "why": "Control. Average MSE 0.1940 -> 0.1892 is in the declared provenance verbatim."
+            "why": "Control. Average MSE 0.1940 -> 0.1892 (0.0048, 2.47% relative) and average MAE 0.2492 -> 0.2488 are in the declared provenance."
           }
         },
         "fail_patterns": [
@@ -79,7 +81,7 @@
               "OVERSTATED",
               "NOT_SUPPORTED_BY_PROVENANCE"
             ],
-            "why": "Table 9 shows learned Content + Distance Attention at 0.1891 / 0.2479 and Uniform Averaging (1/k) at 0.1891 / 0.2474, faster. The ablation supports the value of multi-neighbour aggregation over Top-1, not a contribution of the learned attention over uniform averaging. The declared provenance covers only the neighbour-attention part of the sentence; other listed ablations are not in this passport."
+            "why": "The claim credits neighbour attention itself. Table 9 isolates it against a non-learned aggregator: learned Content + Distance Attention 0.1891 / 0.2479 at 4.02 ms, Uniform Averaging (1/k) 0.1891 / 0.2474 at 3.55 ms. The ablation supports the value of multi-neighbour aggregation over Top-1 and over the frozen baseline, not a contribution of the attention mechanism over averaging. The claim text is cut to the neighbour-attention part of a seven-component sentence (Introduction, p. 58), so the other components are out of this passport's scope."
           },
           "C-002": {
             "expected_verdicts": [

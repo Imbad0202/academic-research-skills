@@ -6,8 +6,7 @@
 # stored; the PDF is not vendored. The paper's own tables stand in for the
 # scholar-declared provenance. result_file values are table locators, not files.
 #
-# Subject-visible. The expected verdicts live in ../heldout_set.json
-# (hidden fields) and must not be shown to the subject.
+# Subject-visible input.
 
 origin_skill: academic-paper
 origin_mode: full
@@ -59,6 +58,11 @@ experiment_provenance:
         result_file: "manuscript Table 1, p. 62, row Average"
         metric: "MSE"
         value: 0.1940
+      - planned: "Average test MAE over seven benchmarks, DynaSpec-RAG vs frozen TS-RAG base"
+        executed: true
+        result_file: "manuscript Table 1, p. 62, row Average"
+        metric: "MAE (base / DynaSpec)"
+        value: "0.2492 / 0.2488"
       - planned: "Electricity test MSE / MAE, DynaSpec-RAG"
         executed: true
         result_file: "manuscript Table 1, p. 62, row Electricity"
@@ -116,7 +120,7 @@ experiment_provenance:
     title: "Validation-calibrated safety scale (manuscript Ablation 4)"
     description: >-
       Grid search over lambda in {0.0, 0.025, ..., 1.0} on validation splits,
-      search grid includes zero (section 3, p. 61; Ablation 4, p. 65).
+      search grid includes zero (section 3.4, p. 61; Ablation 4, pp. 64-65; Table 7, p. 70).
     repro_lock: *lock
     planned_vs_executed:
       - planned: "Negative transfer on validation splits after calibration"
@@ -124,6 +128,11 @@ experiment_provenance:
         result_file: "manuscript Ablation 4, p. 65"
         metric: "validation regressions"
         value: "none (text: calibration eliminates negative transfer on validation splits)"
+      - planned: "Datasets worse than the frozen baseline on either test metric, calibrated dual-metric guard"
+        executed: true
+        result_file: "manuscript Table 7, p. 70, row Calibrated Dual-Metric"
+        metric: "regressing datasets"
+        value: "2 of 7"
       - planned: "Test regressions with fixed uncalibrated injection (lambda = 1.0)"
         executed: true
         result_file: "manuscript Figure 5(b) caption, p. 64"
@@ -155,7 +164,7 @@ claim_intent_manifests:
           - exp-gift-eval
           - exp-dguard-calibration
       - claim_id: C-003
-        claim_text: "DynaSpec-RAG reduces average test MSE from 0.1940 (TS-RAG) to 0.1892."
+        claim_text: "Specifically, it reduces average test MSE from 0.1940 (TS-RAG) to 0.1892 (a 0.0048 absolute drop, ~2.5% relative) and average MAE from 0.2492 to 0.2488."
         intended_evidence_kind: empirical
         planned_refs: []
         planned_experiment_ids:

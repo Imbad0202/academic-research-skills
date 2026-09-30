@@ -36,6 +36,12 @@ def _claim_ids(body: dict) -> set[str]:
     return {c["claim_id"] for m in body["claim_intent_manifests"] for c in m["claims"]}
 
 
+def test_case_and_claim_inventory() -> None:
+    """Parametrized tests pass vacuously on an empty set; pin the inventory."""
+    inventory = {i["id"]: sorted(i["ground_truth"]["claims"]) for i in ITEMS}
+    assert inventory == {"st2-01": ["C-001", "C-002", "C-003"], "st2-02": ["C-001", "C-002"]}
+
+
 def test_suite_is_registered_as_mechanical_match() -> None:
     registry = json.loads((REPO / "evals/heldout/suite_registry.json").read_text(encoding="utf-8"))
     assert registry["experiment_alignment_overclaim"] == "mechanical_match"
@@ -59,6 +65,7 @@ def test_passport_carries_no_answer(item: dict) -> None:
     body = _passport(item)
     assert "experiment_alignment_results" not in body
     text = (SUITE / item["passport"]).read_text(encoding="utf-8")
+    assert "heldout_set" not in text, f"{item['passport']} points the subject at the answers"
     for verdict in VERDICTS:
         assert verdict not in text, f"{item['passport']} names the verdict {verdict}"
 
