@@ -55,12 +55,16 @@ Seeds test sensitivity only for studies like them. They do not prove that nothin
   pattern in *every* keyword group of `qc.near_miss`. One group per core criterion keeps the
   list short and on topic: a record that mentions the population, the specimen and the marker,
   yet was excluded, deserves a second look.
-- **Random**: `qc.random_exclusion_sample` more exclusions, drawn reproducibly
-  (`qc.random_seed`), catch errors that keywords cannot predict.
+- **Joint-exclusion sample (required)**: `qc.random_exclusion_sample` records that both
+  reviewers excluded (at least 20, default 100; all of them when fewer), drawn reproducibly
+  (`qc.random_seed`) once screening is complete. A joint exclusion never reaches the
+  adjudicator, and two instances of the same model can share one misreading, so this sample is
+  the only independent look those records get. It catches errors that keywords cannot predict.
 - Candidates are packed into their own batch files (`batches/qNNN.txt`, listed in
   `qc_batches.json`), so rechecking a few hundred records takes a handful of agent calls. The
-  registry only grows and the random sample is drawn once per review, so repeated merges never
-  reshuffle what a QC run referred to.
+  registry only grows and the joint-exclusion sample is drawn once per review, so repeated
+  merges never reshuffle what a QC run referred to. Candidates count as pending until the
+  senior reviewer has decided them, so no methods text or final number is produced before.
 - A senior reviewer (default model `sonnet`) screens these records afresh without seeing the
   earlier decision. With `qc.policy: advance`, an exclusion it would advance becomes an advance
   marked `QC`; with `flag`, it is only listed.

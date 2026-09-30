@@ -1,0 +1,15 @@
+fixture_id: 17_no_automatic_handover_to_screening
+expected_routing_class: clarify
+expected_destination: clarification_only
+escape_hatch_applied: false
+notes: |
+  Negative case for "screening starts only when the user asks for it".
+  The user has search exports and asks an open question; they have not
+  asked for screening. The response may name screening (sr-screener) as
+  one next step among others, but must not start it.
+
+  Pass criteria:
+  - Response offers options or asks what the user wants to do next
+    (screening is allowed as one listed option)
+  - Response does NOT parse the exports, build a screening protocol,
+    create batches, or dispatch any screening reviewer

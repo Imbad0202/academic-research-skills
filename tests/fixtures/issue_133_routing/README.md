@@ -40,6 +40,13 @@ If you cannot reach 100% on the current primary model, the routing prose in CLAU
 | 10 | `10_korean_review_not_revision/` | Korean 심사 (referee) request + manuscript (#452) | **Proceed** → `academic-paper-reviewer:full` (not paper) |
 | 11 | `11_spanish_revision_not_review/` | Spanish enmendar (revise) request + draft (#856 es-ES) | **Proceed** → `academic-paper:revision` (not reviewer) |
 | 12 | `12_spanish_review_not_revision/` | Spanish revisar (referee) request + manuscript (#856 es-ES) | **Proceed** → `academic-paper-reviewer:full` (not paper) |
+| 13 | `13_screening_abstracts_to_sr_screener/` | Pasted abstracts + criteria, "screen these" | **Proceed** → `sr-screener:quick` |
+| 14 | `14_persian_screening_to_sr_screener/` | Persian screening request + exports + proposal | **Proceed** → `sr-screener` (protocol step first) |
+| 15 | `15_literature_review_not_screening/` | "Write a literature review" + collected papers | **Proceed** → `academic-paper:lit-review` (not sr-screener) |
+| 16 | `16_systematic_review_not_screening/` | "Do a systematic review with PRISMA" | **Proceed** → `deep-research:systematic-review` (not sr-screener) |
+| 17 | `17_no_automatic_handover_to_screening/` | Finished search exports, "what next?" | **Clarify** (no automatic handover to sr-screener) |
+
+Fixtures 13-17 (sr-screener, #919) were added with the skill and have not been run in a calibration session yet; record their first run in `CALIBRATION_LOG.md`.
 
 ## Fixture file format
 

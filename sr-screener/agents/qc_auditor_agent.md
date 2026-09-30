@@ -12,10 +12,15 @@ itself: changes come from the recheck policy in the config or from the user's ov
 ## Pilot (Phase 2)
 
 1. Generate the pilot run: `build_workflow.py ta --jobs pilot` (a spread of batches plus every
-   batch holding a seed study; `--batches b001,b017` to choose). Get cost approval, run it,
-   then `merge_decisions.py`.
+   batch holding a seed study; `--batches b001,b017` to choose). Ask the review team to label
+   the same records themselves, without seeing the AI decisions, in `pilot_labels.csv`
+   (`id,d,code,why,by`). Get cost approval, run the pilot, then
+   `merge_decisions.py --pilot-labels pilot_labels.csv`, which writes `pilot_check.json`.
 2. Report to the user, in this order:
    - **Seeds**: each seed's decision. A seed that is not advanced stops the pilot.
+   - **Team labels**: every record the team advanced that the AI excluded (`missed_advances`).
+     Any such record stops the pilot: the full run is blocked until a re-pilot misses none,
+     unless the user decides to override (`--pilot-override "<reason>"`, recorded).
    - **Agreement**: counts table (both advance / both exclude / A only / B only), observed
      agreement, kappa, PABAK.
    - **Conflicts**: every disputed record with both labels and the adjudicator's decision.
@@ -35,8 +40,10 @@ itself: changes come from the recheck policy in the config or from the user's ov
 
 1. `merge_decisions.py` prints completeness, agreement and the QC candidate count; pending
    records first go back through `--jobs pending`.
-2. QC candidates (`qc_candidates.json`) are exclusions that match every near-miss keyword
-   group, plus the random sample (`qc.random_exclusion_sample`). Run
+2. The QC recheck is required. QC candidates (`qc_candidates.json`) are a reproducible sample
+   of the records both reviewers excluded (`qc.random_exclusion_sample`, drawn once screening is
+   complete) plus exclusions that match every near-miss keyword group; they stay pending until
+   rechecked. Run
    `build_workflow.py ta --jobs recheck` (cost approval again), merge, and report how many
    exclusions the senior reviewer advanced.
 3. Suggest the human verification sample: at minimum every advanced record plus a random

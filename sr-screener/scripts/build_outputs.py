@@ -146,7 +146,8 @@ def main():
         pending = srlib.load_json(os.path.join(work, "pending.json"), {"screen": [], "adj": []})
         agree = srlib.load_json(os.path.join(work, "agreement.json"), {})
         pending_ids = sorted({i for p in pending["screen"] for i in p["missA"] + p["missB"]} |
-                             {x["id"] for p in pending["adj"] for x in p["items"]})
+                             {x["id"] for p in pending["adj"] for x in p["items"]} |
+                             {i for p in pending.get("qc", []) for i in p["ids"]})
         universe = [u["id"] for u in recs["unique"]]
     else:
         D = srlib.load_json(os.path.join(work, "ft_decisions.json"), {})
@@ -250,7 +251,8 @@ def main():
                 "screening log", "")]
     if not complete:
         summary.append((f"INCOMPLETE: {len(pending_ids)} records have no final decision yet "
-                        "(resume with build_workflow.py --jobs pending). Numbers below are provisional.", ""))
+                        "(resume with build_workflow.py --jobs pending, then --jobs recheck for the required QC "
+                        "recheck). Numbers below are provisional.", ""))
     if a.stage == "ta":
         summary += [("IDENTIFICATION", "")]
         summary += [(f"Records from {db}", n) for db, n in counts["identified_by_database"].items()]
@@ -421,9 +423,21 @@ def main():
                             if cfg["conflict_policy"] == "adjudicate" else
                             f"Records advanced by either reviewer were retained for full-text assessment "
                             f"({n_conf} disagreements). ")
-                qc = (f"As a quality check, {qc_n} excluded records selected by keyword signals for the core criteria "
-                      f"and/or random sampling were re-screened by a senior AI reviewer ({mlab('QC')}); "
-                      f"{qc_adv} were advanced as a result. " if qc_n else "")
+                qc = (f"Because records excluded by both reviewers are never adjudicated, a reproducible random sample "
+                      f"of those joint exclusions, together with exclusions matching keyword signals for the core "
+                      f"criteria ({qc_n} records in total), was re-screened by a senior AI reviewer ({mlab('QC')}) that "
+                      f"did not see the earlier decisions; {qc_adv} were advanced as a result. " if qc_n else "")
+                pc = srlib.load_json(os.path.join(work, "pilot_check.json")) or {}
+                po_log = srlib.load_json(os.path.join(work, "pilot_override.json")) or []
+                pilot_txt = ""
+                if pc.get("compared"):
+                    pilot_txt = (f"Before the full run, the AI screening was piloted on {pc['compared']} records that the "
+                                 f"review team had labelled independently; the AI excluded "
+                                 f"{len(pc.get('missed_advances', []))} of the {pc.get('human_advanced', 0)} records the "
+                                 "team advanced. [TO COMPLETE: pilot rounds and protocol amendments.] ")
+                if po_log:
+                    pilot_txt += ("[TO COMPLETE: the full run was started without a passing human-labelled pilot; "
+                                  f"recorded reason: {po_log[-1]['reason']}.] ")
                 seed_txt = ""
                 if seeds:
                     ok = [s for s in seeds if s.get("id") and D.get(s["id"], {}).get("final", {}).get("d") in srlib.ADVANCE]
@@ -446,7 +460,7 @@ def main():
                     f"({pair('A', 'B')}) that were given the same written protocol and decision rules and did "
                     f"not see each other's decisions. {access}{conflict}The two reviewers agreed on advance-versus-exclude "
                     f"decisions for {po_txt} of records (Cohen's kappa = {agree.get('kappa')}; prevalence-adjusted "
-                    f"bias-adjusted kappa = {agree.get('pabak')}). {qc}{seed_txt}In total, {counts['records_excluded']} "
+                    f"bias-adjusted kappa = {agree.get('pabak')}). {pilot_txt}{qc}{seed_txt}In total, {counts['records_excluded']} "
                     f"records were excluded and {counts['reports_sought_for_retrieval']} records "
                     f"({counts['advanced_include']} judged eligible and {counts['advanced_unclear']} with insufficient "
                     "information) were advanced to full-text assessment. [TO COMPLETE - human verification: who checked "

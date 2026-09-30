@@ -11,6 +11,12 @@ Options:
   --emit-prompts DIR   also write one prompt file per agent call (for runs with the Agent tool
                        or by hand); an index.json lists label, prompt file and model
   --return-decisions   make the workflow also return every decision (small runs only)
+  --pilot-override R   start `ta --jobs all` without a passing human-labelled pilot; the reason
+                       is recorded in W/pilot_override.json and reported in the methods text
+
+The full title/abstract run (`ta --jobs all`) needs W/pilot_check.json from
+merge_decisions.py --pilot-labels: the pilot must have been compared with the review team's
+own labels and must not have excluded any record the team advanced.
 
 The protocol text is embedded verbatim; the reviewer wording comes from templates/prompts.md.
 Run the result with the Workflow tool: Workflow({scriptPath: "<printed path>"}).
@@ -109,6 +115,30 @@ def ta_jobs(a, work, manifest, width):
     elif a.jobs == "recheck-all":
         jobs["recheck"] = [{"b": m["batch"], "ids": m["ids"], "full": True} for m in manifest]
     return jobs
+
+
+def pilot_gate(work, override):
+    """The full run starts only after a pilot checked against the team's own labels."""
+    check = srlib.load_json(os.path.join(work, "pilot_check.json"))
+    problem = None
+    if not check:
+        problem = ("no human-labelled pilot: label the pilot records yourselves (pilot_labels.csv: id,d,code,why,by), "
+                   "then run merge_decisions.py --pilot-labels pilot_labels.csv")
+    elif not check.get("compared"):
+        problem = "pilot_check.json compares no record (the labelled records have no AI decision yet)"
+    elif check.get("missed_advances"):
+        problem = (f"the pilot excluded {len(check['missed_advances'])} records the team advanced "
+                   "(see pilot_check.json): amend the protocol and re-run the pilot")
+    if not problem:
+        return
+    if not override.strip():
+        raise SystemExit(f"full run blocked: {problem}. To start anyway, pass --pilot-override \"<reason>\"; "
+                         "the reason is recorded and reported in the methods text.")
+    path = os.path.join(work, "pilot_override.json")
+    log = srlib.load_json(path, []) or []
+    log.append({"reason": override.strip(), "problem": problem})
+    srlib.save_json(path, log, indent=1)
+    print(f"WARNING: full run started without a passing pilot ({problem}); reason recorded in {path}")
 
 
 def ft_jobs(a, work):
@@ -219,6 +249,7 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--emit-prompts")
     ap.add_argument("--return-decisions", action="store_true")
+    ap.add_argument("--pilot-override", default="", help="reason for starting the full run without a passing pilot")
     a = ap.parse_args()
 
     work = os.path.abspath(a.work)
@@ -233,6 +264,8 @@ def main():
     width = recs.get("id_width", 5)
     manifest = srlib.load_json(os.path.join(work, "manifest.json"), [])
 
+    if a.stage == "ta" and a.jobs == "all":
+        pilot_gate(work, a.pilot_override)
     if a.stage == "ta":
         jobs = ta_jobs(a, work, manifest, width)
         keep = ["reviewer_intro", "rules_ta", "protocol_wrapper", "task_batch_read", "task_grep_subset",
@@ -283,6 +316,9 @@ def main():
     print(f"planned agent calls: about {n_calls} (+ retries for missing decisions"
           + (", + one adjudication call per batch with conflicts)" if a.stage == "ta" and jobs["screen"] else ")"))
     print(f"models: {json.dumps(cfg['models'])}  agentType: {conf['agentType'] or '(default workflow subagent)'}")
+    over = srlib.model_overrides(cfg)
+    if over:
+        print(f"model overrides from screening_config.json (shipped default is sonnet): {json.dumps(over)}")
     print(f'next: Workflow({{scriptPath: "{out.replace(chr(92), "/")}"}})  - only after the user approves the cost')
     if a.emit_prompts:
         n = emit_prompts(a, conf, prompts, os.path.abspath(a.emit_prompts))

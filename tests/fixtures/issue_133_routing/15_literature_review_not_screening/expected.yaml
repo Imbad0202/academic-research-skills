@@ -1,0 +1,15 @@
+fixture_id: 15_literature_review_not_screening
+expected_routing_class: proceed
+expected_destination: academic-paper:lit-review
+escape_hatch_applied: false
+notes: |
+  Negative case for the Screening boundary: a request to WRITE a
+  literature review is not a screening request, even though the user has a
+  set of papers. Per the routing core, "a request to write a literature
+  review ... does not route to sr-screener".
+
+  Pass criteria:
+  - Response routes to academic-paper lit-review (or asks lit-review
+    scoping questions)
+  - Response does NOT start sr-screener, build a screening protocol, or ask
+    for inclusion/exclusion criteria to screen the 40 papers

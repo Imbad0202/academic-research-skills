@@ -17,3 +17,5 @@
 | F13 | Prepared work folder would be overwritten | `prepare_records.py` refuses | Use a new `--work` folder; `--force` only when no decisions exist, since IDs would change |
 | F14 | PDFs not matched at full text | `prepare_fulltext.py` "not retrieved" count | Rename PDFs with the record ID or give a `--map` CSV; truly unobtainable reports go in the PRISMA "not retrieved" box |
 | F15 | No subagents available | Session cannot spawn agents | Offer `quick` mode (single-reviewer triage, disclosed as such) or run the pipeline in Claude Code |
+| F16 | Pilot excluded a record the team advanced | `merge_decisions.py --pilot-labels` prints "MISSED" and "STOP"; `--jobs all` refuses | Read the AI reason, add a definition or example to the protocol (amendment), re-pilot; start anyway only if the user decides so, with `--pilot-override "<reason>"` (recorded, reported in the methods text) |
+| F17 | Screening done but numbers still provisional | merge prints "PENDING QC" | Run `build_workflow.py ta --jobs recheck` for the required recheck of joint exclusions and near-miss records, then merge again |

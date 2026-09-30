@@ -90,13 +90,16 @@ Usage limits, closed sessions and failed agents are normal on long runs:
 `references/reviewer_roles.md`. Offer the full pipeline if more records follow.
 
 **pilot**: `prepare_records.py`, then `build_workflow.py ta --jobs pilot` (a spread of batches
-plus every seed batch; `--pilot-n` or `--batches` to change), Workflow, merge, then the QC
-Auditor's pilot report. Amend, re-pilot, and continue only with the user's go-ahead.
+plus every seed batch; `--pilot-n` or `--batches` to change). The team labels the same records
+independently in `pilot_labels.csv`. Workflow, `merge_decisions.py --pilot-labels
+pilot_labels.csv`, then the QC Auditor's pilot report. Amend, re-pilot, and continue only when
+the AI misses none of the records the team advanced and the user gives the go-ahead.
 
-**ta-screen**: `build_workflow.py ta --jobs all` (the pilot batches can stay in: their
-decisions are already merged, so rerunning them only costs a little; or pass the remaining
-batches with `--batches`). Then merge, `--jobs pending` until complete, `--jobs recheck` for
-QC, `overrides.csv` for the team's decisions, `build_outputs.py`.
+**ta-screen**: `build_workflow.py ta --jobs all`, which refuses to start without a passing
+`pilot_check.json` (the pilot batches can stay in: their decisions are already merged, so
+rerunning them only costs a little). Then merge, `--jobs pending` until screening is complete,
+`--jobs recheck` for the required QC recheck of joint exclusions, merge again until it prints
+"complete", `overrides.csv` for the team's decisions, `build_outputs.py`.
 
 **ft-screen**: `prepare_fulltext.py --pdf-dir PDFS` (name PDFs by record ID when possible;
 missing ones are "reports not retrieved"), write the full-text protocol, then

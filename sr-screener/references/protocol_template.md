@@ -91,12 +91,12 @@ marked required.
 | `personas.A`, `personas.B` | one sentence each: content expert, methodologist | generic |
 | `conflict_policy` | `adjudicate` (third reviewer) or `liberal` (either advance is enough) | adjudicate |
 | `qc.near_miss` | `{group: [regex, ...]}`; an exclusion matching every group is rechecked | {} |
-| `qc.random_exclusion_sample` | number of other exclusions to recheck at random | 0 |
+| `qc.random_exclusion_sample` | records both reviewers excluded that the senior reviewer rechecks (required; minimum 20, all when fewer) | 100 |
 | `qc.random_seed` | seed for that sample, so it is reproducible | 2026 |
 | `qc.policy` | `advance` (QC advance wins) or `flag` (listed only) | advance |
 | `seeds` | `[{label, doi, pmid, title}]` known eligible studies | [] |
 | `languages_allowed` | languages that pass without a flag; others are flagged, not excluded | [] |
-| `models` | per role: `A`, `B`, `ADJ`, `QC`, `FTA`, `FTB`, `FTADJ` (`haiku`, `sonnet`, `opus`, or "" for the session model) | haiku/sonnet mix |
+| `models` | per role: `A`, `B`, `ADJ`, `QC`, `FTA`, `FTB`, `FTADJ` (`sonnet`, `opus`, or "" for the session model; the cost check lists any override) | sonnet for every role |
 | `model_labels` | exact model names for the methods text, per role | placeholders |
 | `agent_type` | subagent that runs the reviewers, as listed in the agent registry (for example `academic-research-skills:screening_reviewer_agent` for a plugin install, `screening_reviewer_agent` for a skills-copy install); "" uses the default workflow subagent | "" |
 | `batching.max_records` / `max_chars` / `wrap` | batch size limits and line wrap | 50 / 90000 / 150 |

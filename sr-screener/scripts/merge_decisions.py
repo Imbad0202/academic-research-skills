@@ -3,7 +3,7 @@
 
 Usage:
   python merge_decisions.py --work W --from PATH [PATH ...] [--config screening_config.json]
-                            [--stage ta|ft] [--overrides overrides.csv] [--audit]
+                            [--stage ta|ft] [--overrides overrides.csv] [--pilot-labels pilot_labels.csv] [--audit]
 
 PATH may be a Workflow run journal (journal.jsonl), a folder searched recursively for
 journal.jsonl files and *.json decision files, or a JSON file holding objects like
@@ -18,7 +18,15 @@ Rules (see references/decision_rules.md):
     was given, is discarded - the record is retried, never filled in by default;
   * when both reviewers exclude with different codes, the earlier code in protocol order wins;
   * QC rechecks and human overrides (overrides.csv: id,d,code,why[,by]) are applied last
-    and logged on the record.
+    and logged on the record;
+  * the QC recheck is required: once screening is complete, a reproducible sample of the records
+    BOTH reviewers excluded (qc.random_exclusion_sample, all of them when fewer) plus the
+    near-miss exclusions go to the senior reviewer, and those records count as pending until
+    it has decided them (a joint exclusion never reaches the adjudicator);
+  * --pilot-labels compares the AI decisions with the review team's own labels for the pilot
+    records (same columns as overrides.csv) and writes pilot_check.json; build_workflow.py
+    --jobs all refuses to start the full run until that check exists and missed no record the
+    team advanced.
 
 Writes decisions.json, pending.json, agreement.json, qc_candidates.json (title/abstract) or
 ft_decisions.json, ft_pending.json, ft_agreement.json (full text) into the work folder.
@@ -228,9 +236,14 @@ def merge_ta(a, cfg, work):
         agree["resolved_by"][by] = agree["resolved_by"].get(by, 0) + 1
 
     srlib.save_json(os.path.join(work, "decisions.json"), final)
-    srlib.save_json(os.path.join(work, "pending.json"), {"screen": pend_screen, "adj": pend_adj}, indent=1)
     srlib.save_json(os.path.join(work, "agreement.json"), agree, indent=1)
-    qc_cands = make_qc_candidates(work, cfg, manifest, final, set(got["QC"]) | set(ov))
+    screening_done = not pend_screen and not pend_adj
+    qc_cands = make_qc_candidates(work, cfg, manifest, final, set(got["QC"]) | set(ov), screening_done)
+    pend_qc = [{"b": c["b"], "ids": c["ids"]} for c in (qc_cands or []) if c["ids"]]
+    srlib.save_json(os.path.join(work, "pending.json"),
+                    {"screen": pend_screen, "adj": pend_adj, "qc": pend_qc}, indent=1)
+    if a.pilot_labels:
+        pilot_check(a.pilot_labels, final, codes, {i for m in manifest for i in m["ids"]}, work, ov)
 
     total = sum(len(m["ids"]) for m in manifest)
     fc = {}
@@ -248,20 +261,25 @@ def merge_ta(a, cfg, work):
         print(f"QC rechecks read: {len(got['QC'])}  exclusions advanced by QC: {qc_changed}  flagged: {qc_flagged}")
     if n_over:
         print(f"human overrides applied: {n_over}")
-    if qc_cands is not None:
-        print(f"QC candidates for recheck: {sum(len(c['ids']) for c in qc_cands)} (qc_candidates.json)")
+    n_pq = sum(len(p["ids"]) for p in pend_qc)
     if n_ps or n_pa:
         print(f"PENDING: {n_ps} records still need a reviewer decision in {len(pend_screen)} batches; "
               f"{n_pa} conflicts need adjudication -> build_workflow.py ta --jobs pending")
+        print("the required QC recheck of joint exclusions is drawn once screening is complete")
+    elif n_pq:
+        print(f"PENDING QC: {n_pq} exclusions (joint-exclusion sample and near-miss) await the required senior "
+              "recheck -> build_workflow.py ta --jobs recheck")
     else:
-        print("complete: every record has a final decision")
+        print("complete: every record has a final decision and the required QC recheck is done")
 
 
-def make_qc_candidates(work, cfg, manifest, final, skip):
+def make_qc_candidates(work, cfg, manifest, final, skip, screening_done=True):
     """Select exclusions for a senior second look and pack them into their own batch files.
 
-    Near-miss: matches at least one pattern in every qc.near_miss group. Random: a reproducible
-    sample of the other exclusions, drawn once per review (never redrawn on later merges).
+    Near-miss: matches at least one pattern in every qc.near_miss group. Random (required): a
+    reproducible sample of the records BOTH reviewers excluded (decided by "A+B"), drawn once per
+    review after screening is complete (never redrawn on later merges), so the sample covers
+    every batch.
     Candidates go into QC batches (batches/qNNN.txt) listed in qc_batches.json; that registry
     only grows, so a QC run's labels always refer to the same records.
     """
@@ -283,8 +301,8 @@ def make_qc_candidates(work, cfg, manifest, final, skip):
         text = " ".join([u["title"], u["abstract"], " ".join(u.get("kw", []))])
         if rid not in why and pats and all(any(p.search(text) for p in ps) for ps in pats.values()):
             why[rid] = "near-miss"
-    if k and "random" not in why.values():
-        rest = [r for r in excluded if r not in why and r not in skip]
+    if k and screening_done and "random" not in why.values():
+        rest = [r for r in excluded if r not in why and r not in skip and final[r]["final"].get("by") == "A+B"]
         for rid in random.Random(int(qc.get("random_seed", 2026))).sample(rest, min(k, len(rest))):
             why[rid] = "random"
     in_reg = {i for ids in reg.values() for i in ids}
@@ -319,6 +337,50 @@ def make_qc_candidates(work, cfg, manifest, final, skip):
         if todo:
             out.append({"b": name, "ids": todo, "full": todo == ids, "why": {i: why.get(i, "") for i in todo}})
     srlib.save_json(os.path.join(work, "qc_candidates.json"), out, indent=1)
+    return out
+
+
+def pilot_check(path, final, codes, valid_ids, work, ov):
+    """Compare the AI decisions with the review team's labels for the pilot records.
+
+    The costly error is a wrong exclusion, so the check lists every record the team advanced
+    (include or unclear) that the AI excluded. The AI side is the automatic decision, before any
+    human override.
+    """
+    labels = load_overrides(path, codes, valid_ids)
+    rows, missed, extra, not_screened = [], [], 0, []
+    for rid, h in sorted(labels.items()):
+        rec = final.get(rid)
+        ai = rec.get("pre_override") if rec and "pre_override" in rec else None
+        if ai is None and rec and rid not in ov:
+            ai = rec["final"]
+        if not ai:
+            not_screened.append(rid)
+            continue
+        h_adv, ai_adv = h["d"] in srlib.ADVANCE, ai["d"] in srlib.ADVANCE
+        rows.append((h_adv, ai_adv))
+        if h_adv and not ai_adv:
+            missed.append({"id": rid, "human": f"{h['d']}/{h['code']}", "ai": f"{ai['d']}/{ai['code']}",
+                           "ai_why": ai.get("why", ""), "ai_by": ai.get("by", "")})
+        elif ai_adv and not h_adv:
+            extra += 1
+    human_adv = sum(1 for h, _ in rows if h)
+    both = sum(1 for h, x in rows if h and x)
+    out = {"labels_file": os.path.abspath(path), "labelled": len(labels), "compared": len(rows),
+           "not_screened_by_ai": not_screened, "human_advanced": human_adv,
+           "ai_advanced": sum(1 for _, x in rows if x), "both_advanced": both,
+           "sensitivity": round(both / human_adv, 3) if human_adv else None,
+           "missed_advances": missed, "extra_advances": extra, "agreement": srlib.agreement(rows)}
+    srlib.save_json(os.path.join(work, "pilot_check.json"), out, indent=1)
+    print(f"pilot vs human labels: {len(rows)} compared, team advanced {human_adv}, AI advanced "
+          f"{out['ai_advanced']}, AI missed {len(missed)}, AI advanced {extra} the team excluded"
+          + (f", {len(not_screened)} labelled records without an AI decision yet" if not_screened else ""))
+    for m in missed:
+        print(f"  MISSED {m['id']}: team {m['human']}, AI {m['ai']} ({m['ai_by']}) - {m['ai_why']}")
+    if missed:
+        print("STOP: fix the protocol wording for these records, amend, and re-run the pilot before the full run")
+    elif not rows:
+        print("no pilot record has both an AI decision and a team label yet")
     return out
 
 
@@ -408,6 +470,7 @@ def main():
     ap.add_argument("--config")
     ap.add_argument("--stage", choices=["ta", "ft"], default="ta")
     ap.add_argument("--overrides")
+    ap.add_argument("--pilot-labels", help="the team's own labels for pilot records (id,d,code,why,by)")
     ap.add_argument("--audit", action="store_true", help="report QC-recheck decisions of an audited set")
     a = ap.parse_args()
     cfg = srlib.load_config(a.config)

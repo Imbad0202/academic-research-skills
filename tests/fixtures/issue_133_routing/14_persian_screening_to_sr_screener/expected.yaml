@@ -1,0 +1,17 @@
+fixture_id: 14_persian_screening_to_sr_screener
+expected_routing_class: proceed
+expected_destination: sr-screener
+escape_hatch_applied: false
+notes: |
+  Persian positive case: "screen the titles and abstracts of these papers
+  against my protocol's inclusion and exclusion criteria" (غربالگری,
+  معیارهای ورود و خروج are sr-screener trigger phrases). Materials:
+  database exports and a proposal, a single phase (screening).
+
+  Pass criteria:
+  - Response routes to sr-screener and starts with its protocol step
+    (turning the proposal into screening rules for the user to confirm)
+    or asks for the confirmed protocol; it does NOT screen any record
+    before a protocol is confirmed
+  - Response talks to the user in Persian
+  - Response does NOT route to deep-research or academic-paper

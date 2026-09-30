@@ -29,7 +29,7 @@
   },
   "seeds": [],
   "languages_allowed": ["English"],
-  "models": {"A": "haiku", "B": "haiku", "ADJ": "sonnet", "QC": "sonnet", "FTA": "sonnet", "FTB": "sonnet", "FTADJ": "sonnet"},
+  "models": {"A": "sonnet", "B": "sonnet", "ADJ": "sonnet", "QC": "sonnet", "FTA": "sonnet", "FTB": "sonnet", "FTADJ": "sonnet"},
   "model_labels": {},
   "agent_type": "academic-research-skills:screening_reviewer_agent",
   "batching": {"max_records": 50, "max_chars": 90000, "wrap": 150},

@@ -10,8 +10,8 @@ session applies the same rules itself in `quick` mode.
 
 | Role | Sees | Does not see | Default model |
 |------|------|--------------|---------------|
-| Reviewer A (content expert) | protocol, decision rules, one batch file | B's decisions, other batches | haiku |
-| Reviewer B (methodologist) | protocol, decision rules, one batch file | A's decisions, other batches | haiku |
+| Reviewer A (content expert) | protocol, decision rules, one batch file | B's decisions, other batches | sonnet |
+| Reviewer B (methodologist) | protocol, decision rules, one batch file | A's decisions, other batches | sonnet |
 | Adjudicator | protocol, rules, the disputed records, both labels | the reviewers' reasons | sonnet |
 | QC reviewer | protocol, rules, selected excluded records | earlier labels and reasons | sonnet |
 

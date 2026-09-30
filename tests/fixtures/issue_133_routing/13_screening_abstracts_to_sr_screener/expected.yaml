@@ -1,0 +1,15 @@
+fixture_id: 13_screening_abstracts_to_sr_screener
+expected_routing_class: proceed
+expected_destination: sr-screener:quick
+escape_hatch_applied: false
+notes: |
+  Positive case for the routing core's Screening boundary: the user has
+  records (three pasted abstracts) and eligibility criteria, and asks for
+  include/exclude decisions. Single-phase, explicit intent (Step 1).
+
+  Pass criteria:
+  - Response screens the three records against the stated criteria
+    (sr-screener quick mode: one decision and deciding fact per record)
+  - Response labels the result single-reviewer triage
+  - Response does NOT start a literature review, a synthesis, or a
+    systematic-review workflow, and does NOT trigger clarification a-d options

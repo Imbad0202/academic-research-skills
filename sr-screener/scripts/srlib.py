@@ -110,10 +110,12 @@ DEFAULT_CONFIG = {
         "B": "You are REVIEWER B, a systematic-review methodologist.",
     },
     "conflict_policy": "adjudicate",
-    "qc": {"near_miss": {}, "random_exclusion_sample": 0, "random_seed": 2026, "policy": "advance"},
+    # random_exclusion_sample: records BOTH reviewers excluded, rechecked by the senior reviewer.
+    # Required (a joint exclusion never reaches the adjudicator); see MIN_JOINT_EXCLUSION_SAMPLE.
+    "qc": {"near_miss": {}, "random_exclusion_sample": 100, "random_seed": 2026, "policy": "advance"},
     "seeds": [],
     "languages_allowed": [],
-    "models": {"A": "haiku", "B": "haiku", "ADJ": "sonnet", "QC": "sonnet",
+    "models": {"A": "sonnet", "B": "sonnet", "ADJ": "sonnet", "QC": "sonnet",
                "FTA": "sonnet", "FTB": "sonnet", "FTADJ": "sonnet"},
     "model_labels": {},
     "agent_type": "",
@@ -122,6 +124,9 @@ DEFAULT_CONFIG = {
     "read_limit": 900,
     "grep_after": 60,
 }
+
+
+MIN_JOINT_EXCLUSION_SAMPLE = 20
 
 
 def load_config(path):
@@ -139,7 +144,18 @@ def load_config(path):
             raise SystemExit(f"invalid exclusion code {c['code']!r} (use e.g. E1..E9; INC/UNC are reserved)")
     if cfg["conflict_policy"] not in ("adjudicate", "liberal"):
         raise SystemExit("conflict_policy must be 'adjudicate' or 'liberal'")
+    k = cfg["qc"].get("random_exclusion_sample")
+    if not isinstance(k, int) or k < MIN_JOINT_EXCLUSION_SAMPLE:
+        raise SystemExit(
+            f"qc.random_exclusion_sample must be an integer >= {MIN_JOINT_EXCLUSION_SAMPLE}: the QC recheck of records "
+            "both reviewers excluded is required, because a joint exclusion never reaches the adjudicator "
+            "(all joint exclusions are rechecked when there are fewer)")
     return cfg
+
+
+def model_overrides(cfg):
+    """Roles whose model differs from the shipped default, for the cost check."""
+    return {r: m for r, m in cfg["models"].items() if m != DEFAULT_CONFIG["models"].get(r)}
 
 
 def exclusion_codes(cfg, stage="ta"):

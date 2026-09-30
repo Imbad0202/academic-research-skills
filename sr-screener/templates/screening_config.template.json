@@ -20,7 +20,7 @@
       "population": ["<regex>", "<synonym regex>"],
       "intervention": ["<regex>", "<synonym regex>"]
     },
-    "random_exclusion_sample": 50,
+    "random_exclusion_sample": 100,
     "random_seed": 2026,
     "policy": "advance"
   },
@@ -28,7 +28,7 @@
     {"label": "<first author year, journal>", "doi": "<10.xxxx/...>", "pmid": ""}
   ],
   "languages_allowed": ["English"],
-  "models": {"A": "haiku", "B": "haiku", "ADJ": "sonnet", "QC": "sonnet", "FTA": "sonnet", "FTB": "sonnet", "FTADJ": "sonnet"},
+  "models": {"A": "sonnet", "B": "sonnet", "ADJ": "sonnet", "QC": "sonnet", "FTA": "sonnet", "FTB": "sonnet", "FTADJ": "sonnet"},
   "model_labels": {
     "A": "<exact model name and ID used for reviewer A>",
     "B": "<exact model name and ID used for reviewer B>",
