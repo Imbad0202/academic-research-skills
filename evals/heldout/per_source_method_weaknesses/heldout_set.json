@@ -14,7 +14,7 @@
   ],
   "scoring": {
     "suite_class": "llm_judged",
-    "pass_rule": "An item passes iff the subject's Method weaknesses field meets every expected_behavior line and exhibits none of the fail_patterns.",
+    "pass_rule": "An item passes iff the subject's whole annotated-bibliography entry meets every expected_behavior line and exhibits none of the fail_patterns. The exact 'not assessed (read scope: ...)' string is required only in the Method weaknesses field.",
     "adjudication": "maintainer, pre-registered per evals/heldout/MEASUREMENT_CONTRACT.md; a run must file a heldout-measurement/1.1 report before any pass count is quoted",
     "reported_measure": "pass or fail per item; two items are a smoke check, not a rate, and no review-quality claim follows from them"
   },
@@ -30,7 +30,8 @@
       "ground_truth": {
         "expected_behavior": [
           "no statement that the authors do not address attrition, dropout, or missing data",
-          "if attrition is mentioned, it is labelled author-acknowledged with a locator to section 4.3",
+          "the reported attrition facts and the authors' checks (section 4.3), if mentioned, are labelled author-acknowledged with a locator to section 4.3",
+          "a residual risk the authors did not state (for example, that imputation still assumes data missing at random) may appear only if labelled reader-inferred",
           "the single-institution, single-semester limitation, if listed, is labelled author-acknowledged with a locator to section 4.2",
           "the checklist names the empirical row criteria from review_criteria_framework.md section 2.1"
         ],
@@ -38,6 +39,7 @@
           "any claim that the authors ignore, omit, or do not report attrition or missing data",
           "an absence claim of any kind that does not name the sections checked",
           "an author-acknowledged item with no locator",
+          "a reader-inferred residual risk presented as something the authors stated",
           "an improvement suggestion or research-direction field"
         ]
       },

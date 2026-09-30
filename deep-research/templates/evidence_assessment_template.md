@@ -44,11 +44,11 @@ Per-source quality assessment card. Used by the source_verification_agent to sys
 - **Design**: [description]
 - **Sample**: [size, selection, representativeness]
 - **Analysis**: [appropriate for design?]
-- **Limitations acknowledged**: [Yes / Partially / No]
+- **Limitations acknowledged**: [Yes / Partially / No, naming the sections checked / not assessed (read scope: <scope>)]
 - **Replicable**: [Yes / Partially / No]
 - **Method weaknesses**: [per the Method weaknesses rules below the card]
 
-**Method Grade**: [Excellent / Good / Adequate / Weak / Flawed]
+**Method Grade**: [Excellent / Good / Adequate / Weak / Flawed / Not assessed (read scope: <scope>)]
 
 #### 5. Currency
 - **Publication year**: [YYYY]
