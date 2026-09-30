@@ -400,6 +400,13 @@ jobs:
           PYTHONPATH: .
         run: python scripts/check_routing_core_sync.py
 
+      - name: Method-weaknesses sync lint (#916)
+        # Every surface listed in shared/references/per_source_method_weaknesses.md
+        # must carry its block byte for byte.
+        env:
+          PYTHONPATH: .
+        run: python scripts/check_method_weaknesses_sync.py
+
       - name: Judge-prompt-version drift guard (#361)
         # Recomputes the SHA-256 of the canonical judge-prompt section (between
         # the JUDGE-PROMPT-CANONICAL markers in claim_ref_alignment_audit_agent.md)

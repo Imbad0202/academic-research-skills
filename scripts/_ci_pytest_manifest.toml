@@ -65,6 +65,10 @@ id = "892-routing-core-sync"
 path = "scripts/test_check_routing_core_sync.py"
 
 [[pytest]]
+id = "916-method-weaknesses-sync"
+path = "scripts/test_check_method_weaknesses_sync.py"
+
+[[pytest]]
 id = "v3.10-policy-layer"
 path = "scripts/test_check_v3_10_policy.py"
 

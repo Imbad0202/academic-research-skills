@@ -76,6 +76,7 @@ table below is an informative mirror:
 |---|---|---|
 | `revision_claim_drift` | `llm_judged` | cross-model judge + maintainer adjudication |
 | `unsupported_claim_recovery` | `llm_judged` | maintainer adjudication of the #825 drafting recovery route (unsupported / contradicted claim → source, omission, or `[MATERIAL GAP]`; hedge-only rescue fails); seed only, `NOT_RUN` |
+| `per_source_method_weaknesses` | `llm_judged` | maintainer adjudication of the #916 reading-output rules (bounded absence claim; no method-level weakness without the text); two items, a smoke check, seed only, `NOT_RUN` |
 | `indirect_prompt_injection_behavior` | `paired_controls` | #675 2 x 2 synthetic behavioral probe; no structural-safety claim |
 | `reviewer_calibration` | `llm_judged` | gold accept/reject labels are mechanical; judged elements (severity-risk classification, verdict transcription checks) carry the judge plan (#653) |
 | `rq_framing_offlist` | `llm_judged` | judge + replicate protocol already in its README |
