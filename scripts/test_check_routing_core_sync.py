@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Tests for check_routing_core_sync.py and the announce's routing core (#892).
 
-Mutation tests confirm the lint is not accept-all: every break in the marker
-grammar or in a copy's bytes must fail it, and the clean repository must pass.
-The announce tests run the real SessionStart script, so the plugin path is
+The marker grammar is tested once in test_skill_lint_marker_block.py (#923).
+These tests check the wiring: the clean repository passes, every copy and the
+canonical file are checked under this lint's ids, and the exit codes. The
+announce tests run the real SessionStart script, so the plugin path is
 checked end to end rather than by reading the script's source.
 """
 from __future__ import annotations
@@ -20,6 +21,7 @@ from scripts.check_routing_core_sync import (
     BEGIN,
     CANONICAL,
     CLAUDE_MD,
+    END,
     check,
     copies,
     extract_block,
@@ -98,6 +100,23 @@ def test_new_skill_without_the_core_fails(tree: Path) -> None:
     (tree / "new-skill").mkdir()
     (tree / "new-skill" / "SKILL.md").write_text("# New skill\n", encoding="utf-8")
     assert f"RC-2 new-skill/SKILL.md: expected one {BEGIN}" in _errors(tree)
+
+
+def test_malformed_canonical_is_reported_as_rc_1(tree: Path) -> None:
+    _edit(tree, CANONICAL, BEGIN, "@@BEGIN@@")
+    _edit(tree, CANONICAL, END, BEGIN)
+    _edit(tree, CANONICAL, "@@BEGIN@@", END)
+    assert f"RC-1 {CANONICAL}: {END} comes before {BEGIN}" in _errors(tree)
+
+
+@pytest.mark.parametrize("bad_root", ["missing-dir", "pyproject.toml"])
+def test_bad_root_exits_2_on_the_canonical_file(tmp_path: Path, bad_root: str) -> None:
+    root = tmp_path / bad_root
+    if bad_root.endswith(".toml"):
+        root.write_text("", encoding="utf-8")
+    result = run_script(LINT, "--root", str(root))
+    assert result.returncode == 2
+    assert f"required file missing: {CANONICAL}" in result.stderr
 
 
 def test_changed_canonical_fails_every_copy(tree: Path) -> None:

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Tests for check_method_weaknesses_sync.py (#916).
 
-Mutation tests confirm the lint is not accept-all: every break in the marker
-grammar or in a surface's bytes must fail it, and the clean repository must pass.
+The marker grammar is tested once in test_skill_lint_marker_block.py (#923).
+These tests check the wiring: the clean repository passes, each listed surface
+and the canonical file are checked under this lint's ids, and the exit codes.
 """
 from __future__ import annotations
 
@@ -12,7 +13,9 @@ from pathlib import Path
 import pytest
 
 from scripts.check_method_weaknesses_sync import (
+    BEGIN,
     CANONICAL,
+    END,
     SURFACES,
     check,
 )
@@ -66,6 +69,12 @@ def test_one_changed_byte_in_a_surface_fails(tree: Path, rel: Path) -> None:
     _edit(tree, rel, PHRASE, "Small Sample")
     assert f"MW-2 {rel}: method-weaknesses block differs" in _errors(tree)
 
+
+def test_malformed_canonical_is_reported_as_mw_1(tree: Path) -> None:
+    _edit(tree, CANONICAL, BEGIN, "@@BEGIN@@")
+    _edit(tree, CANONICAL, END, BEGIN)
+    _edit(tree, CANONICAL, "@@BEGIN@@", END)
+    assert f"MW-1 {CANONICAL}: {END} comes before {BEGIN}" in _errors(tree)
 
 def test_changed_canonical_fails_every_surface(tree: Path) -> None:
     _edit(tree, CANONICAL, PHRASE, "Small Sample")

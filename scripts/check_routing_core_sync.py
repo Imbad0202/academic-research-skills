@@ -25,7 +25,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _skill_lint import check_marker_copies, extract_marker_block, iter_skill_files  # noqa: E402
+from _skill_lint import (  # noqa: E402
+    check_marker_copies,
+    extract_marker_block,
+    iter_skill_files,
+    read_or_exit2,
+)
 
 CANONICAL = Path("shared/references/routing_core.md")
 CLAUDE_MD = Path(".claude/CLAUDE.md")
@@ -45,6 +50,9 @@ def copies(root: Path) -> list[Path]:
 
 def check(root: Path) -> list[str]:
     """Run RC-1 and RC-2 under `root`; a missing file exits 2."""
+    # Read the canonical file before copies() scans the tree, so a bad --root
+    # exits 2 on the missing canonical file instead of failing in the scan.
+    read_or_exit2(root, str(CANONICAL), exact=True)
     _, errors = check_marker_copies(root, CANONICAL, copies(root), BEGIN, END,
                                     "routing-core", "RC-1", "RC-2")
     return errors
