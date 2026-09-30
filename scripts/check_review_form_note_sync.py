@@ -32,8 +32,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _skill_lint import read_or_exit2  # noqa: E402
-from check_routing_core_sync import first_difference  # noqa: E402
+from _skill_lint import check_marker_copies  # noqa: E402
 
 CANONICAL = Path("shared/references/review_form_note.md")
 SURFACES = (
@@ -67,28 +66,6 @@ RANKING_WORDS = re.compile(
     re.IGNORECASE,
 )
 SELECTION_MARK = re.compile(r"\[[ xX✓✔]\]|[☑☒✅✔✓★⭐←]|\(\*\)")
-
-
-def extract_block(text: str, label: str) -> tuple[str | None, list[str]]:
-    """Return the text between the one marker pair, or None with the errors.
-    A marker line may end in CR; the block keeps its CRs for the comparison."""
-    lines = text.split("\n")
-    begins = [i for i, line in enumerate(lines) if line.rstrip("\r") == BEGIN]
-    ends = [i for i, line in enumerate(lines) if line.rstrip("\r") == END]
-    errors: list[str] = []
-    for marker, whole in ((BEGIN, begins), (END, ends)):
-        total = text.count(marker)
-        if total != 1 or len(whole) != 1:
-            errors.append(f"{label}: expected one {marker} alone on its line, "
-                          f"found {total} occurrence(s), {len(whole)} on their own line")
-    if errors:
-        return None, errors
-    if begins[0] > ends[0]:
-        return None, [f"{label}: {END} comes before {BEGIN}"]
-    block = "\n".join(lines[begins[0] + 1:ends[0]])
-    if not block.strip():
-        return None, [f"{label}: the review-form note block is empty"]
-    return block, []
 
 
 def note_lines(block: str, heading: str) -> list[str] | None:
@@ -143,16 +120,10 @@ def check_neutrality(block: str) -> list[str]:
 
 def check(root: Path) -> list[str]:
     """Run RF-1 to RF-3 under `root`; a missing file exits 2."""
-    canonical, errors = extract_block(read_or_exit2(root, str(CANONICAL), exact=True),
-                                      f"RF-1 {CANONICAL}")
+    canonical, errors = check_marker_copies(root, CANONICAL, SURFACES, BEGIN, END,
+                                            "review-form note", "RF-1", "RF-2")
     if canonical is not None:
         errors += check_neutrality(canonical)
-    for rel in SURFACES:
-        block, copy_errors = extract_block(read_or_exit2(root, str(rel), exact=True), f"RF-2 {rel}")
-        errors += copy_errors
-        if block is not None and canonical is not None and block != canonical:
-            errors.append(f"RF-2 {rel}: review-form note block differs from {CANONICAL} "
-                          f"({first_difference(block, canonical)})")
     return errors
 
 

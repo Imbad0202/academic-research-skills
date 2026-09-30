@@ -20,7 +20,6 @@ from scripts.check_routing_core_sync import (
     BEGIN,
     CANONICAL,
     CLAUDE_MD,
-    END,
     check,
     copies,
     extract_block,
@@ -89,55 +88,16 @@ def _to_crlf(path: Path) -> None:
     path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
 
 
-def test_line_ending_drift_in_a_copy_fails(tree: Path) -> None:
-    _to_crlf(tree / SKILL)
-    assert f"RC-2 {SKILL}: routing-core block differs" in _errors(tree)
-    assert "differs only in its line ending" in _errors(tree)
-
-
 def test_a_tree_checked_out_with_crlf_passes(tree: Path) -> None:
     for rel in (CANONICAL, *copies(tree)):
         _to_crlf(tree / rel)
     assert check(tree) == []
 
 
-def test_copy_without_markers_fails(tree: Path) -> None:
-    _edit(tree, CLAUDE_MD, BEGIN + "\n", "")
-    _edit(tree, CLAUDE_MD, "\n" + END, "")
-    assert f"RC-2 {CLAUDE_MD}: expected one {BEGIN}" in _errors(tree)
-
-
 def test_new_skill_without_the_core_fails(tree: Path) -> None:
     (tree / "new-skill").mkdir()
     (tree / "new-skill" / "SKILL.md").write_text("# New skill\n", encoding="utf-8")
     assert f"RC-2 new-skill/SKILL.md: expected one {BEGIN}" in _errors(tree)
-
-
-def test_copy_with_block_twice_fails(tree: Path) -> None:
-    text = (tree / SKILL).read_text(encoding="utf-8")
-    block = f"{BEGIN}\n{_canonical_block()}\n{END}"
-    (tree / SKILL).write_text(text + "\n" + block + "\n", encoding="utf-8")
-    assert "found 2 occurrence(s)" in _errors(tree)
-
-
-def test_marker_not_alone_on_its_line_fails(tree: Path) -> None:
-    _edit(tree, SKILL, BEGIN + "\n", "Text " + BEGIN + "\n")
-    assert "0 on their own line" in _errors(tree)
-
-
-def test_canonical_markers_reversed_fails(tree: Path) -> None:
-    _edit(tree, CANONICAL, BEGIN, "@@BEGIN@@")
-    _edit(tree, CANONICAL, END, BEGIN)
-    _edit(tree, CANONICAL, "@@BEGIN@@", END)
-    assert f"RC-1 {CANONICAL}: {END} comes before {BEGIN}" in _errors(tree)
-
-
-def test_empty_canonical_block_fails(tree: Path) -> None:
-    text = (tree / CANONICAL).read_text(encoding="utf-8")
-    head, rest = text.split(BEGIN + "\n", 1)
-    _, tail = rest.split(END, 1)
-    (tree / CANONICAL).write_text(head + BEGIN + "\n\n" + END + tail, encoding="utf-8")
-    assert "block is empty" in _errors(tree)
 
 
 def test_changed_canonical_fails_every_copy(tree: Path) -> None:

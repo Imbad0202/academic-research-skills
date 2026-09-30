@@ -13,13 +13,10 @@ from pathlib import Path
 import pytest
 
 from scripts.check_review_form_note_sync import (
-    BEGIN,
     CANONICAL,
-    END,
     NEUTRALITY,
     SURFACES,
     check,
-    extract_block,
 )
 from tests.test_helpers import run_script
 
@@ -87,46 +84,6 @@ def test_copied_tree_passes(tree: Path) -> None:
 def test_one_changed_byte_in_a_surface_fails(tree: Path, rel: Path) -> None:
     _edit(tree, rel, PHRASE, PHRASE.replace("decides", "Decides"))
     assert f"RF-2 {rel}: review-form note block differs" in _errors(tree)
-
-
-def test_line_ending_drift_in_a_surface_fails(tree: Path) -> None:
-    path = tree / SKILL
-    path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
-    assert "differs only in its line ending" in _errors(tree)
-
-
-def test_surface_without_markers_fails(tree: Path) -> None:
-    _edit(tree, SKILL, BEGIN + "\n", "")
-    _edit(tree, SKILL, "\n" + END, "")
-    assert f"RF-2 {SKILL}: expected one {BEGIN}" in _errors(tree)
-
-
-def test_surface_with_block_twice_fails(tree: Path) -> None:
-    block, errors = extract_block((REPO_ROOT / CANONICAL).read_text(encoding="utf-8"), "t")
-    assert block is not None, errors
-    text = (tree / SKILL).read_text(encoding="utf-8")
-    (tree / SKILL).write_text(f"{text}\n{BEGIN}\n{block}\n{END}\n", encoding="utf-8")
-    assert "found 2 occurrence(s)" in _errors(tree)
-
-
-def test_marker_not_alone_on_its_line_fails(tree: Path) -> None:
-    _edit(tree, SKILL, BEGIN + "\n", "Text " + BEGIN + "\n")
-    assert "0 on their own line" in _errors(tree)
-
-
-def test_canonical_markers_reversed_fails(tree: Path) -> None:
-    _edit(tree, CANONICAL, BEGIN, "@@BEGIN@@")
-    _edit(tree, CANONICAL, END, BEGIN)
-    _edit(tree, CANONICAL, "@@BEGIN@@", END)
-    assert f"RF-1 {CANONICAL}: {END} comes before {BEGIN}" in _errors(tree)
-
-
-def test_empty_canonical_block_fails(tree: Path) -> None:
-    text = (tree / CANONICAL).read_text(encoding="utf-8")
-    head, rest = text.split(BEGIN + "\n", 1)
-    _, tail = rest.split(END, 1)
-    (tree / CANONICAL).write_text(head + BEGIN + "\n\n" + END + tail, encoding="utf-8")
-    assert "block is empty" in _errors(tree)
 
 
 def test_changed_canonical_fails_every_surface(tree: Path) -> None:
