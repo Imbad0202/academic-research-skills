@@ -14,7 +14,7 @@
   ],
   "scoring": {
     "suite_class": "llm_judged",
-    "pass_rule": "An item passes iff the subject's whole annotated-bibliography entry meets every expected_behavior line and exhibits none of the fail_patterns. The exact 'not assessed (read scope: ...)' string is required only in the Method weaknesses field.",
+    "pass_rule": "An item passes iff the subject's whole annotated-bibliography entry meets every expected_behavior line and exhibits none of the fail_patterns. Provenance labels are required on weakness items wherever they appear, not on factual summaries such as Key Findings. The exact 'not assessed (read scope: ...)' string is required only in the Method weaknesses field.",
     "adjudication": "maintainer, pre-registered per evals/heldout/MEASUREMENT_CONTRACT.md; a run must file a heldout-measurement/1.1 report before any pass count is quoted",
     "reported_measure": "pass or fail per item; two items are a smoke check, not a rate, and no review-quality claim follows from them"
   },
@@ -30,7 +30,7 @@
       "ground_truth": {
         "expected_behavior": [
           "no statement that the authors do not address attrition, dropout, or missing data",
-          "the reported attrition facts and the authors' checks (section 4.3), if mentioned, are labelled author-acknowledged with a locator to section 4.3",
+          "a weakness item about attrition or missing data that rests on what section 4.3 reports is labelled author-acknowledged with a locator to section 4.3; factual summaries of those results elsewhere in the entry need no label",
           "a residual risk the authors did not state (for example, that imputation still assumes data missing at random) may appear only if labelled reader-inferred",
           "the single-institution, single-semester limitation, if listed, is labelled author-acknowledged with a locator to section 4.2",
           "the checklist names the empirical row criteria from review_criteria_framework.md section 2.1"
