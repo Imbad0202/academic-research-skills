@@ -66,7 +66,7 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 **👉 [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)** — 어떤 데이터가 기기 밖으로 나가는지(서지 resolver, 명시적 동의가 필요한 선택적 교차 모델 호출, 업데이트 확인), 로컬 캐시에 무엇이 얼마나 저장되는지, 각 경로를 끄는 방법. (영어)
 
-**Claude Science를 사용하시나요?** 네 개의 스킬을 바로 가져올 수 있습니다: **Skills → Import from GitHub**에서 `https://github.com/Imbad0202/academic-research-skills`를 붙여넣고 **Preview** → **Import 4 skills**(이 저장소 v3.14.0+ 필요 — 가져오기 도구는 marketplace manifest에 명시된 스킬 경로를 읽습니다). 가져오기는 특정 시점의 스냅샷입니다: ARS 업데이트 후에는 다시 가져오세요. 가져온 스킬은 ARS 방법론(연구/작성/리뷰 프로토콜)을 담습니다. Claude Code 전용 메커니즘 — slash commands, hooks, 서브에이전트 오케스트레이션 — 은 이전되지 않습니다. 자세한 내용은 [docs/SETUP.md](docs/SETUP.md) Method 5를 참조하세요.
+**Claude Science를 사용하시나요?** 다섯 개의 스킬을 바로 가져올 수 있습니다: **Skills → Import from GitHub**에서 `https://github.com/Imbad0202/academic-research-skills`를 붙여넣고 **Preview** → **Import**(이 저장소 v3.14.0+ 필요 — 가져오기 도구는 marketplace manifest에 명시된 스킬 경로를 읽습니다). 가져오기는 특정 시점의 스냅샷입니다: ARS 업데이트 후에는 다시 가져오세요. 가져온 스킬은 ARS 방법론(연구/작성/리뷰 프로토콜)을 담습니다. Claude Code 전용 메커니즘 — slash commands, hooks, 서브에이전트 오케스트레이션 — 은 이전되지 않습니다. 자세한 내용은 [docs/SETUP.md](docs/SETUP.md) Method 5를 참조하세요.
 
 **Pi를 사용하시나요?** `pi install git:github.com/Imbad0202/academic-research-skills`로 저장소 내 커뮤니티 유지보수 wrapper를 설치할 수 있습니다. 원본 ARS 콘텐츠를 기준으로 유지하며 Pi 전용 오케스트레이션 및 hook 제한을 문서화합니다. 자세한 내용은 [`pi/README.md`](pi/README.md)를 참조하세요.
 
@@ -89,6 +89,7 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 - **Academic Paper** — Style Calibration, Writing Quality Check, LaTeX 하드닝, 시각화, 수정 코칭, 인용 변환, anti-leakage 프로토콜, VLM 그림 검증을 갖춘 12개 에이전트 논문 작성.
 - **Academic Paper Reviewer** — 기준별 증거에 연결된 서술형 판단(Journal-Fit Reviewer + 동적 리뷰어 3명 + Devil's Advocate), 양보 임계값 프로토콜, 공격 강도 보존, 선택적 교차 모델 DA 비평 / 캘리브레이션, R&R 추적 매트릭스, 읽기 전용 제약을 갖춘 7개 에이전트 다관점 동료 심사. 현재 live review는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다.
 - **Academic Pipeline** — 적응형 체크포인트, 주장 검증, Material Passport, 선택적 `repro_lock`, 선택적 교차 모델 무결성 검증, 대화 중 강화, 기준별 서술형 회귀 점검을 갖춘 10단계 파이프라인 오케스트레이터(typed trajectory carrier는 아직 미구현).
+- **SR-Screener** — 체계적·범위·신속 문헌고찰을 위한, 사용자가 확정한 프로토콜 기반 문헌 선별: 눈가림된 AI 심사자 2명과 제3 심사자의 조정, 순서가 정해진 제외 코드, 기본값 판정 없음, 재개 가능한 배치 실행, QC(시드 연구, 근접 제외 재검토, kappa와 PABAK), PRISMA 2020 수치, EndNote/Zotero용 RIS 그룹, `academic-paper`로 넘기는 `literature_corpus[]`. AI 판정은 의사결정 보조이며 최종 확인은 연구팀이 합니다.
 - **Data Access Level Metadata** (v3.3.2+) — 모든 스킬이 `data_access_level`(`raw` / `redacted` / `verified_only`)을 선언하며, `scripts/check_data_access_level.py`로 강제됩니다. Anthropic의 automated-w2s-researcher (2026)에서 패턴을 차용했습니다. 자세한 내용은 [`shared/ground_truth_isolation_pattern.md`](shared/ground_truth_isolation_pattern.md)를 참조하세요.
 - **Task Type Annotation** (v3.3.2+) — 모든 스킬이 `task_type`(`open-ended` 또는 `outcome-gradable`)을 선언합니다. 현재 모든 ARS 스킬은 `open-ended`입니다.
 - **Benchmark Report Schema** (v3.3.5+) — 정직한 벤치마크 비교를 위한 JSON Schema와 린트입니다. 자세한 내용은 [`shared/benchmark_report_pattern.md`](shared/benchmark_report_pattern.md)를 참조하세요.
@@ -216,6 +217,19 @@ You: "status"
 
 > 파이프라인은 **Stage 6: Process Summary**로 끝납니다 — 6차원 협업 품질 평가(1–100 점수)와 함께 논문 작성 과정 기록을 자동 생성합니다.
 
+#### SR-Screener (8개 모드)
+
+```
+"Turn my proposal into a screening protocol"          → protocol 모드
+"Is this abstract eligible for my review?"            → quick 모드 (단일 심사자 분류)
+"Pilot the screening with my seed studies"            → pilot 모드
+"Screen these database exports"                       → ta-screen 모드
+"Screen the full texts of the advanced records"       → ft-screen 모드
+"Adjudicate the conflicts in my Rayyan export"        → adjudicate 모드
+"Double-check my exclusions"                          → audit 모드
+"Give me the PRISMA numbers for the screening"        → report 모드
+```
+
 ### 지원 언어
 
 - **번체중국어**(繁體中文) — 사용자가 중국어로 작성할 때 기본값
@@ -264,6 +278,10 @@ You: "status"
 ### Academic Pipeline (v3.22.2)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 규칙(에이전트가 따르는 프로토콜이며 실행 시 보장이 아님): 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 MANDATORY이며 기록 없는 우회 경로가 없고(모든 오버라이드는 Stage 6를 위해 사용자 사유 기록을 요구), R&R Traceability Matrix(Schema 11)는 각 심사 의견을 저자의 수정 주장에 대응시키고 재심사에서 그것이 검증되었는지를 기록합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
+
+### SR-Screener (v1.0.0)
+
+`deep-research`(질문, 프로토콜, 검색)와 `academic-paper`(고찰 논문 작성) 사이를 맡는 4개 에이전트의 문헌 선별. 모드: protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report. 눈가림된 두 심사자 subagent(Read와 Grep만 사용)가 사용자가 확정한 프로토콜로 모든 레코드를 판정하고, 제3 심사자가 "진행 vs. 제외" 불일치를 조정합니다. 표준 라이브러리만 쓰는 Python 스크립트가 RIS / PubMed .nbib / Web of Science / CSV 내보내기 파일을 파싱하고 중복 제거, 배치 구성, 병합을 한 뒤 선별 기록, RIS 그룹, PRISMA 2020 수치, `[TO COMPLETE]` 칸이 있는 방법 섹션 초안, `literature_corpus[]` 파일을 만듭니다. 에이전트가 따르는 규칙(실행 시 보장이 아님): 사용자가 프로토콜을 확정하기 전에는 선별하지 않고, 실패한 호출을 기본 "제외"로 처리하지 않으며, 수치를 보고하기 전에 연구팀이 판정을 확인합니다. 자세한 내용은 [`sr-screener/SKILL.md`](sr-screener/SKILL.md).
 
 ---
 

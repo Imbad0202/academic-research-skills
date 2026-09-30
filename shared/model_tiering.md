@@ -59,11 +59,11 @@ Agent files are untouched — frontmatter stays `model: inherit`, and this mecha
 
 When a tiering direction is active, route repeated same-stage calls to the SAME worker so its cache accumulates where the protocol permits. Do not reuse Stage 3 `eic` or `editorial_synthesizer` workers for Stage 3' contract calls: their first-round agent prompts are not the dedicated three-gate protocol. A provider-level prompt cache may be shared across separate Stage 3' calls only when the Phase 1 / 2A / 2B withholding boundaries remain intact; cached transport never turns them into one conversational context. `field_analyst` is not re-invoked on the normal Stage 3' path because the Round-1 cards travel as data; only the visible regeneration fallback may dispatch it. With the flag unset this guidance imposes nothing: default behavior stays byte-equivalent, dispatch shapes included.
 
-## Classification table (39 agents; frozen 2026-07-11, #517)
+## Classification table (43 agents; frozen 2026-07-11, #517; sr-screener's four added 2026-09-29)
 
 One tier per agent; membership changes require editing BOTH this table and `scripts/model_tiering_manifest.json` (the lint pins them together).
 
-### Judgment-type (26) — session model; quality-boost upgrade candidates at checkpoint surfaces
+### Judgment-type (29) — session model; quality-boost upgrade candidates at checkpoint surfaces
 
 | Skill | Agents |
 |---|---|
@@ -72,8 +72,9 @@ One tier per agent; membership changes require editing BOTH this table and `scri
 | academic-paper-reviewer (6) | `eic`, `methodology_reviewer`, `domain_reviewer`, `perspective_reviewer`, `devils_advocate_reviewer`, `editorial_synthesizer` (mechanical by v3.6.2 design but emits the final decision letter — judgment-type conservatively until data says otherwise) |
 | academic-pipeline (3) | `pipeline_orchestrator`, `claim_ref_alignment_audit`, `integrity_verification` |
 | shared (1) | `compliance` (holds tier-based block authority) |
+| sr-screener (3) | `protocol_architect`, `screening_reviewer` (screening calls take per-role models from the screening config; see the note below), `qc_auditor` |
 
-### Execution-type (13) — economy-direction downgrade candidates (one tier, floor Opus-class)
+### Execution-type (14) — economy-direction downgrade candidates (one tier, floor Opus-class)
 
 | Skill | Agents |
 |---|---|
@@ -81,6 +82,9 @@ One tier per agent; membership changes require editing BOTH this table and `scri
 | academic-paper (6) | `intake`, `draft_writer` (highest-savings / most quality-sensitive — see Direction 2), `abstract_bilingual`, `citation_compliance`, `visualization`, `formatter` (STAMP-ONLY by design) |
 | academic-paper-reviewer (1) | `field_analyst` |
 | academic-pipeline (2) | `collaboration_depth` (advisory-only, never blocks), `state_tracker` |
+| sr-screener (1) | `reporter` |
+
+**sr-screener note.** The screening calls (Reviewers A and B, the adjudicator, the QC and full-text reviewers) run on `screening_reviewer` with the model the user sets per role in `screening_config.json` `models` and confirms at the skill's cost check before every fan-out; `ARS_MODEL_TIERING` does not override those per-role choices. Its other three agents follow this document like any other agent. See `sr-screener/SKILL.md` § Model Tiering.
 
 ## Interaction with cross-model verification
 

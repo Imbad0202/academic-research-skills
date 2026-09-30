@@ -80,7 +80,7 @@ def test_session_announce_routes_models_to_core_skills(source):
     )
     context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "mode slash commands above are for the user to type" in context
-    for target in ("academic-paper", "academic-paper-reviewer", "deep-research", "academic-pipeline"):
+    for target in ("academic-paper", "academic-paper-reviewer", "deep-research", "academic-pipeline", "sr-screener"):
         assert f"academic-research-skills:{target}" in context
     assert "Requests outside academic research and writing do not invoke ARS" in context
 

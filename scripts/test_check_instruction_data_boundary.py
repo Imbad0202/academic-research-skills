@@ -54,10 +54,16 @@ SKILLS_894_RELS = (
     "academic-pipeline/SKILL.md",
     "deep-research/SKILL.md",
 )
+# sr-screener: the reviewer subagent that reads record text, and the skill's
+# SKILL.md (main-session home for quick mode).
+SR_SCREENER_RELS = (
+    "sr-screener/SKILL.md",
+    "sr-screener/agents/screening_reviewer_agent.md",
+)
 # Listed here, not imported from the checker, so dropping a file from the
 # checker's HOTSPOT_AGENTS makes its parametrized cases below fail.
 HOTSPOT_RELS = (AGENT_REL, AGENT2_REL, AGENT3_REL, *AGENTS_890_RELS, *AGENTS_894_RELS,
-                *SKILLS_894_RELS)
+                *SKILLS_894_RELS, *SR_SCREENER_RELS)
 
 JUDGE_REL = "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
 JUDGE_START = "<!-- JUDGE-PROMPT-CANONICAL-START"

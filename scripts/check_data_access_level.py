@@ -8,7 +8,7 @@ must equal its pin. The governing rule (`ground_truth_isolation_pattern.md`
 reflect the DIRTIEST input the skill may legitimately consume across all
 its modes.
 
-Pin provenance (honest-claim discipline) — all four pins are now
+Pin provenance (honest-claim discipline) — all five pins are now
 derivation-backed under the dirtiest-input rule:
 
 - `academic-pipeline: raw` — #756-derived (Stage 1 accepts raw user
@@ -33,6 +33,12 @@ derivation-backed under the dirtiest-input rule:
   queries and unverified web/database search results are its core
   intake. A ceiling argument additionally applies (`raw` is the
   dirtiest value, so no re-derivation could move it further).
+- `sr-screener: raw` — derived at the skill's addition. Every mode
+  ingests third-party bibliographic records (database exports, pasted
+  abstracts) or full-text PDFs, and `protocol` mode ingests the user's
+  unvetted proposal or registry text; none of it passes an integrity
+  gate before the reviewers read it. Same ceiling argument as
+  deep-research.
 
 Changing any pin must be a deliberate, reviewed re-application of the rule,
 and a new top-level skill must be registered here before it passes.
@@ -58,6 +64,7 @@ EXPECTED_LEVELS = {
     "academic-paper-reviewer": "raw",
     "academic-pipeline": "raw",
     "deep-research": "raw",
+    "sr-screener": "raw",
 }
 
 # The pins themselves must stay inside the closed vocabulary.

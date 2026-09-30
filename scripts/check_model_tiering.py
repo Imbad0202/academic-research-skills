@@ -6,7 +6,7 @@ never edited, so the only thing that can rot is the CLASSIFICATION — an agent 
 without a tier, a manifest entry pointing at a deleted file, or the canonical table
 and the manifest silently disagreeing. This lint pins all three:
 
-  1. SET EQUALITY — the ``*_agent.md`` files on disk (five skill agent dirs; the
+  1. SET EQUALITY — the ``*_agent.md`` files on disk (six skill agent dirs; the
      top-level ``agents/`` plugin mirror is excluded, it is byte-pinned separately
      by check_agents_mirror_sync.py) exactly match the manifest's ``path`` set.
      A new agent without a tier assignment fails CI here. A repo-wide sweep also
@@ -31,7 +31,7 @@ REPO = Path(__file__).resolve().parent.parent
 MANIFEST = REPO / "scripts" / "model_tiering_manifest.json"
 DOC = REPO / "shared" / "model_tiering.md"
 
-# The five skill agent dirs in scope. The top-level plugin mirror dir `agents/` is
+# The six skill agent dirs in scope. The top-level plugin mirror dir `agents/` is
 # deliberately NOT listed (byte-copies, guarded by check_agents_mirror_sync.py).
 AGENT_DIRS = [
     "deep-research/agents",
@@ -39,6 +39,7 @@ AGENT_DIRS = [
     "academic-paper-reviewer/agents",
     "academic-pipeline/agents",
     "shared/agents",
+    "sr-screener/agents",
 ]
 
 VALID_TIERS = {"judgment", "execution"}
