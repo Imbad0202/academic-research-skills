@@ -953,7 +953,7 @@ The integrity gates require `experiment_intake_declaration` on every post-#260 p
 1. the checkpoint after Stage 1 completes, as a question shown with its options;
 2. the confirmation of any entry or resume point after Stage 1, before anything is dispatched.
 
-Do not ask when the run reaches no integrity gate (a format conversion that enters neither Stage 2.5 nor Stage 4.5). Do not ask when the passport already carries a declaration: that declaration is the intake record even without `scholar_answer` or a ledger entry, so § Run ledger and handoff check does not reopen it; say once that the original words are not on record. The timing follows the scholar's choice of entry point, not the paper's content.
+Do not ask when the run reaches no integrity gate (a format conversion that enters neither Stage 2.5 nor Stage 4.5). Do not ask when the passport already carries a declaration: that declaration is the intake record even without `scholar_answer` or a ledger entry, so § Run ledger and handoff check does not reopen it; when it has no `scholar_answer`, say once that the original words are not on record. The timing follows the scholar's choice of entry point, not the paper's content.
 
 **The question.** Ask it in the user's language: "Does this paper report experiments or data analyses that you ran yourself, for example a survey you administered, data you analyzed, or a model you trained? Please answer in your own words. If it does, you will be asked to record each one; ARS does not run experiments."
 

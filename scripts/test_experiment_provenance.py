@@ -51,6 +51,7 @@ EXAMPLE = REPO / "examples/passport_with_experiment_provenance.yaml"
 # the same module reference.
 sys.path.insert(0, str(REPO / "scripts"))
 import check_claim_audit_consistency as _lint  # noqa: E402
+from _skill_lint import heading_section  # noqa: E402
 
 PROVENANCE_SCHEMA = PASSPORT / "experiment_provenance_entry.schema.json"
 ALIGNMENT_SCHEMA = PASSPORT / "experiment_alignment_result.schema.json"
@@ -826,8 +827,6 @@ INTAKE_CONTRACT = (
 
 def _intake_section(text: str) -> str | None:
     """Body of `## Experiment Intake Question (#925)`, up to the next H1/H2."""
-    from _skill_lint import heading_section
-
     return heading_section(text, "## Experiment Intake Question (#925)")
 
 

@@ -29,10 +29,13 @@ the working tree. No mutation; no temp dir. Each test is self-contained.
 """
 from __future__ import annotations
 
+import sys
 import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from _skill_lint import heading_section  # noqa: E402
 ORCHESTRATOR_PROMPT = (
     REPO_ROOT / "academic-pipeline" / "agents" / "pipeline_orchestrator_agent.md"
 )
@@ -409,8 +412,6 @@ ACTIVATION_CONTRACT = (
 
 
 def _audit_gate_section(text: str) -> str | None:
-    from _skill_lint import heading_section
-
     return heading_section(text, "### 3.5 Audit Artifact Gate (v3.6.7 Step 6)")
 
 
