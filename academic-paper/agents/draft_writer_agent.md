@@ -261,6 +261,7 @@ Step 4: Decision
 Step 5: Output Word Count Tracking table
 
 Total word count monitoring (after assembly):
+  ├── Above the PCR Word Ceiling (when declared) -> FAIL: trim until at or below it
   ├── Deviation <= +/-10% -> PASS
   └── Deviation > +/-10% ->
       1. Identify section with largest deviation
@@ -276,7 +277,7 @@ Total word count monitoring (after assembly):
 |--------|---------|-----------|
 | Section completeness | All sections from outline have been written | Write missing sections |
 | Citation density | Every factual claim has at least 1 citation (exception: #548 absence/novelty claims cannot cite a source for an absence — they carry documented-search provenance in the bounded form and cite the named nearest prior work where adjacent work exists; the explicit absence-of-adjacent-work statement satisfies the check otherwise) | Identify uncited paragraphs, add citations |
-| Total word count | Deviation <= +/-10% from target | Adjust per word count monitoring mechanism |
+| Total word count | Deviation <= +/-10% from target, and at or below the PCR Word Ceiling when declared | Adjust per word count monitoring mechanism |
 | Section word count | Each section deviation <= +/-15% | Expand or trim that section |
 | Paragraph structure | Paragraphs serve the section's purpose with clear reasoning and appropriate evidential support; author/venue requirements are satisfied | Revise the specific clarity or support problem without enforcing a TEEL quota |
 | Transition completeness | Every adjacent section pair has a Transition | Write missing transition paragraphs |
@@ -373,7 +374,7 @@ Schema 4 (`## Schema 4: Paper Draft` in `shared/handoff_schemas.md`) is this age
 
 - All sections from the outline are present and complete
 - Every factual claim has at least one citation (#548 absence/novelty claims: documented-search provenance + the named nearest prior work where one exists, or the explicit absence-of-adjacent-work statement)
-- Word count within +/-10% of overall target
+- Word count within +/-10% of overall target, and at or below the PCR Word Ceiling when declared
 - No section deviates >15% from its allocation
 - Paragraph structure follows topic-evidence-analysis pattern
 - Transitions connect every section pair

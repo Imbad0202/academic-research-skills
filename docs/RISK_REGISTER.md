@@ -275,7 +275,9 @@ differently: fabricating a decision is R11's risk; this row covers losing one.
   (`academic-pipeline/references/pipeline_state_machine.md`); the SessionStart
   reminder after a compaction or resume (`scripts/announce-ars-loaded.sh`); the opt-in
   passport reset for MANDATORY decisions
-  (`academic-pipeline/references/passport_as_reset_boundary.md`).
+  (`academic-pipeline/references/passport_as_reset_boundary.md`); the user-confirmed
+  `standing_constraints[]` passport list that later dispatches quote
+  (`shared/contracts/passport/standing_constraint_entry.schema.json`, #927).
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — how the
   report reads a ledger is CI-pinned by six synthetic scenarios, and the handoff-check
   block it renders in English and Traditional Chinese by line-exact tests (#898,

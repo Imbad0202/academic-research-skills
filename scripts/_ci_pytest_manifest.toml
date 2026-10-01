@@ -723,3 +723,7 @@ path = "scripts/test_run_ledger.py"
 [[pytest]]
 id = "849-acronym-check"
 path = "scripts/test_check_acronyms.py"
+
+[[pytest]]
+id = "927-standing-constraint-entry-schema"
+path = "scripts/test_standing_constraint_entry_schema.py"

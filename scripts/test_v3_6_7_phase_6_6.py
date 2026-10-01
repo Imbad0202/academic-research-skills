@@ -234,6 +234,13 @@ LINE_BUDGET_890_THIRD_PARTY_TEXT = 25
 # lines; budget 25 leaves 6 lines of headroom.
 LINE_BUDGET_925_EXPERIMENT_INTAKE = 25
 
+# #927 adds `## Standing Constraints (#927)`, which says how the user's
+# run-wide constraints are listed, confirmed, recorded in the passport, and
+# quoted to later dispatches. It is an independent extension, so it is
+# subtracted from the historical v3.6.7 budget and receives its own bounded
+# test. Measured at landing: 16 lines; budget 22 leaves 6 lines of headroom.
+LINE_BUDGET_927_STANDING_CONSTRAINTS = 22
+
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as
 # cross-references to spec §5.6 (NOT inline procedural definitions —
@@ -934,6 +941,24 @@ def _measure_925_experiment_intake_lines(text: str) -> int:
     return len(text[match.start():end].splitlines())
 
 
+def _measure_927_standing_constraints_lines(text: str) -> int:
+    """Return the line count of the `## Standing Constraints (#927)` section.
+
+    Same convention as the other extension-section helpers above.
+    """
+    import re as _re
+
+    anchor = _re.compile(r"(?m)^[ \t]*##[ \t]+Standing Constraints \(#927\)[ \t]*$")
+    match = anchor.search(text)
+    if match is None:
+        return 0
+    heading_end = text.find("\n", match.end())
+    search_start = heading_end + 1 if heading_end >= 0 else len(text)
+    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
+    end = search_start + next_heading.start() if next_heading else len(text)
+    return len(text[match.start():end].splitlines())
+
+
 class Advisory660LineBudgetTest(unittest.TestCase):
     """#660 tortured-phrase dispatch block stays independently bounded."""
 
@@ -1104,6 +1129,26 @@ class ExperimentIntake925LineBudgetTest(unittest.TestCase):
         )
 
 
+class StandingConstraints927LineBudgetTest(unittest.TestCase):
+    """#927 standing-constraints section stays independently bounded."""
+
+    def test_927_standing_constraints_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_927_standing_constraints_lines(text)
+        self.assertGreater(
+            block_lines,
+            0,
+            "`## Standing Constraints (#927)` section missing from "
+            "pipeline_orchestrator_agent.md",
+        )
+        self.assertLessEqual(
+            block_lines,
+            LINE_BUDGET_927_STANDING_CONSTRAINTS,
+            f"#927 standing-constraints section is {block_lines} lines, over "
+            f"its {LINE_BUDGET_927_STANDING_CONSTRAINTS}-line budget",
+        )
+
+
 class Dispatch576LineBudgetTest(unittest.TestCase):
     """#576 Spec B Stage 3' contract-dispatch block within
     `LINE_BUDGET_576_STAGE3P_DISPATCH` line budget.
@@ -1193,6 +1238,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
         run_ledger_887_lines = _measure_887_run_ledger_lines(text)
         third_party_890_lines = _measure_890_third_party_text_lines(text)
         experiment_intake_925_lines = _measure_925_experiment_intake_lines(text)
+        standing_927_lines = _measure_927_standing_constraints_lines(text)
         # v3.6.7-only line count: total minus v3.7.1 Step 3b, v3.7.3
         # finalizer extension, v3.8 §3.6 audit-gate, v3.9.0 triangulation
         # extension, v3.10 terminal-policy extension, the #394 slice-4
@@ -1205,8 +1251,8 @@ class Phase66LineBudgetTest(unittest.TestCase):
         # lifecycle, the #743 inquiry-ledger/sidecar extension, the
         # 2026-09 checkpoint-authority fidelity section, the #887
         # run-ledger section, the #890 third-party-text dispatch section,
-        # AND the #925 experiment-intake section (each has its own
-        # dedicated budget test).
+        # the #925 experiment-intake section, AND the #927 standing-
+        # constraints section (each has its own dedicated budget test).
         v367_line_count = (
             total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
             - v3_9_0_lines - v3_10_lines - gate_394_lines - seq_390_lines
@@ -1214,7 +1260,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
             - advisory_660_lines - advisory_672_lines - advisory_673_lines
             - criteria_684_lines - inquiry_743_lines - authority_g1_lines
             - run_ledger_887_lines - third_party_890_lines
-            - experiment_intake_925_lines
+            - experiment_intake_925_lines - standing_927_lines
         )
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(
@@ -1243,7 +1289,8 @@ class Phase66LineBudgetTest(unittest.TestCase):
             f"{run_ledger_887_lines} are in the #887 run-ledger section, and "
             f"{third_party_890_lines} are in the #890 third-party-text "
             f"dispatch section, and {experiment_intake_925_lines} are in the "
-            f"#925 experiment-intake section; "
+            f"#925 experiment-intake section, and {standing_927_lines} are in "
+            f"the #927 standing-constraints section; "
             f"v3.6.7-attributed lines = "
             f"{v367_line_count} exceeds {ceiling} (baseline "
             f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "

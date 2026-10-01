@@ -198,7 +198,7 @@ See `references/pipeline_state_machine.md` for complete state transition definit
 ━━━ Stage [X] [Name] Complete ━━━
 
 Metrics:
-- Word count: [N] (target: [T] +/-10%)    [OK/OVER/UNDER]
+- Word count: [N] (target: [T] +/-10%; ceiling: [C] if set)    [OK/OVER/UNDER — OVER whenever N > C]
 - References: [N] (min: [M])              [OK/LOW]
 - Coverage: [N]/[T] sections drafted       [COMPLETE/PARTIAL]
 - Criterion status: [named criterion + evidence-anchored categorical judgement, or `NOT_COMPARABLE`]
@@ -240,7 +240,7 @@ Before presenting the checkpoint to the user, the orchestrator asks itself:
 1. **Citation integrity**: Are there any unverified citations in the latest output?
 2. **Sycophantic concession**: Did the latest stage uncritically accept all feedback without pushback?
 3. **Criterion trajectory**: For each applicable named criterion, did the evidence-anchored status improve, remain unchanged, regress, or become non-comparable? Never reduce this to a hidden scalar or `latest >= previous`. Pause and flag any unresolved decision-bearing regression; use `NOT_COMPARABLE` when the criterion or evidence base changed.
-4. **Scope discipline**: Did the latest stage add content not requested by the user or the revision roadmap?
+4. **Scope discipline**: Did the latest stage add content not requested by the user or the revision roadmap, or that an active standing constraint rules out?
 5. **Completeness**: Are all required deliverables for this stage present?
 
 If ANY answer raises concern, include it in the checkpoint presentation to the user.

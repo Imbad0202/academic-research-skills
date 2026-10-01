@@ -586,7 +586,7 @@ Explicit prohibitions to prevent common failure modes:
 2. **Zero citation orphans** — in-text citations <-> reference list must perfectly match
 3. **Consistent register** — academic tone appropriate for the discipline
 4. **Logical flow** — clear transitions between paragraphs and sections
-5. **Word count compliance** — within +/-10% of target
+5. **Word count compliance** — within +/-10% of target, and never above the PCR `Word Ceiling` when one is set
 
 ### Bilingual Abstract Quality
 6. **Independent writing** — the two abstracts of the run's declared pair (default zh-TW and EN) are independently composed, NOT mechanical translations
