@@ -271,6 +271,10 @@ If Re-Review Decision = Major Revision:
   -> User can say "just fix it" to skip guidance
 ```
 
+### Declined items and the next roadmap (#927)
+
+When `scripts/check_re_review_synthesis.py` reports `declined-only Major (#927)`, the Major comes only from must_fix items the author declined (`wont_address` or `not_on_point`) and the verifier judged `NOT_ADDRESSED`: counted as addressed, the decision would fall below Major. The verdicts and the decision stand. Each such item enters the next immutable roadmap with one more `proposed_targets` entry in the paper's limitations section (an existing limitations block with `replace_block`, or `insert_after` that section's last block) and a `suggested_action` to state the concern as a limitation; its other targets stay. The reviewer side proposes this alternative; the author authorizes it, or not, at the Stage 4' author checkpoint.
+
 ### Re-Review Output Format
 
 ```markdown

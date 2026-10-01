@@ -1517,6 +1517,47 @@ def test_golden_g2d_accepted_passes(tmp_path, capsys):
     assert "'Major Revision'" in out
 
 
+def scenario_declined_only_major():
+    """#927: the only must_fix item was declined by the author and judged NOT_ADDRESSED."""
+    s = scenario_accept()
+    s["verdict_record"]["items"][0].update(
+        verdict="NOT_ADDRESSED", change_summary="Methods §3.2 is unchanged."
+    )
+    s["traceability"]["rows"][0].update(
+        verified="NO", status="NOT_ADDRESSED", final_verdict="NOT_ADDRESSED", phase2a_verdict="NOT_ADDRESSED"
+    )
+    s["author_triage_overrides"] = {
+        "REV-001": {
+            "author_triage": "wont_address",
+            "author_reason": "I will not collect new data.",
+            "authorized_targets": [],
+            "claim_strength_authorizations": [],
+        }
+    }
+    di = s["traceability"]["decision_inputs"]
+    di["per_item"][0]["final_verdict"] = "NOT_ADDRESSED"
+    di["verdict_counts"] = _counts(must_fix={"NOT_ADDRESSED": 1}, should_fix={"FULLY_ADDRESSED": 1})
+    di["reject_recommended"] = True
+    s["traceability"]["decision_state"] = "Major Revision"
+    return s
+
+
+def test_declined_only_major_is_reported(tmp_path, capsys):
+    code, out, _err = run_checker(tmp_path, scenario_declined_only_major(), capsys)
+    assert code == crs.EXIT_PASS, out
+    assert "'Major Revision'" in out
+    assert (
+        "declined-only Major (#927): REV-001; counted as addressed, the decision would be 'Accept', "
+        "reject_recommended False"
+    ) in out
+
+
+def test_major_from_approved_escalation_is_not_declined_only(tmp_path, capsys):
+    code, out, _err = run_checker(tmp_path, scenario_g2d(accepted=True), capsys)
+    assert code == crs.EXIT_PASS, out
+    assert "declined-only Major" not in out
+
+
 def test_golden_artifacts_validate_against_shipped_schemas(tmp_path, capsys):
     for i, scenario in enumerate(
         (scenario_accept(), scenario_complex(), scenario_g2d(True), scenario_g2d(False), scenario_g2d_retry())
@@ -3156,6 +3197,29 @@ def test_derive_decision_floor_and_reject_semantics():
     assert crs.derive_decision(*base_accept, [pending_major]) == ("Accept", False, "B6")
     assert crs.derive_decision(*base_accept, [rejected_major]) == ("Accept", False, "B6")
     assert crs.derive_decision(*base_accept, [integrity_minor]) == ("Minor Revision", True, "B6")
+
+
+_DECLINED = ("NOT_ADDRESSED", "major", None)
+_DONE = ("FULLY_ADDRESSED", "major", None)
+_APPROVED_MAJOR = {"effective_approval_state": "approved", "escalation_class": "ethics",
+                   "mechanical_decision_impact": "Major Revision"}
+
+
+@pytest.mark.parametrize(
+    "p1_items, declined, regressions, escalations, expected",
+    (
+        pytest.param([_DECLINED, _DONE, _DONE], {0}, set(), [], ("Accept", False), id="B3-only-from-decline"),
+        pytest.param([_DECLINED, _DECLINED], {0, 1}, set(), [], ("Accept", False), id="B2-reject-only-from-declines"),
+        pytest.param([_DECLINED, ("CANNOT_VERIFY", "major", None)], {0}, set(), [], None, id="other-B3-driver"),
+        pytest.param([_DECLINED, _DONE], {0}, {"major"}, [], None, id="major-regression"),
+        pytest.param([_DECLINED, _DONE], {0}, {"minor"}, [], ("Minor Revision", False), id="falls-to-minor"),
+        pytest.param([_DECLINED, _DONE], {0}, set(), [_APPROVED_MAJOR], None, id="approved-major-floor"),
+        pytest.param([("NOT_ADDRESSED", "major", None), _DONE], set(), set(), [], None, id="undeclined-not-addressed"),
+        pytest.param([_DONE], set(), set(), [], None, id="not-major"),
+    ),
+)
+def test_declined_only_major(p1_items, declined, regressions, escalations, expected):
+    assert crs.declined_only_major(p1_items, declined, [], False, 1, 1, regressions, escalations) == expected
 
 
 def test_zero_p1_run_reaches_non_p1_disjuncts():

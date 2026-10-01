@@ -169,7 +169,7 @@ This document defines all legal states, transition conditions, transition action
 | checkpoint | Stage 3' | User confirms | Pass Revised Draft + Original (pre-revision) Draft (#576 §3.1 Phase 2A comparison base) + Response to Reviewers + Editorial Decision Letter (#539 Judge Record input) + Round-1 review findings (Schema 6 reports — #576 §4 level-3 layer) + Round-1 Revision Roadmap + apply report(s) with their paired revision patch/diff files (#390/#576 §11 — the two travel together) + Round-1 Reviewer Configuration Cards (yardstick continuity). Re-review-mode transfer (default); a user-requested fresh full review at 3' passes Revised Draft + available context only (no Roadmap/cards; full mode runs field_analyst) |
 | Stage 3' | **checkpoint** | Decision produced | Wait for user confirmation (MANDATORY — review decision) |
 | checkpoint | Stage 4.5 | Decision = Accept/Minor, user confirms | Pass final draft to final verification |
-| checkpoint | Stage 4' | Decision = Major, user confirms | Pass new Revision Roadmap |
+| checkpoint | Stage 4' | Decision = Major, user confirms | Pass new Revision Roadmap (limitations-only when the user chooses it for a Major that rests only on items they declined; `../agents/pipeline_orchestrator_agent.md` § Declined Items at Stage 3' and Stage 4' (#927)) |
 | Stage 4' | **checkpoint** | Stage 4' completed | Wait for user confirmation |
 | checkpoint | Stage 4.5 | User confirms | Pass revised draft to final verification |
 | Stage 4.5 | **checkpoint** | PASS (zero issues; notes such as UNVERIFIABLE_ACCESS are not issues), or recorded Integrity Check FAIL Loop resolution (§ below) | Wait for user confirmation |

@@ -60,7 +60,7 @@ LEGACY_APPLY_RUNTIME = Path("scripts/legacy/ars_apply_revision_patch_v1_0.py")
 RUNTIME_HASHES = {
     ROADMAP_RUNTIME: "5341358d489a550b56f0e7efde850c551b6d9df41106b0462e2f804ab4de9998",
     APPLY_RUNTIME: "9aa84eb23c1b10f5c23008ff51d2feb6e64440834b48b090c833fe44669014b3",
-    RE_REVIEW_RUNTIME: "8347ec3766857366cc0c6ffd30021afcebf8d0528a83927fabfce9ecb66a59ab",
+    RE_REVIEW_RUNTIME: "b5ce94487857d2dc2c692f46efc671536a96664337fa1bcd76ffc3694f3f5346",
 }
 
 # #670 originally froze the five reviewer finding producers. Subsequent

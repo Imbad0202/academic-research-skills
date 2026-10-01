@@ -1507,6 +1507,31 @@ def derive_decision(p1_items, p2_partial_magnitudes, p2_made_worse, rate_num, ra
     return decision, reject, rule
 
 
+def declined_only_major(p1_items, declined, p2_partial_magnitudes, p2_made_worse, rate_num, rate_den, regression_severities, escalations):
+    """#927: is a Major decision driven only by must_fix items the author declined?
+
+    ``declined`` holds the positions in ``p1_items`` of must_fix items whose
+    author triage declined them and whose final verdict is NOT_ADDRESSED.
+    Recompute with those items counted as addressed; return
+    (decision_without, reject_without) when that falls below Major, else None.
+    """
+    decision, _reject, _rule = derive_decision(
+        p1_items, p2_partial_magnitudes, p2_made_worse, rate_num, rate_den, regression_severities, escalations,
+    )
+    if decision != "Major Revision" or not declined:
+        return None
+    adjusted = [
+        ("FULLY_ADDRESSED", sev, mag) if i in declined else (v, sev, mag)
+        for i, (v, sev, mag) in enumerate(p1_items)
+    ]
+    without, reject_without, _rule = derive_decision(
+        adjusted, p2_partial_magnitudes, p2_made_worse, rate_num, rate_den, regression_severities, escalations,
+    )
+    if without == "Major Revision":
+        return None
+    return without, reject_without
+
+
 def _adjustment_chains(traceability, fails: Failures):
     """Build per-item ordered adjustment chains (§5.3 grammar).
 
@@ -2485,6 +2510,7 @@ def check(
         else:
             # Steps 2-3, recomputed independently from the raw records...
             p1_operands = []
+            p1_ids = []
             for item_id in must_fix_order:
                 row = row_by_item.get(item_id)
                 if row is None:
@@ -2492,6 +2518,7 @@ def check(
                 item = roadmap_by_id[item_id]
                 severity = item.get("severity") if item.get("severity") in SEVERITIES else None
                 p1_operands.append((row["final_verdict"], severity, _final_residual_obligation_class(item_id)))
+                p1_ids.append(item_id)
             p2_partial_magnitudes = [
                 _final_residual_obligation_class(item_id) for item_id in p2_ids
                 if row_by_item.get(item_id, {}).get("final_verdict") == "PARTIALLY_ADDRESSED"
@@ -2524,6 +2551,17 @@ def check(
             )
             recomputed["expect"] = (raw_decision, None)
             recomputed["rule"] = raw_rule
+            declined = {
+                i for i, item_id in enumerate(p1_ids)
+                if row_by_item[item_id]["author_triage"] in ("wont_address", "not_on_point")
+                and row_by_item[item_id]["final_verdict"] == "NOT_ADDRESSED"
+            }
+            only = declined_only_major(
+                p1_operands, declined, p2_partial_magnitudes, p2_made_worse,
+                expected_num, len(p2_ids), regression_severities, expected_escalations,
+            )
+            if only is not None:
+                recomputed["declined_only_major"] = ([p1_ids[i] for i in sorted(declined)], *only)
             if emitted_state != raw_decision:
                 fails.add(f"decision_state {emitted_state!r} != Steps 2-3 recomputed from the raw records ({raw_decision!r}, base {raw_rule})")
             if di_decision != raw_decision:
@@ -2712,6 +2750,13 @@ def run(argv=None) -> int:
         f"re-review synthesis ok: round {manifest['round_id']!r}, revision {traceability['revision']}, "
         f"decision_state {outcome!r}, apply_chain_witness {witness!r}"
     )
+    only = recomputed.get("declined_only_major")
+    if only is not None:
+        item_ids, without, reject_without = only
+        print(
+            f"declined-only Major (#927): {', '.join(item_ids)}; counted as addressed, the decision would be "
+            f"{without!r}, reject_recommended {reject_without!r}"
+        )
     return EXIT_PASS
 
 
