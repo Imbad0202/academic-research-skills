@@ -34,7 +34,7 @@
     "max_words": {
       "type": "integer",
       "minimum": 1,
-      "description": "Required for kind word_ceiling, absent otherwise."
+      "description": "Ceiling on the paper body's word count. Required for kind word_ceiling, absent otherwise; a limit on any other count (an abstract, the whole manuscript with references) is kind other."
     },
     "applies_to_stages": {
       "type": "array",
