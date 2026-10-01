@@ -134,6 +134,7 @@ ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 sessi
 | `ARS_CROSS_MODEL_TRANSPORT=codex` | #630 | 僅讓引用完整性查驗使用 ChatGPT 訂閱；DA／審稿／判斷路徑仍須 API key | `shared/cross_model_verification.md` |
 | `ARS_SOCRATIC_READING_PROBE=1` | v3.5.1 | 啟用 `socratic_mentor_agent` 的讀書檢查 probe layer。僅 goal-oriented intent；使用者引用過具體論文時最多觸發一次；婉拒不留紀錄懲罰。 | `deep-research/agents/socratic_mentor_agent.md` |
 | `ARS_PASSPORT_RESET=1` | v3.6.3 | 把每個 FULL checkpoint 提升為 context 重置邊界。**emit** boundary entry 必須設此 flag；新 session 用 `resume_from_passport=<hash>` 續跑**不需要** flag。`systematic-review` 模式下 flag ON 時，每個 FULL checkpoint 一律強制重置。 | `academic-pipeline/references/passport_as_reset_boundary.md` |
+| `ARS_AUDIT_ARTIFACT_GATE=1` | #925 | 開啟 v3.6.7 Audit Artifact Gate：`synthesis_agent`／`research_architect_agent`（survey-designer）／`report_compiler_agent`（abstract-only）每次交出產出後，由你在 session 外執行 `scripts/run_codex_audit.sh`，把產出送給外部模型稽核，關卡再依稽核結果擋下。flag 只是設定、不是同意：要你對這次執行明確同意後才會開。預設關閉；Stage 2.5／4.5 完整性關卡不受影響、照常執行。 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` § 3.5 |
 | `ARS_CROSS_MODEL_SAMPLE_INTERVAL` | v3.5.0 | 跨模型完整性抽查的取樣間隔（advisory） | `shared/cross_model_verification.md` |
 | `ARS_VERIFICATION_CACHE_PATH` | v3.11 | 覆寫引用查驗 cache 的位置（見下節）。不是 on/off flag——cache 預設開啟，此變數只改位置。 | `scripts/verification_cache.py` |
 | `ARS_CACHE_STALE_ADVISORY_DAYS` | v3.18.0 (#541) | cache 時效 advisory 的天數門檻：由 cache 供應且超過此天數的查驗結果，會在誠信檢查點以 `ADV-CACHE` advisory 列呈現（永不擋關）。預設 30；`0` 停用；格式錯誤或負值回落預設。 | `scripts/verification_cache.py` |

@@ -58,6 +58,7 @@ MANIFEST_SCHEMA = PASSPORT / "claim_intent_manifest.schema.json"
 
 # Agent / writer prompts touched by #260.
 INTEGRITY_AGENT = REPO / "academic-pipeline/agents/integrity_verification_agent.md"
+ORCHESTRATOR = REPO / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
 WRITER_PROMPTS = {
     "synthesis_agent": REPO / "deep-research/agents/synthesis_agent.md",
     "draft_writer_agent": REPO / "academic-paper/agents/draft_writer_agent.md",
@@ -458,6 +459,29 @@ class CrossArrayInvariantTests(_LintBase):
         )
         self.assertFinds(body, "EP-INV-5")
 
+    def test_ep_inv_5_empty_scholar_answer(self) -> None:
+        """#925: scholar_answer is optional, but when present it holds the
+        scholar's words, so an empty string is malformed."""
+        body = build_passport(
+            intake_declaration={**declaration(), "scholar_answer": ""},
+        )
+        self.assertFinds(body, "EP-INV-5")
+
+    def test_ep_inv_5_non_string_scholar_answer(self) -> None:
+        body = build_passport(
+            intake_declaration={**declaration(), "scholar_answer": True},
+        )
+        self.assertFinds(body, "EP-INV-5")
+
+    def test_ep_inv_5_scholar_answer_kept_verbatim_is_valid(self) -> None:
+        body = build_passport(
+            intake_declaration={
+                **declaration(),
+                "scholar_answer": "Yes, I ran the pruning runs myself.",
+            },
+        )
+        self.assertClean(body)
+
     def test_ep_inv_5_legacy_unknown_is_valid_status(self) -> None:
         """legacy_unknown is a valid declaration status (D7); it must not trip EP-INV-5.
 
@@ -760,6 +784,19 @@ class ReverseInvariantTests(unittest.TestCase):
         """The declaration is set at Stage 1 intake — README documents it."""
         readme = (REPO / "README.md").read_text(encoding="utf-8")
         self.assertIn("experiment_intake_declaration", readme)
+
+    def test_orchestrator_asks_the_intake_question(self) -> None:
+        """#925: in pipeline runs the orchestrator produces the declaration by
+        asking the scholar, after Stage 1 or at a later entry point."""
+        text = ORCHESTRATOR.read_text(encoding="utf-8")
+        self.assertIn("## Experiment Intake Question (#925)", text)
+        for needle in (
+            "experiment_intake_declaration",
+            "scholar_answer",
+            "Does this paper report experiments or data analyses that you ran yourself",
+            "never choose a status for the scholar",
+        ):
+            self.assertIn(needle, text)
 
     def test_integrity_agent_carries_declaration_anti_skip(self) -> None:
         text = INTEGRITY_AGENT.read_text(encoding="utf-8")

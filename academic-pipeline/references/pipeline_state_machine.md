@@ -181,6 +181,8 @@ This document defines all legal states, transition conditions, transition action
 | Stage 6 | **terminal checkpoint** | Process Record delivered | Wait for terminal acknowledgement (see § Stage 6 terminal semantics) |
 | terminal checkpoint | completed | User acknowledges (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) | Mark Stage 6 `completed`; set pipeline global state `completed` |
 
+**Experiment intake (#925).** A run through Stage 1 asks the experiment intake question at the Stage 1 checkpoint; a run that enters or resumes after Stage 1 asks it at entry. No Stage 2 writer or integrity gate is dispatched before the declaration is recorded. When the question is skipped, its wording, and how the answer is recorded: `../agents/pipeline_orchestrator_agent.md` § Experiment Intake Question (#925).
+
 ### Special Flow Transitions
 
 | From | To | Precondition | Action |

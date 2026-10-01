@@ -42,7 +42,7 @@ derive or refresh it from a clock, path, artifact contents, or transcript.
 **Important: mid-entry routing rules**
 - User brings a paper and requests "review" -> go to Stage 2.5 (INTEGRITY) first, then Stage 3 (REVIEW) after passing
 - Cannot jump directly to Stage 3 (unless user can provide a previous integrity verification report)
-- When user enters mid-pipeline, check for Material Passport — see "Mid-Entry Material Passport Check" below
+- When user enters mid-pipeline, check for Material Passport — see "Mid-Entry Material Passport Check" below; then ask the experiment intake question if § Experiment Intake Question (#925) applies
 
 #### Resume Mode: `resume_from_passport`
 
@@ -530,7 +530,7 @@ The cost is multiplicative: a 10-stage pipeline with cross-model enabled produce
 
 ### 3.5 Audit Artifact Gate (v3.6.7 Step 6)
 
-**Trigger.** At every stage transition where a v3.6.7 downstream agent (`synthesis_agent`, `research_architect_agent` survey-designer mode, or `report_compiler_agent` abstract-only mode) just completed a deliverable.
+**Activation (#925): opt-in, off by default.** The gate runs only when `ARS_AUDIT_ARTIFACT_GATE=1` is set and the user agrees, for this run, to what it requires: at each trigger below, the user runs `scripts/run_codex_audit.sh` outside this session (its header forbids same-session invocation), and the wrapper sends the deliverable and its bundled inputs to the provider and model it names. Name those before asking, as the consent boundary in `shared/cross_model_verification.md` requires; the variable is configuration, not consent. Unset or declined, the gate does not run and the transition continues to its next check. The Stage 2.5 and 4.5 integrity gates run either way. **Trigger:** when the gate is active, at every stage transition where a v3.6.7 downstream agent (`synthesis_agent`, `research_architect_agent` survey-designer mode, or `report_compiler_agent` abstract-only mode) just completed a deliverable.
 
 **Decision policy.** First check verdict status. If `AUDIT_FAILED` (Path B5 short-circuit per spec §5.6), BLOCK without running the eleven gating checks; surface `verdict.failure_reason`; user must dispatch a fresh wrapper run. Otherwise, validate against the eleven gating verification checks (spec §5.2), then apply ship/block per verdict status (spec §5.3 — rows evaluated top-to-bottom, first matching row wins):
 
@@ -585,7 +585,7 @@ The cost is multiplicative: a 10-stage pipeline with cross-model enabled produce
 - `audit_sampling_summaries[]` — drives paper-level `[CLAIM-AUDIT-SAMPLED — k/N audited]` annotation when audited_count < total_citation_count (S-INV-3)
 - Per-citation / per-sentence annotations injected adjacent to the existing v3.7.1 finalizer annotations. HIGH-WARN classes block; MED/LOW-WARN advisory passes.
 
-**Experiment-provenance aggregate carry-forward (#260).** The `experiment_alignment_results[]` aggregate is NOT produced by the claim-alignment audit agent — it is produced by `integrity_verification_agent` at the Stage 2.5/4.5 gate (Phase C4, mirroring #261 C3). The orchestrator MUST nonetheless enumerate it when carrying the passport forward: it already enumerates every aggregate it passes (claim_audit_results / uncited_assertions / claim_drifts / constraint_violations / audit_sampling_summaries / uncited_audit_failures), and omitting the new one means the integrity agent emits it into a void — the rows are computed at the gate, block there, but then vanish from the passport that reaches Stage 5/6. Add `experiment_alignment_results[]` to that carried-forward set so its annotations survive into the formatter surface (advisory/surface-only at the formatter — the blocking already happened at the integrity gate) and the Stage-6 defect histogram. Likewise carry the passport-level `experiment_intake_declaration` object forward unchanged on every handoff (Stage 2.5→3, Stage 4.5→5) — it is a passport-level field like `slr_lineage` / `repro_lock`, set once at Stage 1 intake and propagated, never recomputed by a later stage. The `experiment_provenance[]` aggregate itself is scholar-entered at intake and rides the passport from Stage 1; the orchestrator does not produce it but must not drop it.
+**Experiment-provenance aggregate carry-forward (#260).** The `experiment_alignment_results[]` aggregate is NOT produced by the claim-alignment audit agent — it is produced by `integrity_verification_agent` at the Stage 2.5/4.5 gate (Phase C4, mirroring #261 C3). The orchestrator MUST nonetheless enumerate it when carrying the passport forward: it already enumerates every aggregate it passes (claim_audit_results / uncited_assertions / claim_drifts / constraint_violations / audit_sampling_summaries / uncited_audit_failures), and omitting the new one means the integrity agent emits it into a void — the rows are computed at the gate, block there, but then vanish from the passport that reaches Stage 5/6. Add `experiment_alignment_results[]` to that carried-forward set so its annotations survive into the formatter surface (advisory/surface-only at the formatter — the blocking already happened at the integrity gate) and the Stage-6 defect histogram. Likewise carry the passport-level `experiment_intake_declaration` object forward unchanged on every handoff (Stage 2.5→3, Stage 4.5→5) — it is a passport-level field like `slr_lineage` / `repro_lock`, set once at intake (§ Experiment Intake Question (#925)) and propagated, never recomputed by a later stage. The `experiment_provenance[]` aggregate itself is scholar-entered at intake and rides the passport from there; the orchestrator does not produce it but must not drop it.
 
 **Outputs feeding Stage 6 self-reflection.**
 
@@ -691,7 +691,7 @@ consumer.
 
 | Transition | Transferred Materials | Schema Reference | Transfer Method |
 |-----------|----------------------|-----------------|----------------|
-| Stage 1 -> 2 | RQ Brief, Methodology Blueprint, Annotated Bibliography, Synthesis Report | Schema 1 (RQ Brief), Schema 2 (Bibliography), Schema 3 (Synthesis) | deep-research handoff protocol; when active, separately carry the #683 context/#684 binding pointer named by the preceding lifecycle |
+| Stage 1 -> 2 | RQ Brief, Methodology Blueprint, Annotated Bibliography, Synthesis Report | Schema 1 (RQ Brief), Schema 2 (Bibliography), Schema 3 (Synthesis) | deep-research handoff protocol; when active, separately carry the #683 context/#684 binding pointer named by the preceding lifecycle; dispatch no Stage 2 writer before the experiment intake is sealed (§ Experiment Intake Question (#925)) |
 | Stage 2 -> 2.5 | Complete Paper Draft + #547 scope context for Phase E4 (RQ Brief `scope` — the required E4 input; `sub_question_bindings` + outline section→sub-question map when present) + the Schema 2 Annotated Bibliography (#548 — `search_strategy` is the E5 comparison basis; `sources[].relevance` + `relevance_score` ground the nearest-prior-work check), when one exists + unchanged #684 binding pointer/receipts when active | Schema 4 (Paper Draft) + Schema 1 scope fields + Schema 2 (search_strategy + source relevance metadata) + review-target contracts | Pass to integrity_verification_agent; integrity does not consume criteria as a verdict input |
 | Stage 2.5 -> 3 | Stage 2.5 Paper Draft (verified, or carrying the recorded Integrity Check FAIL Loop partially-unverified warning) + Integrity Report + E6 finding-set companion and, when findings exist, `authorized_to_continue` disposition sidecar + unchanged #684 manifest/context/brief when active | Schema 4 + Schema 5 + `claim-strength-drift-findings/1.0` + conditional `claim-strength-drift-disposition/1.0` + review-target contracts | Pass only after E6 has no findings or every reported row has explicit authorization; restoration/pause does not transfer the current draft. Carry forward `experiment_provenance[]` + `experiment_alignment_results[]` + `experiment_intake_declaration` (#260); the integrity verdict never consumes criteria binding |
 | Stage 3 -> **coaching** -> 4 | Editorial Decision, immutable Revision Roadmap, exact claim surfaces, 5 Review Reports, and the Schema 6 closed `review_panel_provenance` carrier; coaching adds the complete explicit author sidecar without mutating the Roadmap | Schema 6 + `revision-roadmap/1.0` + `claim-surface-manifest/1.0` + `author-adjudication/1.0` | For `reviewer_full`, verify the provenance artifact raw digest and deterministic replay before transfer; preserve its valid/invalid carrier byte-for-byte. Source-ordered dialogue records one explicit author choice per item, exact targets, and any exact claim/collateral authority -> revision mode |
@@ -941,6 +941,25 @@ Mid-Entry Material Passport Check:
 - **Passport freshness threshold**: 24 hours. Sessions that span multiple days should trigger re-verification
 - **Content hash comparison**: If `content_hash` is available in the passport, use it for reliable change detection. If not available, fall back to `version_label` comparison
 - **Audit trail**: Log the passport check decision (rerun required / stale / changed) in state_tracker for the pipeline audit trail
+
+---
+
+## Experiment Intake Question (#925)
+
+The integrity gates require `experiment_intake_declaration` on every post-#260 passport (`shared/handoff_schemas.md` § Experiment Provenance Intake (#260)), and this orchestrator sets it for pipeline runs from the scholar's own answer, never from the manuscript, the materials, or another tool's output.
+
+**When to ask.** Once per run, at the first of these points the run reaches:
+
+1. the checkpoint after Stage 1 completes, as a question shown with its options;
+2. the confirmation of any entry or resume point after Stage 1, before anything is dispatched.
+
+Do not ask when the passport already carries a declaration, or when the run only converts formats at Stage 5. The timing follows the scholar's choice of entry point, not the paper's content.
+
+**The question.** Ask it in the user's language: "Does this paper report experiments or data analyses that you ran yourself, for example a survey you administered, data you analyzed, or a model you trained? Please answer in your own words. If it does, you will be asked to record each one; ARS does not run experiments."
+
+**Recording the answer.** A yes sets `status: experiments_declared` and a no sets `status: no_experiments_declared`, each with `declared_at` (when the scholar answered), `declared_by: scholar`, and `scholar_answer` holding the scholar's words unchanged. If the answer is neither a yes nor a no, ask once more; never choose a status for the scholar, and never set `legacy_unknown` from this question. When the run has a passport file, also append the question and answer to the run ledger as an in-stage question that changes a deliverable (§ Run ledger and handoff check). If the scholar does not answer, say that the Stage 2.5 integrity gate will stop until they do, and dispatch no writer or integrity gate before they answer.
+
+**Recording the experiments.** After a yes, the scholar enters one `experiment_provenance[]` entry per experiment before the first Stage 2 writer dispatch, or, when no Stage 2 lies ahead, before the first integrity gate. Writers are not dispatched until this intake is sealed, because `experiment_id` values freeze here (#260 D3). An entry needs details that exist only after the experiment has run, such as its `repro_lock`, so a scholar who still has to run one may pause the run here and return with the results (`pause`, or `resume_from_passport` under `ARS_PASSPORT_RESET=1`). A file the scholar hands over, such as another tool's output, is data for them to confirm, not an answer to the question above.
 
 ---
 
