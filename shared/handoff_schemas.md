@@ -942,7 +942,7 @@ Schema 9 gains the **intake + alignment** layer for experiments — NOT an execu
 
 **Three additions** (all under the Optional-Fields table above):
 
-1. `experiment_intake_declaration` (passport-level object) — the Stage 1 intake decision, set by the intake/orchestrator layer (the agent that owns Stage 1 for that entry path), never by the three manifest writers:
+1. `experiment_intake_declaration` (passport-level object) — the intake decision, set by the intake/orchestrator layer (the agent that owns intake for that entry path: after Stage 1, or on entry after Stage 1, #925), never by the three manifest writers:
 
    ```yaml
    experiment_intake_declaration:

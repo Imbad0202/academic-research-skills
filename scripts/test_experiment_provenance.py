@@ -787,22 +787,52 @@ class ReverseInvariantTests(unittest.TestCase):
 
     def test_orchestrator_asks_the_intake_question(self) -> None:
         """#925: in pipeline runs the orchestrator produces the declaration by
-        asking the scholar, after Stage 1 or at a later entry point."""
-        text = ORCHESTRATOR.read_text(encoding="utf-8")
-        self.assertIn("## Experiment Intake Question (#925)", text)
-        for needle in (
-            "experiment_intake_declaration",
-            "scholar_answer",
-            "Does this paper report experiments or data analyses that you ran yourself",
-            "never choose a status for the scholar",
-        ):
-            self.assertIn(needle, text)
+        asking the scholar, after Stage 1 or at a later entry point. Every
+        clause of the contract is read from the section itself."""
+        section = _intake_section(ORCHESTRATOR.read_text(encoding="utf-8"))
+        self.assertIsNotNone(section, "## Experiment Intake Question (#925) missing")
+        self.assertEqual(_intake_contract_gaps(section), [])
+
+    def test_intake_contract_detects_each_removed_clause(self) -> None:
+        section = _intake_section(ORCHESTRATOR.read_text(encoding="utf-8"))
+        for needle in INTAKE_CONTRACT:
+            with self.subTest(clause=needle):
+                self.assertIn(needle, _intake_contract_gaps(section.replace(needle, "")))
 
     def test_integrity_agent_carries_declaration_anti_skip(self) -> None:
         text = INTEGRITY_AGENT.read_text(encoding="utf-8")
         self.assertIn("experiment_intake_declaration", text)
         # The boundary non-goal wording must be carried verbatim (POSITIONING).
         self.assertIn("does not judge whether the experiment", text)
+
+
+# #925: the clauses the orchestrator's intake section must keep. Timing,
+# exemptions, the answer-only status rule, and dispatch ordering.
+INTAKE_CONTRACT = (
+    "the checkpoint after Stage 1 completes",
+    "the confirmation of any entry or resume point after Stage 1, before anything is dispatched",
+    "Do not ask when the run reaches no integrity gate",
+    "Do not ask when the passport already carries a declaration",
+    "from the scholar's own answer, never from the manuscript",
+    "Does this paper report experiments or data analyses that you ran yourself",
+    "`scholar_answer` holding the scholar's words unchanged",
+    "never choose a status for the scholar",
+    "never set `legacy_unknown` from this question",
+    "before the first Stage 2 writer dispatch",
+    "before the first integrity gate",
+    "Stage 2 writers are not dispatched until this intake is sealed",
+)
+
+
+def _intake_section(text: str) -> str | None:
+    """Body of `## Experiment Intake Question (#925)`, up to the next H1/H2."""
+    from _skill_lint import heading_section
+
+    return heading_section(text, "## Experiment Intake Question (#925)")
+
+
+def _intake_contract_gaps(section: str) -> list[str]:
+    return [needle for needle in INTAKE_CONTRACT if needle not in section]
 
 
 # ===========================================================================

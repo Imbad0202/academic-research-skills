@@ -380,19 +380,42 @@ class Phase66OptInActivationTest(unittest.TestCase):
 
     It sends deliverables to an external model, so the environment
     variable alone must not start it; the consent boundary in
-    shared/cross_model_verification.md has to be passed first.
+    shared/cross_model_verification.md has to be passed first. The
+    clauses are read from the §3.5 section, not anywhere in the file.
     """
 
     def test_activation_is_opt_in_and_consent_gated(self) -> None:
-        text = _read_prompt()
-        for needle in (
-            "**Activation (#925): opt-in, off by default.**",
-            "`ARS_AUDIT_ARTIFACT_GATE=1`",
-            "the variable is configuration, not consent",
-            "outside this session",
-            "shared/cross_model_verification.md",
-        ):
-            self.assertIn(needle, text)
+        section = _audit_gate_section(_read_prompt())
+        self.assertIsNotNone(section, "### 3.5 Audit Artifact Gate missing")
+        self.assertEqual(_activation_gaps(section), [])
+
+    def test_activation_detects_each_removed_clause(self) -> None:
+        section = _audit_gate_section(_read_prompt())
+        for needle in ACTIVATION_CONTRACT:
+            with self.subTest(clause=needle):
+                self.assertIn(needle, _activation_gaps(section.replace(needle, "")))
+
+
+ACTIVATION_CONTRACT = (
+    "**Activation (#925): opt-in, off by default.**",
+    "The gate runs only when `ARS_AUDIT_ARTIFACT_GATE=1` is set and the user agrees",
+    "the user runs `scripts/run_codex_audit.sh` outside this session",
+    "as the consent boundary in `shared/cross_model_verification.md` requires",
+    "the variable is configuration, not consent",
+    "Unset or declined, the gate does not run",
+    "The Stage 2.5 and 4.5 integrity gates run either way.",
+    "**Trigger:** when the gate is active",
+)
+
+
+def _audit_gate_section(text: str) -> str | None:
+    from _skill_lint import heading_section
+
+    return heading_section(text, "### 3.5 Audit Artifact Gate (v3.6.7 Step 6)")
+
+
+def _activation_gaps(section: str) -> list[str]:
+    return [needle for needle in ACTIVATION_CONTRACT if needle not in section]
 
 
 def _measure_finalizer_block_lines(text: str) -> int:
