@@ -750,8 +750,8 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         """Adverse-value mutation (codex round-9 P1): Stage 6 is added to the
         non-skippable side while the skippable declaration stays — must fire."""
         mutated = self.orch.replace(
-            "- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-review integrity), Stage 3 (initial review), Stage 4.5 (final integrity), Stage 5 (finalize)",
-            "- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-review integrity), Stage 3 (initial review), Stage 4.5 (final integrity), Stage 5 (finalize), Stage 6 (process summary)",
+            self.mod.ORCH_NON_SKIPPABLE_LINE,
+            self.mod.ORCH_NON_SKIPPABLE_LINE + ", Stage 6 (process summary)",
         )
         self.assertNotEqual(mutated, self.orch)
         errors = self._check(orch=mutated)

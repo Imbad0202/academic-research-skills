@@ -258,7 +258,7 @@ Two classes of gate: **🧑 decision-heavy** (user chooses a branch or approves 
 | Outline approval | 🧑 | 2 | User hasn't approved outline | Revise and re-present |
 | Anti-leakage (v3.3) | 🤖 | 2 | Draft contains parametric fill not grounded in session materials | `[MATERIAL GAP]` tag; user provides material or accepts gap |
 | VLM figure verify (v3.3) | 🤖 | 2 | Rendered figure fails 10-pt APA 7.0 checklist | Max 2 refinement iterations |
-| Stage 2.5 integrity + ack | ✓ | 2.5 | Any mode SUSPECTED on 7-mode checklist, or Modes 1/3/5/6 INSUFFICIENT EVIDENCE, or user hasn't acknowledged report | Fix + re-verify (max 3 rounds); or user override with reasoning (logged) |
+| Stage 2.5 integrity + ack | ✓ | 2.5 | Any mode SUSPECTED on 7-mode checklist, or Modes 1/3/5/6 INSUFFICIENT EVIDENCE (exceptions in `academic-pipeline/references/ai_research_failure_modes.md`), or user hasn't acknowledged report | Fix + re-verify (max 3 rounds); or user override with reasoning (logged) |
 | Editorial decision review | 🧑 | 3 | User hasn't reviewed decision letter | Present decision; await user |
 | Concession threshold | 🤖 | 3 | DA rebuttal scored < 4/5 by responder | No concession; frame-lock detector runs |
 | Revision Coaching | 🧑 | 3→4 | User hasn't engaged or explicitly skipped (max 8 rounds) | User may say "just fix it" to skip |

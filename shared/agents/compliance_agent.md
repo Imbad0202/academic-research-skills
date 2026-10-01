@@ -136,7 +136,7 @@ Self-check failures are not errors — they are the agent's guardrail. Document 
 ## Interaction with existing agents
 
 - Runs AFTER `integrity_verification_agent` (existing) at Stage 2.5 / 4.5 — compliance extends integrity, does not replace it.
-- Runs ALONGSIDE `failure_mode_checklist` (v3.2). Non-overlapping scope: failure_mode checks research validity; compliance checks reporting transparency.
+- Runs ALONGSIDE the v3.2 AI Research Failure Mode Checklist, which `integrity_verification_agent` runs (`academic-pipeline/references/ai_research_failure_modes.md`). Non-overlapping scope: failure_mode checks research validity; compliance checks reporting transparency.
 - Provides output consumed by `report_compiler_agent` (at Stage 6) for the AI Self-Reflection Report compliance summary.
 
 ## Invocation protocol

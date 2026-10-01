@@ -350,7 +350,7 @@ Verification result: [PASS / PASS WITH NOTES / FAIL]
 - Citation context check: [X/X] passed
 - Data verification: [X/X] passed
 - Originality check: [PASS/ISSUES]
-- Claim verification: [X/X] verified [PASS/ISSUES]
+- Claim verification: [X/X] verified [PASS/ISSUES]; full text not accessible (UNVERIFIABLE_ACCESS, a note, not an issue): [none / N claims, listed below; offer to re-verify against full text the user supplies, once per claim]
 - Ordinary advisory rows (#547/#548/#541/#570, non-gating): [none / N rows, listed below]
 - E6 claim-strength drift rows (checkpoint-closing): [none / N rows; disposition sidecar absent/valid]
 
@@ -367,7 +367,7 @@ present claim counts as excerpts or successful evidence.]
 
 [If E6 rows exist: render the exact ordered `claim-strength-drift-findings/1.0` companion named by the Integrity Report. For every row require one explicit choice: `restore`, `authorize_with_reason` (show and retain the required reason), or `pause`, plus one explicitly named run-local raw session-event artifact outside the repository. Put its absolute transient path and declared raw SHA-256 in the input. Build and validate `claim-strength-drift-disposition/1.0`; both operations must reopen exact regular non-symlink event files and recompute their digests. Validation receives one repeatable `--event-artifact EVENT_ID=/absolute/path` mapping per row. There is no default, no `proceed open`, and generic `continue` or an arbitrary 64-hex digest does not answer an E6 row. A missing/duplicate/extra choice or event mapping, a free-form acceptance outside the sidecar, or an invalid byte binding leaves this checkpoint unresolved. The durable sidecar retains no path or raw message. Byte binding does not authenticate source, content meaning, or actor identity. `paused` saves PAUSED state; `restore_required` routes back for restoration and a fresh integrity/E6 run; only `authorized_to_continue` permits the ordinary next-stage confirmation.]
 
-Flagged: [issues requiring attention]
+Flagged: [issues requiring attention, and each 7-mode failure checklist mode that blocks or warns; a blocking mode needs confirm / override with reasoning / revise, per `../references/ai_research_failure_modes.md`]
 
 Next step: Stage [Y] [Name]
 
@@ -441,8 +441,8 @@ Users respond to checkpoint prompts with one of these commands. The orchestrator
 | `abort` / `terminate` | Terminate pipeline entirely | `pipeline_state` = `aborted`; save all materials with current versions |
 
 **Skippable vs Non-Skippable Stages**:
-- Skippable: Stage 1 (deep-research, if user provides own bibliography), Stage 3' (re-review, if only minor revisions), Stage 4' (re-revise, if accepted), Stage 6 (process summary — declined at the Stage 5 completion checkpoint; marked `skipped`, pipeline still terminates `completed`)
-- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-review integrity), Stage 3 (initial review), Stage 4.5 (final integrity), Stage 5 (finalize)
+- Skippable: Stage 1 (deep-research, if user provides own bibliography), Stage 4' (re-revise, if accepted), Stage 6 (process summary — declined at the Stage 5 completion checkpoint; marked `skipped`, pipeline still terminates `completed`)
+- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-review integrity), Stage 3 (initial review), Stage 3' (re-review), Stage 4.5 (final integrity), Stage 5 (finalize)
 
 #### Adjudication-activity action-time hook (#673)
 
@@ -495,10 +495,10 @@ When a sub-skill stage fails or produces unacceptable output:
 |-------|-------------|-------------------|
 | Stage 1: deep-research | Insufficient sources found | Retry with expanded keywords; if still insufficient, allow user to provide manual sources; downgrade to `quick` mode with explicit quality note |
 | Stage 2: academic-paper | Draft quality below `adequate` threshold | Return to argument_builder for strengthening; if 2nd attempt fails, pause pipeline and request user input |
-| Stage 2.5: integrity (mid) | FAIL verdict | Mandatory: return to Stage 2 with integrity issues as revision requirements. The correction round dispatches `academic-paper` **revision mode** under § Revision-Round Patch Sequencing — never full-mode re-drafting; reference-level fixes are the most block-local edit class in the pipeline, and full re-emission is reachable only via the §3.6 escalation checkpoint. Cannot skip or override |
+| Stage 2.5: integrity (mid) | FAIL verdict | Mandatory: return to Stage 2 with integrity issues as revision requirements. The correction round dispatches `academic-paper` **revision mode** under § Revision-Round Patch Sequencing — never full-mode re-drafting; reference-level fixes are the most block-local edit class in the pipeline, and full re-emission is reachable only via the §3.6 escalation checkpoint. Cannot be skipped. After 3 correction rounds without a PASS, the Integrity Check FAIL Loop in `../references/pipeline_state_machine.md` applies: list the unresolved items and record the user's decision |
 | Stage 3: reviewer | All reviewers reject | Pause pipeline; present rejection reasons; offer: (a) major revision and re-review, (b) pivot the paper's angle, (c) abort |
-| Stage 4.5: integrity (final) | FAIL verdict | Return to Stage 5 (revision) with final integrity issues. The correction round dispatches `academic-paper` **revision mode** under § Revision-Round Patch Sequencing (same routing as the Stage 2.5 row). If 2nd integrity check also fails -> abort pipeline with detailed report |
-| Stage 5: revision | Author cannot address a must_fix item | Escalate to user; options: (a) provide additional data/evidence, (b) reframe the claim, (c) remove the problematic section |
+| Stage 4.5: integrity (final) | FAIL verdict | Run a correction round with the final integrity issues, with the same routing and 3-round Integrity Check FAIL Loop as the Stage 2.5 row; it does not return to review, and never abort on your own |
+| Stage 4 / 4': revision | Author cannot address a must_fix item | Escalate to user; options: (a) provide additional data/evidence, (b) reframe the claim, (c) remove the problematic section |
 | Any stage | Agent timeout or crash | Save current state via state_tracker; allow manual resume from last checkpoint |
 
 ### Collaboration Depth Observer (advisory, never blocks)

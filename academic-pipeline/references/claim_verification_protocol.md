@@ -223,7 +223,7 @@ After E1 has emitted the Claim Registry at a Stage 2.5 or Stage 4.5 integrity ch
 | MINOR_DISTORTION | Claim paraphrases source but meaning is preserved | MINOR | Paper: "about 15%"; Source: "15.2%" |
 | MAJOR_DISTORTION | Claim oversimplifies, exaggerates, or misrepresents source | SERIOUS | Paper: "declined sharply"; Source: "declined by 2.1%" |
 | UNVERIFIABLE | Source doesn't contain the claimed information | SERIOUS | Paper cites Smith (2020) for a claim, but Smith (2020) doesn't discuss this topic |
-| UNVERIFIABLE_ACCESS | Source exists but full text not accessible for verification | MEDIUM | Paywalled journal article |
+| UNVERIFIABLE_ACCESS | Source exists but full text not accessible for verification | NOTE (never blocks) | Paywalled journal article |
 
 ## Sampling Strategy
 - Mode 1 (pre-review) — risk-stratified (#549, mirroring the #518 reference-verification tiers):
