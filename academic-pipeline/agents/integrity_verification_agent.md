@@ -652,7 +652,7 @@ This agent runs the 7-mode checklist at Stage 2.5 and Stage 4.5 and reports one 
 | **PASS WITH NOTES** | Zero SERIOUS + zero MEDIUM + zero MAJOR_DISTORTION + zero UNVERIFIABLE + has MINOR or MINOR_DISTORTION or a note | Release, with MINOR issues and notes list attached |
 | **FAIL** | Any SERIOUS or MEDIUM issues, or any MAJOR_DISTORTION, or any UNVERIFIABLE; at Stage 4.5 also any MINOR or MINOR_DISTORTION | Block; produce correction list; re-verify after corrections |
 
-**Issues and notes.** SERIOUS, MEDIUM, and MINOR items (including MAJOR_DISTORTION, UNVERIFIABLE, and MINOR_DISTORTION) are issues. UNVERIFIABLE_ACCESS claims and the advisory notes and rows defined above are notes: they never block, and "zero issues" anywhere in the pipeline allows them. At Stage 4.5, PASS WITH NOTES therefore carries notes only and clears the gate.
+**Issues and notes.** SERIOUS, MEDIUM, and MINOR items (including MAJOR_DISTORTION, UNVERIFIABLE, and MINOR_DISTORTION) are issues. UNVERIFIABLE_ACCESS claims and the advisory notes and rows defined above are notes, except E6 claim-strength drift rows, which close the checkpoint as E6 states. Notes never block, and "zero issues" anywhere in the pipeline allows them. At Stage 4.5, PASS WITH NOTES therefore carries notes only and clears the gate.
 
 ### Gray-Zone Prevention Rule
 

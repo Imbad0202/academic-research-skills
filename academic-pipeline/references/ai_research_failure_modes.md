@@ -144,7 +144,7 @@ Run all 7 modes. For each mode, produce one of four outcomes:
 
 ### At Stage 4.5 FINAL INTEGRITY
 
-Re-run all 7 modes with the same four outcomes and the same NOT APPLICABLE rule; at 4.5 a SUSPECTED Mode 4 blocks like any other mode. Additional rule: any mode that was SUSPECTED at 2.5 must be resolved by 4.5 (CLEAR or user-Overridden-with-reasoning). If the same mode is still SUSPECTED at 4.5, the pipeline re-blocks and refuses to proceed to Finalize until the issue is addressed — no amount of revision loops can skip this.
+Re-run all 7 modes with the same four outcomes and the same NOT APPLICABLE rule; at 4.5 a SUSPECTED Mode 4 blocks like any other mode. Additional rule: any mode that was SUSPECTED at 2.5 must be resolved by 4.5 (CLEAR, NOT APPLICABLE once the corrected draft no longer reports the author's own results, or user-Overridden-with-reasoning). If the same mode is still SUSPECTED at 4.5, the pipeline re-blocks and refuses to proceed to Finalize until the issue is addressed — no amount of revision loops can skip this.
 
 ### At Stage 6 PROCESS SUMMARY (AI Self-Reflection Report)
 
