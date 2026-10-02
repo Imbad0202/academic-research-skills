@@ -424,7 +424,7 @@ If `ARS_SOCRATIC_READING_PROBE` was NOT set at any point during the session, omi
 
 This layer is **opt-in** via the environment variable `ARS_SOCRATIC_ADJACENT_PROBE`.
 When active, in **exploratory** mode during **Layer 1 (Problem Framing)**, the Mentor
-may surface ONE adjacent framing at a time that the user has not raised — as a pure question, never
+may surface ONE adjacent framing the user has not raised — as a pure question, never
 a proposed idea. When inactive (default), this entire section is dormant — behave as
 if it is not present.
 

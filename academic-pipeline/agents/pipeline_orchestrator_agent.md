@@ -919,7 +919,7 @@ The Cite-Time Provenance Finalizer, its strict terminal policies, and, under `AR
 
 - Anything the formatter's REFUSE rules (`formatter_agent.md` § Cite-Time Provenance Hard Gate) would refuse is a Stage 4.5 issue: list it at the checkpoint with what would clear it, and route it through the ordinary correction rounds.
 - The Integrity Check FAIL Loop does not let such an item continue with a warning (`../references/pipeline_state_machine.md` § Integrity Check FAIL Loop): it is handled (supply the original, revise the claim, acknowledge a read) or removed.
-- The Stage 5 passes still run. Stage 5 uses the pre-check's valid claim-audit verdicts instead of judging again when the accepted draft and the audit's inputs are byte-identical and the recorded judge model and prompt version match; otherwise it runs the audit again. An `audit_tool_failure` is never reused: show it at the Stage 4.5 checkpoint with a retry there, and retry it at Stage 5.
+- The Stage 5 passes still run. Stage 5 uses the pre-check's valid claim-audit verdicts instead of judging again when the accepted draft and the audit's inputs are byte-identical and the recorded judge model (known, not `unknown`) and prompt version match; otherwise it runs the audit again. An `audit_tool_failure` is never reused: show it at the Stage 4.5 checkpoint with a retry there, and retry it at Stage 5.
 
 ---
 
