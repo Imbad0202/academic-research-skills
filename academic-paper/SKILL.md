@@ -394,7 +394,7 @@ Whether the note appears must not depend on the topic, the wording, or the kind 
 
 **When not to show it.**
 
-- The note was already answered or skipped in this project or run. In a run with a passport file, look for a `checkpoint_closed` entry with `checkpoint_id: review-form-note` in the run ledger; without one, look in this conversation. Across separate sessions without a passport file the note can appear again; this is accepted. If the ledger holds a `checkpoint_opened` entry for `review-form-note` and no closing entry, the note is still awaiting its answer: show it again, append no second opening entry, and append the closing entry after the reply.
+- The note was already answered or skipped in this project or run. In a run with a passport file, look for a `checkpoint_closed` entry with `checkpoint_id: review-form-note` in what `python3 scripts/run_ledger.py show --passport-path <passport>` prints; without one, look in this conversation. Across separate sessions without a passport file the note can appear again; this is accepted. If the ledger holds a `checkpoint_opened` entry for `review-form-note` and no closing entry, the note is still awaiting its answer: show it again, append no second opening entry, and append the closing entry after the reply.
 - The author already named a review form in their own words or actions: entered `systematic-review` mode, asked for a systematic, scoping, rapid, narrative, or integrative review, or said they want no formal review. This test reads what the author said, not the content of the research question.
 
 **How to show it.**

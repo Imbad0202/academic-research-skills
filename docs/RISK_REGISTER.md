@@ -281,10 +281,12 @@ differently: fabricating a decision is R11's risk; this row covers losing one.
   `standing_constraints[]` passport list that later dispatches quote
   (`shared/contracts/passport/standing_constraint_entry.schema.json`, #927).
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — how the
-  report reads a ledger is CI-pinned by six synthetic scenarios, and the handoff-check
-  block it renders in English and Traditional Chinese by line-exact tests (#898,
-  `scripts/test_run_ledger.py`); whether the orchestrator writes the entries and inserts
-  the block unchanged is not measured on any session model.
+  report reads a ledger is CI-pinned by six synthetic scenarios, the `show` read that
+  prints only entries before a break by synthetic tests, and the handoff-check block the
+  report renders in English and Traditional Chinese by line-exact tests (#898,
+  `scripts/test_run_ledger.py`); whether the orchestrator writes the entries, reads the
+  ledger only through the script, and inserts the block unchanged is not measured on any
+  session model.
 - **Residual gap**: anything lost before its entry is written cannot be recovered; the
   hashes catch accidental damage, not deliberate edits, a lost tail, or a restored older
   copy of the ledger

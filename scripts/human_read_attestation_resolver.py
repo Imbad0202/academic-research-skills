@@ -52,12 +52,12 @@ class LedgerValidationError(ValueError):
     """The current ledger does not satisfy the closed #738 contract."""
 
 
-class _UniqueKeySafeLoader(yaml.SafeLoader):
+class UniqueKeySafeLoader(yaml.SafeLoader):
     """Safe YAML loader that rejects duplicate mapping keys."""
 
 
 def _construct_unique_mapping(
-    loader: _UniqueKeySafeLoader, node: yaml.MappingNode, deep: bool = False
+    loader: UniqueKeySafeLoader, node: yaml.MappingNode, deep: bool = False
 ) -> dict[Any, Any]:
     mapping: dict[Any, Any] = {}
     for key_node, value_node in node.value:
@@ -82,7 +82,7 @@ def _construct_unique_mapping(
     return mapping
 
 
-_UniqueKeySafeLoader.add_constructor(
+UniqueKeySafeLoader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_unique_mapping
 )
 
@@ -437,7 +437,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             ledger = yaml.load(
                 args.read_log.read_text(encoding="utf-8"),
-                Loader=_UniqueKeySafeLoader,
+                Loader=UniqueKeySafeLoader,
             )
         except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
             print(

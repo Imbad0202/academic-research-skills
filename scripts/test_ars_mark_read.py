@@ -812,7 +812,7 @@ class TestLockedLedgerTransaction(unittest.TestCase):
                 with self.assertRaisesRegex(
                     ars_mark_read.LedgerLockError, "timed out"
                 ):
-                    with ars_mark_read._ledger_lock(
+                    with ars_mark_read.ledger_lock(
                         log_path, timeout_seconds=0.01
                     ):
                         self.fail("contended lock must not be acquired")

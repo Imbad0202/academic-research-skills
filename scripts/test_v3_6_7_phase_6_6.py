@@ -881,15 +881,14 @@ def _measure_743_inquiry_ledger_lines(text: str) -> int:
     return inquiry_lines + max(0, current_rule_lines - 1)
 
 
-def _measure_g1_checkpoint_authority_lines(text: str) -> int:
-    """Return the line count of the `## Checkpoint authority fidelity` section.
+def _measure_h2_section_lines(text: str, heading: str) -> int:
+    """Return the line count of the `## <heading>` section, or 0 when absent.
 
-    Measures from the H2 heading to the next heading of any level (H1-H4),
-    the same convention as the other extension-section helpers above.
+    Measures from the H2 heading to the next heading of any level (H1-H4).
     """
     import re as _re
 
-    anchor = _re.compile(r"(?m)^[ \t]*##[ \t]+Checkpoint authority fidelity[ \t]*$")
+    anchor = _re.compile(rf"(?m)^[ \t]*##[ \t]+{_re.escape(heading)}[ \t]*$")
     match = anchor.search(text)
     if match is None:
         return 0
@@ -900,142 +899,20 @@ def _measure_g1_checkpoint_authority_lines(text: str) -> int:
     return len(text[match.start():end].splitlines())
 
 
-def _measure_887_run_ledger_lines(text: str) -> int:
-    """Return the line count of the `## Run ledger and handoff check (#887)` section.
-
-    Measures from the H2 heading to the next heading of any level (H1-H4),
-    the same convention as the other extension-section helpers above.
-    """
-    import re as _re
-
-    anchor = _re.compile(r"(?m)^[ \t]*##[ \t]+Run ledger and handoff check \(#887\)[ \t]*$")
-    match = anchor.search(text)
-    if match is None:
-        return 0
-    heading_end = text.find("\n", match.end())
-    search_start = heading_end + 1 if heading_end >= 0 else len(text)
-    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
-    end = search_start + next_heading.start() if next_heading else len(text)
-    return len(text[match.start():end].splitlines())
-
-
-def _measure_890_third_party_text_lines(text: str) -> int:
-    """Return the line count of the `## Third-party text in dispatches (#890)` section.
-
-    Measures from the H2 heading to the next heading of any level (H1-H4),
-    the same convention as the other extension-section helpers above.
-    """
-    import re as _re
-
-    anchor = _re.compile(
-        r"(?m)^[ \t]*##[ \t]+Third-party text in dispatches \(#890\)[ \t]*$"
-    )
-    match = anchor.search(text)
-    if match is None:
-        return 0
-    heading_end = text.find("\n", match.end())
-    search_start = heading_end + 1 if heading_end >= 0 else len(text)
-    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
-    end = search_start + next_heading.start() if next_heading else len(text)
-    return len(text[match.start():end].splitlines())
-
-
-def _measure_925_experiment_intake_lines(text: str) -> int:
-    """Return the line count of the `## Experiment Intake Question (#925)` section.
-
-    Same convention as the other extension-section helpers above.
-    """
-    import re as _re
-
-    anchor = _re.compile(
-        r"(?m)^[ \t]*##[ \t]+Experiment Intake Question \(#925\)[ \t]*$"
-    )
-    match = anchor.search(text)
-    if match is None:
-        return 0
-    heading_end = text.find("\n", match.end())
-    search_start = heading_end + 1 if heading_end >= 0 else len(text)
-    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
-    end = search_start + next_heading.start() if next_heading else len(text)
-    return len(text[match.start():end].splitlines())
-
-
-def _measure_927_standing_constraints_lines(text: str) -> int:
-    """Return the line count of the `## Standing Constraints (#927)` section.
-
-    Same convention as the other extension-section helpers above.
-    """
-    import re as _re
-
-    anchor = _re.compile(r"(?m)^[ \t]*##[ \t]+Standing Constraints \(#927\)[ \t]*$")
-    match = anchor.search(text)
-    if match is None:
-        return 0
-    heading_end = text.find("\n", match.end())
-    search_start = heading_end + 1 if heading_end >= 0 else len(text)
-    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
-    end = search_start + next_heading.start() if next_heading else len(text)
-    return len(text[match.start():end].splitlines())
-
-
-def _measure_927_declined_items_lines(text: str) -> int:
-    """Return the line count of the `## Declined Items at Stage 3' and Stage 4' (#927)` section.
-
-    Same convention as the other extension-section helpers above.
-    """
-    import re as _re
-
-    anchor = _re.compile(
-        r"(?m)^[ \t]*##[ \t]+Declined Items at Stage 3' and Stage 4' \(#927\)[ \t]*$"
-    )
-    match = anchor.search(text)
-    if match is None:
-        return 0
-    heading_end = text.find("\n", match.end())
-    search_start = heading_end + 1 if heading_end >= 0 else len(text)
-    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
-    end = search_start + next_heading.start() if next_heading else len(text)
-    return len(text[match.start():end].splitlines())
-
-
-def _measure_936_excluded_sources_lines(text: str) -> int:
-    """Return the line count of the `## Integrity-Excluded Sources (#936)` section.
-
-    Same convention as the other extension-section helpers above.
-    """
-    import re as _re
-
-    anchor = _re.compile(
-        r"(?m)^[ \t]*##[ \t]+Integrity-Excluded Sources \(#936\)[ \t]*$"
-    )
-    match = anchor.search(text)
-    if match is None:
-        return 0
-    heading_end = text.find("\n", match.end())
-    search_start = heading_end + 1 if heading_end >= 0 else len(text)
-    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
-    end = search_start + next_heading.start() if next_heading else len(text)
-    return len(text[match.start():end].splitlines())
-
-
-def _measure_929_final_output_precheck_lines(text: str) -> int:
-    """Return the line count of the `## Final-Output Pre-Check at Stage 4.5 (#929)` section.
-
-    Same convention as the other extension-section helpers above.
-    """
-    import re as _re
-
-    anchor = _re.compile(
-        r"(?m)^[ \t]*##[ \t]+Final-Output Pre-Check at Stage 4\.5 \(#929\)[ \t]*$"
-    )
-    match = anchor.search(text)
-    if match is None:
-        return 0
-    heading_end = text.find("\n", match.end())
-    search_start = heading_end + 1 if heading_end >= 0 else len(text)
-    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
-    end = search_start + next_heading.start() if next_heading else len(text)
-    return len(text[match.start():end].splitlines())
+# Independent H2 extension sections measured by `_measure_h2_section_lines`:
+# each is subtracted from the historical v3.6.7 budget and bounded by its own
+# budget in `H2SectionLineBudgetTest` (#898 item 4). A new section of this
+# shape adds one row here and its budget constant above.
+H2_SECTION_BUDGETS = (
+    ("Checkpoint authority fidelity", LINE_BUDGET_G1_CHECKPOINT_AUTHORITY),
+    ("Run ledger and handoff check (#887)", LINE_BUDGET_887_RUN_LEDGER),
+    ("Third-party text in dispatches (#890)", LINE_BUDGET_890_THIRD_PARTY_TEXT),
+    ("Experiment Intake Question (#925)", LINE_BUDGET_925_EXPERIMENT_INTAKE),
+    ("Standing Constraints (#927)", LINE_BUDGET_927_STANDING_CONSTRAINTS),
+    ("Declined Items at Stage 3' and Stage 4' (#927)", LINE_BUDGET_927_DECLINED_ITEMS),
+    ("Final-Output Pre-Check at Stage 4.5 (#929)", LINE_BUDGET_929_FINAL_OUTPUT_PRECHECK),
+    ("Integrity-Excluded Sources (#936)", LINE_BUDGET_936_EXCLUDED_SOURCES),
+)
 
 
 class Advisory660LineBudgetTest(unittest.TestCase):
@@ -1128,164 +1005,26 @@ class InquiryLedger743LineBudgetTest(unittest.TestCase):
         )
 
 
-class CheckpointAuthorityG1LineBudgetTest(unittest.TestCase):
-    """2026-09 checkpoint-authority fidelity section stays independently bounded."""
+class H2SectionLineBudgetTest(unittest.TestCase):
+    """Each H2 extension section in `H2_SECTION_BUDGETS` stays independently bounded."""
 
-    def test_g1_checkpoint_authority_within_budget(self) -> None:
+    def test_h2_sections_within_budget(self) -> None:
         text = _read_prompt()
-        block_lines = _measure_g1_checkpoint_authority_lines(text)
-        self.assertGreater(
-            block_lines,
-            0,
-            "`## Checkpoint authority fidelity` section missing from "
-            "pipeline_orchestrator_agent.md",
-        )
-        self.assertLessEqual(
-            block_lines,
-            LINE_BUDGET_G1_CHECKPOINT_AUTHORITY,
-            f"checkpoint-authority fidelity section is {block_lines} lines, over "
-            f"its {LINE_BUDGET_G1_CHECKPOINT_AUTHORITY}-line budget",
-        )
-
-
-class RunLedger887LineBudgetTest(unittest.TestCase):
-    """#887 run-ledger and handoff-check section stays independently bounded."""
-
-    def test_887_run_ledger_within_budget(self) -> None:
-        text = _read_prompt()
-        block_lines = _measure_887_run_ledger_lines(text)
-        self.assertGreater(
-            block_lines,
-            0,
-            "`## Run ledger and handoff check (#887)` section missing from "
-            "pipeline_orchestrator_agent.md",
-        )
-        self.assertLessEqual(
-            block_lines,
-            LINE_BUDGET_887_RUN_LEDGER,
-            f"run-ledger section is {block_lines} lines, over its "
-            f"{LINE_BUDGET_887_RUN_LEDGER}-line budget",
-        )
-
-
-class ThirdPartyText890LineBudgetTest(unittest.TestCase):
-    """#890 third-party-text dispatch section stays independently bounded."""
-
-    def test_890_third_party_text_within_budget(self) -> None:
-        text = _read_prompt()
-        block_lines = _measure_890_third_party_text_lines(text)
-        self.assertGreater(
-            block_lines,
-            0,
-            "`## Third-party text in dispatches (#890)` section missing from "
-            "pipeline_orchestrator_agent.md",
-        )
-        self.assertLessEqual(
-            block_lines,
-            LINE_BUDGET_890_THIRD_PARTY_TEXT,
-            f"#890 third-party-text section is {block_lines} lines, over "
-            f"its {LINE_BUDGET_890_THIRD_PARTY_TEXT}-line budget",
-        )
-
-
-class ExperimentIntake925LineBudgetTest(unittest.TestCase):
-    """#925 experiment-intake section stays independently bounded."""
-
-    def test_925_experiment_intake_within_budget(self) -> None:
-        text = _read_prompt()
-        block_lines = _measure_925_experiment_intake_lines(text)
-        self.assertGreater(
-            block_lines,
-            0,
-            "`## Experiment Intake Question (#925)` section missing from "
-            "pipeline_orchestrator_agent.md",
-        )
-        self.assertLessEqual(
-            block_lines,
-            LINE_BUDGET_925_EXPERIMENT_INTAKE,
-            f"#925 experiment-intake section is {block_lines} lines, over "
-            f"its {LINE_BUDGET_925_EXPERIMENT_INTAKE}-line budget",
-        )
-
-
-class StandingConstraints927LineBudgetTest(unittest.TestCase):
-    """#927 standing-constraints section stays independently bounded."""
-
-    def test_927_standing_constraints_within_budget(self) -> None:
-        text = _read_prompt()
-        block_lines = _measure_927_standing_constraints_lines(text)
-        self.assertGreater(
-            block_lines,
-            0,
-            "`## Standing Constraints (#927)` section missing from "
-            "pipeline_orchestrator_agent.md",
-        )
-        self.assertLessEqual(
-            block_lines,
-            LINE_BUDGET_927_STANDING_CONSTRAINTS,
-            f"#927 standing-constraints section is {block_lines} lines, over "
-            f"its {LINE_BUDGET_927_STANDING_CONSTRAINTS}-line budget",
-        )
-
-
-class DeclinedItems927LineBudgetTest(unittest.TestCase):
-    """#927 part B declined-items section stays independently bounded."""
-
-    def test_927_declined_items_within_budget(self) -> None:
-        text = _read_prompt()
-        block_lines = _measure_927_declined_items_lines(text)
-        self.assertGreater(
-            block_lines,
-            0,
-            "`## Declined Items at Stage 3' and Stage 4' (#927)` section "
-            "missing from pipeline_orchestrator_agent.md",
-        )
-        self.assertLessEqual(
-            block_lines,
-            LINE_BUDGET_927_DECLINED_ITEMS,
-            f"#927 declined-items section is {block_lines} lines, over its "
-            f"{LINE_BUDGET_927_DECLINED_ITEMS}-line budget",
-        )
-
-
-class FinalOutputPrecheck929LineBudgetTest(unittest.TestCase):
-    """#929 final-output pre-check section stays independently bounded."""
-
-    def test_929_final_output_precheck_within_budget(self) -> None:
-        text = _read_prompt()
-        block_lines = _measure_929_final_output_precheck_lines(text)
-        self.assertGreater(
-            block_lines,
-            0,
-            "`## Final-Output Pre-Check at Stage 4.5 (#929)` section missing "
-            "from pipeline_orchestrator_agent.md",
-        )
-        self.assertLessEqual(
-            block_lines,
-            LINE_BUDGET_929_FINAL_OUTPUT_PRECHECK,
-            f"#929 final-output pre-check section is {block_lines} lines, over "
-            f"its {LINE_BUDGET_929_FINAL_OUTPUT_PRECHECK}-line budget",
-        )
-
-
-class ExcludedSources936LineBudgetTest(unittest.TestCase):
-    """#936 integrity-excluded-sources section stays independently bounded."""
-
-    def test_936_excluded_sources_within_budget(self) -> None:
-        text = _read_prompt()
-        block_lines = _measure_936_excluded_sources_lines(text)
-        self.assertGreater(
-            block_lines,
-            0,
-            "`## Integrity-Excluded Sources (#936)` section missing from "
-            "pipeline_orchestrator_agent.md",
-        )
-        self.assertLessEqual(
-            block_lines,
-            LINE_BUDGET_936_EXCLUDED_SOURCES,
-            f"#936 excluded-sources section is {block_lines} lines, over its "
-            f"{LINE_BUDGET_936_EXCLUDED_SOURCES}-line budget",
-        )
+        for heading, budget in H2_SECTION_BUDGETS:
+            with self.subTest(heading):
+                block_lines = _measure_h2_section_lines(text, heading)
+                self.assertGreater(
+                    block_lines,
+                    0,
+                    f"`## {heading}` section missing from "
+                    "pipeline_orchestrator_agent.md",
+                )
+                self.assertLessEqual(
+                    block_lines,
+                    budget,
+                    f"`## {heading}` section is {block_lines} lines, over its "
+                    f"{budget}-line budget",
+                )
 
 
 class Dispatch576LineBudgetTest(unittest.TestCase):
@@ -1373,14 +1112,10 @@ class Phase66LineBudgetTest(unittest.TestCase):
         advisory_673_lines = _measure_673_adjudication_activity_lines(text)
         criteria_684_lines = _measure_684_review_criteria_binding_lines(text)
         inquiry_743_lines = _measure_743_inquiry_ledger_lines(text)
-        authority_g1_lines = _measure_g1_checkpoint_authority_lines(text)
-        run_ledger_887_lines = _measure_887_run_ledger_lines(text)
-        third_party_890_lines = _measure_890_third_party_text_lines(text)
-        experiment_intake_925_lines = _measure_925_experiment_intake_lines(text)
-        standing_927_lines = _measure_927_standing_constraints_lines(text)
-        declined_927_lines = _measure_927_declined_items_lines(text)
-        precheck_929_lines = _measure_929_final_output_precheck_lines(text)
-        excluded_936_lines = _measure_936_excluded_sources_lines(text)
+        h2_section_lines = sum(
+            _measure_h2_section_lines(text, heading)
+            for heading, _ in H2_SECTION_BUDGETS
+        )
         # v3.6.7-only line count: total minus v3.7.1 Step 3b, v3.7.3
         # finalizer extension, v3.8 §3.6 audit-gate, v3.9.0 triangulation
         # extension, v3.10 terminal-policy extension, the #394 slice-4
@@ -1390,22 +1125,15 @@ class Phase66LineBudgetTest(unittest.TestCase):
         # checkpoint-rendering, the #660 tortured-phrase advisory dispatch,
         # the #672 cross-document advisory dispatch, AND the #673
         # adjudication-activity wiring, the #684 review-criteria binding
-        # lifecycle, the #743 inquiry-ledger/sidecar extension, the
-        # 2026-09 checkpoint-authority fidelity section, the #887
-        # run-ledger section, the #890 third-party-text dispatch section,
-        # the #925 experiment-intake section, the #927 standing-
-        # constraints section, the #927 declined-items section, the #929
-        # final-output pre-check section, AND the #936 excluded-sources
-        # section (each has its own dedicated budget test).
+        # lifecycle, the #743 inquiry-ledger/sidecar extension, AND the
+        # H2 extension sections in H2_SECTION_BUDGETS (each has its own
+        # dedicated budget test).
         v367_line_count = (
             total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
             - v3_9_0_lines - v3_10_lines - gate_394_lines - seq_390_lines
             - authority_670_lines - dispatch_576_lines - evidence_656_lines
             - advisory_660_lines - advisory_672_lines - advisory_673_lines
-            - criteria_684_lines - inquiry_743_lines - authority_g1_lines
-            - run_ledger_887_lines - third_party_890_lines
-            - experiment_intake_925_lines - standing_927_lines
-            - declined_927_lines - precheck_929_lines - excluded_936_lines
+            - criteria_684_lines - inquiry_743_lines - h2_section_lines
         )
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(
@@ -1429,16 +1157,9 @@ class Phase66LineBudgetTest(unittest.TestCase):
             f"{advisory_673_lines} are in the #673 adjudication-activity "
             f"wiring, and {criteria_684_lines} are in the #684 criteria-"
             f"binding lifecycle, and {inquiry_743_lines} are in the #743 "
-            f"inquiry-ledger/sidecar extension, and {authority_g1_lines} are in "
-            f"the 2026-09 checkpoint-authority fidelity section, and "
-            f"{run_ledger_887_lines} are in the #887 run-ledger section, and "
-            f"{third_party_890_lines} are in the #890 third-party-text "
-            f"dispatch section, and {experiment_intake_925_lines} are in the "
-            f"#925 experiment-intake section, and {standing_927_lines} are in "
-            f"the #927 standing-constraints section, and {declined_927_lines} "
-            f"are in the #927 declined-items section, and {precheck_929_lines} "
-            f"are in the #929 final-output pre-check section, and "
-            f"{excluded_936_lines} are in the #936 excluded-sources section; "
+            f"inquiry-ledger/sidecar extension, and {h2_section_lines} are in "
+            f"the {len(H2_SECTION_BUDGETS)} H2 extension sections listed in "
+            f"H2_SECTION_BUDGETS; "
             f"v3.6.7-attributed lines = "
             f"{v367_line_count} exceeds {ceiling} (baseline "
             f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "

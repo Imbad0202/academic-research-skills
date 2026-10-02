@@ -55,13 +55,13 @@ except ImportError:  # pragma: no cover - package-import path
 try:
     from scripts.human_read_attestation_resolver import (
         LedgerValidationError,
-        _UniqueKeySafeLoader,
+        UniqueKeySafeLoader,
         _validated_rows,
     )
 except ModuleNotFoundError:  # direct ``python scripts/ars_mark_read.py`` use
     from human_read_attestation_resolver import (  # type: ignore[no-redef]
         LedgerValidationError,
-        _UniqueKeySafeLoader,
+        UniqueKeySafeLoader,
         _validated_rows,
     )
 
@@ -105,7 +105,7 @@ def _ledger_lock_path(log_path: Path) -> Path:
 
 
 @contextmanager
-def _ledger_lock(
+def ledger_lock(
     log_path: Path,
     *,
     timeout_seconds: float | None = None,
@@ -255,7 +255,7 @@ def _load_log(log_path: Path) -> dict[str, Any]:
             f"existing ledger cannot be read as UTF-8: {exc}"
         ) from exc
     try:
-        data = yaml.load(text, Loader=_UniqueKeySafeLoader)
+        data = yaml.load(text, Loader=UniqueKeySafeLoader)
     except yaml.YAMLError as exc:
         raise LedgerValidationError(
             f"existing ledger is not duplicate-safe valid YAML: {exc}"
@@ -268,23 +268,20 @@ def _load_log(log_path: Path) -> dict[str, Any]:
     return data
 
 
-def _save_log(log_path: Path, data: dict[str, Any]) -> None:
-    """Validate and atomically replace the ledger from a same-dir temp file.
+def atomic_replace(path: Path, payload: bytes) -> None:
+    """Replace ``path`` with ``payload`` from a same-directory temp file.
 
-    The destination is never opened with ``"w"``.  A serialization, flush,
-    fsync, or replace failure therefore leaves an existing ledger untouched;
-    an owned temporary file is removed on failure.
+    The destination is never opened with ``"w"``.  A write, flush, fsync, or
+    replace failure therefore leaves an existing file untouched; an owned
+    temporary file is removed on failure.  Shared by every ledger writer
+    (``run_ledger`` too, #898) so a fix to the write path lands once.
     """
-    _validated_rows(data)
-    payload = yaml.safe_dump(
-        data, sort_keys=False, allow_unicode=True
-    ).encode("utf-8")
     temp_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
             mode="wb",
-            dir=log_path.parent,
-            prefix=f".{log_path.name}.",
+            dir=path.parent,
+            prefix=f".{path.name}.",
             suffix=".tmp",
             delete=False,
         ) as temp_file:
@@ -292,7 +289,7 @@ def _save_log(log_path: Path, data: dict[str, Any]) -> None:
             temp_file.write(payload)
             temp_file.flush()
             os.fsync(temp_file.fileno())
-        os.replace(temp_path, log_path)
+        os.replace(temp_path, path)
         temp_path = None
     finally:
         if temp_path is not None:
@@ -300,6 +297,18 @@ def _save_log(log_path: Path, data: dict[str, Any]) -> None:
                 temp_path.unlink()
             except FileNotFoundError:
                 pass
+
+
+def _save_log(log_path: Path, data: dict[str, Any]) -> None:
+    """Validate, then atomically replace the ledger (see ``atomic_replace``).
+
+    A serialization failure happens before any file is touched.
+    """
+    _validated_rows(data)
+    payload = yaml.safe_dump(
+        data, sort_keys=False, allow_unicode=True
+    ).encode("utf-8")
+    atomic_replace(log_path, payload)
 
 
 def _mark(log: dict, citation_key: str, read_scope: dict | None = None) -> None:
@@ -393,7 +402,7 @@ def _update_log_locked(
     Returning missing active marks keeps batch unmark all-or-nothing: the
     in-memory partial mutation is discarded and no replacement occurs.
     """
-    with _ledger_lock(log_path):
+    with ledger_lock(log_path):
         log = _load_log(log_path)
         if unmark:
             not_found = [
