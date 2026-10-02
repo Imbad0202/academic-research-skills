@@ -1127,7 +1127,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
         # adjudication-activity wiring, the #684 review-criteria binding
         # lifecycle, the #743 inquiry-ledger/sidecar extension, AND the
         # H2 extension sections in H2_SECTION_BUDGETS (each has its own
-        # dedicated budget test).
+        # budget test; the H2 sections are bounded in H2SectionLineBudgetTest).
         v367_line_count = (
             total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
             - v3_9_0_lines - v3_10_lines - gate_394_lines - seq_390_lines

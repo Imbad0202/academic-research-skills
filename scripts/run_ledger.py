@@ -484,8 +484,8 @@ def append_entry(
         }
         entry["hash"] = entry_hash(entry)
         entries.append(entry)
-        atomic_replace(path, yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
-                       .encode("utf-8"))
+        payload = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).encode("utf-8")
+        atomic_replace(path, payload)
     return entry
 
 
@@ -575,7 +575,7 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
     """Classify the ledger against the claims into the handoff check's groups."""
     claims = claims or {}
     read = read_trusted(passport_path)
-    path = Path(read["ledger"])
+    path = ledger_path(passport_path)
     state = _state(read["trusted_entries"])
 
     awaiting: list[dict[str, Any]] = []
@@ -656,8 +656,7 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
             backed += 1
 
     return {
-        **{key: read[key] for key in
-           ("ledger", "ledger_status", "detail", "untrusted_from_seq", "entries")},
+        **{key: value for key, value in read.items() if key != "trusted_entries"},
         "awaiting_answer": awaiting,
         "cannot_confirm": cannot_confirm,
         "not_run": not_run,
