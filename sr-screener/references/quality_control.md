@@ -64,7 +64,9 @@ Seeds test sensitivity only for studies like them. They do not prove that nothin
   `qc_batches.json`), so rechecking a few hundred records takes a handful of agent calls. The
   registry only grows and the joint-exclusion sample is drawn once per review, so repeated
   merges never reshuffle what a QC run referred to. Candidates count as pending until the
-  senior reviewer has decided them, so no methods text or final number is produced before.
+  senior reviewer has decided them, so no methods text or final number is produced before,
+  including at the full-text stage. Full-text preparation waits for these decisions because a
+  QC advance changes which PDFs must be screened.
 - A senior reviewer (default model `sonnet`) screens these records afresh without seeing the
   earlier decision. With `qc.policy: advance`, an exclusion it would advance becomes an advance
   marked `QC`; with `flag`, it is only listed.

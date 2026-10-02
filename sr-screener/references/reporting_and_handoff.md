@@ -25,6 +25,10 @@ from registers, websites or citation searching have separate PRISMA boxes; add t
 Check that the per-database numbers match what each database reported for the search; if an
 export was capped or split, say so.
 
+Both stages mark counts as provisional and withhold methods text while any required decision
+or recheck is pending. Full-text completeness also includes unfinished title/abstract screening,
+adjudication and QC, even when every currently matched PDF already has a full-text decision.
+
 ## 2. Methods text and AI disclosure
 
 `*_methods_selection.md` is a draft with real numbers and `[TO COMPLETE]` slots. It covers what

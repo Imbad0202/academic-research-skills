@@ -78,7 +78,11 @@ Usage limits, closed sessions and failed agents are normal on long runs:
 1. `merge_decisions.py --from <all run folders>`: everything returned so far is kept; the
    earliest valid decision per record and role wins.
 2. `build_workflow.py ta --jobs pending` schedules only what is missing: whole batches when a
-   reviewer never ran, ID subsets when a reviewer skipped records, and open conflicts.
+   reviewer never ran, ID subsets when a reviewer skipped records, and open conflicts. It checks
+   the pilot gate whenever those jobs reach outside the batches recorded in `pilot_batches.json`.
+   To finish an incomplete pilot, use `--jobs pilot --batches <pilot batches>`; pending jobs
+   confined to those batches also remain available. Work folders from before pilot-batch
+   recording must regenerate the pilot workflow to record its batches.
 3. Repeat until the merge prints "complete". A record is never given a default label along the
    way.
 
@@ -93,18 +97,24 @@ Usage limits, closed sessions and failed agents are normal on long runs:
 plus every seed batch; `--pilot-n` or `--batches` to change). The team labels the same records
 independently in `pilot_labels.csv`. Workflow, `merge_decisions.py --pilot-labels
 pilot_labels.csv`, then the QC Auditor's pilot report. Amend, re-pilot, and continue only when
-the AI misses none of the records the team advanced and the user gives the go-ahead.
+every labelled record has been compared, the AI misses none of the records the team advanced,
+and the user gives the go-ahead. The workflow generator records the selected batches in
+`pilot_batches.json` so pilot retries can be distinguished from screening the remaining batches.
 
 **ta-screen**: `build_workflow.py ta --jobs all`, which refuses to start without a passing
-`pilot_check.json` (the pilot batches can stay in: their decisions are already merged, so
-rerunning them only costs a little). Then merge, `--jobs pending` until screening is complete,
+`pilot_check.json`; `--jobs pending` also checks this gate for jobs outside the pilot (the pilot
+batches can stay in: their decisions are already merged, so rerunning them only costs a little).
+Then merge, `--jobs pending` until screening is complete,
 `--jobs recheck` for the required QC recheck of joint exclusions, merge again until it prints
 "complete", `overrides.csv` for the team's decisions, `build_outputs.py`.
 
 **ft-screen**: `prepare_fulltext.py --pdf-dir PDFS` (name PDFs by record ID when possible;
-missing ones are "reports not retrieved"), write the full-text protocol, then
+missing ones are "reports not retrieved"). Preparation is blocked until the required
+title/abstract QC recheck is decided, since QC may advance more records. Write the full-text
+protocol, then
 `build_workflow.py ft --jobs all`, Workflow, `merge_decisions.py --stage ft`, `--jobs pending`
-until complete, `build_outputs.py --stage ft`.
+until complete, `build_outputs.py --stage ft`. A full-text merge or report also remains incomplete
+while title/abstract decisions or QC rechecks are pending; it cannot produce final counts or methods text.
 
 **adjudicate** (a human screening set with conflicts): export the conflicting records with
 titles and abstracts (Rayyan or Covidence CSV/RIS), `prepare_records.py` into a new work

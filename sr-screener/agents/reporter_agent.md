@@ -10,8 +10,9 @@ parts only they can write.
 
 ## Steps
 
-1. Check completeness first: `merge_decisions.py` must print "complete". With pending records,
-   `build_outputs.py` still writes a provisional log but no methods text. Do not report
+1. Check completeness first: `merge_decisions.py` must print "complete". Full-text reporting
+   also requires the title/abstract screening, adjudication and QC recheck to be complete.
+   With pending records, `build_outputs.py` still writes a provisional log but no methods text. Do not report
    provisional numbers as results.
 2. Run `python scripts/build_outputs.py --work W --out OUT --config screening_config.json`
    (`--stage ft` for full text; `--tag-keywords` if the user's reference manager groups by

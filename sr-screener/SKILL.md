@@ -187,10 +187,12 @@ Full-text stage    prepare_fulltext.py, then phases 3-6 again with --stage ft
    was found, and PRISMA and Cochrane both expect pre-specified eligibility criteria.
 2. ⚠️ **IRON RULE: pilot against the team's own labels before the full run.** The review team
    labels the pilot records independently (`pilot_labels.csv`), and `merge_decisions.py
-   --pilot-labels` compares the AI decisions with them. `build_workflow.py ta --jobs all`
-   refuses to start until that comparison exists and the AI excluded no record the team
-   advanced. `--pilot-override "<reason>"` starts it anyway only when the user decides so; the
-   reason is recorded and appears in the methods text.
+   --pilot-labels` compares the AI decisions with them. `build_workflow.py ta` refuses the full
+   run and any pending screening or adjudication outside the recorded pilot batches until
+   every labelled record has been compared and the AI excluded no record the team advanced.
+   Pending jobs confined to the pilot can finish that comparison. `--pilot-override "<reason>"`
+   starts outside-pilot jobs anyway only when the user decides so; the reason is recorded and
+   appears in the methods text.
 3. ⚠️ **IRON RULE: cost check before any fan-out.** Show the estimate printed by
    `build_workflow.py` (batches, agent calls, models) and wait for a clear yes. A full run
    can mean hundreds of agent calls.
@@ -204,7 +206,9 @@ Full-text stage    prepare_fulltext.py, then phases 3-6 again with --stage ft
    reaches the adjudicator, and two instances of the same model can share one misreading. Once
    screening is complete, a reproducible sample of joint exclusions (`qc.random_exclusion_sample`,
    at least 20, default 100; all of them when fewer) plus the near-miss exclusions go to a senior
-   reviewer, and they count as pending until it has decided them.
+   reviewer, and they count as pending until it has decided them. Full-text preparation is
+   blocked while these QC items are pending; full-text outputs also remain incomplete and
+   withhold final counts and methods text until the title/abstract stage is finished.
 7. ⚠️ **IRON RULE: people own the final screening.** AI decisions are decision support. Before
    the numbers are reported, the review team verifies them (at least every advanced record and
    a sample of exclusions), and the methods section discloses the AI use.
@@ -406,7 +410,15 @@ names for the methods text in `model_labels`. The cost check shows them before e
 | Profile | Reviewers A/B | Adjudicator / QC | Full text | When |
 |---------|---------------|------------------|-----------|------|
 | standard (default) | sonnet | sonnet | sonnet | most reviews |
-| quality | sonnet | session model | session model | small searches, high-stakes reviews |
+| quality | sonnet | opus | opus | small searches, high-stakes reviews |
+
+For the `quality` profile, put these explicit per-role models in `screening_config.json`:
+
+```json
+{"models": {"A": "sonnet", "B": "sonnet", "ADJ": "opus", "QC": "opus", "FTA": "opus", "FTB": "opus", "FTADJ": "opus"}}
+```
+
+Both named profiles pin every screening role; neither inherits the session model.
 
 The costly screening error is a wrong exclusion, and it is rarely caught later, so the shipped
 defaults use Sonnet for every screening role and no profile offers a smaller model. A per-role

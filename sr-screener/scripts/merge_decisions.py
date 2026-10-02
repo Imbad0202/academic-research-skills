@@ -25,8 +25,8 @@ Rules (see references/decision_rules.md):
     it has decided them (a joint exclusion never reaches the adjudicator);
   * --pilot-labels compares the AI decisions with the review team's own labels for the pilot
     records (same columns as overrides.csv) and writes pilot_check.json; build_workflow.py
-    --jobs all refuses to start the full run until that check exists and missed no record the
-    team advanced.
+    refuses to screen outside the recorded pilot (including --jobs pending) until every labelled
+    record has been compared and the AI missed no record the team advanced.
 
 Writes decisions.json, pending.json, agreement.json, qc_candidates.json (title/abstract) or
 ft_decisions.json, ft_pending.json, ft_agreement.json (full text) into the work folder.
@@ -379,6 +379,8 @@ def pilot_check(path, final, codes, valid_ids, work, ov):
         print(f"  MISSED {m['id']}: team {m['human']}, AI {m['ai']} ({m['ai_by']}) - {m['ai_why']}")
     if missed:
         print("STOP: fix the protocol wording for these records, amend, and re-run the pilot before the full run")
+    elif not_screened:
+        print("STOP: finish the AI decisions for all labelled records and merge again with --pilot-labels")
     elif not rows:
         print("no pilot record has both an AI decision and a team label yet")
     return out
@@ -458,7 +460,11 @@ def merge_ft(a, cfg, work):
     if pend_items or pend_adj:
         print(f"PENDING: {len(pend_items)} reports need a reviewer decision, {len(pend_adj)} need adjudication "
               "-> build_workflow.py ft --jobs pending")
-    else:
+    ta_pending = srlib.load_json(os.path.join(work, "pending.json"), {}) or {}
+    if any(ta_pending.get(k) for k in ("screen", "adj", "qc")):
+        print("INCOMPLETE: title/abstract screening or required title/abstract QC is still pending; "
+              "full-text counts and methods remain provisional until those items are decided")
+    elif not pend_items and not pend_adj:
         print("complete: every report has a final decision")
 
 

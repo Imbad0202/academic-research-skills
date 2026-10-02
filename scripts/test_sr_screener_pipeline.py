@@ -14,9 +14,11 @@ hand-written fixtures. What this pins:
   * the QC recheck of records both reviewers excluded is required: those
     records stay pending until the senior reviewer has decided them, and a QC
     advance changes the final decision;
-  * the full run (`--jobs all`) is blocked until the pilot has been compared
-    with the team's own labels and missed no record the team advanced;
-  * the shipped reviewer default is Sonnet;
+  * all screening/adjudication jobs outside the pilot are blocked until every
+    labelled pilot record is compared and no record the team advanced was missed;
+  * full-text preparation and final reporting wait for title/abstract QC;
+  * the shipped reviewer default is Sonnet and the quality profile pins Opus
+    for adjudication, QC and full text, visible in the cost check;
   * the literature_corpus[] handoff validates against
     shared/contracts/passport/literature_corpus_entry.schema.json.
 
@@ -25,6 +27,7 @@ It does not measure screening accuracy.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -231,6 +234,8 @@ def test_short_protocol_is_refused(prepared: Path) -> None:
 
 def test_no_silent_defaults_then_complete_run(prepared: Path) -> None:
     work, dec, cfg = prepared / "work", prepared / "dec", prepared / "cfg.json"
+    ok(run("build_workflow.py", "ta", "--work", work, "--protocol", PROTOCOL,
+           "--config", cfg, "--jobs", "pilot", cwd=prepared))
     _write_result(dec, "A_b001.json", "A:b001", [
         _dec("R00001", "include", "INC", "Infants, urinary NGAL, KDIGO AKI"),
         _dec("R00002", "unclear", "UNC", "Paediatric cardiac surgery; markers not named"),
@@ -304,3 +309,180 @@ def test_no_silent_defaults_then_complete_run(prepared: Path) -> None:
         assert errors == [], (entry.get("citation_key"), errors)
         assert entry["adapter_name"] == "sr-screener"
         assert "abstract" not in entry
+
+
+def test_quality_profile_names_models_in_cost_check(prepared: Path) -> None:
+    text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    section = text.split("## Model Tiering", 1)[1].split("\n---", 1)[0]
+    assert "| quality | sonnet | opus | opus |" in section
+    config = json.loads(re.search(r"```json\n(.*?)\n```", section, re.S).group(1))
+    cfg = prepared / "quality.json"
+    cfg.write_text(json.dumps(dict(CONFIG, **config)), encoding="utf-8")
+    out = ok(run("build_workflow.py", "ta", "--work", prepared / "work", "--protocol", PROTOCOL,
+                 "--config", cfg, "--jobs", "pilot", cwd=prepared))
+    models = json.loads(re.search(r"^models: (.*?)  agentType:", out, re.M).group(1))
+    assert models == {"A": "sonnet", "B": "sonnet", "ADJ": "opus", "QC": "opus",
+                      "FTA": "opus", "FTB": "opus", "FTADJ": "opus"}
+    assert '"ADJ": "opus"' in out.split("model overrides", 1)[1]
+
+
+@pytest.fixture()
+def pilot_partial(prepared: Path) -> Path:
+    cfg = dict(CONFIG, batching={"max_records": 2})
+    (prepared / "cfg.json").write_text(json.dumps(cfg), encoding="utf-8")
+    work = prepared / "work"
+    ok(run("prepare_records.py", "--inputs", prepared / "exports", "--work", work,
+           "--config", prepared / "cfg.json", "--force", cwd=prepared))
+    ok(run("build_workflow.py", "ta", "--work", work, "--protocol", PROTOCOL,
+           "--config", prepared / "cfg.json", "--jobs", "pilot", "--batches", "b001", cwd=prepared))
+    # One pilot record has a comparison; the other is still missing Reviewer B.
+    _write_result(prepared / "dec", "A.json", "A:b001", [
+        _dec("R00001", "include", "INC", "Urinary NGAL"),
+        _dec("R00002", "unclear", "UNC", "Markers unnamed")])
+    _write_result(prepared / "dec", "B.json", "B:b001", [
+        _dec("R00001", "include", "INC", "Urinary NGAL")])
+    (prepared / "pilot_labels.csv").write_text(
+        "id,d,code,why,by\nR00001,include,INC,urinary NGAL,HUMAN\n"
+        "R00002,unclear,UNC,markers unnamed,HUMAN\n", encoding="utf-8")
+    ok(run("merge_decisions.py", "--work", work, "--from", prepared / "dec",
+           "--config", prepared / "cfg.json", "--pilot-labels", prepared / "pilot_labels.csv", cwd=prepared))
+    return prepared
+
+
+@pytest.mark.parametrize("jobs", ["all", "pending"])
+def test_every_pilot_label_must_be_compared(pilot_partial: Path, jobs: str) -> None:
+    p = pilot_partial
+    proc = run("build_workflow.py", "ta", "--work", p / "work", "--protocol", PROTOCOL,
+               "--config", p / "cfg.json", "--jobs", jobs, cwd=p)
+    assert proc.returncode != 0
+    assert "labelled records" in proc.stdout + proc.stderr
+    # A blocked run writes no workflow or prompt files.
+    assert not list((p / "work" / "runs").glob(f"ta_{jobs}_*.workflow.js"))
+
+
+def test_pending_can_retry_pilot_without_starting_other_batches(pilot_partial: Path) -> None:
+    p, work = pilot_partial, pilot_partial / "work"
+    pending = json.loads((work / "pending.json").read_text(encoding="utf-8"))
+    pending["screen"] = [x for x in pending["screen"] if x["b"] == "b001"]
+    (work / "pending.json").write_text(json.dumps(pending), encoding="utf-8")
+    ok(run("build_workflow.py", "ta", "--work", work, "--protocol", PROTOCOL,
+           "--config", p / "cfg.json", "--jobs", "pending", "--emit-prompts", work / "retry", cwd=p))
+    index = json.loads((work / "retry" / "index.json").read_text(encoding="utf-8"))
+    assert [x["label"] for x in index] == ["B:b001"]
+
+
+def test_pending_outside_pilot_requires_check_and_records_override(pilot_partial: Path) -> None:
+    p, work = pilot_partial, pilot_partial / "work"
+    (work / "pilot_check.json").unlink()
+    args = ("build_workflow.py", "ta", "--work", work, "--protocol", PROTOCOL,
+            "--config", p / "cfg.json", "--jobs", "pending")
+    blocked = run(*args, cwd=p)
+    assert blocked.returncode != 0 and "human-labelled pilot" in blocked.stdout + blocked.stderr
+    out = ok(run(*args, "--pilot-override", "Team chooses to proceed", cwd=p))
+    assert "WARNING" in out
+    log = json.loads((work / "pilot_override.json").read_text(encoding="utf-8"))
+    assert log[-1]["reason"] == "Team chooses to proceed"
+
+
+def test_complete_pilot_allows_pending_batches(pilot_partial: Path) -> None:
+    p, work = pilot_partial, pilot_partial / "work"
+    _write_result(p / "dec", "B_retry.json", "B:b001:retry", [
+        _dec("R00002", "unclear", "UNC", "Markers unnamed")])
+    ok(run("merge_decisions.py", "--work", work, "--from", p / "dec", "--config", p / "cfg.json",
+           "--pilot-labels", p / "pilot_labels.csv", cwd=p))
+    ok(run("build_workflow.py", "ta", "--work", work, "--protocol", PROTOCOL,
+           "--config", p / "cfg.json", "--jobs", "pending", "--emit-prompts", work / "remaining", cwd=p))
+    index = json.loads((work / "remaining" / "index.json").read_text(encoding="utf-8"))
+    assert sorted(x["label"] for x in index) == ["A:b002", "A:b003", "B:b002", "B:b003"]
+
+
+@pytest.mark.parametrize("problem", ["missed_advance", "missing_comparison_count", "no_pilot_batches"])
+def test_pending_gate_cannot_be_bypassed(pilot_partial: Path, problem: str) -> None:
+    p, work = pilot_partial, pilot_partial / "work"
+    path = work / "pilot_check.json"
+    check = json.loads(path.read_text(encoding="utf-8"))
+    if problem == "missed_advance":
+        check["missed_advances"] = [{"id": "R00001"}]
+    elif problem == "missing_comparison_count":
+        check.pop("labelled")
+        check["not_screened_by_ai"] = []
+    else:
+        # A work folder predating pilot-batch recording must still check the gate.
+        (work / "pilot_batches.json").unlink()
+    path.write_text(json.dumps(check), encoding="utf-8")
+    proc = run("build_workflow.py", "ta", "--work", work, "--protocol", PROTOCOL,
+               "--config", p / "cfg.json", "--jobs", "pending", cwd=p)
+    assert proc.returncode != 0
+    assert "full run blocked" in proc.stdout + proc.stderr
+
+
+@pytest.fixture()
+def fulltext_with_pending_ta_qc(prepared: Path) -> Path:
+    p, work = prepared, prepared / "work"
+    decisions = [_dec("R00001", "include", "INC", "Urinary NGAL")]
+    decisions += [_dec(f"R{i:05d}", "exclude", "E2", "Not eligible") for i in range(2, 6)]
+    for role in ("A", "B"):
+        _write_result(p / "dec", f"{role}.json", f"{role}:b001", decisions)
+    ok(run("merge_decisions.py", "--work", work, "--from", p / "dec", "--config", p / "cfg.json", cwd=p))
+    # Simulate a full-text run prepared before the required TA QC was done.
+    (work / "ft_manifest.json").write_text(json.dumps([
+        {"id": "R00001", "title": "Urinary NGAL", "pdf": "R00001.pdf"}]), encoding="utf-8")
+    for role in ("FTA", "FTB"):
+        _write_result(p / "ft_dec", f"{role}.json", f"{role}:R00001", [decisions[0]])
+    out = ok(run("merge_decisions.py", "--stage", "ft", "--work", work, "--from", p / "ft_dec",
+                 "--config", p / "cfg.json", cwd=p))
+    assert "INCOMPLETE" in out and "complete: every report" not in out
+    return p
+
+
+def test_fulltext_preparation_blocks_pending_ta_qc(fulltext_with_pending_ta_qc: Path) -> None:
+    p = fulltext_with_pending_ta_qc
+    previous = (p / "work" / "ft_manifest.json").read_bytes()
+    proc = run("prepare_fulltext.py", "--work", p / "work", "--pdf-dir", p, cwd=p)
+    assert proc.returncode != 0
+    assert "QC" in proc.stdout + proc.stderr
+    assert (p / "work" / "ft_manifest.json").read_bytes() == previous
+
+
+@pytest.mark.parametrize("resolution", ["human", "qc"])
+def test_fulltext_reporting_waits_for_ta_qc(fulltext_with_pending_ta_qc: Path, resolution: str) -> None:
+    p, work, out = fulltext_with_pending_ta_qc, fulltext_with_pending_ta_qc / "work", fulltext_with_pending_ta_qc / "out"
+    args = ("build_outputs.py", "--stage", "ft", "--work", work, "--out", out, "--config", p / "cfg.json")
+    ok(run(*args, cwd=p))
+    counts = json.loads((out / "FT_prisma_counts.json").read_text(encoding="utf-8"))
+    assert counts["complete"] is False
+    assert counts["pending_records"] == 4
+    assert counts["pending_ta_qc_records"] == 4
+    assert "Provisional" in (out / "FT_prisma_counts.md").read_text(encoding="utf-8")
+    assert "title/abstract QC" in (out / "FT_methods_selection.md").read_text(encoding="utf-8")
+    assert (out / "FT_methods_selection.md").read_text(encoding="utf-8").startswith("# Methods text not generated")
+    # Either human decisions or senior QC decisions settle the required items.
+    extra_args = ()
+    if resolution == "human":
+        (p / "overrides.csv").write_text("id,d,code,why,by\n" + "".join(
+            f"R{i:05d},exclude,E2,Team checked,HUMAN\n" for i in range(2, 6)), encoding="utf-8")
+        extra_args = ("--overrides", p / "overrides.csv")
+    else:
+        pending = json.loads((work / "pending.json").read_text(encoding="utf-8"))
+        for batch in pending["qc"]:
+            _write_result(p / "dec", f"QC_{batch['b']}.json", f"QC:{batch['b']}", [
+                _dec(rid, "exclude", "E2", "QC checked") for rid in batch["ids"]])
+    ok(run("merge_decisions.py", "--work", work, "--from", p / "dec", "--config", p / "cfg.json",
+           *extra_args, cwd=p))
+    ok(run(*args, cwd=p))
+    counts = json.loads((out / "FT_prisma_counts.json").read_text(encoding="utf-8"))
+    assert counts["complete"] is True and counts["pending_records"] == 0
+    assert counts["studies_included_reports"] == 1
+    assert (out / "FT_methods_selection.md").read_text(encoding="utf-8").startswith("# Selection process")
+    (p / "R00001.pdf").write_bytes(b"synthetic PDF-name fixture")
+    ok(run("prepare_fulltext.py", "--work", work, "--pdf-dir", p, cwd=p))
+
+
+def test_fulltext_pending_records_are_not_double_counted(fulltext_with_pending_ta_qc: Path) -> None:
+    p, work = fulltext_with_pending_ta_qc, fulltext_with_pending_ta_qc / "work"
+    # The same ID can be pending at both stages; count records, not tasks.
+    (work / "ft_pending.json").write_text(json.dumps({"items": [{"id": "R00002"}], "adj": []}), encoding="utf-8")
+    ok(run("build_outputs.py", "--stage", "ft", "--work", work, "--out", p / "out",
+           "--config", p / "cfg.json", cwd=p))
+    counts = json.loads((p / "out" / "FT_prisma_counts.json").read_text(encoding="utf-8"))
+    assert counts["complete"] is False and counts["pending_records"] == 4

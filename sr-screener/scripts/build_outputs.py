@@ -141,19 +141,21 @@ def main():
     RAW = srlib.load_json(os.path.join(work, "raw_records.json"), [])
     ident = srlib.load_json(os.path.join(work, "identification.json"), {})
     ta_dec = srlib.load_json(os.path.join(work, "decisions.json"), {})
+    ta_pending = srlib.load_json(os.path.join(work, "pending.json"), {"screen": [], "adj": [], "qc": []})
+    ta_qc_ids = {i for p in ta_pending.get("qc", []) for i in p["ids"]}
+    ta_pending_ids = ({i for p in ta_pending["screen"] for i in p["missA"] + p["missB"]} |
+                      {x["id"] for p in ta_pending["adj"] for x in p["items"]} | ta_qc_ids)
     if a.stage == "ta":
         D = ta_dec
-        pending = srlib.load_json(os.path.join(work, "pending.json"), {"screen": [], "adj": []})
         agree = srlib.load_json(os.path.join(work, "agreement.json"), {})
-        pending_ids = sorted({i for p in pending["screen"] for i in p["missA"] + p["missB"]} |
-                             {x["id"] for p in pending["adj"] for x in p["items"]} |
-                             {i for p in pending.get("qc", []) for i in p["ids"]})
+        pending_ids = sorted(ta_pending_ids)
         universe = [u["id"] for u in recs["unique"]]
     else:
         D = srlib.load_json(os.path.join(work, "ft_decisions.json"), {})
         pending = srlib.load_json(os.path.join(work, "ft_pending.json"), {"items": [], "adj": []})
         agree = srlib.load_json(os.path.join(work, "ft_agreement.json"), {})
-        pending_ids = sorted({x["id"] for x in pending["items"]} | {x["id"] for x in pending["adj"]})
+        pending_ids = sorted({x["id"] for x in pending["items"]} | {x["id"] for x in pending["adj"]} |
+                             ta_pending_ids)
         man = srlib.load_json(os.path.join(work, "ft_manifest.json"), [])
         universe = [x["id"] for x in man]
 
@@ -191,6 +193,8 @@ def main():
     # --------------------------------------------------------------- counts
     counts = {"stage": a.stage, "tool": f"{srlib.TOOL} {srlib.VERSION}", "complete": complete,
               "pending_records": len(pending_ids)}
+    if a.stage == "ft":
+        counts.update({"pending_ta_records": len(ta_pending_ids), "pending_ta_qc_records": len(ta_qc_ids)})
     if a.stage == "ta":
         counts.update({
             "identified_by_database": ident.get("by_database", {}),
@@ -250,9 +254,13 @@ def main():
     summary = [("sr-screener " + srlib.VERSION + f" - {'title/abstract' if a.stage == 'ta' else 'full-text'} "
                 "screening log", "")]
     if not complete:
-        summary.append((f"INCOMPLETE: {len(pending_ids)} records have no final decision yet "
+        summary.append((f"INCOMPLETE: {len(pending_ids)} records need decisions or required rechecks "
                         "(resume with build_workflow.py --jobs pending, then --jobs recheck for the required QC "
                         "recheck). Numbers below are provisional.", ""))
+        if a.stage == "ft" and ta_pending_ids:
+            summary.append((f"Title/abstract stage still pending: {len(ta_pending_ids)} records, "
+                            f"including {len(ta_qc_ids)} required title/abstract QC rechecks. "
+                            "Full-text counts cannot be final until these are decided.", ""))
     if a.stage == "ta":
         summary += [("IDENTIFICATION", "")]
         summary += [(f"Records from {db}", n) for db, n in counts["identified_by_database"].items()]
@@ -377,6 +385,9 @@ def main():
     md = [f"# PRISMA 2020 counts - {'title/abstract' if a.stage == 'ta' else 'full-text'} stage", ""]
     if not complete:
         md += [f"> **Provisional:** {len(pending_ids)} records are still pending.", ""]
+        if a.stage == "ft" and ta_pending_ids:
+            md += [f"> Title/abstract decisions or rechecks remain pending, including {len(ta_qc_ids)} "
+                   "required title/abstract QC rechecks. These full-text counts are not final.", ""]
     if a.stage == "ta":
         dbs = "; ".join(f"{k} n = {v}" for k, v in counts["identified_by_database"].items())
         excl = "<br/>".join(f"{labels.get(c, c)}: {n}" for c, n in exc_sorted)
@@ -407,6 +418,10 @@ def main():
             f.write("# Methods text not generated\n\nScreening is incomplete "
                     f"({len(pending_ids)} records pending). Finish the run first; numbers must not be reported "
                     "from a partial run.\n")
+            if a.stage == "ft" and ta_pending_ids:
+                f.write(f"\nThe title/abstract stage is unfinished, including {len(ta_qc_ids)} required "
+                        "title/abstract QC rechecks. Decide these items before producing final full-text counts "
+                        "or methods text.\n")
         else:
             po = agree.get("observed_agreement")
             po_txt = f"{po * 100:.1f}%" if isinstance(po, (int, float)) else "[n/a]"

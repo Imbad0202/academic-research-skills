@@ -10,6 +10,8 @@ looks for its PDF. A PDF matches when its file name contains the record ID (R000
 columns id,pdf. Records without a PDF are listed as "not retrieved" for the PRISMA flow.
 
 Writes ft_manifest.json ([{id, title, pdf}]), ft_not_retrieved.json and ft_not_retrieved.csv.
+Preparation is blocked while the required title/abstract QC recheck is pending: it may advance
+more records, so the full-text set cannot be fixed yet.
 Tip: name PDFs by record ID (for example "R00012 Smith 2019.pdf") - it is the most reliable match.
 """
 import argparse
@@ -37,6 +39,10 @@ def main():
     if D is None:
         raise SystemExit("decisions.json not found - finish title/abstract screening first")
     pend = srlib.load_json(os.path.join(work, "pending.json"), {"screen": [], "adj": []})
+    if pend.get("qc"):
+        raise SystemExit("full-text preparation blocked: the required title/abstract QC recheck is pending. "
+                         "Run build_workflow.py ta --jobs recheck and merge the decisions first; QC may "
+                         "advance more records into the full-text set.")
     if pend["screen"] or pend["adj"]:
         print("WARNING: title/abstract screening still has pending records; they are not in this full-text set.")
     U = {u["id"]: u for u in srlib.load_json(os.path.join(work, "records.json"))["unique"]}

@@ -19,7 +19,8 @@ itself: changes come from the recheck policy in the config or from the user's ov
 2. Report to the user, in this order:
    - **Seeds**: each seed's decision. A seed that is not advanced stops the pilot.
    - **Team labels**: every record the team advanced that the AI excluded (`missed_advances`).
-     Any such record stops the pilot: the full run is blocked until a re-pilot misses none,
+     Any such record stops the pilot: the full run and pending jobs outside the pilot are
+     blocked until a re-pilot misses none and every labelled record has been compared,
      unless the user decides to override (`--pilot-override "<reason>"`, recorded).
    - **Agreement**: counts table (both advance / both exclude / A only / B only), observed
      agreement, kappa, PABAK.
@@ -45,7 +46,8 @@ itself: changes come from the recheck policy in the config or from the user's ov
    complete) plus exclusions that match every near-miss keyword group; they stay pending until
    rechecked. Run
    `build_workflow.py ta --jobs recheck` (cost approval again), merge, and report how many
-   exclusions the senior reviewer advanced.
+   exclusions the senior reviewer advanced. Finish these rechecks before preparing full-text
+   screening; full-text reports cannot be complete or produce final methods while they are pending.
 3. Suggest the human verification sample: at minimum every advanced record plus a random
    sample of exclusions. A sample of 50-100 exclusions is commonly used; if the team finds an
    eligible study among them, widen the check.

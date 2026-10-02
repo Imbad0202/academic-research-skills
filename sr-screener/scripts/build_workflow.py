@@ -11,12 +11,14 @@ Options:
   --emit-prompts DIR   also write one prompt file per agent call (for runs with the Agent tool
                        or by hand); an index.json lists label, prompt file and model
   --return-decisions   make the workflow also return every decision (small runs only)
-  --pilot-override R   start `ta --jobs all` without a passing human-labelled pilot; the reason
+  --pilot-override R   screen outside the pilot without a passing human-labelled pilot; the reason
                        is recorded in W/pilot_override.json and reported in the methods text
 
-The full title/abstract run (`ta --jobs all`) needs W/pilot_check.json from
-merge_decisions.py --pilot-labels: the pilot must have been compared with the review team's
-own labels and must not have excluded any record the team advanced.
+The full title/abstract run and pending jobs outside the recorded pilot batches need
+W/pilot_check.json from merge_decisions.py --pilot-labels: every labelled pilot record must
+have been compared and the AI must not have excluded any record the team advanced.
+Pilot-only retries remain available before the check passes. Generate a pilot workflow first
+to record its batches in W/pilot_batches.json.
 
 The protocol text is embedded verbatim; the reviewer wording comes from templates/prompts.md.
 Run the result with the Workflow tool: Workflow({scriptPath: "<printed path>"}).
@@ -129,6 +131,9 @@ def pilot_gate(work, override):
     elif check.get("missed_advances"):
         problem = (f"the pilot excluded {len(check['missed_advances'])} records the team advanced "
                    "(see pilot_check.json): amend the protocol and re-run the pilot")
+    elif check.get("not_screened_by_ai") or check.get("compared") != check.get("labelled"):
+        problem = ("not all labelled records have been compared with an AI decision "
+                   "(see pilot_check.json): finish the pilot and merge again with --pilot-labels")
     if not problem:
         return
     if not override.strip():
@@ -264,10 +269,12 @@ def main():
     width = recs.get("id_width", 5)
     manifest = srlib.load_json(os.path.join(work, "manifest.json"), [])
 
-    if a.stage == "ta" and a.jobs == "all":
-        pilot_gate(work, a.pilot_override)
     if a.stage == "ta":
         jobs = ta_jobs(a, work, manifest, width)
+        pilot_batches = set(srlib.load_json(os.path.join(work, "pilot_batches.json"), []) or [])
+        outside_pilot = any(j["b"] not in pilot_batches for j in jobs["screen"] + jobs["adj"])
+        if a.jobs == "all" or (a.jobs != "pilot" and outside_pilot):
+            pilot_gate(work, a.pilot_override)
         keep = ["reviewer_intro", "rules_ta", "protocol_wrapper", "task_batch_read", "task_grep_subset",
                 "adjudicator_intro", "adjudicator_tiebreak", "qc_intro"]
         n_calls = 2 * len(jobs["screen"]) + len(jobs["adj"]) + len(jobs["recheck"])
@@ -310,12 +317,15 @@ def main():
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
         f.write(script)
+    if a.stage == "ta" and a.jobs == "pilot":
+        srlib.save_json(os.path.join(work, "pilot_batches.json"), [j["b"] for j in jobs["screen"]], indent=1)
 
     print(f"workflow script: {out}")
     print(f"jobs: {size}")
     print(f"planned agent calls: about {n_calls} (+ retries for missing decisions"
           + (", + one adjudication call per batch with conflicts)" if a.stage == "ta" and jobs["screen"] else ")"))
-    print(f"models: {json.dumps(cfg['models'])}  agentType: {conf['agentType'] or '(default workflow subagent)'}")
+    shown_models = {r: m or "session model (explicit override)" for r, m in cfg["models"].items()}
+    print(f"models: {json.dumps(shown_models)}  agentType: {conf['agentType'] or '(default workflow subagent)'}")
     over = srlib.model_overrides(cfg)
     if over:
         print(f"model overrides from screening_config.json (shipped default is sonnet): {json.dumps(over)}")
