@@ -559,7 +559,9 @@ the ref_slug is written `%3A`; `source_file_name(...)` in
 `scripts/evidence_rows.py` gives the name), then call `build(...)` with that
 file's bytes decoded as UTF-8, so the row and the checkpoint's replay hash the
 same text. Name the folder in `phases.E_claims.evidence_source_dir`, or set it
-to `null` when no row is source-bound. Write nothing else there. Never put its
+to `null` when no row is source-bound. When you write a source's file again,
+for example in a correction round, rebuild every row in the report that names
+that source, not only the rows you re-checked. Write nothing else there. Never put its
 files into another dispatch or name them as supporting files for the Codex audit
 wrapper. If the dispatch names no folder, say in the report that the checkpoint
 cannot render the source-bound rows.

@@ -421,7 +421,7 @@ Renderers are pure functions over persisted rows plus the explicit in-memory
 `session_sources` mapping supplied by their caller. Every source-bound row must
 have a matching `ref_slug → exact source text` entry and is replay-validated
 before anything is displayed; missing or drifting text fails closed. Empty-state
-rows need no source map. The CLI's `--source-dir` builds the mapping from the
+rows need no source map. For V1 rows, the CLI's `--source-dir` builds the mapping from the
 `<ref_slug>.txt` files (`:` written `%3A`) that source-bound rows name in one
 folder, read as exact UTF-8 bytes, and opens no other file (#933). The renderer
 does not accept or follow a source pointer,
@@ -455,7 +455,7 @@ external text.
 
 Validate persisted rows or render exactly one page. On both CLI commands, any
 source-bound row requires replay from an explicit `ref_slug → source text` JSON
-map:
+map, or from a folder of `<ref_slug>.txt` source texts (#933; V1 rows only):
 
 ```bash
 python scripts/evidence_rows.py validate evidence-rows.json \
@@ -463,11 +463,13 @@ python scripts/evidence_rows.py validate evidence-rows.json \
 
 python scripts/evidence_rows.py render evidence-rows.json \
   --format markdown --page 1 --page-size 25 \
-  --source-map session-sources.json
+  --source-dir paper_evidence_sources/stage-2.5
 ```
 
-`--source-map` is required whenever either CLI command receives a document with
-a source-bound state; it is the only extra file the command opens. Missing
+Exactly one of `--source-map` and `--source-dir` is required whenever either CLI
+command receives a document with a source-bound state. The command opens the
+JSON map, or only the folder's files that source-bound rows name, and no other
+file. Missing
 `evidence_rows` is a render failure by default. A positively identified pre-#656
 Integrity Report renders the exact fixed legacy label with exit 0 only when the
 caller adds `--allow-legacy-absence`; `validate` always rejects the absence.

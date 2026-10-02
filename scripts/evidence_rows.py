@@ -1927,36 +1927,40 @@ def source_file_name(source_key: str) -> str:
 def _source_dir(path: Path, rows: Sequence[Any]) -> dict[str, str]:
     """Read the source texts that the rows' source-bound entries name (#933).
 
-    Only ``<folder>/<source_file_name(key)>`` is read for each key a
-    source-bound row names; no other file in the folder is opened. Each file
-    is read as exact bytes and decoded as strict UTF-8, with no newline
-    translation, because replay hashes the exact text. A key with no file is
-    left out, so replay fails for it as for a missing source-map entry.
+    Covers V1 Phase E rows, keyed by ``ref_slug``; advisory rows keep their
+    own in-memory API. Only ``<folder>/<source_file_name(slug)>`` is read for
+    each slug a source-bound V1 row names; no other file in the folder is
+    opened. Each file is read as exact bytes and decoded as strict UTF-8,
+    with no newline translation, because replay hashes the exact text. A slug
+    with no file is left out, so replay fails for it as for a missing
+    source-map entry.
     """
-    if path.is_symlink() or not path.is_dir():
-        _input_fail(str(path), "is not a folder")
-    keys: set[str] = set()
+    try:
+        if path.is_symlink() or not path.is_dir():
+            _input_fail(str(path), "is not a folder")
+    except OSError as exc:
+        _input_fail(str(path), f"cannot inspect folder: {exc}")
+    slugs: set[str] = set()
     for row in rows:
-        if not isinstance(row, Mapping):
+        if not isinstance(row, Mapping) or row.get("schema_version") != SCHEMA_VERSION:
             continue
         source = row.get("source")
         excerpt = row.get("excerpt")
         if not isinstance(source, Mapping) or not isinstance(excerpt, Mapping):
             continue
-        advisory = row.get("schema_version") == ADVISORY_SCHEMA_VERSION
-        states = ADVISORY_SOURCE_BOUND_STATES if advisory else SOURCE_BOUND_STATES
-        key = source.get("artifact_id" if advisory else "ref_slug")
-        if excerpt.get("state") in states and isinstance(key, str) and _REF_SLUG_RE.fullmatch(key):
-            keys.add(key)
+        slug = source.get("ref_slug")
+        if (excerpt.get("state") in SOURCE_BOUND_STATES and isinstance(slug, str)
+                and _REF_SLUG_RE.fullmatch(slug)):
+            slugs.add(slug)
     result: dict[str, str] = {}
-    for key in sorted(keys):
-        target = path / source_file_name(key)
-        if not target.exists() and not target.is_symlink():
-            continue
-        if target.is_symlink() or not target.is_file():
-            _input_fail(str(target), "must be a regular file, not a link or folder")
+    for slug in sorted(slugs):
+        target = path / source_file_name(slug)
         try:
-            result[key] = target.read_bytes().decode("utf-8")
+            if not target.exists() and not target.is_symlink():
+                continue
+            if target.is_symlink() or not target.is_file():
+                _input_fail(str(target), "must be a regular file, not a link or folder")
+            result[slug] = target.read_bytes().decode("utf-8")
         except (OSError, UnicodeError) as exc:
             _input_fail(str(target), f"cannot read exact UTF-8 source text: {exc}")
     return result

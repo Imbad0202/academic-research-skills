@@ -1745,6 +1745,13 @@ def test_cli_source_dir_file_names_and_input_errors(
     assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 2
 
     assert _run_cli("validate", rows_path, "--source-dir", elsewhere).returncode == 2
+    long_row = er.build(_raw_row(input_fixture, source__ref_slug="s" + "x" * 279),
+                        sources["smith2024"])
+    long_rows = tmp_path / "long.json"
+    _write_json(long_rows, [long_row])
+    too_long = _run_cli("validate", long_rows, "--source-dir", folder)
+    assert too_long.returncode == 2, too_long.stderr
+    assert "Traceback" not in too_long.stderr
     assert _run_cli("validate", rows_path, "--source-dir", tmp_path / "absent").returncode == 2
     source_map = tmp_path / "map.json"
     _write_json(source_map, {"smith:2024": sources["smith2024"]})
