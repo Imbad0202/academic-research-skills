@@ -1758,6 +1758,20 @@ def test_cli_source_dir_file_names_and_input_errors(
     pair_result = _run_cli("render", pair_rows, "--format", "markdown", "--source-dir", pair)
     assert pair_result.returncode == 0, pair_result.stderr
 
+    # A malformed row reaches contract validation, not a traceback (#933 r3).
+    malformed = copy.deepcopy(lower)
+    malformed["excerpt"]["state"] = []
+    bad_slug = copy.deepcopy(lower)
+    bad_slug["source"]["ref_slug"] = ["smith2024"]
+    malformed_rows = tmp_path / "malformed.json"
+    _write_json(malformed_rows, [malformed, bad_slug])
+    for rows_case in ([malformed], [bad_slug]):
+        _write_json(malformed_rows, rows_case)
+        for command in (("validate",), ("render", "--format", "markdown")):
+            result = _run_cli(command[0], malformed_rows, *command[1:], "--source-dir", pair)
+            assert result.returncode == 1, result.stderr
+            assert "Traceback" not in result.stderr
+
     (folder / "smith%3A2024.txt").write_bytes(b"\xff\xfe")
     assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 2
     (folder / "smith%3A2024.txt").unlink()

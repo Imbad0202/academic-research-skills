@@ -1964,9 +1964,9 @@ def _source_dir(path: Path, rows: Sequence[Any]) -> dict[str, str]:
         excerpt = row.get("excerpt")
         if not isinstance(source, Mapping) or not isinstance(excerpt, Mapping):
             continue
-        slug = source.get("ref_slug")
-        if (excerpt.get("state") in SOURCE_BOUND_STATES and isinstance(slug, str)
-                and _REF_SLUG_RE.fullmatch(slug)):
+        slug, state = source.get("ref_slug"), excerpt.get("state")
+        if (isinstance(state, str) and state in SOURCE_BOUND_STATES
+                and isinstance(slug, str) and _REF_SLUG_RE.fullmatch(slug)):
             slugs.add(slug)
     result: dict[str, str] = {}
     for slug in sorted(slugs):
@@ -2060,7 +2060,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     _fail(f"rows[{index}]", "must be an object")
                 slug = row.get("source", {}).get("ref_slug") if isinstance(row.get("source"), dict) else None
                 state = row.get("excerpt", {}).get("state") if isinstance(row.get("excerpt"), dict) else None
-                if state in SOURCE_BOUND_STATES and slug not in sources:
+                slug = slug if isinstance(slug, str) else None
+                if isinstance(state, str) and state in SOURCE_BOUND_STATES and slug not in sources:
                     _fail(
                         f"rows[{index}].source.ref_slug",
                         f"source-bound row requires {slug!r} in --source-map or --source-dir "
