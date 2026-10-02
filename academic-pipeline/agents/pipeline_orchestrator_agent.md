@@ -182,7 +182,7 @@ SLIM checkpoints never reset; a MANDATORY checkpoint resets and stays MANDATORY 
 
 1. `state_tracker` stages a new `kind: boundary` entry for `reset_boundary[]` (Schema 9). Entry matches `shared/contracts/passport/reset_ledger_entry.schema.json` `#/$defs/boundary`.
 2. Orchestrator computes `hash` using the normative byte serialization defined in protocol doc §"The reset boundary protocol" step 2: JSON Canonical Form (RFC 8785) per entry, LF-separated, new entry appended with `hash` set to placeholder `"000000000000"`, SHA-256 first 12 lowercase hex. Write the computed hash back into the new entry, then append to the ledger. Follow the protocol doc exactly — any deviation breaks cross-session resume.
-3. If the checkpoint co-occurs with a MANDATORY user decision (e.g., Stage 3 review outcome, Stage 5 finalization format), set `pending_decision` on the new entry. Each option is an object with `value` (branch identifier), `next_stage` (stage to route to, or `null` to terminate), and optional `next_mode`. `next` on the boundary entry is still populated as a best-guess default but must NOT be used to auto-advance — on resume the orchestrator looks up the chosen `value` in `options[]` and routes via that option's `next_stage`/`next_mode` (see §Resume Mode obligations).
+3. If the checkpoint co-occurs with a MANDATORY user decision (e.g., Stage 3 review outcome, Stage 5 finalization format), the entry staged in step 1 carries `pending_decision`, set before step 2 hashes it (the protocol hashes the entry with all other fields populated). Each option is an object with `value` (branch identifier), `next_stage` (stage to route to, or `null` to terminate), and optional `next_mode`. `next` on the boundary entry is still populated as a best-guess default but must NOT be used to auto-advance — on resume the orchestrator looks up the chosen `value` in `options[]` and routes via that option's `next_stage`/`next_mode` (see §Resume Mode obligations).
 4. In the checkpoint notification, orchestrator emits — as a distinct block below the Decision Dashboard but above the continue/pause prompt:
 
    ```
@@ -919,7 +919,7 @@ The Cite-Time Provenance Finalizer, its strict terminal policies, and, under `AR
 
 - Anything the formatter's REFUSE rules (`formatter_agent.md` § Cite-Time Provenance Hard Gate) would refuse is a Stage 4.5 issue: list it at the checkpoint with what would clear it, and route it through the ordinary correction rounds.
 - The Integrity Check FAIL Loop does not let such an item continue with a warning (`../references/pipeline_state_machine.md` § Integrity Check FAIL Loop): it is handled (supply the original, revise the claim, acknowledge a read) or removed.
-- The Stage 5 passes still run. Stage 5 uses the pre-check's claim-audit results instead of judging again when the accepted draft and the audit's inputs are byte-identical and the recorded judge model and prompt version match; otherwise it runs the audit again.
+- The Stage 5 passes still run. Stage 5 uses the pre-check's valid claim-audit verdicts instead of judging again when the accepted draft and the audit's inputs are byte-identical and the recorded judge model and prompt version match; otherwise it runs the audit again. An `audit_tool_failure` is never reused: show it at the Stage 4.5 checkpoint with a retry there, and retry it at Stage 5.
 
 ---
 
