@@ -878,6 +878,7 @@ re-review, checkpoint-judgment, or handoff calls.
 - Each cross-model verdict is one of `VERIFIED` / `MISMATCH` / `NOT_FOUND` / `NOT_SEARCHED`. A `VERIFIED` with no supporting source URL/DOI, or a **successful (2xx)** response that carries no grounding evidence, is treated as `NOT_SEARCHED` (a non-2xx response is a transport error, not `NOT_SEARCHED` — see Graceful degradation)
 - Disagreements (Claude `VERIFIED` vs cross-model `NOT_FOUND` / `MISMATCH`) → `[CROSS-MODEL-DISAGREEMENT]` → prioritized for human review
 - `NOT_SEARCHED` / ungrounded results **never count as agreement** with a Claude `VERIFIED`: count them separately and surface them for re-run or human review — an ungrounded cross-model verdict carries no evidence and must not be laundered into a confirmation
+- Neither a disagreement nor a `NOT_SEARCHED` result changes the verdict on its own: each is shown at the checkpoint for the user to resolve, and becomes a Phase A-E issue only when that resolution confirms the reference or claim is wrong
 - Add "Cross-Model Verification Results" section to the integrity report (with the per-reference Tier and Source columns and a `NOT_SEARCHED` count)
 
 **When not enabled:** Standard single-model verification. No behavioral change.

@@ -15,7 +15,10 @@
    that answers either point is followed without asking (pipeline orchestrator
    § Standing Constraints (#927)).
 
-2. Review session history and compile the following:
+2. Review session history and compile the following (after a reset boundary the
+   session holds only the turns since the last resume: take earlier decisions and
+   words from the passport and run ledger, and say in the record which parts come
+   from those rather than the conversation):
    - User's initial instructions (verbatim quote)
    - Key decision points and user interventions at each stage
    - Direction correction moments and reasons

@@ -344,7 +344,7 @@ If Stage 2.5 or 4.5 corrections exceed 3 rounds without passing:
 2. User decides:
    - Manually handle unverifiable items
    - Remove unverifiable citations
-   - Continue to next stage (with "partially unverified" warning)
+   - Continue to next stage (with "partially unverified" warning), except for an item the Stage 5 formatter would refuse (`../agents/pipeline_orchestrator_agent.md` § Final-Output Pre-Check at Stage 4.5 (#929)), which is handled or removed
 
 ### Session Interruption
 
