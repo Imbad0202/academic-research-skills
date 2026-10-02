@@ -11,7 +11,7 @@ See `academic-paper-reviewer/SKILL.md` for review process details.
 
 ## Stage 3 -> 4 Transition: Revision Coaching
 
-The Journal-Fit Reviewer uses Socratic dialogue to guide the user in understanding review comments and planning revision strategy (max 8 rounds). User can say "just fix it for me" to skip.
+The Journal-Fit Reviewer uses Socratic dialogue to guide the user in understanding review comments and planning revision strategy (max 8 rounds). User can say "just fix it for me" to skip; when the user's answer already says how to revise, coaching is offered rather than started.
 
 ## Stage 3': Second Review (Verification Review)
 

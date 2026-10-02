@@ -146,7 +146,7 @@ Common journal requirements to check:
 - Adjust document structure to match journal template
 - Reformat references if journal uses a different style
 - Add required sections (COI, data availability, etc.)
-- Ensure word count compliance
+- Check word count against the journal's limit and report a mismatch; do not cut text
 
 ## Format Profile (#439) — declared layout, NOT-DECLARED → current default
 
@@ -554,9 +554,10 @@ Step 1: Confirm Output Requirements
       present = load + fail-closed validate per the Format Profile section before formatting)
   1.2 Determine which files to generate:
       ├── Markdown -> always generated (as base format)
-      ├── LaTeX -> if output_format includes LaTeX or Combined
+      ├── LaTeX -> generated from the Markdown when output_format includes LaTeX, PDF, or Combined;
+      │            the .tex file is delivered only when output_format includes LaTeX or Combined
       ├── DOCX -> generate via Pandoc when available; otherwise provide conversion instructions
-      ├── PDF instructions -> if output_format includes PDF or Combined
+      ├── PDF -> compiled from that LaTeX when output_format includes PDF or Combined
       └── Cover Letter -> if target_journal is specified
 
 Step 2: Content Pre-Processing
@@ -968,7 +969,7 @@ Quality gate not passed ->
 | Issue | Handling |
 |------|---------|
 | Draft citation formats chaotic | Best effort to unify conversion; mark "citation format requires manual verification" in Quality Checklist |
-| Draft missing Abstract / Limitations | Insert placeholder + remind user to complete |
+| Draft missing Abstract / Limitations | Do not write or insert one; report it to the caller (Step 2.4 / 2.6) |
 | Peer review verdict is Major Revision but formatting still requested | Execute formatting but mark "has not passed final review" in Output Package |
 
 ### Paper Type Adjustments

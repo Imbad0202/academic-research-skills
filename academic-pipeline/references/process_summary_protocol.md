@@ -199,13 +199,13 @@ For dimensions with no findings, state the null result in one sentence. Expand o
 
 - **Self-honesty**: AI must not minimize its own shortcomings. If the DA conceded too easily, say so.
 - **Not self-flagellation**: The purpose is transparency, not performative humility. Report facts with interpretation.
-- **Actionable**: Every finding should suggest what could be done differently next time (e.g., "Consider enabling cross-model verification for the next run", unless the user declined it or "The user might want to push back harder on DA concessions")
+- **Actionable**: Every finding should suggest what could be done differently next time (e.g., "Consider enabling cross-model verification for the next run" or "The user might want to push back harder on DA concessions"); never suggest a mechanism the user declined
 - **The irony is noted**: This self-reflection is itself produced by the same AI that may have been sycophantic during the pipeline. The user should read it with that awareness. This caveat must be stated in the report.
 
 ## Output Specifications
 
 - **Filename**: `paper_creation_process.md` (Chinese) / `paper_creation_process_en.md` (English)
-- **PDF**: `paper_creation_process_zh.pdf` / `paper_creation_process_en.pdf`
+- **PDF** (when asked for): `paper_creation_process_zh.pdf` / `paper_creation_process_en.pdf`
 - **LaTeX template**: `article` class, 12pt, A4, Times New Roman + Source Han Serif TC VF
 - **Includes table of contents**: `\tableofcontents`
 - **Header**: left = document title (italic), right = date
