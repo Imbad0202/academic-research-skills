@@ -554,9 +554,9 @@ replay, or a parallel row vocabulary.
 **Evidence source folder (#933).** When you run as a subagent, the checkpoint
 renders your rows in another session, so the source text travels as files. The
 dispatch names the folder. For each source-bound row, write the exact source
-text you hold to `<folder>/<ref_slug>.txt` with the file-writing tool (a `:` in
-the ref_slug is written `%3A`; `source_file_name(...)` in
-`scripts/evidence_rows.py` gives the name), then call `build(...)` with that
+text you hold into the folder, under the name that `source_file_name(ref_slug)` in
+`scripts/evidence_rows.py` gives (it keeps names distinct on case-insensitive and
+Windows file systems), with the file-writing tool, then call `build(...)` with that
 file's bytes decoded as UTF-8, so the row and the checkpoint's replay hash the
 same text. Name the folder in `phases.E_claims.evidence_source_dir`, or set it
 to `null` when no row is source-bound. When you write a source's file again,

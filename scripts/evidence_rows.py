@@ -1913,15 +1913,31 @@ def _source_map(path: Path | None) -> dict[str, str]:
     return result
 
 
+_WINDOWS_RESERVED_NAMES = frozenset(
+    {"con", "prn", "aux", "nul"}
+    | {f"{device}{digit}" for device in ("com", "lpt") for digit in "123456789"}
+)
+
+
 def source_file_name(source_key: str) -> str:
     """File name of one source's text inside a ``--source-dir`` folder (#933).
 
-    ``<ref_slug>.txt``, with ``:`` written as ``%3A`` so the name is valid on
-    Windows; ``%`` cannot occur in a ref_slug, so the mapping is one-to-one.
+    The ref_slug with ``:`` written ``%3A`` (invalid in Windows names), each
+    capital letter written ``^`` plus its lowercase form (so ``Smith2024`` and
+    ``smith2024`` stay apart on case-insensitive file systems), and ``~``
+    after a name Windows reserves (``con``, ``nul``, ``com1``, ...), then
+    ``.txt``. ``%``, ``^``, and ``~`` cannot occur in a ref_slug, so distinct
+    slugs always get distinct names.
     """
     if not isinstance(source_key, str) or _REF_SLUG_RE.fullmatch(source_key) is None:
         _input_fail("source dir", f"invalid ref_slug {source_key!r}")
-    return source_key.replace(":", "%3A") + ".txt"
+    name = "".join(
+        "%3A" if char == ":" else f"^{char.lower()}" if "A" <= char <= "Z" else char
+        for char in source_key
+    )
+    if name in _WINDOWS_RESERVED_NAMES:
+        name += "~"
+    return name + ".txt"
 
 
 def _source_dir(path: Path, rows: Sequence[Any]) -> dict[str, str]:
@@ -1995,7 +2011,7 @@ def _parser() -> argparse.ArgumentParser:
         "--source-dir",
         type=Path,
         help=(
-            "folder of <ref_slug>.txt source texts (':' written as %%3A) used only "
+            "folder of source texts named by source_file_name(ref_slug), used only "
             "for source replay; only the files the source-bound rows name are read"
         ),
     )

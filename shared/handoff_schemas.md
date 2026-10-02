@@ -324,7 +324,7 @@ phases: {
       semantic_extraction_coverage: "not_machine_detectable"
     },
     evidence_rows: [EvidenceRow],
-    evidence_source_dir: string | null, // #933: folder of <ref_slug>.txt source texts; null when no row is source-bound
+    evidence_source_dir: string | null, // #933: folder of per-source text files; null when no row is source-bound
     claim_strength_drift_findings: {
       schema_version: "claim-strength-drift-findings/1.0",
       artifact_path: string,
@@ -378,8 +378,8 @@ historical verdict or gate result. Current producers may never use the flag.
 
 The full array travels inside the existing Integrity Report handoff. Rendering
 requires the explicit source texts to replay-validate every source-bound
-persisted row. The producer writes them as `<ref_slug>.txt` files (`:` written
-`%3A`) into the folder the orchestrator names and records it in
+persisted row. The producer writes them as files named by
+`source_file_name(ref_slug)` into the folder the orchestrator names and records it in
 `evidence_source_dir`, which is `null` when no row is source-bound; the
 checkpoint reads them with `scripts/evidence_rows.py --source-dir`, so a
 producer run as a subagent can still be rendered (#933); the default and maximum page size are 25,

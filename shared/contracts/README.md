@@ -422,7 +422,7 @@ Renderers are pure functions over persisted rows plus the explicit in-memory
 have a matching `ref_slug → exact source text` entry and is replay-validated
 before anything is displayed; missing or drifting text fails closed. Empty-state
 rows need no source map. For V1 rows, the CLI's `--source-dir` builds the mapping from the
-`<ref_slug>.txt` files (`:` written `%3A`) that source-bound rows name in one
+files named by `source_file_name(ref_slug)` that source-bound rows name in one
 folder, read as exact UTF-8 bytes, and opens no other file (#933). The renderer
 does not accept or follow a source pointer,
 URL, DOI, retrieval client, model, cache, or read ledger. Integrity validation
@@ -455,7 +455,7 @@ external text.
 
 Validate persisted rows or render exactly one page. On both CLI commands, any
 source-bound row requires replay from an explicit `ref_slug → source text` JSON
-map, or from a folder of `<ref_slug>.txt` source texts (#933; V1 rows only):
+map, or from a folder of per-source text files (#933; V1 rows only):
 
 ```bash
 python scripts/evidence_rows.py validate evidence-rows.json \
