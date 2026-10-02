@@ -51,7 +51,7 @@ derive or refresh it from a clock, path, artifact contents, or transcript.
 **Contract:** full spec in [`../references/passport_as_reset_boundary.md`](../references/passport_as_reset_boundary.md) §"`resume_from_passport` mode contract".
 
 **Orchestrator obligations:**
-1. **Acquire passport lock.** Before reading the ledger or checking for a prior consuming entry, acquire an exclusive advisory lock on the adjacent stable `.<passport-basename>.lock` sidecar (see `references/passport_as_reset_boundary.md` §"Concurrency model"). Every passport writer uses this same sidecar; never lock the replaceable passport inode. Ask steps 7-8 first from an unlocked read, then acquire the lock, re-read, repeat the no-prior-resume check, and append; release after the append is durable on disk (protocol doc, Iron rule 9).
+1. **Acquire passport lock.** Before the authoritative read of the ledger and the check for a prior consuming entry, acquire an exclusive advisory lock on the adjacent stable `.<passport-basename>.lock` sidecar (see `references/passport_as_reset_boundary.md` §"Concurrency model"). Every passport writer uses this same sidecar; never lock the replaceable passport inode. Ask steps 7-8 first from an unlocked read, then acquire the lock, re-read, repeat the no-prior-resume check, and append; release after the append is durable on disk (protocol doc, Iron rule 9).
 2. Parse `<hash>` from user input. Validate `^[0-9a-f]{12}$`.
 3. Locate passport file: prefer explicit path in user input; else look in `./passports/` or `./material_passport*.yaml` relative to CWD; else ask the user for the path.
 4. Load `reset_boundary[]`. Find the entry with `kind: boundary` and matching `hash`. No match → hard error: "Passport hash `<hash>` not found in `<path>`. Cannot resume."
@@ -915,11 +915,11 @@ The Stage 3' verifier does not see the author's choices (#576), so a `must_fix` 
 
 ## Final-Output Pre-Check at Stage 4.5 (#929)
 
-The Cite-Time Provenance Finalizer, its strict terminal policies, and, under `ARS_CLAIM_AUDIT=1`, the claim-faithfulness audit (§ 3.6) produce markers that `formatter_agent` refuses at Stage 5. That is after the Stage 5 entry gate, and Stage 5 cannot roll back (`../references/pipeline_state_machine.md`). In pipeline mode, therefore, run the finalizer pass and the claim audit on the accepted draft once Stage 4.5's integrity verification returns, before its checkpoint.
+The Cite-Time Provenance Finalizer, its strict terminal policies, and, under `ARS_CLAIM_AUDIT=1`, the claim-faithfulness audit (§ 3.6) produce markers that `formatter_agent` refuses at Stage 5. That is after the Stage 5 entry gate, and Stage 5 cannot roll back (`../references/pipeline_state_machine.md`). In pipeline mode, therefore, run the finalizer pass and the claim audit on a working copy of the accepted draft once Stage 4.5's integrity verification returns, before its checkpoint. Read the copy's markers for the checkpoint list, then discard it: the accepted draft's bytes stay unchanged, so the revision-evidence and E6 bindings to them still hold.
 
 - Anything the formatter's REFUSE rules (`formatter_agent.md` § Cite-Time Provenance Hard Gate) would refuse is a Stage 4.5 issue: list it at the checkpoint with what would clear it, and route it through the ordinary correction rounds.
 - The Integrity Check FAIL Loop does not let such an item continue with a warning (`../references/pipeline_state_machine.md` § Integrity Check FAIL Loop): it is handled (supply the original, revise the claim, acknowledge a read) or removed.
-- The Stage 5 passes still run; the claim audit's own cache (`claim_ref_alignment_audit_agent.md` Step 3) serves unchanged citations, so later passes judge only what changed.
+- The Stage 5 passes still run. Stage 5 uses the pre-check's claim-audit results instead of judging again when the accepted draft and the audit's inputs are byte-identical and the recorded judge model and prompt version match; otherwise it runs the audit again.
 
 ---
 
