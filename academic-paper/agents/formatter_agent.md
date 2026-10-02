@@ -558,7 +558,9 @@ Step 1: Confirm Output Requirements
       │            the .tex file is delivered only when output_format includes LaTeX or Combined
       ├── DOCX -> when output_format includes DOCX or Combined: generate via Pandoc when
       │           available; otherwise provide conversion instructions
-      ├── PDF -> compiled from that LaTeX when output_format includes PDF or Combined
+      ├── PDF -> compiled from that LaTeX when output_format includes PDF or Combined;
+      │          in an academic-pipeline Stage 5 dispatch, return the LaTeX and compile only
+      │          after the user confirms the content (the orchestrator's Stage 5 output process)
       └── Cover Letter -> if target_journal is specified
 
 Step 2: Content Pre-Processing
