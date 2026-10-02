@@ -1764,7 +1764,6 @@ def test_cli_source_dir_file_names_and_input_errors(
     bad_slug = copy.deepcopy(lower)
     bad_slug["source"]["ref_slug"] = ["smith2024"]
     malformed_rows = tmp_path / "malformed.json"
-    _write_json(malformed_rows, [malformed, bad_slug])
     for rows_case in ([malformed], [bad_slug]):
         _write_json(malformed_rows, rows_case)
         for command in (("validate",), ("render", "--format", "markdown")):
