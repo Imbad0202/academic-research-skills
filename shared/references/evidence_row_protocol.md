@@ -87,6 +87,11 @@ states use `not_used`. Renderers never read or write cache entries.
 
 `render_markdown` and `render_html` require an explicit in-memory
 `ref_slug -> exact session-held source text` map for every source-bound row.
+The CLI builds that map from a `--source-map` JSON file or from `--source-dir`,
+a folder holding one `<ref_slug>.txt` file per source (`:` written `%3A`), of
+which it reads only the files the source-bound rows name, as exact UTF-8 bytes
+(#933). The Phase E integrity agent writes that folder so a checkpoint in
+another session can replay its rows.
 Before display they replay `verified_exact_match`, `agent_extracted`, and
 `unconfirmed_anchor` against that text. Missing replay text is a render failure:
 a self-consistent row plus unkeyed digests cannot prove where writer-controlled

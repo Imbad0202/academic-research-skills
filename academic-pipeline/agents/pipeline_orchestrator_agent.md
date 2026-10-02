@@ -390,8 +390,12 @@ row MUST validate against
 `surface: phase_e_claim_verification`.
 
 Use `scripts/evidence_rows.py` to validate, paginate, and render the persisted
-rows, passing the explicit in-memory `ref_slug -> exact session-held source
-text` map for source-bound replay. The default and maximum page size are 25. At the initial checkpoint render
+rows, with `--source-dir` set to the report's `phases.E_claims.evidence_source_dir`
+for source-bound replay. The integrity agent may run as a subagent, so name that
+folder in each Stage 2.5 and 4.5 integrity dispatch (#933): beside the passport as
+`<passport-stem>_evidence_sources/stage-<2.5|4.5>/`, or in run-local storage
+outside the repository when the run has no passport file. Send its files with no
+other dispatch or audit. The default and maximum page size are 25. At the initial checkpoint render
 page 1 unless the user requested another valid page; on each interaction render
 only the requested page and provide deterministic previous/next and explicit-
 page navigation. Never concatenate all pages into one checkpoint output. There
@@ -401,8 +405,8 @@ a single source cell.
 
 This step performs no display-time retrieval, ambient
 filesystem/network/API/model call, extraction, state derivation, or cache
-lookup. It replay-validates source-bound rows against only the explicit source
-map; missing replay text is a render failure. Replay may recompute the strict
+lookup. It replay-validates source-bound rows against only the files they name
+in that folder; a missing or changed file is a render failure. Replay may recompute the strict
 once-decode and hashes, but it never decodes stored display text again or
 changes the row. Do not ask the orchestrator model to reconstruct rows or
 manually escape external text; insert the runtime renderer's output verbatim as

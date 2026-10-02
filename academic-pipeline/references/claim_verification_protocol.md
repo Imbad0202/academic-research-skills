@@ -56,7 +56,7 @@ consumer may turn a clean report into “all substantive claims extracted.”
 
 ## E2: Source Tracing
 - For each SELECTED claim (Mode 1: the #549 risk-stratified selection — tiers `HIGH-IMPACT` / `RANDOM` / `TOP-UP`; Mode 2: every claim in the registry), locate the specific passage in the cited source that supports it
-- Use WebSearch + DOI lookup to find the original source during the producer's verification work. Any retrieved text must become explicit session-held source material before evidence-row construction; the evidence-row builder and report renderer never follow a URL, DOI, `source_pointer`, or path to fill a gap
+- Use WebSearch + DOI lookup to find the original source during the producer's verification work. Any retrieved text must become explicit session-held source material, written to the evidence source folder (#933), before evidence-row construction; the evidence-row builder and report renderer never follow a URL, DOI, `source_pointer`, or path to fill a gap
 - If source is behind paywall, note as UNVERIFIABLE_ACCESS
 
 ## E3: Cross-Referencing
@@ -247,8 +247,11 @@ navigation; never concatenate all pages into one checkpoint output. There is no
 `--all` mode and no total row cap. Successive valid page requests preserve row
 order and can reach each persisted `row_id` exactly once.
 
-The renderer requires the explicit in-memory session source map and
-replay-validates every source-bound persisted row before display. It performs no
+The renderer requires the explicit source texts and replay-validates every
+source-bound persisted row before display. At the pipeline checkpoint they come
+from the evidence source folder the report names in
+`phases.E_claims.evidence_source_dir`, read with `--source-dir`, because the
+integrity agent may have run as a subagent (#933). It performs no
 display-time retrieval, ambient filesystem/network/API/model call, extraction,
 state derivation, or cache lookup. Replay may recompute the strict once-decode
 and hashes, but never decodes stored display text again or changes the row. The

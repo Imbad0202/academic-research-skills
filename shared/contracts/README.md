@@ -421,7 +421,10 @@ Renderers are pure functions over persisted rows plus the explicit in-memory
 `session_sources` mapping supplied by their caller. Every source-bound row must
 have a matching `ref_slug → exact source text` entry and is replay-validated
 before anything is displayed; missing or drifting text fails closed. Empty-state
-rows need no source map. The renderer does not accept or follow a source pointer,
+rows need no source map. The CLI's `--source-dir` builds the mapping from the
+`<ref_slug>.txt` files (`:` written `%3A`) that source-bound rows name in one
+folder, read as exact UTF-8 bytes, and opens no other file (#933). The renderer
+does not accept or follow a source pointer,
 URL, DOI, retrieval client, model, cache, or read ledger. Integrity validation
 checks the stored encoded/decoded-anchor relationship; display does not decode or
 alter the stored anchor again. Markdown and HTML external strings are rendered

@@ -1684,6 +1684,74 @@ def test_cli_source_bound_validate_and_render_require_exact_source_map(
         assert "The estimate was 15.2%" in correct.stdout.replace("\\", "")
 
 
+def test_cli_source_dir_replays_exact_file_bytes(
+    tmp_path: Path,
+    input_fixture: dict[str, Any],
+    sources: dict[str, str],
+) -> None:
+    """#933: a folder of <ref_slug>.txt files replaces the in-memory map."""
+    _runtime_required()
+    text = "Front matter.\r\n" + sources["smith2024"]
+    row = er.build(_raw_row(input_fixture), text)
+    rows_path = tmp_path / "rows.json"
+    _write_json(rows_path, [row])
+    folder = tmp_path / "sources"
+    folder.mkdir()
+    (folder / "smith2024.txt").write_bytes(text.encode("utf-8"))
+    (folder / "unrelated.txt").write_bytes(b"\xff not utf-8, never opened")
+
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 0
+    for output_format in ("markdown", "html"):
+        result = _run_cli("render", rows_path, "--format", output_format,
+                          "--source-dir", folder)
+        assert result.returncode == 0, result.stderr
+        assert "The estimate was 15.2%" in result.stdout.replace("\\", "")
+
+    # Newline translation would change the hashed text, so replay must fail.
+    (folder / "smith2024.txt").write_bytes(text.replace("\r\n", "\n").encode("utf-8"))
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 1
+    (folder / "smith2024.txt").unlink()
+    missing = _run_cli("render", rows_path, "--format", "markdown", "--source-dir", folder)
+    assert missing.returncode == 1
+    assert "'smith2024'" in missing.stderr
+
+
+def test_cli_source_dir_file_names_and_input_errors(
+    tmp_path: Path,
+    input_fixture: dict[str, Any],
+    sources: dict[str, str],
+) -> None:
+    _runtime_required()
+    assert er.source_file_name("smith2024") == "smith2024.txt"
+    assert er.source_file_name("doi:10-1000_x") == "doi%3A10-1000_x.txt"
+    for bad in ("../x", "a/b", "", ".hidden"):
+        with pytest.raises(er.EvidenceRowInputError):
+            er.source_file_name(bad)
+
+    row = er.build(_raw_row(input_fixture, source__ref_slug="smith:2024"), sources["smith2024"])
+    rows_path = tmp_path / "rows.json"
+    _write_json(rows_path, [row])
+    folder = tmp_path / "sources"
+    folder.mkdir()
+    (folder / "smith%3A2024.txt").write_bytes(sources["smith2024"].encode("utf-8"))
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 0
+
+    (folder / "smith%3A2024.txt").write_bytes(b"\xff\xfe")
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 2
+    (folder / "smith%3A2024.txt").unlink()
+    elsewhere = tmp_path / "elsewhere.txt"
+    elsewhere.write_bytes(sources["smith2024"].encode("utf-8"))
+    (folder / "smith%3A2024.txt").symlink_to(elsewhere)
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 2
+
+    assert _run_cli("validate", rows_path, "--source-dir", elsewhere).returncode == 2
+    assert _run_cli("validate", rows_path, "--source-dir", tmp_path / "absent").returncode == 2
+    source_map = tmp_path / "map.json"
+    _write_json(source_map, {"smith:2024": sources["smith2024"]})
+    both = _run_cli("validate", rows_path, "--source-map", source_map, "--source-dir", folder)
+    assert both.returncode == 2
+
+
 def test_cli_fully_rebound_forged_row_only_renders_with_matching_attacker_source(
     tmp_path: Path,
     input_fixture: dict[str, Any],

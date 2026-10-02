@@ -519,7 +519,7 @@ stays `not_machine_detectable`.
 ```
 For each selected claim (Mode 1: the #549 stratified selection — HIGH-IMPACT / RANDOM / TOP-UP tiers; Mode 2: the whole registry):
 1. Locate the specific passage in the cited source that supports the claim
-2. Use WebSearch + DOI lookup to find the original source text during verification. Before building an evidence row, hold that exact source text explicitly in the current session; the builder and renderer never follow a URL, DOI, source_pointer, or path
+2. Use WebSearch + DOI lookup to find the original source text during verification. Before building an evidence row, hold that exact source text explicitly in the current session and write it to the evidence source folder (E3.1); the builder and renderer never follow a URL, DOI, source_pointer, or path
 3. If source is behind paywall, note as UNVERIFIABLE_ACCESS
 
 Priority:
@@ -550,6 +550,19 @@ one persisted row against
 `validate(...)` APIs with the exact session-held source text (or the explicit
 absence/failure state). Never hand-author hashes, excerpt provenance, cache
 replay, or a parallel row vocabulary.
+
+**Evidence source folder (#933).** When you run as a subagent, the checkpoint
+renders your rows in another session, so the source text travels as files. The
+dispatch names the folder. For each source-bound row, write the exact source
+text you hold to `<folder>/<ref_slug>.txt` with the file-writing tool (a `:` in
+the ref_slug is written `%3A`; `source_file_name(...)` in
+`scripts/evidence_rows.py` gives the name), then call `build(...)` with that
+file's bytes decoded as UTF-8, so the row and the checkpoint's replay hash the
+same text. Name the folder in `phases.E_claims.evidence_source_dir`, or set it
+to `null` when no row is source-bound. Write nothing else there. Never put its
+files into another dispatch or name them as supporting files for the Codex audit
+wrapper. If the dispatch names no folder, say in the report that the checkpoint
+cannot render the source-bound rows.
 
 Persist one row per `(claim_id, ref_slug, anchor)` tuple in
 `phases.E_claims.evidence_rows[]`. A claim citing multiple sources emits
@@ -746,17 +759,19 @@ checkpoint closed until E1/E1.1 is rerun.
 
 **Persisted Phase E evidence rows (#656)** — retain the complete ordered
 `phases.E_claims.evidence_rows[]` array with `scripts/evidence_rows.py` only.
-Use its validated persisted rows, the explicit in-memory session source map,
-and `paginate(...)` / `render_markdown(...)` APIs. Every source-bound row must replay
-against that map before display. The default and maximum page size are 25. Render only the requested page
+Use its validated persisted rows, the source texts in the evidence source
+folder (E3.1), and `paginate(...)` / `render_markdown(...)` APIs. Every source-bound
+row must replay against those texts before display. The default and maximum page size are 25. Render only the requested page
 with deterministic previous/next or explicit-page navigation; never concatenate
 all pages into one report view. There is no total row cap and no `--all` mode.
 Do not manually reproduce the table or ask a model to reformat it.
 
 The report-rendering step performs no display-time retrieval,
 ambient filesystem/network/API/model call, extraction, state derivation, or
-cache lookup. Replay may recompute the strict once-decode and hashes, but it
-never decodes stored display text again or changes the row. If a consumed report
+cache lookup; reading the files the rows name in the evidence source folder is
+the explicit source, not ambient access. Replay may recompute the strict
+once-decode and hashes, but it never decodes stored display text again or
+changes the row. If a consumed report
 is positively identified as pre-#656 and lacks the field, the consumer may use
 explicit `--allow-legacy-absence` and display
 `LEGACY — EVIDENCE ROWS UNAVAILABLE`; missing shape alone is not legacy proof,

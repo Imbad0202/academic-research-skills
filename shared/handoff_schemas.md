@@ -324,6 +324,7 @@ phases: {
       semantic_extraction_coverage: "not_machine_detectable"
     },
     evidence_rows: [EvidenceRow],
+    evidence_source_dir: string | null, // #933: folder of <ref_slug>.txt source texts; null when no row is source-bound
     claim_strength_drift_findings: {
       schema_version: "claim-strength-drift-findings/1.0",
       artifact_path: string,
@@ -376,8 +377,12 @@ check, MUST NOT manufacture an excerpt, and does not retroactively alter the
 historical verdict or gate result. Current producers may never use the flag.
 
 The full array travels inside the existing Integrity Report handoff. Rendering
-requires the explicit in-memory session source map to replay-validate every
-source-bound persisted row; the default and maximum page size are 25,
+requires the explicit source texts to replay-validate every source-bound
+persisted row. The producer writes them as `<ref_slug>.txt` files (`:` written
+`%3A`) into the folder the orchestrator names and records it in
+`evidence_source_dir`, which is `null` when no row is source-bound; the
+checkpoint reads them with `scripts/evidence_rows.py --source-dir`, so a
+producer run as a subagent can still be rendered (#933); the default and maximum page size are 25,
 there is no `--all` mode, and a checkpoint request renders only its requested
 page with deterministic page navigation. There is no total row cap. Rendering
 performs no display-time retrieval, ambient filesystem/network/API/model call,

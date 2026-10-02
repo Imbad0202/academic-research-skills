@@ -4,7 +4,8 @@
 The module is deliberately standard-library-only and hermetic.  Builders may
 inspect only the ``session_source_or_none`` string explicitly supplied by their
 caller.  Validators optionally replay against that same explicit string.
-Renderers require an explicit in-memory source map to replay source-bound rows;
+Renderers require an explicit source map (in memory, a JSON file, or the
+named files of a ``--source-dir`` folder, #933) to replay source-bound rows;
 they never retrieve, re-extract, invoke a model, consult a cache, follow a row
 pointer, or read/write the human-read ledger.  Integrity validation checks that
 the persisted encoded and decoded anchors agree but never alters provenance.
@@ -1912,6 +1913,55 @@ def _source_map(path: Path | None) -> dict[str, str]:
     return result
 
 
+def source_file_name(source_key: str) -> str:
+    """File name of one source's text inside a ``--source-dir`` folder (#933).
+
+    ``<ref_slug>.txt``, with ``:`` written as ``%3A`` so the name is valid on
+    Windows; ``%`` cannot occur in a ref_slug, so the mapping is one-to-one.
+    """
+    if not isinstance(source_key, str) or _REF_SLUG_RE.fullmatch(source_key) is None:
+        _input_fail("source dir", f"invalid ref_slug {source_key!r}")
+    return source_key.replace(":", "%3A") + ".txt"
+
+
+def _source_dir(path: Path, rows: Sequence[Any]) -> dict[str, str]:
+    """Read the source texts that the rows' source-bound entries name (#933).
+
+    Only ``<folder>/<source_file_name(key)>`` is read for each key a
+    source-bound row names; no other file in the folder is opened. Each file
+    is read as exact bytes and decoded as strict UTF-8, with no newline
+    translation, because replay hashes the exact text. A key with no file is
+    left out, so replay fails for it as for a missing source-map entry.
+    """
+    if path.is_symlink() or not path.is_dir():
+        _input_fail(str(path), "is not a folder")
+    keys: set[str] = set()
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        source = row.get("source")
+        excerpt = row.get("excerpt")
+        if not isinstance(source, Mapping) or not isinstance(excerpt, Mapping):
+            continue
+        advisory = row.get("schema_version") == ADVISORY_SCHEMA_VERSION
+        states = ADVISORY_SOURCE_BOUND_STATES if advisory else SOURCE_BOUND_STATES
+        key = source.get("artifact_id" if advisory else "ref_slug")
+        if excerpt.get("state") in states and isinstance(key, str) and _REF_SLUG_RE.fullmatch(key):
+            keys.add(key)
+    result: dict[str, str] = {}
+    for key in sorted(keys):
+        target = path / source_file_name(key)
+        if not target.exists() and not target.is_symlink():
+            continue
+        if target.is_symlink() or not target.is_file():
+            _input_fail(str(target), "must be a regular file, not a link or folder")
+        try:
+            result[key] = target.read_bytes().decode("utf-8")
+        except (OSError, UnicodeError) as exc:
+            _input_fail(str(target), f"cannot read exact UTF-8 source text: {exc}")
+    return result
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1921,7 +1971,9 @@ def _parser() -> argparse.ArgumentParser:
         allow_abbrev=False,
     )
     validate_parser.add_argument("rows", type=Path)
-    validate_parser.add_argument("--source-map", type=Path)
+    validate_sources = validate_parser.add_mutually_exclusive_group()
+    validate_sources.add_argument("--source-map", type=Path)
+    validate_sources.add_argument("--source-dir", type=Path)
     render_parser = sub.add_parser(
         "render",
         help="render one persisted evidence-row page",
@@ -1929,10 +1981,19 @@ def _parser() -> argparse.ArgumentParser:
     )
     render_parser.add_argument("rows", type=Path)
     render_parser.add_argument("--format", choices=("markdown", "html"), required=True)
-    render_parser.add_argument(
+    render_sources = render_parser.add_mutually_exclusive_group()
+    render_sources.add_argument(
         "--source-map",
         type=Path,
         help="explicit ref_slug-to-source-text JSON used only for source replay",
+    )
+    render_sources.add_argument(
+        "--source-dir",
+        type=Path,
+        help=(
+            "folder of <ref_slug>.txt source texts (':' written as %%3A) used only "
+            "for source replay; only the files the source-bound rows name are read"
+        ),
     )
     render_parser.add_argument(
         "--allow-legacy-absence",
@@ -1967,8 +2028,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     + "</p>\n"
                 )
             return 0
+        sources = (
+            _source_dir(args.source_dir, rows)
+            if args.source_dir is not None
+            else _source_map(args.source_map)
+        )
         if args.command == "validate":
-            sources = _source_map(args.source_map)
             seen: list[dict[str, Any]] = []
             for index, row in enumerate(rows):
                 if not isinstance(row, Mapping):
@@ -1978,13 +2043,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if state in SOURCE_BOUND_STATES and slug not in sources:
                     _fail(
                         f"rows[{index}].source.ref_slug",
-                        f"source-bound row requires {slug!r} in --source-map for CLI trust establishment",
+                        f"source-bound row requires {slug!r} in --source-map or --source-dir "
+                        "for CLI trust establishment",
                     )
                 seen.append(validate(row, sources.get(slug)))
             paginate(seen)
             print(f"PASS: {len(seen)} evidence row(s)")
             return 0
-        sources = _source_map(args.source_map)
         if args.format == "markdown":
             sys.stdout.write(
                 render_markdown(
@@ -2034,6 +2099,7 @@ __all__ = [
     "paginate",
     "render_html",
     "render_markdown",
+    "source_file_name",
     "strict_percent_decode",
     "validate",
 ]
