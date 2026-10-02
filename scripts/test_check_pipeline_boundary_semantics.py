@@ -200,7 +200,7 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             "Before delivering the process record, prompt the user to close the pipeline",
         )
         sm_mut = self.sm.replace(
-            "After delivering the Process Record (MD + PDF per the user's language choice), the orchestrator prompts for a terminal acknowledgement",
+            "After delivering the Process Record (MD, plus PDF when the user asked for it, per the user's language choice), the orchestrator prompts for a terminal acknowledgement",
             "Before delivering the Process Record, the orchestrator prompts for a terminal acknowledgement",
         )
         for kw, mut, orig in (("orch", orch_mut, self.orch),
@@ -493,7 +493,7 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         mutated = self.sm.replace(
             "the finalization-format decision: citation style (APA 7.0 / Chicago / IEEE, ...)",
             "the finalization-format decisions: citation style and whether to generate LaTeX (APA 7.0 / Chicago / IEEE, ...)",
-        ).replace('the "Need LaTeX?" question (Step 3) and ', "")
+        ).replace('the question of which files to produce (Step 2) and ', "")
         self.assertNotEqual(mutated, self.sm)
         errors = self._check(sm=mutated)
         self.assertTrue(

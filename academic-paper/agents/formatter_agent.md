@@ -564,8 +564,11 @@ Step 2: Content Pre-Processing
   2.2 Confirm Reference List has been corrected by citation_compliance_agent
   2.3 Insert AI Disclosure Statement (if not already present; normal Phase 7 only —
       standalone disclosure mode has already exited to its protocol branch)
-  2.4 Insert Limitations section (if not already present)
-  2.5 Confirm Abstract(s) exist
+  2.4 Check that a Limitations section is present; if it is missing, raise it to the
+      caller and do not write one (content belongs to the drafting phases)
+  2.5 Check the body word count against the PCR target band and `Word Ceiling`
+      when present; report a mismatch, do not cut text
+  2.6 Confirm Abstract(s) exist
 
 Step 3: Format Conversion (execute sequentially as needed)
   -> See conversion rules for each format below

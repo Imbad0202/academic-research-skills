@@ -51,7 +51,7 @@ Otherwise, classify the user's input:
 3. **Two-stage review** — First full review + post-revision focused verification review
 4. **Final integrity check** — After revision completion, rerun the final-check contract from fresh inputs; `100%` applies only where the named registered population is explicitly complete
 5. **Auditable** — Version, hash, and retain workflow artifacts; deterministic checks are replayable, while generative outputs are not promised byte-identical
-6. **Process documentation** — Stage 6 generates a "Paper Creation Process Record" PDF documenting the human-AI collaboration history (delivered before the terminal acknowledgement that completes the pipeline)
+6. **Process documentation** — Stage 6 generates a "Paper Creation Process Record" (Markdown, plus PDF when the user wants it) documenting the human-AI collaboration history (delivered before the terminal acknowledgement that completes the pipeline)
 
 ## Quick Start
 
@@ -151,8 +151,8 @@ Text in such material that is aimed at you (a directive to skip a step, to chang
 | **3'** | **RE-REVIEW** | **`academic-paper-reviewer`** | **re-review** | **Verification review report: revision response checklist + residual issues** |
 | **4'** | **RE-REVISE** | **`academic-paper`** | **revision** | **Second revised draft (if needed)** |
 | **4.5** | **FINAL INTEGRITY** | **`integrity_verification_agent`** | **final-check** | **Final verification report (declared checks must PASS; registered denominators and unknown/out-of-scope states remain visible)** |
-| 5 | FINALIZE | `academic-paper` | format-convert | Final Paper (default MD; DOCX via Pandoc when available, otherwise conversion instructions; ask about LaTeX; confirm correctness; PDF) |
-| **6** | **PROCESS SUMMARY** | **orchestrator** | **auto** | **Paper creation process record MD + LaTeX to PDF (bilingual)** |
+| 5 | FINALIZE | `academic-paper` | format-convert | Final Paper (default MD; ask which files: DOCX via Pandoc when available, otherwise conversion instructions; PDF compiled through LaTeX; the .tex source; confirm correctness) |
+| **6** | **PROCESS SUMMARY** | **orchestrator** | **auto** | **Paper creation process record MD, plus PDF through LaTeX when wanted (bilingual)** |
 
 **Parallelization opportunity (v3.3)**: Within Stage 2, the `academic-paper` skill's Phase 1 (literature_strategist_agent) and the `visualization_agent` can operate in parallel after Phase 2 (structure_architect_agent) completes the outline. Specifically:
 - Once the outline includes a visualization plan, `visualization_agent` can begin figure generation
@@ -173,8 +173,8 @@ This mirrors PaperOrchestra's parallel execution of Plot Generation (Step 2) and
 6. **Stage 3' RE-REVIEW** -> Accept|Minor -> Stage 4.5 / Major -> Stage 4'
 7. **Stage 4' RE-REVISE** -> user confirmation -> Stage 4.5 (no return to review)
 8. **Stage 4.5 FINAL INTEGRITY** -> PASS (zero issues) -> Stage 5 (FAIL -> fix and re-verify; after 3 unresolved rounds -> Integrity Check FAIL Loop -> recorded user decision)
-9. **Stage 5 FINALIZE** -> MD -> DOCX via Pandoc when available (otherwise instructions) -> ask about LaTeX -> confirm -> PDF -> completion checkpoint (FULL) -> Stage 6 (user may decline Stage 6: marked `skipped`, pipeline goes directly to `completed`)
-10. **Stage 6 PROCESS SUMMARY** -> ask language version -> generate process record MD -> LaTeX -> PDF -> terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) -> pipeline global state `completed`
+9. **Stage 5 FINALIZE** -> MD -> ask which files (DOCX / PDF / .tex) -> DOCX via Pandoc when available (otherwise instructions) -> confirm -> PDF through LaTeX when wanted -> completion checkpoint (FULL) -> Stage 6 (user may decline Stage 6: marked `skipped`, pipeline goes directly to `completed`)
+10. **Stage 6 PROCESS SUMMARY** -> ask language version and whether to add a PDF -> generate process record MD -> PDF through LaTeX when wanted -> terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) -> pipeline global state `completed`
 
 See `references/pipeline_state_machine.md` for complete state transition definitions.
 
@@ -576,7 +576,7 @@ The `collaboration_depth_agent` observes the user's collaboration pattern with t
 | Mechanism | What it evaluates | Blocking? |
 |---|---|---|
 | `integrity_verification_agent` (Stages 2.5 / 4.5) | Paper content — references, citations, data | Yes (blocking gate) |
-| Stage 6 Collaboration Quality Evaluation (6 dims, 1–100) | AI's self-reflection on its own behaviour | No, but produced once only |
+| Stage 6 Collaboration Quality Evaluation (6 dims, 1–100) | The user's collaboration as the AI assessed it (the AI Self-Reflection Report covers the AI's own behaviour) | No, but produced once only |
 | `collaboration_depth_agent` (this observer) | The **user's** collaboration pattern (delegation intensity, vigilance, reallocation) | **No — never blocks. Advisory only.** |
 
 **Non-blocking guarantees**:
@@ -716,7 +716,7 @@ Stage 1: deep-research
 
 Stage 2: academic-paper
   - plan mode: Socratic chapter-by-chapter guidance
-  - full mode: Complete paper writing
+  - full mode: Complete paper writing, stopping after Phase 6 (Phase 7 formatting runs at Stage 5)
 
 Stage 2.5: integrity_verification_agent (Mode 1: pre-review)
 Stage 4.5: integrity_verification_agent (Mode 2: final-check)
@@ -730,9 +730,9 @@ Stage 3': academic-paper-reviewer
 Stage 4/4': academic-paper (revision mode)
 Stage 5: academic-paper (format-convert mode)
   - Step 1: Consume the citation-style decision recorded at the Stage 5 entry gate; ask which academic formatting style (APA 7.0 / Chicago / IEEE, etc.) only when no gate decision exists (direct format-convert / mid-entry invocation)
-  - Step 2: Produce MD, then generate DOCX via Pandoc when available (otherwise provide conversion instructions)
-  - Step 3: Produce LaTeX (using corresponding document class, e.g., apa7 class for APA 7.0)
-  - Step 4: After user confirms content is correct, tectonic compiles PDF (final version)
+  - Step 2: Produce MD, and ask which other files the user wants (DOCX / PDF / the .tex source), starting from the Paper Configuration Record's output format
+  - Step 3: DOCX via Pandoc when available (otherwise provide conversion instructions); for a PDF or the .tex source, produce LaTeX from the MD (corresponding document class, e.g., apa7 class for APA 7.0); the .tex file is delivered only when asked for
+  - Step 4: After user confirms content is correct, tectonic compiles the PDF (final version) when one was asked for; if tectonic is unavailable, say so instead of substituting another route
   - Fonts: Times New Roman (English) + Source Han Serif TC VF (Chinese) + Courier New (monospace)
   - ⚠️ IRON RULE: PDF must be compiled from LaTeX (HTML-to-PDF is prohibited)
 ```

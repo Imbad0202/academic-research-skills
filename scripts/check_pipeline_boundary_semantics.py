@@ -70,11 +70,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # reviewed against the #528 resolutions.
 # ---------------------------------------------------------------------------
 CONTENT_LOCKS = {
-    "academic-pipeline/SKILL.md": "9bde8ce446150febc7da36aaaf2b2eb55a716c7c406bfbbfe804f8c58f11ac6a",
-    "academic-pipeline/agents/pipeline_orchestrator_agent.md": "1ca3ca694e0e3494d5e4d445e110d4d3eaf804ba2101fe166d62afb76fefad31",
+    "academic-pipeline/SKILL.md": "12626fcba87b9a53a2a13fba935d2a90990a9f876b8053c44bcdacbf5abca607",
+    "academic-pipeline/agents/pipeline_orchestrator_agent.md": "03d0395826b8f230145d706ef61044784eb679f7bf8f9bf37f70f21be3d8658a",
     "academic-pipeline/agents/state_tracker_agent.md": "787b994b727235451ca885f5be51ce3590dca9fd7134c66f38ba6ac4287eca26",
-    "academic-pipeline/references/pipeline_state_machine.md": "82d8d22a14c49ea94d6da4a124c05c7e81431e5a51f633b33dca22509f63bc2a",
-    "academic-pipeline/references/process_summary_protocol.md": "4925cb15be74a8d357ce2e65683b1f9d1a9a247bc55f6d679d66e392bbc744ec",
+    "academic-pipeline/references/pipeline_state_machine.md": "d9f8496f76625affa3e20df01ec7612a55092c6f4e0c7091cb542c2494fdcd7a",
+    "academic-pipeline/references/process_summary_protocol.md": "3e7acc1455f4190bea9c8ce8dbb14d9052fec1706b103e96f379fb11b5193a7d",
 }
 
 SKILL = "academic-pipeline/SKILL.md"
@@ -122,7 +122,7 @@ S5_AUTHORITY_LITERALS = {
     "entry-gate": "refers to exactly ONE checkpoint: the **Stage 5 entry gate**",
     "no-auto-advance": "- explicit confirmation to proceed to finalization (no auto-advance);",
     "gate-format-decision": 'the finalization-format decision: citation style (APA 7.0 / Chicago / IEEE, ...) — the "Stage 5 finalization format" pending decision the passport-reset machinery records at this boundary',
-    "latex-in-stage": 'the "Need LaTeX?" question (Step 3) and the content confirmation before the final PDF (Step 4) — are part of Stage 5 execution, not pipeline checkpoints',
+    "latex-in-stage": 'the question of which files to produce (Step 2) and the content confirmation before the final PDF (Step 4) — are part of Stage 5 execution, not pipeline checkpoints',
     "completion-full-never-slim": "FULL checkpoint — never SLIM",
     "completion-not-mandatory": "but it is not on the MANDATORY list",
 }
@@ -133,7 +133,7 @@ S6_AUTHORITY_LITERALS = {
     "acknowledgement-vocabulary": VOCAB_CANON,
     "change-requests-not-ack": "Change requests (the other language version, content corrections) keep Stage 6 `in_progress` — they are not acknowledgements",
     "ack-outcome": "On acknowledgement: state_tracker marks Stage 6 `completed` and sets the pipeline global state to `completed`",
-    "post-delivery-prompt": "After delivering the Process Record (MD + PDF per the user's language choice), the orchestrator prompts for a terminal acknowledgement",
+    "post-delivery-prompt": "After delivering the Process Record (MD, plus PDF when the user asked for it, per the user's language choice), the orchestrator prompts for a terminal acknowledgement",
     "no-transition-after-completed": "no stage transition is legal",
 }
 
