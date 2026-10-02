@@ -278,6 +278,9 @@ Schemas for Material Passport input ports.
 - `passport/standing_constraint_entry.schema.json` (#927) — `standing_constraints[]`
   entries: a run-wide constraint the user stated, in their words. Schema tests:
   `scripts/test_standing_constraint_entry_schema.py`.
+- `passport/excluded_source_entry.schema.json` (#936) — `excluded_sources[]`
+  entries: a reference an integrity gate judged `NOT_FOUND`, kept off later writer
+  dispatches. Schema tests: `scripts/test_excluded_source_entry_schema.py`.
 - `passport/audit_artifact_entry.schema.json` (v3.6.7 Step 6) — `audit_artifact[]` entries
   recording one cross-model audit run per downstream-agent deliverable. Two lifecycle
   states (proposal / persisted) share the schema via `oneOf`. Cross-artifact invariants

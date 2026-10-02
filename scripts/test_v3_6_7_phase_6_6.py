@@ -254,6 +254,12 @@ LINE_BUDGET_927_DECLINED_ITEMS = 18
 # landing: 10 lines; budget 16 leaves 6 lines of headroom.
 LINE_BUDGET_929_FINAL_OUTPUT_PRECHECK = 16
 
+# #936 adds `## Integrity-Excluded Sources (#936)`: a reference an integrity
+# gate judged NOT_FOUND is recorded in the passport and left out of later
+# writer dispatches. Independent extension with its own bounded test.
+# Measured at landing: 12 lines; budget 18 leaves 6 lines of headroom.
+LINE_BUDGET_936_EXCLUDED_SOURCES = 18
+
 # All 24 failure phase IDs from spec §5.6 inventory (7 P-PA-* + 17 P-PB-*).
 # These must each appear at least once in the orchestrator prompt as
 # cross-references to spec §5.6 (NOT inline procedural definitions —
@@ -992,6 +998,26 @@ def _measure_927_declined_items_lines(text: str) -> int:
     return len(text[match.start():end].splitlines())
 
 
+def _measure_936_excluded_sources_lines(text: str) -> int:
+    """Return the line count of the `## Integrity-Excluded Sources (#936)` section.
+
+    Same convention as the other extension-section helpers above.
+    """
+    import re as _re
+
+    anchor = _re.compile(
+        r"(?m)^[ \t]*##[ \t]+Integrity-Excluded Sources \(#936\)[ \t]*$"
+    )
+    match = anchor.search(text)
+    if match is None:
+        return 0
+    heading_end = text.find("\n", match.end())
+    search_start = heading_end + 1 if heading_end >= 0 else len(text)
+    next_heading = _re.search(r"(?m)^[ \t]*#{1,4}[ \t]+", text[search_start:])
+    end = search_start + next_heading.start() if next_heading else len(text)
+    return len(text[match.start():end].splitlines())
+
+
 def _measure_929_final_output_precheck_lines(text: str) -> int:
     """Return the line count of the `## Final-Output Pre-Check at Stage 4.5 (#929)` section.
 
@@ -1242,6 +1268,26 @@ class FinalOutputPrecheck929LineBudgetTest(unittest.TestCase):
         )
 
 
+class ExcludedSources936LineBudgetTest(unittest.TestCase):
+    """#936 integrity-excluded-sources section stays independently bounded."""
+
+    def test_936_excluded_sources_within_budget(self) -> None:
+        text = _read_prompt()
+        block_lines = _measure_936_excluded_sources_lines(text)
+        self.assertGreater(
+            block_lines,
+            0,
+            "`## Integrity-Excluded Sources (#936)` section missing from "
+            "pipeline_orchestrator_agent.md",
+        )
+        self.assertLessEqual(
+            block_lines,
+            LINE_BUDGET_936_EXCLUDED_SOURCES,
+            f"#936 excluded-sources section is {block_lines} lines, over its "
+            f"{LINE_BUDGET_936_EXCLUDED_SOURCES}-line budget",
+        )
+
+
 class Dispatch576LineBudgetTest(unittest.TestCase):
     """#576 Spec B Stage 3' contract-dispatch block within
     `LINE_BUDGET_576_STAGE3P_DISPATCH` line budget.
@@ -1334,6 +1380,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
         standing_927_lines = _measure_927_standing_constraints_lines(text)
         declined_927_lines = _measure_927_declined_items_lines(text)
         precheck_929_lines = _measure_929_final_output_precheck_lines(text)
+        excluded_936_lines = _measure_936_excluded_sources_lines(text)
         # v3.6.7-only line count: total minus v3.7.1 Step 3b, v3.7.3
         # finalizer extension, v3.8 §3.6 audit-gate, v3.9.0 triangulation
         # extension, v3.10 terminal-policy extension, the #394 slice-4
@@ -1347,9 +1394,9 @@ class Phase66LineBudgetTest(unittest.TestCase):
         # 2026-09 checkpoint-authority fidelity section, the #887
         # run-ledger section, the #890 third-party-text dispatch section,
         # the #925 experiment-intake section, the #927 standing-
-        # constraints section, the #927 declined-items section, AND the #929
-        # final-output pre-check section (each has its own dedicated budget
-        # test).
+        # constraints section, the #927 declined-items section, the #929
+        # final-output pre-check section, AND the #936 excluded-sources
+        # section (each has its own dedicated budget test).
         v367_line_count = (
             total_lines - step_3b_lines - v3_7_3_lines - v3_8_lines
             - v3_9_0_lines - v3_10_lines - gate_394_lines - seq_390_lines
@@ -1358,7 +1405,7 @@ class Phase66LineBudgetTest(unittest.TestCase):
             - criteria_684_lines - inquiry_743_lines - authority_g1_lines
             - run_ledger_887_lines - third_party_890_lines
             - experiment_intake_925_lines - standing_927_lines
-            - declined_927_lines - precheck_929_lines
+            - declined_927_lines - precheck_929_lines - excluded_936_lines
         )
         ceiling = BASELINE_LINE_COUNT + LINE_BUDGET_OVER_BASELINE
         self.assertLessEqual(
@@ -1390,7 +1437,8 @@ class Phase66LineBudgetTest(unittest.TestCase):
             f"#925 experiment-intake section, and {standing_927_lines} are in "
             f"the #927 standing-constraints section, and {declined_927_lines} "
             f"are in the #927 declined-items section, and {precheck_929_lines} "
-            f"are in the #929 final-output pre-check section; "
+            f"are in the #929 final-output pre-check section, and "
+            f"{excluded_936_lines} are in the #936 excluded-sources section; "
             f"v3.6.7-attributed lines = "
             f"{v367_line_count} exceeds {ceiling} (baseline "
             f"{BASELINE_LINE_COUNT} + Phase 6.6 budget "

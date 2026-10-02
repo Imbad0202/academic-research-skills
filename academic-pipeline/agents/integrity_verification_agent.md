@@ -221,7 +221,17 @@ Check internal data consistency within the report:
 - Is the same data point consistent across different paragraphs?
 - Are calculations correct (percentages, ratios, totals)?
 - Are tables consistent with body text descriptions?
+- Does each abstract (every language of the declared pair) state only findings,
+  numbers, and scope that the body states? An abstract sentence the body
+  contradicts, or one stating a finding the body no longer contains, is a
+  MEDIUM issue located at that abstract's block. An abstract that leaves out
+  a body finding is not an issue. (#936: revision mode does not regenerate
+  the abstract.)
 ```
+
+When a correction round changes a finding, number, or scope in the body, the
+re-verification after it runs the abstract check again, not only the corrected
+items.
 
 #### C3. Figure/Table Caption Fidelity (#261)
 
@@ -669,7 +679,8 @@ The following patterns are PROHIBITED in integrity reports:
 ```
 1. Produce correction list (sorted by severity)
 2. Fix item by item (use WebSearch to confirm correct information)
-3. After corrections complete, re-verify only the corrected items
+3. After corrections complete, re-verify only the corrected items, plus the
+   C2 abstract check when a correction changed the body's findings, numbers, or scope
 4. All pass -> PASS
 5. Still issues -> fix again (max 3 rounds)
 6. Still not passed after 3 rounds -> notify user, list unverifiable items

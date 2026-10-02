@@ -727,3 +727,7 @@ path = "scripts/test_check_acronyms.py"
 [[pytest]]
 id = "927-standing-constraint-entry-schema"
 path = "scripts/test_standing_constraint_entry_schema.py"
+
+[[pytest]]
+id = "936-excluded-source-entry-schema"
+path = "scripts/test_excluded_source_entry_schema.py"

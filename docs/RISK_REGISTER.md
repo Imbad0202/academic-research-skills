@@ -41,7 +41,9 @@ does not support.
   (`scripts/verify_passport.py`, `scripts/verification_gate/__init__.py`) with opt-in
   terminal policies (`shared/contracts/passport/terminal_policies.schema.json`);
   locator-bearing citation emission (`scripts/check_v3_7_3_three_layer_citation.py`);
-  Phase E claim verification for the supports-the-claim half.
+  Phase E claim verification for the supports-the-claim half; the passport list
+  that keeps a reference an integrity gate judged `NOT_FOUND` off later writer
+  dispatches (`shared/contracts/passport/excluded_source_entry.schema.json`, #936).
 - **Evidence status**: `NOT_RUN` (capability matrix row `retrieval.citation_existence_gate`);
   `NOT_RUN` (capability matrix row `integrity_check.claim_verification`).
 - **Residual gap**: no measured hallucinated-citation catch rate — that needs an
