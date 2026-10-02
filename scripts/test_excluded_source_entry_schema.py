@@ -13,7 +13,7 @@ SCHEMA_PATH = (
     REPO_ROOT / "shared" / "contracts" / "passport" / "excluded_source_entry.schema.json"
 )
 SCHEMA = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-VALIDATOR = Draft202012Validator(SCHEMA)
+VALIDATOR = Draft202012Validator(SCHEMA, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 EXCLUDED = {
     "citation_key": "lin2024governance",
@@ -45,13 +45,26 @@ def test_restored_entry_passes() -> None:
     assert _errors(entry) == []
 
 
+def test_confirmed_cross_model_entry_without_report_row_passes() -> None:
+    entry = copy.deepcopy(EXCLUDED)
+    entry.pop("correction_id")
+    assert _errors(entry) == []
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
         pytest.param(lambda e: e.update(gate="3"), id="not-an-integrity-gate"),
         pytest.param(lambda e: e.update(citation_key="  "), id="blank-citation-key"),
+        pytest.param(lambda e: e.update(citation_key=" lin2024governance "), id="padded-citation-key"),
+        pytest.param(
+            lambda e: e.update(citation_key="<!--ref:lin2024governance-->"), id="marker-not-key"
+        ),
+        pytest.param(lambda e: e.update(recorded_at="not-a-date"), id="bad-recorded-at"),
+        pytest.param(
+            lambda e: e.update(restored_at="", restoration_words="it exists"), id="bad-restored-at"
+        ),
         pytest.param(lambda e: e.update(correction_id="EA-001"), id="alignment-row-id"),
-        pytest.param(lambda e: e.pop("correction_id"), id="no-report-row"),
         pytest.param(lambda e: e.pop("recorded_at"), id="unrecorded"),
         pytest.param(
             lambda e: e.update(restored_at="2026-10-02T11:00:00Z"),

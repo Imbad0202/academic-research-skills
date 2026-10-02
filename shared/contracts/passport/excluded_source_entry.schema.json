@@ -8,15 +8,13 @@
   "required": [
     "citation_key",
     "gate",
-    "correction_id",
     "recorded_at"
   ],
   "properties": {
     "citation_key": {
       "type": "string",
-      "minLength": 1,
-      "pattern": "\\S",
-      "description": "The slug the draft cited in <!--ref:slug-->, as the corpus context lists it."
+      "pattern": "^[A-Za-z][A-Za-z0-9_:-]*$",
+      "description": "The literature_corpus[] citation_key the draft cited in <!--ref:slug-->; same grammar as literature_corpus_entry.schema.json."
     },
     "gate": {
       "enum": [
@@ -27,7 +25,7 @@
     "correction_id": {
       "type": "string",
       "pattern": "^IL-(?:SERIOUS|MEDIUM|MINOR)-[1-9][0-9]*$",
-      "description": "The Integrity Report issue row that carried the verdict."
+      "description": "The Integrity Report issue row that carried the verdict; absent when the user's checkpoint resolution confirmed a cross-model NOT_FOUND."
     },
     "recorded_at": {
       "type": "string",

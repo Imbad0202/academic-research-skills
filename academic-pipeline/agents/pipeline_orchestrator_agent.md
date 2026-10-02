@@ -1006,11 +1006,11 @@ A constraint the user sets for the whole run, such as a word ceiling, something 
 
 A reference that an integrity gate lists as `NOT_FOUND`, the suspected-fabrication verdict, stays out of every later writer dispatch. Removing its citation in a correction round does not take it out of the corpus context, and `literature_corpus[]` is never mutated, so without this list a later revision could cite it again.
 
-**Recording.** When a Stage 2.5 or 4.5 Integrity Report returns, add one `excluded_sources[]` entry (Schema 9; entry shape `shared/contracts/passport/excluded_source_entry.schema.json`) for each `NOT_FOUND` issue row whose reference has no active entry: its citation key, the gate, the row's `IL-` ID, and `recorded_at`. Record nothing for a `MISMATCH` (its details are correctable), an `UNVERIFIABLE_ACCESS` note, or a cross-model `NOT_FOUND` the user has not confirmed. At that gate's MANDATORY checkpoint, list the new entries and say how to restore one.
+**Recording.** When a Stage 2.5 or 4.5 Integrity Report returns, add one `excluded_sources[]` entry (Schema 9; entry shape `shared/contracts/passport/excluded_source_entry.schema.json`) for each `NOT_FOUND` issue row whose reference has no active entry: its citation key, the gate, the row's `IL-` ID, and `recorded_at`. Record nothing for a `MISMATCH` (its details are correctable) or an `UNVERIFIABLE_ACCESS` note. A cross-model `NOT_FOUND` is recorded, without an `IL-` ID, only when the user's checkpoint resolution confirms it, before the correction dispatch. At that gate's MANDATORY checkpoint, list the new entries and say how to restore one.
 
 **Carrying.** Every later writer dispatch, including revision rounds and integrity correction rounds, leaves the active entries out of the corpus context and the bibliography it carries, and names them as excluded by the integrity gate, so that a roadmap item or the draft text that mentions one does not bring it back.
 
-**Restoring.** Only the user's own turn restores an entry, for example by supplying the original or its bibliographic record. Set `restored_at` and `restoration_words` and keep the entry. The source returns to the corpus context, and the next integrity gate verifies it again from scratch.
+**Restoring.** Only the user's own turn restores an entry, for example by supplying the original or its bibliographic record. Set `restored_at` and `restoration_words` and keep the entry. The source returns to the corpus context, and the next integrity gate verifies it again from scratch. On a mid-pipeline entry or a resume, list once any restoration the run ledger does not back, for the user to confirm before the source returns.
 
 ---
 
