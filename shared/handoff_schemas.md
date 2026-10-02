@@ -40,9 +40,9 @@ Consuming agents should validate input and request re-generation if schema viola
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `methodology_type` | enum | `"qualitative"` / `"quantitative"` / `"mixed"`. Optional since #938: no Phase 1 agent emits it; `research_architect_agent`'s Methodology Blueprint carries the method decision |
-| `theoretical_framework` | string | Name of the selected or emergent theoretical framework. Optional since #938: no Phase 1 agent emits it |
-| `keywords` | list[string] | 5-10 search terms for literature search. Optional since #938: no Phase 1 agent emits it; the search keywords live in Schema 2 `search_strategy.keywords` |
+| `methodology_type` | enum | `"qualitative"` / `"quantitative"` / `"mixed"`. Optional since #938: the RQ Brief producer does not emit it; `research_architect_agent`'s Methodology Blueprint carries the method decision |
+| `theoretical_framework` | string | Name of the selected or emergent theoretical framework. Optional since #938: the RQ Brief producer does not emit it |
+| `keywords` | list[string] | 5-10 search terms for literature search. Optional since #938: the RQ Brief producer does not emit it; the search keywords live in Schema 2 `search_strategy.keywords` |
 | `socratic_insights` | list[string] | Key insights from Socratic dialogue (if socratic mode) |
 | `hypothesis` | string | Preliminary hypothesis (if applicable) |
 | `exclusion_criteria` | list[string] | What is explicitly out of scope |
