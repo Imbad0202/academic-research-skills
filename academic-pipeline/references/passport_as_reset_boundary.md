@@ -2,21 +2,21 @@
 
 ## Purpose
 
-Defines how `pipeline_orchestrator_agent` converts FULL checkpoints into reset boundaries when `ARS_PASSPORT_RESET=1` is set. This is the authoritative protocol; any divergent behavior in agent prompts is a bug.
+Defines how `pipeline_orchestrator_agent` converts FULL and MANDATORY checkpoints into reset boundaries when `ARS_PASSPORT_RESET=1` is set. This is the authoritative protocol; any divergent behavior in agent prompts is a bug.
 
 ## When this protocol applies
 
-| Flag state | Mode | Behavior at FULL checkpoint |
+| Flag state | Mode | Behavior at FULL or MANDATORY checkpoint |
 |------------|------|-----------------------------|
 | `ARS_PASSPORT_RESET` unset / `=0` | any | Continuation (pre-v3.6.3 default). No reset tag emitted. |
-| `ARS_PASSPORT_RESET=1` | `systematic-review` | **Mandatory reset** at every FULL checkpoint. |
-| `ARS_PASSPORT_RESET=1` | any other mode | **Strong-default reset** at every FULL checkpoint. User `continue` response overrides back to continuation for the next stage only. |
+| `ARS_PASSPORT_RESET=1` | `systematic-review` | **Mandatory reset** at every FULL or MANDATORY checkpoint. |
+| `ARS_PASSPORT_RESET=1` | any other mode | **Strong-default reset** at every FULL or MANDATORY checkpoint. User `continue` response overrides back to continuation for the next stage only. |
 
-MANDATORY checkpoints (integrity Stage 2.5 / 4.5, review decisions, Stage 5 finalization) are orthogonal: reset can co-occur with MANDATORY. SLIM checkpoints never trigger reset.
+MANDATORY checkpoints (integrity Stage 2.5 / 4.5, review decisions, Stage 5 finalization) are reset boundaries too when the flag is ON, and they stay MANDATORY: the reset never downgrades them. SLIM checkpoints never trigger reset.
 
 ## The reset boundary protocol
 
-When the orchestrator reaches a FULL checkpoint with the flag ON:
+When the orchestrator reaches a FULL or MANDATORY checkpoint with the flag ON:
 
 1. **Freeze state.** `state_tracker` stages the current stage's deliverables and prepares a new `kind: boundary` ledger entry — but does NOT yet write `hash` (append happens in Step 2 after hash is known).
 2. **Compute hash.** Canonical byte serialization is normative; two implementations must produce the same bytes from the same ledger:
@@ -102,7 +102,7 @@ Without coordination, two processes can complete step 2 in parallel before eithe
 1. Flag OFF is pre-v3.6.3 behavior, bit-for-bit.
 2. Ledger is append-only. No exception, no "clean up" operation.
 3. Reset tag is the sole machine-stable handoff. Human-readable `### Resume Instruction` is for user ergonomics; consumers parse the tag.
-4. `systematic-review` with flag ON refuses in-session continuation across FULL checkpoints.
+4. `systematic-review` with flag ON refuses in-session continuation across FULL and MANDATORY checkpoints.
 5. Hash mismatch on resume is a hard error; orchestrator never proceeds on a guessed or coerced hash.
 6. MANDATORY checkpoints are not downgraded by reset; they co-occur.
 7. Hash is computed over the entry with the canonical placeholder `"000000000000"` in the `hash` field, serialized per the byte rules in §"The reset boundary protocol" step 2. `kind: resume` entries are never included in a `boundary` hash computation — the hash covers only prior `boundary` entries plus the new boundary entry itself. Any other convention (exclude-field, variable-length placeholder, post-hoc mutation, including resume entries) breaks cross-implementation interoperability and is forbidden.
@@ -112,6 +112,7 @@ Without coordination, two processes can complete step 2 in parallel before eithe
 ## Interaction with existing features
 
 - **Collaboration Depth Observer (v3.5.0):** fires on FULL/SLIM as before. Observer output is included in the checkpoint notification regardless of reset state. Observer state does NOT carry across resets; each fresh session observes only its own stage.
+- **Stage 6 Process Record:** after a reset the session holds only the turns since the last resume; the record takes earlier decisions and words from the passport and run ledger and says so (`process_summary_protocol.md` step 2).
 - **Compliance agent (v3.4.0):** `compliance_history[]` remains append-only and is consumed from the passport on resume. No change to Schema 12.
 - **Sprint contract (v3.6.2):** reviewer sprint contracts load from the passport on resume (Phase 1 paper-content-blind stage remains valid across the reset boundary because the contract + paper metadata are carried in the passport).
 - **Socratic reading probe (v3.5.1):** reading probe fires at most once per session. Across a reset boundary, the probe counter resets — the next session may fire its own probe. This is by design: each session is its own Socratic unit.

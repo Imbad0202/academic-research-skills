@@ -172,7 +172,7 @@ This document defines all legal states, transition conditions, transition action
 | checkpoint | Stage 4' | Decision = Major, user confirms | Pass new Revision Roadmap (limitations-only when the user chooses it for a Major that rests only on items they declined; `../agents/pipeline_orchestrator_agent.md` § Declined Items at Stage 3' and Stage 4' (#927)) |
 | Stage 4' | **checkpoint** | Stage 4' completed | Wait for user confirmation |
 | checkpoint | Stage 4.5 | User confirms | Pass revised draft to final verification |
-| Stage 4.5 | **checkpoint** | PASS (zero issues; notes such as UNVERIFIABLE_ACCESS are not issues), or recorded Integrity Check FAIL Loop resolution (§ below) | Wait for user confirmation |
+| Stage 4.5 | **checkpoint** | PASS (zero issues, counting the final-output pre-check items; notes such as UNVERIFIABLE_ACCESS are not issues), or recorded Integrity Check FAIL Loop resolution (§ below) | Wait for user confirmation |
 | Stage 4.5 | Stage 4.5 (retry) | FAIL | Fix issues, re-verify (max 3 rounds) |
 | checkpoint | Stage 5 | User confirms (MANDATORY — the Stage 5 entry gate; see § Stage 5 boundary semantics) | Pass final accepted draft; record the finalization-format decision (citation style) |
 | Stage 5 | **checkpoint** | Stage 5 completed, Final Paper delivered | Wait for user confirmation (FULL — never SLIM; see § Stage 5 boundary semantics) |
@@ -387,7 +387,7 @@ Unresolved issues -> Acknowledged Limitations.
 
 ## Reset-boundary transitions (v3.6.3, flag-gated)
 
-When `ARS_PASSPORT_RESET=1`, every FULL checkpoint carries an implicit state transition to a terminal `awaiting_resume` state. The next stage only starts when a new session posts `resume_from_passport=<hash>`.
+When `ARS_PASSPORT_RESET=1`, every FULL or MANDATORY checkpoint carries an implicit state transition to a terminal `awaiting_resume` state. The next stage only starts when a new session posts `resume_from_passport=<hash>`.
 
 Transition semantics:
 
@@ -407,8 +407,8 @@ Iron rules:
 - `systematic-review` under flag ON cannot transition `Stage N → Stage N+1` without a fresh-session resume. In-session continuation is refused.
 - Other modes under flag ON allow in-session continuation as a fallback, but the orchestrator must still load Stage N+1 input strictly from the passport (no replay of prior turns).
 - SLIM checkpoints never enter `awaiting_resume`.
-- MANDATORY checkpoints enter `awaiting_resume` when they are also FULL and flag is ON. Integrity gates remain MANDATORY; the reset does not downgrade them. The `### Resume Instruction` subsection emitted alongside `[PASSPORT-RESET: ...]` carries the passport file path and resume command — it does NOT carry the user decision prompt. The decision prompt happens on resume, after the fresh session loads the passport (see next rule).
-- If a `boundary` entry carries `pending_decision`, `next` is advisory only. The user's branch choice happens AFTER `resume_from_passport=<hash>` in the fresh session, never in the reset checkpoint itself. The orchestrator re-prompts the user in the new session before transitioning to any `Stage N+1`. The `resume` entry records the chosen branch via `chosen_branch`. Actual routing comes from the matched option's `next_stage`/`next_mode`; `next` is a fallback default only.
+- MANDATORY checkpoints also enter `awaiting_resume` when the flag is ON. Integrity gates remain MANDATORY; the reset does not downgrade them. The `### Resume Instruction` subsection emitted alongside `[PASSPORT-RESET: ...]` carries the passport file path and resume command — it does NOT carry the user decision prompt. The decision prompt happens on resume, after the fresh session loads the passport (see next rule).
+- If a `boundary` entry carries `pending_decision`, `next` is advisory only. The user's branch choice happens AFTER `resume_from_passport=<hash>` in the fresh session, or right after an in-session `continue` in non-SR modes, never in the reset checkpoint itself. The orchestrator re-prompts the user in the new session before transitioning to any `Stage N+1`. The `resume` entry records the chosen branch via `chosen_branch`. Actual routing comes from the matched option's `next_stage`/`next_mode`; `next` is a fallback default only.
 - `pending_decision` stays authoritative for the reset path when the run ledger (#887) also records the checkpoint. The ledger's opened entry names the boundary hash (`reset_boundary_hash`), and the answer closes both: the `resume` entry that consumes that hash records it, and so does the ledger's closing entry for the same checkpoint.
 
 See [`passport_as_reset_boundary.md`](passport_as_reset_boundary.md) for the full protocol.

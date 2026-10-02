@@ -51,7 +51,7 @@ derive or refresh it from a clock, path, artifact contents, or transcript.
 **Contract:** full spec in [`../references/passport_as_reset_boundary.md`](../references/passport_as_reset_boundary.md) §"`resume_from_passport` mode contract".
 
 **Orchestrator obligations:**
-1. **Acquire passport lock.** Before reading the ledger or checking for a prior consuming entry, acquire an exclusive advisory lock on the adjacent stable `.<passport-basename>.lock` sidecar (see `references/passport_as_reset_boundary.md` §"Concurrency model"). Every passport writer uses this same sidecar; never lock the replaceable passport inode. Hold the lock across the read, the no-prior-resume check, and the append, but never while waiting for the user: ask the questions of steps 7-8 first, from an unlocked read, then acquire the lock, re-read, repeat the no-prior-resume check, and append. Release after the append is durable on disk. Do NOT release between the check and the append.
+1. **Acquire passport lock.** Before reading the ledger or checking for a prior consuming entry, acquire an exclusive advisory lock on the adjacent stable `.<passport-basename>.lock` sidecar (see `references/passport_as_reset_boundary.md` §"Concurrency model"). Every passport writer uses this same sidecar; never lock the replaceable passport inode. Ask steps 7-8 first from an unlocked read, then acquire the lock, re-read, repeat the no-prior-resume check, and append; release after the append is durable on disk (protocol doc, Iron rule 9).
 2. Parse `<hash>` from user input. Validate `^[0-9a-f]{12}$`.
 3. Locate passport file: prefer explicit path in user input; else look in `./passports/` or `./material_passport*.yaml` relative to CWD; else ask the user for the path.
 4. Load `reset_boundary[]`. Find the entry with `kind: boundary` and matching `hash`. No match → hard error: "Passport hash `<hash>` not found in `<path>`. Cannot resume."
@@ -170,15 +170,15 @@ consecutive_continue_count: integer (reset to 0 when user chooses any action oth
 
 **Applicability:**
 
-| Flag state | Mode | Behavior at FULL checkpoint |
+| Flag state | Mode | Behavior at FULL or MANDATORY checkpoint |
 |------------|------|-----------------------------|
 | unset / `=0` | any | Continuation (pre-v3.6.3 default) — no reset tag |
 | `=1` | `systematic-review` | **Mandatory reset**; orchestrator refuses in-session continuation |
 | `=1` | any other mode | **Strong-default reset**; user `continue` may override for the next stage only |
 
-SLIM checkpoints never reset. With the flag on, a MANDATORY checkpoint is also a reset boundary, and it stays MANDATORY.
+SLIM checkpoints never reset; a MANDATORY checkpoint resets and stays MANDATORY (protocol doc, MANDATORY paragraph).
 
-**Reset-boundary emission sequence (flag ON, FULL checkpoint):**
+**Reset-boundary emission sequence (flag ON, FULL or MANDATORY checkpoint):**
 
 1. `state_tracker` stages a new `kind: boundary` entry for `reset_boundary[]` (Schema 9). Entry matches `shared/contracts/passport/reset_ledger_entry.schema.json` `#/$defs/boundary`.
 2. Orchestrator computes `hash` using the normative byte serialization defined in protocol doc §"The reset boundary protocol" step 2: JSON Canonical Form (RFC 8785) per entry, LF-separated, new entry appended with `hash` set to placeholder `"000000000000"`, SHA-256 first 12 lowercase hex. Write the computed hash back into the new entry, then append to the ledger. Follow the protocol doc exactly — any deviation breaks cross-session resume.
@@ -197,7 +197,7 @@ SLIM checkpoints never reset. With the flag on, a MANDATORY checkpoint is also a
 
    `<hash>` is 12 lowercase hex characters per `reset_ledger_entry.schema.json` — the schema is authoritative for the format.
 
-5. Orchestrator halts after emission. For `systematic-review` mode, orchestrator refuses any in-session `continue` and repeats the Resume Instruction. For other modes, an in-session `continue` is honored once but the orchestrator uses ONLY the passport ledger as input to the next stage (no replay of prior turns); when the boundary carries `pending_decision`, ask that decision first, since `continue` does not answer it.
+5. Orchestrator halts after emission. For `systematic-review` mode, orchestrator refuses any in-session `continue` and repeats the Resume Instruction. For other modes, an in-session `continue` is honored once but the orchestrator uses ONLY the passport ledger as input to the next stage (no replay of prior turns); a `pending_decision` on the boundary is asked first (protocol doc, step 6).
 
 **Iron rules (reset boundary):**
 
@@ -918,8 +918,8 @@ The Stage 3' verifier does not see the author's choices (#576), so a `must_fix` 
 The Cite-Time Provenance Finalizer, its strict terminal policies, and, under `ARS_CLAIM_AUDIT=1`, the claim-faithfulness audit (§ 3.6) produce markers that `formatter_agent` refuses at Stage 5. That is after the Stage 5 entry gate, and Stage 5 cannot roll back (`../references/pipeline_state_machine.md`). In pipeline mode, therefore, run the finalizer pass and the claim audit on the accepted draft once Stage 4.5's integrity verification returns, before its checkpoint.
 
 - Anything the formatter's REFUSE rules (`formatter_agent.md` § Cite-Time Provenance Hard Gate) would refuse is a Stage 4.5 issue: list it at the checkpoint with what would clear it, and route it through the ordinary correction rounds.
-- In the Integrity Check FAIL Loop, "continue with a partially unverified warning" does not carry such an item, because the formatter still refuses it. The user's choices for it are to handle it (supply the original, revise the claim, acknowledge a read) or to remove the citation or claim.
-- The Stage 5 passes still run. When the draft and its inputs are unchanged since this pre-check, reuse its claim-audit results instead of judging again.
+- The Integrity Check FAIL Loop does not let such an item continue with a warning (`../references/pipeline_state_machine.md` § Integrity Check FAIL Loop): it is handled (supply the original, revise the claim, acknowledge a read) or removed.
+- The Stage 5 passes still run; the claim audit's own cache (`claim_ref_alignment_audit_agent.md` Step 3) serves unchanged citations, so later passes judge only what changed.
 
 ---
 
@@ -1112,7 +1112,7 @@ no `--all`. See
 
 ## Cite-Time Provenance Finalizer (v3.7.1)
 
-When `academic-pipeline` mode is active, the orchestrator runs the **Cite-Time Provenance Finalizer** at every Stage 4 → Stage 5 transition (and on every revision loop pass back through Stage 4) to resolve the two-layer citation markers emitted by `synthesis_agent`, `draft_writer_agent`, and `report_compiler_agent` per Step 3a.
+When `academic-pipeline` mode is active, the orchestrator runs the **Cite-Time Provenance Finalizer** at every Stage 4 → Stage 5 transition (first at Stage 4.5, § Final-Output Pre-Check at Stage 4.5 (#929)) (and on every revision loop pass back through Stage 4) to resolve the two-layer citation markers emitted by `synthesis_agent`, `draft_writer_agent`, and `report_compiler_agent` per Step 3a.
 
 **Trigger boundary:** Stage transition from drafting (Stage 4) to formatting (Stage 5), mirroring the v3.6.7 Step 6 audit_artifact gate. The finalizer runs BEFORE `formatter_agent`'s hard-gate check.
 
