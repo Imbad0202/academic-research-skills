@@ -16,9 +16,7 @@ SCHEMA = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 VALIDATOR = Draft202012Validator(SCHEMA)
 
 EXCLUDED = {
-    "exclusion_id": "XS-001",
     "citation_key": "lin2024governance",
-    "verdict": "NOT_FOUND",
     "gate": "2.5",
     "correction_id": "IL-SERIOUS-2",
     "recorded_at": "2026-10-02T09:00:00Z",
@@ -50,10 +48,8 @@ def test_restored_entry_passes() -> None:
 @pytest.mark.parametrize(
     "mutate",
     [
-        pytest.param(lambda e: e.update(verdict="MISMATCH"), id="mismatch-is-correctable"),
         pytest.param(lambda e: e.update(gate="3"), id="not-an-integrity-gate"),
         pytest.param(lambda e: e.update(citation_key="  "), id="blank-citation-key"),
-        pytest.param(lambda e: e.update(exclusion_id="XS-1"), id="bad-id"),
         pytest.param(lambda e: e.update(correction_id="EA-001"), id="alignment-row-id"),
         pytest.param(lambda e: e.pop("correction_id"), id="no-report-row"),
         pytest.param(lambda e: e.pop("recorded_at"), id="unrecorded"),

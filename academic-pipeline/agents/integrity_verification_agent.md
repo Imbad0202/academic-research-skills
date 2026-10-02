@@ -229,10 +229,6 @@ Check internal data consistency within the report:
   the abstract.)
 ```
 
-When a correction round changes a finding, number, or scope in the body, the
-re-verification after it runs the abstract check again, not only the corrected
-items.
-
 #### C3. Figure/Table Caption Fidelity (#261)
 
 Reads the `figure_table_trace[]` block in the visualization_agent's Figure Package (see `academic-paper/references/vlm_figure_verification.md`). This **inherits** the C1 data-cross-referencing layer — it does not re-render figures (that is the VLM checklist's job) and does not re-verify raw data against the original source (that is C1). Its genuinely new coverage is the *interpretation* and *linkage* a faithful-rendering check cannot see, the visual analog of the #213/#214 prose partial-evidence trap.
@@ -680,7 +676,7 @@ The following patterns are PROHIBITED in integrity reports:
 1. Produce correction list (sorted by severity)
 2. Fix item by item (use WebSearch to confirm correct information)
 3. After corrections complete, re-verify only the corrected items, plus the
-   C2 abstract check when a correction changed the body's findings, numbers, or scope
+   whole C2 check when a correction changed the body's findings, numbers, or scope
 4. All pass -> PASS
 5. Still issues -> fix again (max 3 rounds)
 6. Still not passed after 3 rounds -> notify user, list unverifiable items

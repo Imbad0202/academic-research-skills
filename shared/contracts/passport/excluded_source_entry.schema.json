@@ -6,26 +6,17 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "exclusion_id",
     "citation_key",
-    "verdict",
     "gate",
     "correction_id",
     "recorded_at"
   ],
   "properties": {
-    "exclusion_id": {
-      "type": "string",
-      "pattern": "^XS-[0-9]{3}$"
-    },
     "citation_key": {
       "type": "string",
       "minLength": 1,
       "pattern": "\\S",
       "description": "The slug the draft cited in <!--ref:slug-->, as the corpus context lists it."
-    },
-    "verdict": {
-      "const": "NOT_FOUND"
     },
     "gate": {
       "enum": [
