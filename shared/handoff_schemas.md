@@ -33,16 +33,16 @@ Consuming agents should validate input and request re-generation if schema viola
 |-------|------|-------------|
 | `research_question` | string | The finalized research question (single sentence, interrogative form) |
 | `sub_questions` | list[string] | 2-5 decomposed sub-questions |
-| `finer_scores` | object | `{feasible: 1-10, interesting: 1-10, novel: 1-10, ethical: 1-10, relevant: 1-10}` |
+| `finer_scores` | object | `{feasible: 1-5, interesting: 1-5, novel: 1-5, ethical: 1-5, relevant: 1-5}`, the producer's scale (#938); threshold: average >= 3.0, no criterion below 2 |
 | `scope` | object | `{in_scope: list[string], out_of_scope: list[string], domain: string, timeframe: string, geography: string, population: string}` |
-| `methodology_type` | enum | `"qualitative"` / `"quantitative"` / `"mixed"` |
-| `theoretical_framework` | string | Name of the selected or emergent theoretical framework |
-| `keywords` | list[string] | 5-10 search terms for literature search |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `methodology_type` | enum | `"qualitative"` / `"quantitative"` / `"mixed"`. Optional since #938: no Phase 1 agent emits it; `research_architect_agent`'s Methodology Blueprint carries the method decision |
+| `theoretical_framework` | string | Name of the selected or emergent theoretical framework. Optional since #938: no Phase 1 agent emits it |
+| `keywords` | list[string] | 5-10 search terms for literature search. Optional since #938: no Phase 1 agent emits it; the search keywords live in Schema 2 `search_strategy.keywords` |
 | `socratic_insights` | list[string] | Key insights from Socratic dialogue (if socratic mode) |
 | `hypothesis` | string | Preliminary hypothesis (if applicable) |
 | `exclusion_criteria` | list[string] | What is explicitly out of scope |
@@ -67,7 +67,7 @@ Consuming agents should validate input and request re-generation if schema viola
 2. inherits: same as parent scope — deviations: none
 3. inherits: same as parent scope — deviations: extends population to faculty (user-approved)
 
-**FINER Scores**: Feasible: 8, Interesting: 9, Novel: 7, Ethical: 9, Relevant: 10
+**FINER Scores**: Feasible: 4, Interesting: 5, Novel: 4, Ethical: 5, Relevant: 5
 
 **Scope**:
 - In scope: AI-assisted formative assessment, STEM undergraduate courses, Taiwan HEIs, 2018-2025

@@ -26,6 +26,8 @@ All notable changes to this project will be documented in this file.
 
 - `/ars-citation-check` inherits the session model instead of pinning `sonnet`. On the closed-book factuality benchmark in the Sonnet 5.5 system card (§6.3.2.1, AA-Omniscience), Sonnet 5.5 gives an incorrect answer on 27% of questions, against 17% for Opus 5.5 and 21% for Mythos 5.1, which shares Fable 5.1's weights. Citation checking depends on recalling authors, years, and venues correctly. The other twelve light commands keep the `sonnet` pin. A run on a Sonnet session still runs on Sonnet; a run on another session now runs, and is billed, on that session's model. The citation-check eval cases keep `model: sonnet`; that alias moves to each new Sonnet release, so eval runs are comparable only when the resolved versions match.
 
+- **Schema 1 (RQ Brief) now matches what `research_question_agent` produces (#938).** `finer_scores` is typed 1-5 per criterion with the producer's threshold (average >= 3.0, none below 2), where it said 1-10. `methodology_type`, `theoretical_framework`, and `keywords` move to optional fields, since no Phase 1 agent emits them and no consumer reads them from the RQ Brief. The four `scope` axes stay, and the agent's Scope Boundaries now emit Domain, Timeframe, Geography, and Population lines, the keys that `sub_question_bindings` and the Phase E4 scope comparison use. Before this, a consumer that applied the file's `HANDOFF_INCOMPLETE` rule to missing required fields had to reject every brief the producer wrote.
+
 ### Added
 
 - `THIRD_PARTY.md` lists an OpenClaw port of the four skills, which @ChunkyPanda29 maintains in a separate repository (#910).
