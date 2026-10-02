@@ -663,6 +663,25 @@ class ShowTest(_LedgerCase):
         self.assertEqual((code, shown["ledger_status"], shown["trusted_entries"]),
                          (1, "missing", []))
 
+    def test_unreadable_ledger_detail_quotes_none_of_its_text(self) -> None:
+        cases = {
+            "unterminated quote": "ledger: ars-run-ledger/1.0\nentries:\n- user_words: \"I approve it.\n",
+            "duplicate key": "ledger: x\nI approve it.: 1\nI approve it.: 2\n",
+            "impossible date": "ledger: x\nI approve it.: 2026-13-45\n",
+        }
+        for label, text in cases.items():
+            with self.subTest(label):
+                self.ledger.write_text(text, encoding="utf-8")
+                code, shown, result = self.show()
+                self.assertEqual((code, shown["ledger_status"]), (1, "unreadable"))
+                self.assertNotIn("approve", result.stdout)
+                report = run_script(SCRIPT, "report", "--passport-path", str(self.passport))
+                self.assertNotIn("approve", report.stdout)
+        self.ledger.write_bytes(b"ledger: \xff I approve it.\n")
+        code, shown, result = self.show()
+        self.assertEqual(shown["detail"], f"cannot parse {self.ledger.name}: invalid UTF-8 at byte 8")
+        self.assertNotIn("approve", result.stdout)
+
     def test_missing_passport_exits_2(self) -> None:
         result = run_script(SCRIPT, "show", "--passport-path", str(self.root / "none.yaml"))
         self.assertEqual((result.returncode, result.stdout), (2, ""))
