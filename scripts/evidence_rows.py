@@ -23,6 +23,7 @@ import hashlib
 import html
 import json
 import re
+import stat
 import sys
 import unicodedata
 from collections.abc import Mapping, Sequence
@@ -1972,10 +1973,16 @@ def _source_dir(path: Path, rows: Sequence[Any]) -> dict[str, str]:
     for slug in sorted(slugs):
         target = path / source_file_name(slug)
         try:
-            if not target.exists() and not target.is_symlink():
-                continue
-            if target.is_symlink() or not target.is_file():
-                _input_fail(str(target), "must be a regular file, not a link or folder")
+            # One lstat: it does not follow a link, and it raises the same
+            # error for an over-long name on every platform (exists() hides it).
+            mode = target.lstat().st_mode
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            _input_fail(str(target), f"cannot inspect source file: {exc}")
+        if not stat.S_ISREG(mode):
+            _input_fail(str(target), "must be a regular file, not a link or folder")
+        try:
             result[slug] = target.read_bytes().decode("utf-8")
         except (OSError, UnicodeError) as exc:
             _input_fail(str(target), f"cannot read exact UTF-8 source text: {exc}")
