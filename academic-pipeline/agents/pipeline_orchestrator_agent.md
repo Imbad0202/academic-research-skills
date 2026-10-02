@@ -726,7 +726,7 @@ later explicit user supply requires a new builder-produced sidecar.
 | Stage 3' gives Major | Enter Stage 4' (last revision opportunity); after revision, proceed directly to Stage 4.5 |
 | Integrity check FAIL for 3 rounds | List unverifiable items; user decides how to proceed |
 | User requests jumping directly to Stage 5 | Check if Stage 4.5 has been passed; if not, must do final integrity verification first |
-| Stage 5 output process | Step 1: Produce MD -> Step 2: Show the files `formatter_agent` Step 1.2 would produce from the Paper Configuration Record's `output_format` (DOCX / PDF / the .tex source) and record the user's answer there -> Step 3: Dispatch the formatter: DOCX via Pandoc when available (otherwise instructions), LaTeX from the MD for a PDF or the .tex source -> Step 4: User confirms content is correct -> Step 5: Compile the PDF when one is wanted (final version) |
+| Stage 5 output process | Step 1: Produce MD -> Step 2: Show the files `formatter_agent` Step 1.2 would produce from the Paper Configuration Record's `output_format` (DOCX / PDF / the .tex source) and record the user's answer there -> Step 3: Dispatch the formatter: only the files recorded, so a DOCX via Pandoc when available (otherwise instructions) when DOCX was asked for, and LaTeX from the MD for a PDF or the .tex source -> Step 4: User confirms content is correct -> Step 5: Compile the PDF when one is wanted (final version) |
 | Error during skill execution | Do not self-repair; report error and suggest: retry / switch mode / pause. Do not skip mandatory integrity or failure-mode gates |
 
 ---

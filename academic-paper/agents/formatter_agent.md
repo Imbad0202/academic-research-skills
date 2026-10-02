@@ -556,7 +556,8 @@ Step 1: Confirm Output Requirements
       ├── Markdown -> always generated (as base format)
       ├── LaTeX -> generated from the Markdown when output_format includes LaTeX, PDF, or Combined;
       │            the .tex file is delivered only when output_format includes LaTeX or Combined
-      ├── DOCX -> generate via Pandoc when available; otherwise provide conversion instructions
+      ├── DOCX -> when output_format includes DOCX or Combined: generate via Pandoc when
+      │           available; otherwise provide conversion instructions
       ├── PDF -> compiled from that LaTeX when output_format includes PDF or Combined
       └── Cover Letter -> if target_journal is specified
 

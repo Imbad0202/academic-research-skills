@@ -730,7 +730,7 @@ Stage 3': academic-paper-reviewer
 Stage 4/4': academic-paper (revision mode)
 Stage 5: academic-paper (format-convert mode)
   - Step 1: Consume the citation-style decision recorded at the Stage 5 entry gate; ask which academic formatting style (APA 7.0 / Chicago / IEEE, etc.) only when no gate decision exists (direct format-convert / mid-entry invocation)
-  - Then the Stage 5 output process in `agents/pipeline_orchestrator_agent.md`: MD, the files the user wants (DOCX via Pandoc when available; a PDF compiled from LaTeX generated from the MD, using the corresponding document class, e.g., apa7 for APA 7.0; the .tex source only when asked for), content confirmation, PDF; if tectonic is unavailable, say so instead of substituting another route
+  - Then the Stage 5 output process in `agents/pipeline_orchestrator_agent.md`: MD, only the files the user wants (a DOCX via Pandoc when available; a PDF compiled from LaTeX generated from the MD, using the corresponding document class, e.g., apa7 for APA 7.0; the .tex source only when asked for), content confirmation, PDF; if tectonic is unavailable, say so instead of substituting another route
   - Fonts: Times New Roman (English) + Source Han Serif TC VF (Chinese) + Courier New (monospace)
   - ⚠️ IRON RULE: PDF must be compiled from LaTeX (HTML-to-PDF is prohibited)
 ```
