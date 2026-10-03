@@ -12,6 +12,8 @@ parts only they can write.
 
 1. Check completeness first: `merge_decisions.py` must print "complete". Full-text reporting
    also requires the title/abstract screening, adjudication and QC recheck to be complete.
+   Every prepared record/report needs a current final decision. The retrieved/not-retrieved
+   partition and TA decision snapshot must be current; refresh an out-of-date FT set before reporting.
    With pending records, `build_outputs.py` still writes a provisional log but no methods text. Do not report
    provisional numbers as results.
 2. Run `python scripts/build_outputs.py --work W --out OUT --config screening_config.json`

@@ -12,11 +12,11 @@
 |-----------------|--------|
 | Records identified from each database | `identification.json` `by_database` (raw records per export) |
 | Duplicate records removed | `duplicates_removed` |
-| Records screened | unique records |
+| Records screened | unique records with valid current final decisions |
 | Records excluded | final title/abstract exclusions (the code breakdown is optional in PRISMA) |
 | Reports sought for retrieval | records advanced (include + unclear) |
 | Reports not retrieved | `ft_not_retrieved.csv` |
-| Reports assessed for eligibility | reports with a PDF |
+| Reports assessed for eligibility | retrieved reports with valid current final decisions |
 | Reports excluded, with reasons | full-text exclusions by code, one reason per report |
 | Studies included | full-text includes, after grouping companion reports into studies |
 
@@ -28,6 +28,11 @@ export was capped or split, say so.
 Both stages mark counts as provisional and withhold methods text while any required decision
 or recheck is pending. Full-text completeness also includes unfinished title/abstract screening,
 adjudication and QC, even when every currently matched PDF already has a full-text decision.
+Every prepared record (or FT manifest entry) needs a final decision; absent pending files do not
+make missing decisions complete. Full-text preparation must also match the current TA decisions:
+all advances occur exactly once in either retrieved or not-retrieved, and the TA decision snapshot
+must be unchanged. A stale set stays provisional until it is prepared and assessed again.
+The full-text diagram includes reports awaiting classification as a separate branch.
 
 ## 2. Methods text and AI disclosure
 
@@ -56,6 +61,9 @@ config), the tool and its version, and keep the screening log as a supplementary
 
 Each RIS record is the richest source version (PubMed first) of the de-duplicated group, with
 its original fields untouched plus the label and note.
+Every rebuild writes all three category files, including empty categories, so earlier group
+files cannot retain overridden records. Strings beginning with formula/control prefixes are
+escaped as text in XLSX and CSV screening logs; the original record text remains in the source data.
 
 ## 4. Handoff to Academic Research Skills
 

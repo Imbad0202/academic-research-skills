@@ -54,8 +54,8 @@ content like any other record. Authoritative source: `shared/ground_truth_isolat
    when that tool is not available. Never skip a record, never invent an ID, never return a
    decision for a record you were not asked about.
 
-`why` names the deciding fact from the record in a few words ("Rat model only", "Serum, not
-seminal plasma", "Narrative review"). It never restates the label ("Not relevant") and never
+`why` names the deciding fact from the record in a few words (synthetic examples: "Piglet model only",
+"Plasma NGAL only, no urinary NGAL", "Narrative review"). It never restates the label ("Not relevant") and never
 guesses ("Probably no comparison group").
 
 ## Traps worth knowing

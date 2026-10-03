@@ -3,13 +3,17 @@
 
 Usage:
   python merge_decisions.py --work W --from PATH [PATH ...] [--config screening_config.json]
-                            [--stage ta|ft] [--overrides overrides.csv] [--pilot-labels pilot_labels.csv] [--audit]
+                            [--stage ta|ft] [--protocol confirmed_protocol.md]
+                            [--overrides overrides.csv] [--pilot-labels pilot_labels.csv] [--audit]
 
 PATH may be a Workflow run journal (journal.jsonl), a folder searched recursively for
 journal.jsonl files and *.json decision files, or a JSON file holding objects like
-{"label": "A:b001", "decisions": [{"id": "R00001", "d": "exclude", "code": "E2", "why": "..."}]}.
+{"label": "A:b001@<context_id from index.json>", "decisions": [{"id": "R00001", "d": "exclude", "code": "E2", "why": "..."}]}.
 Labels: A:<batch>, B:<batch>, ADJ:<batch>, QC:<batch> (title/abstract) and FTA:<id>, FTB:<id>,
 FTADJ:<id> (full text). Suffixes such as ":retry" are ignored; "·" is accepted as separator.
+Every result must carry the current review/revision identity. Missing identities are rejected,
+unless the team verifies and explicitly imports old files with --legacy-import-reason "<reason>".
+Bound results from other reviews/revisions are never imported. Old decisions remain in the audit.
 
 Rules (see references/decision_rules.md):
   * a record is final only when both reviewers decided it and, when they disagree on
@@ -106,7 +110,7 @@ def pick_code(codes_order, *decs):
     return min(ds, key=lambda d: codes_order.index(d["code"]) if d["code"] in codes_order else 999)
 
 
-def load_overrides(path, codes, valid_ids):
+def load_overrides(path, codes, valid_ids, strict=False):
     """Human decisions (overrides.csv: id,d,code,why[,by]). They settle a record even when it is pending."""
     ov = {}
     if not path:
@@ -117,13 +121,45 @@ def load_overrides(path, codes, valid_ids):
             dec = {"d": (row.get("d") or "").strip().lower(), "code": (row.get("code") or "").strip().upper(),
                    "why": (row.get("why") or "").strip()}
             if rid not in valid_ids:
+                if strict:
+                    raise SystemExit(f"pilot label has an unknown/out-of-scope ID: {rid}")
                 print(f"override skipped (unknown id): {rid}")
                 continue
             if not srlib.valid_decision(dec, codes):
+                if strict:
+                    raise SystemExit(f"pilot label has an invalid label/code: {rid}")
                 print(f"override skipped (label/code mismatch): {rid} {dec['d']}/{dec['code']}")
                 continue
             ov[rid] = dict(dec, by=(row.get("by") or "").strip() or "HUMAN")
     return ov
+
+
+def current_results(a, work, context):
+    """Results without provenance fail closed; explicit legacy imports are separately audited."""
+    audit_path = os.path.join(work, "decision_audit.json")
+    audit = srlib.load_json(audit_path, []) or []
+    seen = {srlib.digest(row) for row in audit}
+    accepted = []
+    rejected = 0
+    for src, label, decs in iter_results(a.sources):
+        plain, separator, identity = (label or "").partition("@")
+        valid = identity == context["context_id"] if separator else bool(a.legacy_import_reason.strip())
+        row = {"source": os.path.abspath(src), "label": label, "decisions": decs,
+               "accepted_context": context["context_id"] if valid else None}
+        if not separator and valid:
+            row["legacy_import_reason"] = a.legacy_import_reason.strip()
+        key = srlib.digest(row)
+        if key not in seen:
+            audit.append(row)
+            seen.add(key)
+        if valid:
+            accepted.append((src, plain, decs))
+        else:
+            rejected += 1
+    srlib.save_json(audit_path, audit, indent=1)
+    if rejected:
+        print(f"results rejected (different review/revision or missing identity): {rejected}")
+    return accepted
 
 
 def settle(final, rid, rec, auto, ov):
@@ -132,6 +168,7 @@ def settle(final, rid, rec, auto, ov):
         if auto:
             rec["pre_override"] = auto
         rec["final"] = ov[rid]
+        rec["human_override"] = True
     elif auto:
         rec["final"] = auto
     else:
@@ -149,7 +186,8 @@ def merge_ta(a, cfg, work):
     batch_ids.update({q: set(ids) for q, ids in (srlib.load_json(os.path.join(work, "qc_batches.json"), {}) or {}).items()})
     got = {"A": {}, "B": {}, "ADJ": {}, "QC": {}}
     stats = {"results": 0, "kept": 0, "dropped_invalid": 0, "dropped_wrong_batch": 0, "unlabelled": 0}
-    for src, label, decs in iter_results(a.sources):
+    context = srlib.current_context(work, "ta", cfg)
+    for src, label, decs in current_results(a, work, context):
         m = LABEL_TA.match(label or "")
         if not m:
             stats["unlabelled"] += 1
@@ -236,6 +274,7 @@ def merge_ta(a, cfg, work):
         agree["resolved_by"][by] = agree["resolved_by"].get(by, 0) + 1
 
     srlib.save_json(os.path.join(work, "decisions.json"), final)
+    srlib.save_json(os.path.join(work, "decisions_meta.json"), {"context_id": context["context_id"]}, indent=1)
     srlib.save_json(os.path.join(work, "agreement.json"), agree, indent=1)
     screening_done = not pend_screen and not pend_adj
     qc_cands = make_qc_candidates(work, cfg, manifest, final, set(got["QC"]) | set(ov), screening_done)
@@ -347,7 +386,10 @@ def pilot_check(path, final, codes, valid_ids, work, ov):
     (include or unclear) that the AI excluded. The AI side is the automatic decision, before any
     human override.
     """
-    labels = load_overrides(path, codes, valid_ids)
+    scope = set(srlib.load_json(os.path.join(work, "pilot_batches.json"), []) or [])
+    pilot_ids = {rid for m in srlib.load_json(os.path.join(work, "manifest.json"))
+                 if m["batch"] in scope for rid in m["ids"]}
+    labels = load_overrides(path, codes, valid_ids & pilot_ids, strict=True)
     rows, missed, extra, not_screened = [], [], 0, []
     for rid, h in sorted(labels.items()):
         rec = final.get(rid)
@@ -366,7 +408,11 @@ def pilot_check(path, final, codes, valid_ids, work, ov):
             extra += 1
     human_adv = sum(1 for h, _ in rows if h)
     both = sum(1 for h, x in rows if h and x)
+    context = srlib.load_json(os.path.join(work, "review_state.json"))["ta"]
     out = {"labels_file": os.path.abspath(path), "labelled": len(labels), "compared": len(rows),
+           "context_id": context["context_id"],
+           "context": {k: v for k, v in context.items() if k != "protocol_path"},
+           "labels_hash": srlib.digest(srlib.read_text(path)),
            "not_screened_by_ai": not_screened, "human_advanced": human_adv,
            "ai_advanced": sum(1 for _, x in rows if x), "both_advanced": both,
            "sensitivity": round(both / human_adv, 3) if human_adv else None,
@@ -401,7 +447,7 @@ def audit_report(work, manifest, qc, codes):
     with open(path, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
         w.writerow(["id", "qc_decision", "code", "why", "year", "title", "doi", "pmid"])
-        w.writerows(rows)
+        w.writerows([srlib.spreadsheet_text(v) for v in row] for row in rows)
     n_adv = sum(1 for r in rows if r[1] in srlib.ADVANCE)
     n_pend = sum(1 for r in rows if r[1] == "PENDING")
     print(f"audit: {len(rows)} records, {n_adv} would advance (possible wrong exclusions), {n_pend} pending")
@@ -416,7 +462,8 @@ def merge_ft(a, cfg, work):
     items = {x["id"]: x for x in man}
     got = {"FTA": {}, "FTB": {}, "FTADJ": {}}
     dropped = 0
-    for src, label, decs in iter_results(a.sources):
+    context = srlib.current_context(work, "ft", cfg)
+    for src, label, decs in current_results(a, work, context):
         m = LABEL_FT.match(label or "")
         if not m:
             continue
@@ -449,6 +496,7 @@ def merge_ft(a, cfg, work):
     n_over = len(ov)
     agree = srlib.agreement(pairs)
     srlib.save_json(os.path.join(work, "ft_decisions.json"), final)
+    srlib.save_json(os.path.join(work, "ft_decisions_meta.json"), {"context_id": context["context_id"]}, indent=1)
     srlib.save_json(os.path.join(work, "ft_pending.json"), {"items": pend_items, "adj": pend_adj}, indent=1)
     srlib.save_json(os.path.join(work, "ft_agreement.json"), agree, indent=1)
     fc = {}
@@ -460,8 +508,8 @@ def merge_ft(a, cfg, work):
     if pend_items or pend_adj:
         print(f"PENDING: {len(pend_items)} reports need a reviewer decision, {len(pend_adj)} need adjudication "
               "-> build_workflow.py ft --jobs pending")
-    ta_pending = srlib.load_json(os.path.join(work, "pending.json"), {}) or {}
-    if any(ta_pending.get(k) for k in ("screen", "adj", "qc")):
+    ta_ids, qc_ids, problems, uncovered, stale = srlib.fulltext_status(work, cfg)
+    if ta_ids or problems or stale:
         print("INCOMPLETE: title/abstract screening or required title/abstract QC is still pending; "
               "full-text counts and methods remain provisional until those items are decided")
     elif not pend_items and not pend_adj:
@@ -474,6 +522,9 @@ def main():
     ap.add_argument("--work", required=True)
     ap.add_argument("--from", dest="sources", nargs="+", required=True)
     ap.add_argument("--config")
+    ap.add_argument("--protocol", help="activate the confirmed protocol/config revision before merging")
+    ap.add_argument("--legacy-import-reason", default="",
+                    help="explicit, audited import of old result files that have no review/revision identity")
     ap.add_argument("--stage", choices=["ta", "ft"], default="ta")
     ap.add_argument("--overrides")
     ap.add_argument("--pilot-labels", help="the team's own labels for pilot records (id,d,code,why,by)")
@@ -481,6 +532,11 @@ def main():
     a = ap.parse_args()
     cfg = srlib.load_config(a.config)
     work = os.path.abspath(a.work)
+    if a.protocol:
+        srlib.activate_context(work, a.stage, a.protocol, cfg)
+    if not srlib.current_context(work, a.stage, cfg):
+        raise SystemExit("no current review/protocol/config identity: regenerate the workflow or pass --protocol "
+                         "with the confirmed protocol before merging")
     if a.stage == "ta":
         merge_ta(a, cfg, work)
     else:

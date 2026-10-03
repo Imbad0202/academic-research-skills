@@ -28,7 +28,7 @@ HOW TO DECIDE (apply to every record):
 4. Sensitive but decisive: missing an eligible study costs more than sending one extra record to full text, so when you are genuinely torn about a record that plausibly meets the core criteria, choose "unclear". Most search results are clearly irrelevant; exclude those without hesitation. "unclear" is never for a record that clearly fails a core criterion.
 5. Records without an abstract: decide from the title and publication type; choose "unclear" only when the title itself suggests the core criteria.
 6. Language is not a reason to exclude at this stage unless the protocol explicitly says so.
-7. "why": at most 15 words, in English, naming the deciding fact (for example "Rat model only", "Serum markers only, no seminal plasma", "Narrative review").
+7. "why": at most 15 words, in English, naming the deciding fact (synthetic examples: "Piglet model only", "Plasma NGAL only, no urinary NGAL", "Narrative review").
 <!-- /prompt -->
 
 <!-- prompt:rules_ft -->

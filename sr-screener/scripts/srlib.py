@@ -9,6 +9,7 @@ from __future__ import annotations
 import collections
 import csv
 import difflib
+import hashlib
 import io
 import json
 import os
@@ -16,6 +17,7 @@ import re
 import sys
 import textwrap
 import unicodedata
+import uuid
 
 VERSION = "1.0.0"
 TOOL = "sr-screener"
@@ -88,6 +90,158 @@ def save_json(path, obj, indent=None):
 
 def skill_dir():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def digest(obj):
+    """Stable content identity, independent of JSON formatting and file timestamps."""
+    return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=True,
+                                    separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def dataset_identity(work):
+    recs = load_json(os.path.join(work, "records.json"))
+    if not recs:
+        raise SystemExit("records.json not found - run prepare_records.py first")
+    review_id = recs.get("review_id")
+    if not review_id:
+        # Migration of prepared work folders predating review identities; old results still
+        # require an explicit audited legacy import, never a guessed identity.
+        path = os.path.join(work, "review_identity.json")
+        review_id = load_json(path)
+        if not review_id:
+            review_id = str(uuid.uuid4())
+            save_json(path, review_id)
+    return review_id, digest(recs["unique"])
+
+
+def activate_context(work, stage, protocol_path, cfg):
+    """Bind a revision to this review, dataset, confirmed protocol and effective config.
+
+    Amendments archive the old decisions and QC state before clearing the active stage.
+    Pilot scope is retained: an amendment permits re-piloting the same batches, not widening.
+    """
+    review_id, dataset = dataset_identity(work)
+    protocol = read_text(protocol_path).strip()
+    if len(protocol) < 200:
+        raise SystemExit("the protocol file looks empty - write and confirm it first (protocol mode)")
+    identity = dict(review_id=review_id, dataset=dataset, stage=stage,
+                    protocol_hash=digest(protocol), config_hash=digest(cfg))
+    if stage == "ft":
+        identity["input_hash"] = digest(load_json(os.path.join(work, "ft_preparation.json")))
+    path = os.path.join(work, "review_state.json")
+    state = load_json(path, {}) or {}
+    old = state.get(stage)
+    identity["content_id"] = digest(identity)
+    if old and old.get("content_id") == identity["content_id"]:
+        old["protocol_path"] = os.path.abspath(protocol_path)
+        state[stage] = old
+        save_json(path, state, indent=1)
+        return old
+    names = (["decisions.json", "decisions_meta.json", "pending.json", "agreement.json",
+              "qc_batches.json", "qc_reasons.json", "qc_candidates.json"] if stage == "ta" else
+             ["ft_decisions.json", "ft_decisions_meta.json", "ft_pending.json", "ft_agreement.json"])
+    if old:
+        history_path = os.path.join(work, "revision_history.json")
+        history = load_json(history_path, []) or []
+        history.append({"context": old, "state": {n: load_json(os.path.join(work, n)) for n in names}})
+        save_json(history_path, history, indent=1)
+        for name in names:
+            p = os.path.join(work, name)
+            if os.path.exists(p):
+                os.remove(p)
+        print(f"{stage} protocol/config revision changed: earlier decisions archived; re-screen this revision")
+    identity.update(revision=(old or {}).get("revision", 0) + 1,
+                    protocol_path=os.path.abspath(protocol_path))
+    identity["context_id"] = digest({"content_id": identity["content_id"], "revision": identity["revision"]})
+    state[stage] = identity
+    save_json(path, state, indent=1)
+    return identity
+
+
+def current_context(work, stage, cfg):
+    context = (load_json(os.path.join(work, "review_state.json"), {}) or {}).get(stage)
+    if not context:
+        return None
+    review_id, dataset = dataset_identity(work)
+    path = context.get("protocol_path", "")
+    if (context.get("review_id") != review_id or context.get("dataset") != dataset or
+            context.get("config_hash") != digest(cfg) or not os.path.isfile(path) or
+            context.get("protocol_hash") != digest(read_text(path).strip())):
+        return None
+    if stage == "ft" and context.get("input_hash") != digest(load_json(os.path.join(work, "ft_preparation.json"))):
+        return None
+    return context
+
+
+def decision_state_current(work, stage, cfg):
+    context = current_context(work, stage, cfg)
+    prefix = "ft_" if stage == "ft" else ""
+    meta = load_json(os.path.join(work, prefix + "decisions_meta.json"), {}) or {}
+    return bool(context and meta.get("context_id") == context["context_id"])
+
+
+def ta_status(work, cfg):
+    """Every prepared record needs a valid, current final decision, plus required QC."""
+    records = load_json(os.path.join(work, "records.json"))["unique"]
+    decisions = load_json(os.path.join(work, "decisions.json"), {}) or {}
+    pending = load_json(os.path.join(work, "pending.json"), {}) or {}
+    ids = {u["id"] for u in records}
+    missing = {rid for rid in ids if not valid_decision(decisions.get(rid, {}).get("final"),
+                                                      exclusion_codes(cfg))}
+    qc_ids = {i for p in pending.get("qc", []) for i in p["ids"]}
+    # The QC registry survives merges. Missing pending.json cannot erase unfinished rechecks.
+    required = load_json(os.path.join(work, "qc_reasons.json"), {}) or {}
+    qc_ids |= {rid for rid in required if rid in ids and
+               decisions.get(rid, {}).get("final", {}).get("d") == "exclude" and
+               not decisions.get(rid, {}).get("QC") and
+               not decisions.get(rid, {}).get("human_override") and
+               not decisions.get(rid, {}).get("final", {}).get("by", "").startswith("HUMAN")}
+    missing |= {i for p in pending.get("screen", []) for i in p["missA"] + p["missB"]}
+    missing |= {x["id"] for p in pending.get("adj", []) for x in p["items"]}
+    problems = []
+    if not decision_state_current(work, "ta", cfg):
+        problems.append("title/abstract decisions have no current protocol/config identity")
+        missing |= ids
+    # If merge state disappeared, the joint-exclusion sample has not been certified complete.
+    if not os.path.exists(os.path.join(work, "pending.json")):
+        missing |= {rid for rid, r in decisions.items() if rid in ids and
+                    r.get("final", {}).get("d") == "exclude" and
+                    r.get("final", {}).get("by") == "A+B" and not r.get("QC")}
+    return missing | qc_ids, qc_ids, problems
+
+
+def ta_snapshot(work):
+    decisions = load_json(os.path.join(work, "decisions.json"), {}) or {}
+    return digest({"dataset": dataset_identity(work),
+                   "context": load_json(os.path.join(work, "decisions_meta.json"), {}),
+                   "final": {rid: r.get("final") for rid, r in decisions.items()}})
+
+
+def fulltext_status(work, cfg):
+    """The retrieved/not-retrieved partition must cover the *current* TA advances."""
+    ta_ids, qc_ids, problems = ta_status(work, cfg)
+    decisions = load_json(os.path.join(work, "decisions.json"), {}) or {}
+    advanced = {rid for rid, r in decisions.items() if r.get("final", {}).get("d") in ADVANCE}
+    man = load_json(os.path.join(work, "ft_manifest.json"))
+    nr = load_json(os.path.join(work, "ft_not_retrieved.json"))
+    meta = load_json(os.path.join(work, "ft_preparation.json"), {}) or {}
+    retrieved = [x["id"] for x in man or []]
+    not_retrieved = [x["id"] for x in nr or []]
+    covered = set(retrieved) | set(not_retrieved)
+    stale = (man is None or nr is None or meta.get("ta_snapshot") != ta_snapshot(work) or
+             advanced != covered or set(retrieved) & set(not_retrieved) or
+             len(retrieved) != len(set(retrieved)) or len(not_retrieved) != len(set(not_retrieved)) or
+             meta.get("retrieval_hash") != digest({"manifest": man, "not_retrieved": nr}))
+    if stale:
+        problems.append("full-text set is out of date: rerun prepare_fulltext.py for the current title/abstract decisions")
+    return ta_ids, qc_ids, problems, advanced ^ covered, bool(stale)
+
+
+def spreadsheet_text(value):
+    """Keep untrusted text inert in both Excel and CSV readers."""
+    if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r")):
+        return "'" + value
+    return value
 
 
 # ------------------------------------------------------------------------- config
@@ -587,7 +741,8 @@ def db_rank(db):
 # ------------------------------------------------------------------------ batches
 
 def record_block(u, wrap=150):
-    fill = lambda s: textwrap.fill(s, wrap, break_long_words=True, break_on_hyphens=False)
+    fill = lambda s: textwrap.fill(s, wrap, break_long_words=True, break_on_hyphens=False,
+                                  subsequent_indent="    ")
     head = f"### {u['id']} | {u['year'] or 'n/a'} | {u['type'] or 'n/a'} | Lang: {u['lang'] or 'n/a'}"
     lines = [head, fill("TI: " + (u["title"] or "[no title]")),
              fill("AB: " + (u["abstract"] or "[NO ABSTRACT AVAILABLE]"))]

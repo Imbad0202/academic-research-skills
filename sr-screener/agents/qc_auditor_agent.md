@@ -52,7 +52,7 @@ itself: changes come from the recheck policy in the config or from the user's ov
    sample of exclusions. A sample of 50-100 exclusions is commonly used; if the team finds an
    eligible study among them, widen the check.
 4. Record the team's changes in `overrides.csv` (`id,d,code,why,by`, for example
-   `R01234,unclear,UNC,subgroup of azoospermic men,HUMAN:AB`) and merge again with
+   synthetic example `R00002,unclear,UNC,urinary marker not named,HUMAN:EXAMPLE`) and merge again with
    `--overrides overrides.csv`. Overrides win over every automatic decision and are marked in
    all outputs.
 

@@ -42,7 +42,7 @@ AB: [NO ABSTRACT AVAILABLE]
 | R00003 | exclude | E4 | Plasma NGAL only, no urinary NGAL | Urinary NGAL mentioned anywhere in the record |
 | R00004 | unclear | UNC | Paediatric cardiac surgery; markers not named | Abstract naming the markers |
 | R00005 | exclude | E2 | Piglet model only | - |
-| R00006 | exclude | E1 | Letter without abstract | If the protocol allowed letters with data: unclear (title suggests both core criteria) |
+| R00006 | unclear | UNC | Urinary NGAL and paediatric cardiac surgery; data not established | Full text confirms whether the letter reports eligible data |
 
 ## Why these are the right calls
 
@@ -51,8 +51,8 @@ AB: [NO ABSTRACT AVAILABLE]
 - **R00004** is in Chinese, but the English abstract is screened normally; the missing marker
   names make it unclear rather than excluded (protocol case d). The language is flagged in the
   outputs if Chinese is outside `languages_allowed`.
-- **R00006** is decided from the header: publication type comes first in the code order, so the
-  letter is excluded before any content question is asked.
+- **R00006** could be a letter with original data. A missing abstract does not prove it lacks
+  data, and the title plausibly meets both core criteria, so retrieve the full text.
 
 This table is a single-reviewer triage. For the review itself, a person acts as the second
 reviewer, or the records go through the dual-review pipeline.

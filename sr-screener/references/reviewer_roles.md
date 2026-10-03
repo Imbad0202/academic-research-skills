@@ -31,8 +31,8 @@ than two copies of one prompt.
    met: `include`.
 4. Otherwise, if the core criteria are plausibly met: `unclear`. If a core criterion clearly
    fails, go back to step 2: that is an exclusion.
-5. Write `why` as the deciding fact in at most 15 words: "Rat model only", "Serum, not
-   seminal plasma", "Narrative review", "OA vs NOA seminal IL-18 measured".
+5. Write `why` as the deciding fact in at most 15 words. Synthetic examples: "Piglet model only",
+   "Plasma NGAL only, no urinary NGAL", "Narrative review", "Urinary NGAL after paediatric cardiac surgery".
 
 Good reasons name a fact from the record. Poor reasons restate the label ("Not relevant",
 "Does not meet criteria") or guess ("Probably no comparison group").

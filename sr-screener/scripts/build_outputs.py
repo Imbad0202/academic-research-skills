@@ -141,10 +141,8 @@ def main():
     RAW = srlib.load_json(os.path.join(work, "raw_records.json"), [])
     ident = srlib.load_json(os.path.join(work, "identification.json"), {})
     ta_dec = srlib.load_json(os.path.join(work, "decisions.json"), {})
-    ta_pending = srlib.load_json(os.path.join(work, "pending.json"), {"screen": [], "adj": [], "qc": []})
-    ta_qc_ids = {i for p in ta_pending.get("qc", []) for i in p["ids"]}
-    ta_pending_ids = ({i for p in ta_pending["screen"] for i in p["missA"] + p["missB"]} |
-                      {x["id"] for p in ta_pending["adj"] for x in p["items"]} | ta_qc_ids)
+    ta_pending_ids, ta_qc_ids, state_problems = srlib.ta_status(work, cfg)
+    ft_stale = False
     if a.stage == "ta":
         D = ta_dec
         agree = srlib.load_json(os.path.join(work, "agreement.json"), {})
@@ -154,21 +152,27 @@ def main():
         D = srlib.load_json(os.path.join(work, "ft_decisions.json"), {})
         pending = srlib.load_json(os.path.join(work, "ft_pending.json"), {"items": [], "adj": []})
         agree = srlib.load_json(os.path.join(work, "ft_agreement.json"), {})
-        pending_ids = sorted({x["id"] for x in pending["items"]} | {x["id"] for x in pending["adj"]} |
-                             ta_pending_ids)
         man = srlib.load_json(os.path.join(work, "ft_manifest.json"), [])
         universe = [x["id"] for x in man]
+        ta_pending_ids, ta_qc_ids, state_problems, uncovered, ft_stale = srlib.fulltext_status(work, cfg)
+        missing = {rid for rid in universe if not srlib.valid_decision(D.get(rid, {}).get("final"),
+                                                                       srlib.exclusion_codes(cfg, "ft"))}
+        if universe and not srlib.decision_state_current(work, "ft", cfg):
+            state_problems.append("full-text decisions have no current protocol/config/retrieval identity")
+            missing |= set(universe)
+        pending_ids = sorted({x["id"] for x in pending["items"]} | {x["id"] for x in pending["adj"]} |
+                             ta_pending_ids | missing | uncovered)
 
     rows = []
     for rid in universe:
         r = D.get(rid)
-        if not r:
+        if not r or rid not in U or not srlib.valid_decision(r.get("final"), srlib.exclusion_codes(cfg, a.stage)):
             continue
         u = U[rid]
         rows.append(dict(u=u, f=r["final"], A=r.get("A") or {}, B=r.get("B") or {}, J=r.get("ADJ") or {},
                          Q=r.get("QC") or {}, pre_qc=r.get("pre_qc"), pre_override=r.get("pre_override"),
                          qc_flag=r.get("qc_flag", False), ok_lang=lang_ok(u, cfg.get("languages_allowed"))))
-    complete = not pending_ids
+    complete = not pending_ids and not state_problems and not ft_stale
     count = lambda d: sum(1 for r in rows if r["f"]["d"] == d)
     exc_codes = {}
     for r in rows:
@@ -194,13 +198,16 @@ def main():
     counts = {"stage": a.stage, "tool": f"{srlib.TOOL} {srlib.VERSION}", "complete": complete,
               "pending_records": len(pending_ids)}
     if a.stage == "ft":
-        counts.update({"pending_ta_records": len(ta_pending_ids), "pending_ta_qc_records": len(ta_qc_ids)})
+        counts.update({"pending_ta_records": len(ta_pending_ids), "pending_ta_qc_records": len(ta_qc_ids),
+                       "fulltext_set_out_of_date": ft_stale})
+    counts["state_problems"] = state_problems
     if a.stage == "ta":
         counts.update({
             "identified_by_database": ident.get("by_database", {}),
             "identified_total": ident.get("raw_total"),
             "duplicates_removed": ident.get("duplicates_removed"),
-            "records_screened": len(universe),
+            "records_screened": len(rows),
+            "records_to_screen": len(universe),
             "records_excluded": count("exclude"),
             "excluded_by_code": dict(exc_sorted),
             "reports_sought_for_retrieval": count("include") + count("unclear"),
@@ -213,9 +220,11 @@ def main():
         ta_counts = srlib.load_json(os.path.join(work, "prisma_ta.json"), {})
         nr = srlib.load_json(os.path.join(work, "ft_not_retrieved.json"), []) or []
         counts.update({
-            "reports_sought_for_retrieval": ta_counts.get("reports_sought_for_retrieval", len(universe) + len(nr)),
+            "reports_sought_for_retrieval": sum(1 for r in ta_dec.values()
+                                                if r.get("final", {}).get("d") in srlib.ADVANCE),
             "reports_not_retrieved": len(nr),
-            "reports_assessed": len(universe),
+            "reports_assessed": len(rows),
+            "reports_to_assess": len(universe),
             "reports_excluded": count("exclude"),
             "excluded_by_reason": {labels.get(k, k): v for k, v in exc_sorted},
             "reports_unclear_awaiting_classification": count("unclear"),
@@ -257,6 +266,7 @@ def main():
         summary.append((f"INCOMPLETE: {len(pending_ids)} records need decisions or required rechecks "
                         "(resume with build_workflow.py --jobs pending, then --jobs recheck for the required QC "
                         "recheck). Numbers below are provisional.", ""))
+        summary += [("INCOMPLETE: " + problem, "") for problem in state_problems]
         if a.stage == "ft" and ta_pending_ids:
             summary.append((f"Title/abstract stage still pending: {len(ta_pending_ids)} records, "
                             f"including {len(ta_qc_ids)} required title/abstract QC rechecks. "
@@ -318,7 +328,7 @@ def main():
         ws.column_dimensions["A"].width = 78
         ws.column_dimensions["B"].width = 18
         for k, v in summary:
-            ws.append([k, v])
+            ws.append([srlib.spreadsheet_text(k), srlib.spreadsheet_text(v)])
             if k and k.isupper():
                 ws.cell(row=ws.max_row, column=1).font = Font(bold=True)
         fills = {"include": "C6EFCE", "unclear": "FFEB9C", "exclude": "F2F2F2"}
@@ -334,7 +344,7 @@ def main():
                 c.alignment = Alignment(wrap_text=True, vertical="center")
                 sh.column_dimensions[get_column_letter(i)].width = widths.get(h, 11)
             for r in sorted(rs, key=lambda r: (order.get(r["f"]["d"], 3), r["u"]["id"])):
-                sh.append(line(r))
+                sh.append([srlib.spreadsheet_text(v) for v in line(r)])
                 sh.cell(row=sh.max_row, column=2).fill = PatternFill("solid", fgColor=fills.get(r["f"]["d"], "FFFFFF"))
             sh.freeze_panes = "B2"
             sh.auto_filter.ref = sh.dimensions
@@ -342,18 +352,26 @@ def main():
             sh = wb.create_sheet("Pending")
             sh.append(["ID", "Title", "Batch"])
             for rid in pending_ids:
-                sh.append([rid, U[rid]["title"], U[rid].get("batch", "")])
+                u = U.get(rid, {})
+                sh.append([srlib.spreadsheet_text(v) for v in [rid, u.get("title", "[unknown record]"), u.get("batch", "")]])
         log_path = os.path.join(out, f"{P}_screening_log.xlsx")
         wb.save(log_path)
     except ImportError:
         log_path = os.path.join(out, f"{P}_screening_log_*.csv")
         with open(os.path.join(out, f"{P}_screening_log_Summary.csv"), "w", encoding="utf-8-sig", newline="") as f:
-            csv.writer(f).writerows(summary)
+            csv.writer(f).writerows([srlib.spreadsheet_text(v) for v in row] for row in summary)
         for name, rs in cols:
             with open(os.path.join(out, f"{P}_screening_log_{name}.csv"), "w", encoding="utf-8-sig", newline="") as f:
                 w = csv.writer(f)
                 w.writerow(head)
-                w.writerows(line(r) for r in sorted(rs, key=lambda r: (order.get(r["f"]["d"], 3), r["u"]["id"])))
+                w.writerows([srlib.spreadsheet_text(v) for v in line(r)] for r in
+                            sorted(rs, key=lambda r: (order.get(r["f"]["d"], 3), r["u"]["id"])))
+        with open(os.path.join(out, f"{P}_screening_log_Pending.csv"), "w", encoding="utf-8-sig", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["ID", "Title", "Batch"])
+            for rid in pending_ids:
+                u = U.get(rid, {})
+                w.writerow([srlib.spreadsheet_text(v) for v in [rid, u.get("title", ""), u.get("batch", "")]])
         print("openpyxl not installed: wrote CSV files instead of .xlsx (pip install openpyxl for Excel)")
 
     # ------------------------------------------------------------------ RIS
@@ -375,8 +393,6 @@ def main():
     ris_files = []
     for n, d in ((1, "include"), (2, "unclear"), (3, "exclude")):
         rs = [r for r in rows if r["f"]["d"] == d]
-        if not rs:
-            continue
         p = os.path.join(out, f"{P}_{n}_{d}.ris")
         srlib.write_ris(p, [(raw_for(r["u"]), extra(r)) for r in rs])
         ris_files.append((os.path.basename(p), len(rs)))
@@ -385,6 +401,7 @@ def main():
     md = [f"# PRISMA 2020 counts - {'title/abstract' if a.stage == 'ta' else 'full-text'} stage", ""]
     if not complete:
         md += [f"> **Provisional:** {len(pending_ids)} records are still pending.", ""]
+        md += ["> " + problem for problem in state_problems]
         if a.stage == "ft" and ta_pending_ids:
             md += [f"> Title/abstract decisions or rechecks remain pending, including {len(ta_qc_ids)} "
                    "required title/abstract QC rechecks. These full-text counts are not final.", ""]
@@ -406,7 +423,8 @@ def main():
                f'  E["Reports assessed for eligibility (n = {counts["reports_assessed"]})"]',
                f'  X["Reports excluded (n = {counts["reports_excluded"]})<br/>{reasons}"]',
                f'  C["Reports of included studies (n = {counts["studies_included_reports"]})"]',
-               "  F --> N", "  F --> E", "  E --> X", "  E --> C", "```", ""]
+               f'  U["Reports awaiting classification (n = {counts["reports_unclear_awaiting_classification"]})"]',
+               "  F --> N", "  F --> E", "  E --> X", "  E --> C", "  E --> U", "```", ""]
     md += ["```json", json.dumps({k: v for k, v in counts.items() if k != "ta"}, indent=1, ensure_ascii=False), "```"]
     with open(os.path.join(out, f"{P}_prisma_counts.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(md) + "\n")
@@ -418,6 +436,8 @@ def main():
             f.write("# Methods text not generated\n\nScreening is incomplete "
                     f"({len(pending_ids)} records pending). Finish the run first; numbers must not be reported "
                     "from a partial run.\n")
+            for problem in state_problems:
+                f.write("\n" + problem + ".\n")
             if a.stage == "ft" and ta_pending_ids:
                 f.write(f"\nThe title/abstract stage is unfinished, including {len(ta_qc_ids)} required "
                         "title/abstract QC rechecks. Decide these items before producing final full-text counts "
@@ -431,7 +451,7 @@ def main():
             tool = (f"the sr-screener skill (version {srlib.VERSION}) of the open-source Academic Research Skills suite "
                     f"({REPO_URL}), running in Claude Code")
             access = ("The reviewer agents could only read the record file they were given (no web access). "
-                      if cfg.get("agent_type") else "")
+                      if (cfg.get("agent_type") or "").split(":")[-1] == "screening_reviewer_agent" else "")
             if a.stage == "ta":
                 conflict = (f"Disagreements between advancing (include or unclear) and excluding a record "
                             f"({n_conf} records) were resolved by a third AI reviewer ({mlab('ADJ')}) that re-read the record. "
@@ -451,8 +471,8 @@ def main():
                                  f"{len(pc.get('missed_advances', []))} of the {pc.get('human_advanced', 0)} records the "
                                  "team advanced. [TO COMPLETE: pilot rounds and protocol amendments.] ")
                 if po_log:
-                    pilot_txt += ("[TO COMPLETE: the full run was started without a passing human-labelled pilot; "
-                                  f"recorded reason: {po_log[-1]['reason']}.] ")
+                    pilot_txt += ("[TO COMPLETE: pilot gate or scope override(s) were recorded; "
+                                  f"latest reason: {po_log[-1]['reason']}; describe their scope and revision.] ")
                 seed_txt = ""
                 if seeds:
                     ok = [s for s in seeds if s.get("id") and D.get(s["id"], {}).get("final", {}).get("d") in srlib.ADVANCE]

@@ -81,12 +81,12 @@ AI screening is decision support. Before publication the team should, at minimum
 - read a random sample of exclusions (50-100 is common; widen the check if an eligible study
   turns up), plus the QC-flagged records.
 
-Team decisions go into `overrides.csv` and win over every automatic decision:
+Team decisions go into `overrides.csv` and win over every automatic decision. Synthetic examples:
 
 ```csv
 id,d,code,why,by
-R01234,unclear,UNC,subgroup of azoospermic men reported,HUMAN:AB
-R04410,exclude,E4,conference abstract only,HUMAN:CD
+R00002,unclear,UNC,children after cardiac surgery; urinary marker not named,HUMAN:EXAMPLE
+R00003,exclude,E2,piglet model only,HUMAN:EXAMPLE
 ```
 
 Merge again with `--overrides overrides.csv`. The earlier automatic decision is kept on the

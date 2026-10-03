@@ -3,6 +3,7 @@ ruamel.yaml>=0.17
 jsonschema[format]>=4.17
 pypdf
 defusedxml
+openpyxl>=3.1  # sr-screener XLSX formula-injection regression tests (runtime CSV fallback remains optional)
 # Floors consumed by scripts/test_evidence_rows.py::test_escaped_markdown_yields_no_linkify_tokens_on_round_trip (#801).
 # markdown-it-py < 3 linkifies escaped bare URLs; dropping these lines makes that test silently skip in CI.
 markdown-it-py>=3.0

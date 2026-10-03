@@ -89,8 +89,8 @@ pending, never filled in.
    asks for the number of reports excluded for each reason, so each report needs exactly one.
 4. `where` names the page and section with the deciding information, so a person can check the
    decision in seconds.
-5. `unclear` means the information is not in the report (for example, OA and NOA are mixed and
-   separate data are not given): the study waits for classification or author contact. An
+5. `unclear` means the information is not in the report (for example, eligible and ineligible
+   age groups are mixed and separate data are not given): the study waits for classification or author contact. An
    unreadable or incomplete file is also `unclear`, with that reason.
 6. Companion reports of the same study are assessed together at the end: keep one decision per
    report, then group reports into studies for the PRISMA "studies included" count.

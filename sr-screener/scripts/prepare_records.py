@@ -100,6 +100,7 @@ def main():
     # ---------------------------------------------------------- de-duplication
     parent = list(range(len(all_recs)))
     how = {}
+    identifiers = [{k: {r[k]} if r[k] else set() for k in ("doi", "pmid")} for r in all_recs]
 
     def find(i):
         while parent[i] != i:
@@ -110,7 +111,13 @@ def main():
     def union(i, j, why):
         ri, rj = find(i), find(j)
         if ri != rj:
-            parent[max(ri, rj)] = min(ri, rj)
+            if any(identifiers[ri][k] and identifiers[rj][k] and
+                   identifiers[ri][k] != identifiers[rj][k] for k in ("doi", "pmid")):
+                return  # Conflicting identifiers, including transitive title-only bridges, need human review.
+            low, high = min(ri, rj), max(ri, rj)
+            parent[high] = low
+            for key in ("doi", "pmid"):
+                identifiers[low][key] |= identifiers[high][key]
             how.setdefault(max(i, j), why)
 
     ntitle = [srlib.norm_title(r["title"]) for r in all_recs]
@@ -134,16 +141,15 @@ def main():
         nt = ntitle[i]
         if len(nt) < 25:
             continue
-        k = (nt[:200], r["year"])
-        if k in seen:
-            union(i, seen[k], "title+year")
-        else:
-            seen[k] = i
+        k = (nt, r["year"])
+        for j in seen.get(k, []):
+            union(i, j, "title+year")
+        seen.setdefault(k, []).append(i)
         if r["year"].isdigit():
             for dy in (-1, 1):
-                k2 = (nt[:200], str(int(r["year"]) + dy))
-                if k2 in seen:
-                    union(i, seen[k2], "title+year(+-1)")
+                k2 = (nt, str(int(r["year"]) + dy))
+                for j in seen.get(k2, []):
+                    union(i, j, "title+year(+-1)")
 
     groups = collections.defaultdict(list)
     for i in range(len(all_recs)):
@@ -208,7 +214,8 @@ def main():
 
     # ----------------------------------------------------------------- outputs
     srlib.save_json(os.path.join(work, "manifest.json"), manifest)
-    srlib.save_json(os.path.join(work, "records.json"), dict(unique=unique, id_width=width))
+    srlib.save_json(os.path.join(work, "records.json"),
+                    dict(unique=unique, id_width=width, review_id=str(srlib.uuid.uuid4())))
     srlib.save_json(os.path.join(work, "raw_records.json"), [dict(r) for r in raw_store])
 
     no_abs = sum(1 for u in unique if not u["abstract"])
@@ -234,8 +241,9 @@ def main():
                 continue
             for i in u["members"]:
                 r = all_recs[i]
-                w.writerow([u["id"], i, how.get(i, "first"), r["db"], r["src_file"], r["year"], r["doi"],
-                            r["pmid"], r["title"][:200]])
+                w.writerow([srlib.spreadsheet_text(v) for v in
+                            [u["id"], i, how.get(i, "first"), r["db"], r["src_file"], r["year"], r["doi"],
+                             r["pmid"], r["title"]]])
 
     seeds_out = []
     if cfg.get("seeds"):

@@ -84,6 +84,8 @@ def ta_jobs(a, work, manifest, width):
     elif a.jobs == "pilot":
         chosen = [b.strip() for b in a.batches.split(",")] if a.batches else []
         if not chosen:
+            chosen = srlib.load_json(os.path.join(work, "pilot_batches.json"), []) or []
+        if not chosen:
             n = max(1, a.pilot_n)
             step = max(1, len(manifest) // n)
             chosen = [manifest[i]["batch"] for i in range(0, len(manifest), step)][:n]
@@ -119,7 +121,15 @@ def ta_jobs(a, work, manifest, width):
     return jobs
 
 
-def pilot_gate(work, override):
+def record_override(work, reason, problem, context, **details):
+    path = os.path.join(work, "pilot_override.json")
+    log = srlib.load_json(path, []) or []
+    log.append({"reason": reason.strip(), "problem": problem, "context_id": context["context_id"], **details})
+    srlib.save_json(path, log, indent=1)
+    print(f"WARNING: {problem}; reason recorded in {path}")
+
+
+def pilot_gate(work, override, context):
     """The full run starts only after a pilot checked against the team's own labels."""
     check = srlib.load_json(os.path.join(work, "pilot_check.json"))
     problem = None
@@ -134,16 +144,17 @@ def pilot_gate(work, override):
     elif check.get("not_screened_by_ai") or check.get("compared") != check.get("labelled"):
         problem = ("not all labelled records have been compared with an AI decision "
                    "(see pilot_check.json): finish the pilot and merge again with --pilot-labels")
+    elif check.get("context_id") != context["context_id"]:
+        problem = "pilot comparison is stale: the protocol, effective config or dataset changed; re-pilot"
+    elif not os.path.isfile(check.get("labels_file", "")) or check.get("labels_hash") != srlib.digest(
+            srlib.read_text(check["labels_file"])):
+        problem = "pilot labels changed or are unavailable; merge again with --pilot-labels"
     if not problem:
         return
     if not override.strip():
         raise SystemExit(f"full run blocked: {problem}. To start anyway, pass --pilot-override \"<reason>\"; "
                          "the reason is recorded and reported in the methods text.")
-    path = os.path.join(work, "pilot_override.json")
-    log = srlib.load_json(path, []) or []
-    log.append({"reason": override.strip(), "problem": problem})
-    srlib.save_json(path, log, indent=1)
-    print(f"WARNING: full run started without a passing pilot ({problem}); reason recorded in {path}")
+    record_override(work, override, f"full run started without a passing pilot ({problem})", context)
 
 
 def ft_jobs(a, work):
@@ -182,7 +193,9 @@ def emit_prompts(a, conf, prompts, out_dir):
         fn = os.path.join(out_dir, label.replace(":", "_") + ".txt")
         with open(fn, "w", encoding="utf-8") as f:
             f.write(text)
-        index.append({"label": label, "prompt_file": fn.replace("\\", "/"), "model": conf["models"].get(role, "")})
+        index.append({"label": label + "@" + conf["context"]["context_id"],
+                      "context": conf["context"], "prompt_file": fn.replace("\\", "/"),
+                      "model": conf["models"].get(role, "")})
 
     if a.stage == "ta":
         half = -(-conf["readLimit"] // 2)
@@ -269,12 +282,37 @@ def main():
     width = recs.get("id_width", 5)
     manifest = srlib.load_json(os.path.join(work, "manifest.json"), [])
 
+    if a.stage == "ft":
+        ta_ids, qc_ids, problems, uncovered, stale = srlib.fulltext_status(work, cfg)
+        if ta_ids or problems or stale:
+            raise SystemExit("full-text workflow blocked: finish title/abstract screening and rerun "
+                             "prepare_fulltext.py for the current decisions")
+    context = srlib.activate_context(work, a.stage, a.protocol, cfg)
+    authorized_ids = None
+
     if a.stage == "ta":
         jobs = ta_jobs(a, work, manifest, width)
         pilot_batches = set(srlib.load_json(os.path.join(work, "pilot_batches.json"), []) or [])
-        outside_pilot = any(j["b"] not in pilot_batches for j in jobs["screen"] + jobs["adj"])
+        if a.jobs == "pilot":
+            chosen = {j["b"] for j in jobs["screen"]}
+            if pilot_batches and not chosen <= pilot_batches:
+                if not a.pilot_override.strip():
+                    raise SystemExit("pilot scope is fixed in pilot_batches.json; widening it requires "
+                                     '--pilot-override "<reason>" (recorded)')
+                record_override(work, a.pilot_override, "pilot scope widened", context,
+                                from_batches=sorted(pilot_batches), to_batches=sorted(pilot_batches | chosen))
+            pilot_batches |= chosen
+            srlib.save_json(os.path.join(work, "pilot_batches.json"), sorted(pilot_batches), indent=1)
+        pilot_ids = {rid for m in manifest if m["batch"] in pilot_batches for rid in m["ids"]}
+        by_batch = {m["batch"]: m["ids"] for m in manifest}
+        by_batch.update(srlib.load_json(os.path.join(work, "qc_batches.json"), {}) or {})
+        outside_pilot = any(not set(by_batch.get(j["b"], [])) <= pilot_ids
+                            for j in jobs["screen"] + jobs["adj"] + jobs["recheck"])
         if a.jobs == "all" or (a.jobs != "pilot" and outside_pilot):
-            pilot_gate(work, a.pilot_override)
+            pilot_gate(work, a.pilot_override, context)
+            authorized_ids = [rid for m in manifest for rid in m["ids"]]
+        else:
+            authorized_ids = sorted(pilot_ids)
         keep = ["reviewer_intro", "rules_ta", "protocol_wrapper", "task_batch_read", "task_grep_subset",
                 "adjudicator_intro", "adjudicator_tiebreak", "qc_intro"]
         n_calls = 2 * len(jobs["screen"]) + len(jobs["adj"]) + len(jobs["recheck"])
@@ -307,6 +345,9 @@ def main():
                          (srlib.load_json(os.path.join(work, "identification.json"), {}) or {}).get("max_record_lines", 0) + 2),
         "returnDecisions": bool(a.return_decisions),
         "jobs": jobs,
+        "context": context,
+        "batchIds": by_batch if a.stage == "ta" else {},
+        "authorizedIds": authorized_ids,
     }
     tpl_name = "ta_screening.template.js" if a.stage == "ta" else "ft_screening.template.js"
     tpl = open(os.path.join(srlib.skill_dir(), "templates", "workflows", tpl_name), encoding="utf-8").read()
@@ -317,8 +358,6 @@ def main():
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
         f.write(script)
-    if a.stage == "ta" and a.jobs == "pilot":
-        srlib.save_json(os.path.join(work, "pilot_batches.json"), [j["b"] for j in jobs["screen"]], indent=1)
 
     print(f"workflow script: {out}")
     print(f"jobs: {size}")
