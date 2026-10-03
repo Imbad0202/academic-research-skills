@@ -83,7 +83,7 @@ LEGACY_HASHES = {
     # evidence-row/1.1 rows. The replay, build, validate, and render
     # functions this advisory reproduces are unchanged.
     Path("scripts/evidence_rows.py"):
-        "ff048b6f96ffbf000b6ca82391470ed5d60ef104e0e64f869ff87122305ca440",
+        "b3510133914b23115d7cd285f657450ff8de75f3ea678d843e4101634b6b8e9e",
     Path("shared/contracts/passport/claim_intent_manifest.schema.json"):
         "d6c4fd060812dc2a2b2dd73b6d9e77e366fcc0803486d5f38b4def6893d70cec",
     Path("shared/contracts/revision/claim_surface_manifest.schema.json"):

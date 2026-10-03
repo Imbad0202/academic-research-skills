@@ -2570,22 +2570,29 @@ def test_cli_refuses_advisory_rows_and_names_their_entry_point(tmp_path: Path) -
         "Participation is voluntary.",
         captured_at=ADVISORY_CAPTURED_AT,
     )
-    rows_path = tmp_path / "rows.json"
-    _write_json(rows_path, [row])
+    documents = {
+        "rows": [row],
+        "object": row,
+        "report": {"phases": {"E_claims": {"checked": 1, "verified": 1, "evidence_rows": [row]}}},
+    }
     source_map = tmp_path / "sources.json"
     _write_json(source_map, {"fixture.us-consent": "Participation is voluntary."})
-    for command in (
-        ("validate",),
-        ("validate", "--source-map", source_map),
-        ("render", "--format", "markdown"),
-    ):
-        result = _run_cli(command[0], rows_path, *command[1:])
-        assert result.returncode == 2, (command, result.stderr)
-        assert result.stderr == (
-            "ERROR: rows[0]: is an evidence-row/1.1 advisory row, which this CLI "
-            "does not handle; use scripts/build_content_coverage_advisory.py "
-            "(shared/references/authority_content_coverage_advisory_protocol.md)\n"
-        )
+    for shape, document in documents.items():
+        rows_path = tmp_path / f"{shape}.json"
+        _write_json(rows_path, document)
+        where = "phases.E_claims.evidence_rows" if shape == "report" else "rows"
+        for command in (
+            ("validate",),
+            ("validate", "--source-map", source_map),
+            ("render", "--format", "markdown"),
+        ):
+            result = _run_cli(command[0], rows_path, *command[1:])
+            assert result.returncode == 2, (shape, command, result.stderr)
+            assert result.stderr == (
+                f"ERROR: {where}[0]: is an evidence-row/1.1 advisory row, which this CLI "
+                "does not handle; use scripts/build_content_coverage_advisory.py "
+                "(shared/references/authority_content_coverage_advisory_protocol.md)\n"
+            )
 
 
 @pytest.mark.parametrize("captured_at", [None, "2026-08-09T24:00:00Z"])

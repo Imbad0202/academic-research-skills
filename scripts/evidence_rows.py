@@ -1868,13 +1868,28 @@ def _validate_report_claim_summary(
         )
 
 
+def _refuse_advisory_rows(rows: Sequence[Any], path: str) -> None:
+    """The CLI handles V1 rows only; name the advisory entry point (#947)."""
+    for index, row in enumerate(rows):
+        if isinstance(row, Mapping) and row.get("schema_version") == ADVISORY_SCHEMA_VERSION:
+            _input_fail(
+                f"{path}[{index}]",
+                f"is an {ADVISORY_SCHEMA_VERSION} advisory row, which this CLI does not "
+                "handle; use scripts/build_content_coverage_advisory.py "
+                "(shared/references/authority_content_coverage_advisory_protocol.md)",
+            )
+
+
 def _rows_from_document(
     document: Any,
     *,
     allow_legacy_absence: bool = False,
 ) -> list[Mapping[str, Any]] | None:
     if isinstance(document, list):
+        _refuse_advisory_rows(document, "rows")
         return document
+    if isinstance(document, dict) and document.get("schema_version") == ADVISORY_SCHEMA_VERSION:
+        _refuse_advisory_rows([document], "rows")
     if isinstance(document, dict) and document.get("schema_version") == SCHEMA_VERSION:
         return [document]
     if isinstance(document, dict):
@@ -1894,6 +1909,7 @@ def _rows_from_document(
         rows = e_claims["evidence_rows"]
         if not isinstance(rows, list):
             _fail("phases.E_claims.evidence_rows", "must be an array")
+        _refuse_advisory_rows(rows, "phases.E_claims.evidence_rows")
         _validate_report_claim_summary(e_claims, rows)
         return rows
     _fail("input", "must be a JSON object or array")
@@ -2056,14 +2072,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                     + "</p>\n"
                 )
             return 0
-        for index, row in enumerate(rows):
-            if isinstance(row, Mapping) and row.get("schema_version") == ADVISORY_SCHEMA_VERSION:
-                _input_fail(
-                    f"rows[{index}]",
-                    f"is an {ADVISORY_SCHEMA_VERSION} advisory row, which this CLI does not "
-                    "handle; use scripts/build_content_coverage_advisory.py "
-                    "(shared/references/authority_content_coverage_advisory_protocol.md)",
-                )
         sources = (
             _source_dir(args.source_dir, rows)
             if args.source_dir is not None
