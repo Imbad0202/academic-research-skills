@@ -258,7 +258,7 @@ def _load_log(log_path: Path) -> dict[str, Any]:
         ) from exc
     try:
         data = yaml.load(text, Loader=UniqueKeySafeLoader)
-    except yaml.YAMLError as exc:
+    except Exception as exc:  # any read or parse failure; see parse_error_where
         raise LedgerValidationError(
             f"existing ledger is not duplicate-safe valid YAML: {parse_error_where(exc)}"
         ) from exc

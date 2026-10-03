@@ -387,6 +387,11 @@ class UserAttestedReadResolverTests(unittest.TestCase):
                 + "    I read it closely: true\n"
             ).encode(),
             "invalid UTF-8": b"session_id: \xff I read it closely\n",
+            **{
+                f"bad !!{tag}": (head + f"  - citation_key: ref1\n    note: !!{tag} closely\n").encode()
+                for tag in ("int", "float", "bool", "timestamp")
+            },
+            "impossible date": (head + "  - citation_key: ref1\n    closely: 2026-13-45\n").encode(),
         }
         for label, raw in cases.items():
             with self.subTest(label), TemporaryDirectory() as tmp:
@@ -409,6 +414,7 @@ class UserAttestedReadResolverTests(unittest.TestCase):
                     capture_output=True,
                     check=False,
                 )
+                self.assertEqual(proc.returncode, 2, proc.stderr)
                 out = json.loads(proc.stdout)
                 self.assertEqual(out["state"], "ledger_invalid")
                 self.assertNotIn("created_at", out["reason"])

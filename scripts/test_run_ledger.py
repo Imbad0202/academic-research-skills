@@ -668,6 +668,10 @@ class ShowTest(_LedgerCase):
             "unterminated quote": "ledger: ars-run-ledger/1.0\nentries:\n- user_words: \"I approve it.\n",
             "duplicate key": "ledger: x\nI approve it.: 1\nI approve it.: 2\n",
             "impossible date": "ledger: x\nI approve it.: 2026-13-45\n",
+            **{
+                f"bad !!{tag}": f"ledger: x\nnote: !!{tag} I approve it.\n"
+                for tag in ("int", "float", "bool", "timestamp")
+            },
         }
         for label, text in cases.items():
             with self.subTest(label):

@@ -62,7 +62,10 @@ def parse_error_where(exc: BaseException) -> str:
     YAML and decode errors otherwise carry an excerpt of the unreadable file,
     and a ledger can hold the user's own words (a read log's ``note``, the
     run ledger's instructions).  Every ledger reader reports parse failures
-    through this helper (#898, #945).
+    through this helper (#898, #945).  Readers catch every exception from
+    reading and parsing, not only ``yaml.YAMLError``: PyYAML's scalar
+    constructors raise ``ValueError`` or ``KeyError`` quoting the scalar for a
+    bad ``!!int``, ``!!float``, or ``!!bool`` value.
     """
     mark = getattr(exc, "problem_mark", None)
     if mark is not None:
@@ -457,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.read_log.read_text(encoding="utf-8"),
                 Loader=UniqueKeySafeLoader,
             )
-        except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
+        except Exception as exc:  # any read or parse failure; see parse_error_where
             print(
                 json.dumps(
                     _result(

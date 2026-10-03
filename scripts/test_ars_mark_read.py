@@ -713,6 +713,12 @@ class TestExistingLedgerFailClosed(unittest.TestCase):
             + b"  - citation_key: smith2024\n    marked_at: '2026-08-15T00:00:01Z'\n"
             + b"    I read it closely: true\n",
             "invalid UTF-8": b"session_id: \xff I read it closely\n",
+            **{
+                f"bad !!{tag}": head
+                + f"  - citation_key: smith2024\n    note: !!{tag} closely\n".encode()
+                for tag in ("int", "float", "bool", "timestamp")
+            },
+            "impossible date": head + b"  - citation_key: smith2024\n    closely: 2026-13-45\n",
         }
         for label, raw in cases.items():
             with self.subTest(label=label):

@@ -316,7 +316,7 @@ def load_ledger(path: Path) -> dict[str, Any] | None:
     try:
         text = path.read_bytes().decode("utf-8")
         data = yaml.load(text, Loader=UniqueKeySafeLoader)
-    except (OSError, ValueError, yaml.YAMLError) as exc:  # ValueError: bad bytes, impossible dates
+    except Exception as exc:  # any read or parse failure; see parse_error_where
         raise LedgerUnreadable(f"cannot parse {path.name}: {parse_error_where(exc)}") from exc
     if (
         not isinstance(data, dict)
