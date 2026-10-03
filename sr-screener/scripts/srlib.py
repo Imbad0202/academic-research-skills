@@ -294,8 +294,18 @@ def spreadsheet_text(value):
     if isinstance(value, str):
         # A locale-specific CSV/TSV reader can split inside a quoted comma field.
         # Escape formula prefixes after alternative separators and line breaks as well
-        # as at the start, also when quotes or spaces sit in between (#951).
-        value = re.sub(r"([;\t\r\n][\"'\s]*)(?=[=+\-@])", r"\1'", value)
+        # as at the start, also when quotes or spaces sit in between (#951). One pass,
+        # so a long run of tabs or newlines stays linear.
+        out, armed = [], False
+        for ch in value:
+            if armed and ch in "=+-@":
+                out.append("'")
+            if ch in ";\t\r\n":
+                armed = True
+            elif not (ch in "\"'" or ch.isspace()):
+                armed = False
+            out.append(ch)
+        value = "".join(out)
         if value.startswith(("=", "+", "-", "@", "\t", "\r")):
             return "'" + value
     return value

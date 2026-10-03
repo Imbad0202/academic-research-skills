@@ -859,6 +859,17 @@ def test_spreadsheet_text_neutralizes_formulas_after_quotes_and_line_breaks(valu
         assert not any(cell.startswith(("=", "+", "-", "@")) for cell in cells), (delimiter, cells)
 
 
+def test_spreadsheet_text_stays_linear_on_long_separator_runs():
+    """#951 review: a regex rescanned a long run of tabs or newlines quadratically."""
+    import time
+
+    for run in ("\t", "\n", "; "):
+        value = "Synthetic" + run * 100_000 + "tail"
+        start = time.perf_counter()
+        assert LIB.spreadsheet_text(value) == value
+        assert time.perf_counter() - start < 2.0, repr(run)
+
+
 @pytest.mark.parametrize("value", ["plain; text - ok", "well-known @ place", 'A "quoted" title; with = sign'])
 def test_spreadsheet_text_leaves_text_without_formula_starts_unchanged(value):
     assert LIB.spreadsheet_text(value) == value
