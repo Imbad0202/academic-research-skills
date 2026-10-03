@@ -40,13 +40,17 @@ If you cannot reach 100% on the current primary model, the routing prose in CLAU
 | 10 | `10_korean_review_not_revision/` | Korean 심사 (referee) request + manuscript (#452) | **Proceed** → `academic-paper-reviewer:full` (not paper) |
 | 11 | `11_spanish_revision_not_review/` | Spanish enmendar (revise) request + draft (#856 es-ES) | **Proceed** → `academic-paper:revision` (not reviewer) |
 | 12 | `12_spanish_review_not_revision/` | Spanish revisar (referee) request + manuscript (#856 es-ES) | **Proceed** → `academic-paper-reviewer:full` (not paper) |
-| 13 | `13_screening_abstracts_to_sr_screener/` | Pasted abstracts + criteria, "screen these" | **Proceed** → `sr-screener:quick` |
-| 14 | `14_persian_screening_to_sr_screener/` | Persian screening request + exports + proposal | **Proceed** → `sr-screener` (protocol step first) |
-| 15 | `15_literature_review_not_screening/` | "Write a literature review" + collected papers | **Proceed** → `academic-paper:lit-review` (not sr-screener) |
-| 16 | `16_systematic_review_not_screening/` | "Do a systematic review with PRISMA" | **Proceed** → `deep-research:systematic-review` (not sr-screener) |
-| 17 | `17_no_automatic_handover_to_screening/` | Finished search exports, "what next?" | **Clarify** (no automatic handover to sr-screener) |
+| 13 | `13_lit_review_request_descriptive_question/` | "Help me write the literature review" on a descriptive question (#921) | **Proceed** → a `lit-review` mode, not `systematic-review` or screening; review-form note shown |
+| 14 | `14_lit_review_request_effect_question/` | Same request on an effect question (#921, content-independence pair of 13) | **Proceed** → same as 13; same note |
+| 15 | `15_systematic_review_named/` | "Run a systematic review" on the question of 14 (#921) | **Proceed** → `deep-research:systematic-review`; review-form note not shown |
+| 16 | `16_broader_synthesis_not_systematic/` | After a three-way scan, "a broader evidence matrix and a thematic synthesis" (#921) | **Proceed** → a `lit-review` mode, not `systematic-review`; review-form note shown |
+| 17 | `17_screening_abstracts_to_sr_screener/` | Pasted abstracts + criteria, "screen these" | **Proceed** → `sr-screener:quick` |
+| 18 | `18_persian_screening_to_sr_screener/` | Persian screening request + exports + proposal | **Proceed** → `sr-screener` (protocol step first) |
+| 19 | `19_literature_review_not_screening/` | "Write a literature review" + collected papers | **Proceed** → `academic-paper:lit-review` (not sr-screener) |
+| 20 | `20_systematic_review_not_screening/` | "Do a systematic review with PRISMA" | **Proceed** → `deep-research:systematic-review` (not sr-screener) |
+| 21 | `21_no_automatic_handover_to_screening/` | Finished search exports, "what next?" | **Clarify** (no automatic handover to sr-screener) |
 
-Fixtures 13-17 (sr-screener, #919) were added with the skill and have not been run in a calibration session yet; record their first run in `CALIBRATION_LOG.md`.
+Fixtures 17-21 (sr-screener, #919) were added with the skill and have not been run in a calibration session yet; record their first run in `CALIBRATION_LOG.md`.
 
 ## Fixture file format
 
@@ -68,7 +72,16 @@ expected_destination: <skill_name> | <agent_name> | clarification_only
 escape_hatch_applied: true | false
 direct_mode_stripped_message: <string, only when escape_hatch_applied: true>
 notes: <optional free-text>
+accepted_destinations: [<skill>:<mode>, ...]   # optional; any listed destination passes
+excluded_destinations: [<skill>:<mode>, ...]   # optional; entering any listed destination fails
+review_form_note: shown | not_shown            # optional (#921)
 ```
+
+Scoring the #921 fields (added after the 2026-09-24 pass; the rules in `CALIBRATION_LOG.md` stay as they were fixed for that pass):
+
+- **`review_form_note: shown`** passes when the response shows the review-form note text from `shared/references/review_form_note.md` verbatim in the conversation's language (English for every language other than Traditional Chinese), adds nothing that favours one form, and does not start the review before the author replies. The note is not a workflow clarification: showing it does not turn a `proceed` into a `clarify`.
+- **`review_form_note: not_shown`** passes when the note does not appear.
+- A fixture pair that differs only in the content of the question (13 and 14) passes only when both members pass; a note shown for one and not the other fails both.
 
 ### Running the smoke test (manual)
 

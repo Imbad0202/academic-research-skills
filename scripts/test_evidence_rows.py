@@ -1684,6 +1684,116 @@ def test_cli_source_bound_validate_and_render_require_exact_source_map(
         assert "The estimate was 15.2%" in correct.stdout.replace("\\", "")
 
 
+def test_cli_source_dir_replays_exact_file_bytes(
+    tmp_path: Path,
+    input_fixture: dict[str, Any],
+    sources: dict[str, str],
+) -> None:
+    """#933: a folder of per-source text files replaces the in-memory map."""
+    _runtime_required()
+    text = "Front matter.\r\n" + sources["smith2024"]
+    row = er.build(_raw_row(input_fixture), text)
+    rows_path = tmp_path / "rows.json"
+    _write_json(rows_path, [row])
+    folder = tmp_path / "sources"
+    folder.mkdir()
+    (folder / "smith2024.txt").write_bytes(text.encode("utf-8"))
+    (folder / "unrelated.txt").write_bytes(b"\xff not utf-8, never opened")
+
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 0
+    for output_format in ("markdown", "html"):
+        result = _run_cli("render", rows_path, "--format", output_format,
+                          "--source-dir", folder)
+        assert result.returncode == 0, result.stderr
+        assert "The estimate was 15.2%" in result.stdout.replace("\\", "")
+
+    # Newline translation would change the hashed text, so replay must fail.
+    (folder / "smith2024.txt").write_bytes(text.replace("\r\n", "\n").encode("utf-8"))
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 1
+    (folder / "smith2024.txt").unlink()
+    missing = _run_cli("render", rows_path, "--format", "markdown", "--source-dir", folder)
+    assert missing.returncode == 1
+    assert "'smith2024'" in missing.stderr
+
+
+def test_cli_source_dir_file_names_and_input_errors(
+    tmp_path: Path,
+    input_fixture: dict[str, Any],
+    sources: dict[str, str],
+) -> None:
+    _runtime_required()
+    assert er.source_file_name("smith2024") == "smith2024.txt"
+    assert er.source_file_name("doi:10-1000_x") == "doi%3A10-1000_x.txt"
+    assert er.source_file_name("Smith2024") == "^smith2024.txt"
+    assert er.source_file_name("nul") == "nul~.txt"
+    assert er.source_file_name("NUL") == "^n^u^l.txt"
+    assert er.source_file_name("com1") == "com1~.txt"
+    assert er.source_file_name("com10") == "com10.txt"
+    slugs = ["Smith2024", "smith2024", "SMITH2024", "nul", "nul_", "a:b", "a_3Ab", "con", "Con"]
+    names = [er.source_file_name(slug) for slug in slugs]
+    assert len({name.casefold() for name in names}) == len(slugs)
+    for bad in ("../x", "a/b", "", ".hidden"):
+        with pytest.raises(er.EvidenceRowInputError):
+            er.source_file_name(bad)
+
+    row = er.build(_raw_row(input_fixture, source__ref_slug="smith:2024"), sources["smith2024"])
+    rows_path = tmp_path / "rows.json"
+    _write_json(rows_path, [row])
+    folder = tmp_path / "sources"
+    folder.mkdir()
+    (folder / "smith%3A2024.txt").write_bytes(sources["smith2024"].encode("utf-8"))
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 0
+
+    # Slugs that differ only in case get separate files (#933 r2).
+    upper = er.build(_raw_row(input_fixture, row_id="EVR-000002", source__ref_slug="Smith2024"),
+                     "Other text. " + sources["smith2024"])
+    lower = er.build(_raw_row(input_fixture, source__ref_slug="smith2024"), sources["smith2024"])
+    pair_rows = tmp_path / "pair.json"
+    _write_json(pair_rows, [lower, upper])
+    pair = tmp_path / "pair"
+    pair.mkdir()
+    for slug, text in (("smith2024", sources["smith2024"]),
+                       ("Smith2024", "Other text. " + sources["smith2024"])):
+        (pair / er.source_file_name(slug)).write_bytes(text.encode("utf-8"))
+    pair_result = _run_cli("render", pair_rows, "--format", "markdown", "--source-dir", pair)
+    assert pair_result.returncode == 0, pair_result.stderr
+
+    # A malformed row reaches contract validation, not a traceback (#933 r3).
+    malformed = copy.deepcopy(lower)
+    malformed["excerpt"]["state"] = []
+    bad_slug = copy.deepcopy(lower)
+    bad_slug["source"]["ref_slug"] = ["smith2024"]
+    malformed_rows = tmp_path / "malformed.json"
+    for rows_case in ([malformed], [bad_slug]):
+        _write_json(malformed_rows, rows_case)
+        for command in (("validate",), ("render", "--format", "markdown")):
+            result = _run_cli(command[0], malformed_rows, *command[1:], "--source-dir", pair)
+            assert result.returncode == 1, result.stderr
+            assert "Traceback" not in result.stderr
+
+    (folder / "smith%3A2024.txt").write_bytes(b"\xff\xfe")
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 2
+    (folder / "smith%3A2024.txt").unlink()
+    elsewhere = tmp_path / "elsewhere.txt"
+    elsewhere.write_bytes(sources["smith2024"].encode("utf-8"))
+    (folder / "smith%3A2024.txt").symlink_to(elsewhere)
+    assert _run_cli("validate", rows_path, "--source-dir", folder).returncode == 2
+
+    assert _run_cli("validate", rows_path, "--source-dir", elsewhere).returncode == 2
+    long_row = er.build(_raw_row(input_fixture, source__ref_slug="s" + "x" * 279),
+                        sources["smith2024"])
+    long_rows = tmp_path / "long.json"
+    _write_json(long_rows, [long_row])
+    too_long = _run_cli("validate", long_rows, "--source-dir", folder)
+    assert too_long.returncode == 2, too_long.stderr
+    assert "Traceback" not in too_long.stderr
+    assert _run_cli("validate", rows_path, "--source-dir", tmp_path / "absent").returncode == 2
+    source_map = tmp_path / "map.json"
+    _write_json(source_map, {"smith:2024": sources["smith2024"]})
+    both = _run_cli("validate", rows_path, "--source-map", source_map, "--source-dir", folder)
+    assert both.returncode == 2
+
+
 def test_cli_fully_rebound_forged_row_only_renders_with_matching_attacker_source(
     tmp_path: Path,
     input_fixture: dict[str, Any],

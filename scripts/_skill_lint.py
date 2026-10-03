@@ -19,6 +19,11 @@ folding is load-bearing for "verbatim match modulo wrapping" pins, so it must
 be single-sourced rather than re-implemented per lint. (Older lints with
 private `_norm` copies — check_instruction_data_boundary,
 check_firm_rules_sync — predate this helper; migrating them is a follow-up.)
+
+`extract_marker_block` / `first_difference` / `check_marker_copies` are the
+marker-block sync trio (check_routing_core_sync, check_method_weaknesses_sync,
+check_review_form_note_sync, #923): one canonical block between an HTML
+comment marker pair, copied byte for byte into each surface.
 """
 from __future__ import annotations
 
@@ -244,6 +249,59 @@ def read_or_exit2(root: Path, rel: str, *, exact: bool = False) -> str:
         print(f"ERROR: required file missing: {rel}", file=sys.stderr)
         raise SystemExit(2)
     return p.read_bytes().decode("utf-8") if exact else p.read_text(encoding="utf-8")
+
+
+def extract_marker_block(text: str, label: str, begin: str, end: str,
+                         name: str) -> tuple[str | None, list[str]]:
+    """Return the text between the one `begin`/`end` marker pair, or None with
+    the errors. A marker line may end in CR; the block keeps its CRs for the
+    comparison. `name` names the block in the empty-block error."""
+    lines = text.split("\n")
+    begins = [i for i, line in enumerate(lines) if line.rstrip("\r") == begin]
+    ends = [i for i, line in enumerate(lines) if line.rstrip("\r") == end]
+    errors: list[str] = []
+    for marker, whole in ((begin, begins), (end, ends)):
+        total = text.count(marker)
+        if total != 1 or len(whole) != 1:
+            errors.append(f"{label}: expected one {marker} alone on its line, "
+                          f"found {total} occurrence(s), {len(whole)} on their own line")
+    if errors:
+        return None, errors
+    if begins[0] > ends[0]:
+        return None, [f"{label}: {end} comes before {begin}"]
+    block = "\n".join(lines[begins[0] + 1:ends[0]])
+    if not block.strip():
+        return None, [f"{label}: the {name} block is empty"]
+    return block, []
+
+
+def first_difference(copy: str, canonical: str) -> str:
+    """Say where a copied block first departs from the canonical block."""
+    copy_lines, canon_lines = copy.split("\n"), canonical.split("\n")
+    for number, (got, want) in enumerate(zip(copy_lines, canon_lines), start=1):
+        if got != want:
+            if got.rstrip("\r") == want.rstrip("\r"):
+                return f"block line {number} differs only in its line ending"
+            return f"block line {number} differs"
+    return (f"block has {len(copy_lines)} lines, canonical has {len(canon_lines)}")
+
+
+def check_marker_copies(root: Path, canonical: Path, copies: list[Path] | tuple[Path, ...],
+                        begin: str, end: str, name: str, canonical_id: str,
+                        copy_id: str) -> tuple[str | None, list[str]]:
+    """Extract the canonical block, then check that every copy holds one marker
+    pair around a byte-identical block. Returns the canonical block (None when
+    it is malformed) and the errors; a missing file exits 2."""
+    block, errors = extract_marker_block(read_or_exit2(root, str(canonical), exact=True),
+                                         f"{canonical_id} {canonical}", begin, end, name)
+    for rel in copies:
+        copy, copy_errors = extract_marker_block(read_or_exit2(root, str(rel), exact=True),
+                                                 f"{copy_id} {rel}", begin, end, name)
+        errors += copy_errors
+        if copy is not None and block is not None and copy != block:
+            errors.append(f"{copy_id} {rel}: {name} block differs from {canonical} "
+                          f"({first_difference(copy, block)})")
+    return block, errors
 
 
 def run_lint(field: str, legal_values: set[str] | frozenset[str], ok_message: str) -> int:

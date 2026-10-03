@@ -51,6 +51,7 @@ EXAMPLE = REPO / "examples/passport_with_experiment_provenance.yaml"
 # the same module reference.
 sys.path.insert(0, str(REPO / "scripts"))
 import check_claim_audit_consistency as _lint  # noqa: E402
+from _skill_lint import heading_section  # noqa: E402
 
 PROVENANCE_SCHEMA = PASSPORT / "experiment_provenance_entry.schema.json"
 ALIGNMENT_SCHEMA = PASSPORT / "experiment_alignment_result.schema.json"
@@ -58,6 +59,7 @@ MANIFEST_SCHEMA = PASSPORT / "claim_intent_manifest.schema.json"
 
 # Agent / writer prompts touched by #260.
 INTEGRITY_AGENT = REPO / "academic-pipeline/agents/integrity_verification_agent.md"
+ORCHESTRATOR = REPO / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
 WRITER_PROMPTS = {
     "synthesis_agent": REPO / "deep-research/agents/synthesis_agent.md",
     "draft_writer_agent": REPO / "academic-paper/agents/draft_writer_agent.md",
@@ -458,6 +460,29 @@ class CrossArrayInvariantTests(_LintBase):
         )
         self.assertFinds(body, "EP-INV-5")
 
+    def test_ep_inv_5_empty_scholar_answer(self) -> None:
+        """#925: scholar_answer is optional, but when present it holds the
+        scholar's words, so an empty string is malformed."""
+        body = build_passport(
+            intake_declaration={**declaration(), "scholar_answer": ""},
+        )
+        self.assertFinds(body, "EP-INV-5")
+
+    def test_ep_inv_5_non_string_scholar_answer(self) -> None:
+        body = build_passport(
+            intake_declaration={**declaration(), "scholar_answer": True},
+        )
+        self.assertFinds(body, "EP-INV-5")
+
+    def test_ep_inv_5_scholar_answer_kept_verbatim_is_valid(self) -> None:
+        body = build_passport(
+            intake_declaration={
+                **declaration(),
+                "scholar_answer": "Yes, I ran the pruning runs myself.",
+            },
+        )
+        self.assertClean(body)
+
     def test_ep_inv_5_legacy_unknown_is_valid_status(self) -> None:
         """legacy_unknown is a valid declaration status (D7); it must not trip EP-INV-5.
 
@@ -761,11 +786,52 @@ class ReverseInvariantTests(unittest.TestCase):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
         self.assertIn("experiment_intake_declaration", readme)
 
+    def test_orchestrator_asks_the_intake_question(self) -> None:
+        """#925: in pipeline runs the orchestrator produces the declaration by
+        asking the scholar, after Stage 1 or at a later entry point. Every
+        clause of the contract is read from the section itself."""
+        section = _intake_section(ORCHESTRATOR.read_text(encoding="utf-8"))
+        self.assertIsNotNone(section, "## Experiment Intake Question (#925) missing")
+        self.assertEqual(_intake_contract_gaps(section), [])
+
+    def test_intake_contract_detects_each_removed_clause(self) -> None:
+        section = _intake_section(ORCHESTRATOR.read_text(encoding="utf-8"))
+        for needle in INTAKE_CONTRACT:
+            with self.subTest(clause=needle):
+                self.assertIn(needle, _intake_contract_gaps(section.replace(needle, "")))
+
     def test_integrity_agent_carries_declaration_anti_skip(self) -> None:
         text = INTEGRITY_AGENT.read_text(encoding="utf-8")
         self.assertIn("experiment_intake_declaration", text)
         # The boundary non-goal wording must be carried verbatim (POSITIONING).
         self.assertIn("does not judge whether the experiment", text)
+
+
+# #925: the clauses the orchestrator's intake section must keep. Timing,
+# exemptions, the answer-only status rule, and dispatch ordering.
+INTAKE_CONTRACT = (
+    "the checkpoint after Stage 1 completes",
+    "the confirmation of any entry or resume point after Stage 1, before anything is dispatched",
+    "Do not ask when the run reaches no integrity gate",
+    "Do not ask when the passport already carries a declaration",
+    "from the scholar's own answer, never from the manuscript",
+    "Does this paper report experiments or data analyses that you ran yourself",
+    "`scholar_answer` holding the scholar's words unchanged",
+    "never choose a status for the scholar",
+    "never set `legacy_unknown` from this question",
+    "before the first Stage 2 writer dispatch",
+    "before the first integrity gate",
+    "Stage 2 writers are not dispatched until this intake is sealed",
+)
+
+
+def _intake_section(text: str) -> str | None:
+    """Body of `## Experiment Intake Question (#925)`, up to the next H1/H2."""
+    return heading_section(text, "## Experiment Intake Question (#925)")
+
+
+def _intake_contract_gaps(section: str) -> list[str]:
+    return [needle for needle in INTAKE_CONTRACT if needle not in section]
 
 
 # ===========================================================================

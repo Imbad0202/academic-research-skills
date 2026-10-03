@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://shared/contracts/passport/standing_constraint_entry.schema.json",
+  "title": "Material Passport standing constraint entry 1.0",
+  "description": "One entry in Material Passport Schema 9 standing_constraints[] (#927): a run-wide constraint the user stated in their own turn, kept in the user's words. How entries are listed, confirmed, withdrawn, and carried: academic-pipeline/agents/pipeline_orchestrator_agent.md § Standing Constraints (#927).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "constraint_id",
+    "user_words",
+    "kind",
+    "applies_to_stages",
+    "confirmed_at"
+  ],
+  "properties": {
+    "constraint_id": {
+      "type": "string",
+      "pattern": "^UC-[0-9]{3}$"
+    },
+    "user_words": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "The user's words, unchanged."
+    },
+    "kind": {
+      "enum": [
+        "word_ceiling",
+        "prohibition",
+        "scope",
+        "other"
+      ]
+    },
+    "max_words": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Ceiling on the paper body's word count. Required for kind word_ceiling, absent otherwise; a limit on any other count (an abstract, the whole manuscript with references) is kind other."
+    },
+    "applies_to_stages": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "1",
+          "2",
+          "2.5",
+          "3",
+          "4",
+          "3'",
+          "4'",
+          "4.5",
+          "5",
+          "6"
+        ]
+      }
+    },
+    "stated_at_stage": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The stage whose checkpoint answer carried the words; absent when they came from the initial instructions."
+    },
+    "confirmed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "withdrawn_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "withdrawal_words": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "word_ceiling"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "max_words"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "max_words"
+          ]
+        }
+      }
+    },
+    {
+      "dependentRequired": {
+        "withdrawn_at": [
+          "withdrawal_words"
+        ],
+        "withdrawal_words": [
+          "withdrawn_at"
+        ]
+      }
+    }
+  ]
+}

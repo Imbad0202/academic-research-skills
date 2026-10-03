@@ -215,7 +215,7 @@ alignment and do not silently reconstruct a target from model memory.
 
 academic-paper pipeline runs in 8 phases (Phase 0 intake → 7 formatting). Two invocation modes:
 
-**Mode A — orchestrator-driven (default):** `pipeline_orchestrator_agent` (in `academic-pipeline` skill) runs all phases end-to-end with state tracking via Material Passport.
+**Mode A — orchestrator-driven (default):** `pipeline_orchestrator_agent` (in `academic-pipeline` skill) runs all phases end-to-end with state tracking via Material Passport. As `academic-pipeline` Stage 2, a full run stops after Phase 6; Phase 7 formatting runs at pipeline Stage 5.
 
 **Mode B — phase-by-phase (cross-session resume):** User invokes one agent per phase across sessions for long-running projects. Common pattern: write the draft in one session, return next week to citation-check / abstract / peer-review independently.
 
@@ -364,7 +364,7 @@ See `references/mode_selection_guide.md` for details.
 | Just need an abstract | `abstract-only` | fidelity |
 | Need to check/fix citations | `citation-check` | fidelity |
 | Need to convert format (LaTeX, DOCX) or citation style | `format-convert` | fidelity |
-| Want a systematic literature review paper | `lit-review` | fidelity |
+| Want a literature review section or paper (to conduct a systematic review, use `deep-research` `systematic-review` mode) | `lit-review` | fidelity |
 | Need a venue-specific AI-usage disclosure bundle for submission | `disclosure` | fidelity |
 | Have a written rebuttal draft to QA against reviewer comments | `rebuttal-audit` | fidelity |
 
@@ -379,6 +379,68 @@ from tone. Journal or conference reviewers, editors, area chairs, and program
 committees are peer review, not a committee for this variant, even when the user
 names the venue or the venue calls the role a committee (#854). The separate
 artifact is a source-accounted drafting aid and never enters peer-review Schema 11.
+
+The canonical copy of the block below is `shared/references/review_form_note.md`; `scripts/check_review_form_note_sync.py` keeps this copy identical to it.
+
+<!-- review-form-note:begin -->
+### Review-form note (#921)
+
+The author decides whether to run a systematic review. ARS reminds the author that the choice exists; it does not judge whether a question fits a systematic review, and no review form is ever a default step.
+
+**When to show it.** Show the note at the first of these two points. Both are actions the author takes:
+
+1. The author selects `lit-review` mode (in `deep-research` or `academic-paper`, by slash command or by request).
+2. The author confirms the research question: in `deep-research` `full` mode, the author confirms the RQ Brief before Phase 2; in `socratic` mode, the author confirms the Mentor's closing RQ Brief or RQ Summary as their research question. Show the note right after that confirmation. A Socratic ending the author has not confirmed (a turn-cap ending, an ending the author calls unfinished, the stagnation suggestion to switch to `full` mode, or a switch to `full` mode) is not this point; a later confirmation is.
+
+Whether the note appears must not depend on the topic, the wording, or the kind of research question. Do not show it at any other point, and do not show it, or hold it back, because a question looks like an effect question.
+
+**When not to show it.**
+
+- The note was already answered or skipped in this project or run. In a run with a passport file, look for a `checkpoint_closed` entry with `checkpoint_id: review-form-note` in what `python3 scripts/run_ledger.py show --passport-path <passport>` prints; without one, look in this conversation. Across separate sessions without a passport file the note can appear again; this is accepted. If the ledger holds a `checkpoint_opened` entry for `review-form-note` and no closing entry, the note is still awaiting its answer: show it again, append no second opening entry, and append the closing entry after the reply.
+- The author already named a review form in their own words or actions: entered `systematic-review` mode, asked for a systematic, scoping, rapid, narrative, or integrative review, or said they want no formal review. This test reads what the author said, not the content of the research question.
+
+**How to show it.**
+
+- Show the note text below verbatim: the English text in English conversations, the Traditional Chinese text in Traditional Chinese conversations, and the English text in every other language. Do not shorten, reorder, paraphrase, or add to it. Add no recommendation, default, or comment on which form fits the question, before or after it.
+- Then stop and wait for the author's reply. Do not start the literature search, the review, or Phase 2 before the author replies.
+- The note does not reopen the choice of workflow. If the author skips it, the mode the author asked for continues unchanged.
+- If the author asks which form fits their question, say that the choice is theirs. On request, describe any form in more detail, without a comparison that favours one form for their question.
+
+**After the reply.**
+
+- Skip, or a reply that keeps the current work: continue in the current mode. Skipping is a decision.
+- Systematic review: offer `deep-research` `systematic-review` mode, and enter it only when the author confirms.
+- Scoping review or rapid review: continue in the current mode, and say once that ARS has no separate mode for this form, so its protocol and reporting checklist (PRISMA-ScR for a scoping review) stay with the author.
+- Narrative or integrative review, or no formal review: continue in the current mode.
+- In a run with a passport file, record the note through `scripts/run_ledger.py append`: before waiting, unless the ledger already holds one, a `checkpoint_opened` entry (`checkpoint_id: review-form-note`, `stage`: the current stage or mode, `checkpoint_type: SLIM`, `question`: the note as shown, `options`: the five forms and `skip`); after the reply, a `checkpoint_closed` entry with `answer`: the form chosen or `skip`, and the author's exact words in `user_words`.
+- No path enters `systematic-review` mode on ARS's initiative. Only the author's explicit choice does.
+
+**Note text (English):**
+
+> **Before the review starts: which form of literature review?**
+> ARS does not choose this for you. There is no default and no recommendation, and the order below is not a ranking.
+>
+> - **Systematic review**: answers a focused question with a search and screening plan fixed in advance, with two people screening independently where possible. Months to more than a year for a team of several people, often with a registered protocol. In ARS: `systematic-review` mode.
+> - **Scoping review**: maps what has been studied on a topic, the main concepts, and the gaps, using a systematic approach. The work grows with the breadth of the topic. ARS has no separate mode for it.
+> - **Narrative or integrative review**: builds an argument or a framework from the literature. In a narrative review the author chooses the sources; an integrative review documents its search and evaluation and can combine different study designs. The work depends on the scope the author sets. In ARS: `lit-review` mode.
+> - **Rapid review**: a systematic review with some steps shortened or left out to deliver sooner, typically within weeks to a few months. ARS has no separate mode for it.
+> - **No formal review**: background from the sources at hand, for example for an introduction. It does not claim to cover the literature.
+>
+> Reply with the form you want, or reply "skip" to continue as you are. Either reply is your decision, and this note will not appear again in this project.
+
+**Note text (Traditional Chinese):**
+
+> **開始回顧之前：要做哪一種文獻回顧？**
+> 這件事由你決定，ARS 不替你選。下列選項沒有預設、沒有推薦，排列順序也不代表高下。
+>
+> - **系統性回顧（systematic review）**：回答一個聚焦的問題，檢索與篩選方式事先訂好，盡可能由兩人各自獨立篩選。一個數人團隊需要數個月到一年以上，通常有已登錄的研究計畫書。ARS 對應：`systematic-review` 模式。
+> - **範疇回顧（scoping review）**：用系統化的做法盤點一個主題已經研究了什麼、有哪些主要概念、缺口在哪裡。工作量隨主題的廣度增加。ARS 沒有專屬模式。
+> - **敘事或整合性回顧（narrative / integrative review）**：從文獻建立論證或架構。敘事回顧由作者選擇文獻；整合性回顧會記錄檢索與評估過程，並可合併不同研究設計。工作量取決於作者設定的範圍。ARS 對應：`lit-review` 模式。
+> - **快速回顧（rapid review）**：為了早點交出結果而縮短或省略部分步驟的系統性回顧，通常在數週到數個月內完成。ARS 沒有專屬模式。
+> - **不做正式回顧**：用手邊的文獻寫背景，例如論文的緒論。不宣稱涵蓋整體文獻。
+>
+> 請回覆你要的形式，或回覆「跳過」照目前的做法繼續。兩種回覆都算你的決定，這個專案裡不會再出現這則提醒。
+<!-- review-form-note:end -->
 
 ### Mode Selection Logic
 
@@ -425,6 +487,8 @@ In revision mode, `draft_writer_agent` does NOT re-emit the complete paper. The 
 5. **Continuous evidence:** every review write, all-declined no-op, and integrity-correction round enters `revision-evidence-bundle/1.0`, from an exact integrity-PASS draft to the exact final draft. A scope escalation requires a new explicit sidecar or a narrower patch; legacy full re-emission cannot claim current authorization PASS.
 
 Orchestrated runs follow `pipeline_orchestrator_agent.md` § Revision-Round Patch Sequencing; Mode B users run the same scripts by hand — exact commands in `references/revision_patch_protocol.md`. Honest boundary: registered surfaces and exact edit authority are machine-replayed, but unregistered semantic drift still requires E6 review. `scripts/claim_strength_drift_disposition.py` closes explicit handling of reported rows only; it does not make model-mediated detection deterministic or complete. The `academic-paper full` in-pair Phase 6→4 loop is outside this standalone/pipeline revision contract.
+
+**Abstract after revision (#936).** Revision mode does not re-run `abstract_bilingual_agent`, so an abstract changes only where an author-approved target covers its blocks. A standalone revision's delivery always says the abstract was not regenerated. When the applied patch changes a finding, number, or scope that an abstract states, it also quotes each abstract sentence the patched text now contradicts, so the author can approve an abstract target in the next round or run `abstract-only`. In pipeline runs the integrity gate's C2 check also compares every abstract with the body.
 
 ---
 
@@ -526,7 +590,7 @@ Explicit prohibitions to prevent common failure modes:
 2. **Zero citation orphans** — in-text citations <-> reference list must perfectly match
 3. **Consistent register** — academic tone appropriate for the discipline
 4. **Logical flow** — clear transitions between paragraphs and sections
-5. **Word count compliance** — within +/-10% of target
+5. **Word count compliance** — within +/-10% of target, and never above the PCR `Word Ceiling` when one is set
 
 ### Bilingual Abstract Quality
 6. **Independent writing** — the two abstracts of the run's declared pair (default zh-TW and EN) are independently composed, NOT mechanical translations
@@ -578,7 +642,7 @@ When `ARS_MODEL_TIERING` is set, the dispatching session routes this skill's age
 - **Unset (default):** every agent inherits the session model — byte-equivalent pre-#517 behavior.
 - **`economy`** (frontier-tier session): execution-type agents dispatch ONE tier below the session model — floor Opus-class, never lower; judgment-type agents stay on the session model. No-op at or below the floor (announce once).
 - **`quality-boost`** (below-frontier session): judgment-type agents at the checkpoint surfaces (Stage 2.5/4.5 gates; the opt-in Stage 4→5 claim–ref audit; final review) jump UP to the frontier tier (however many tiers away — not a single increment); nothing is ever downgraded. No-op at the frontier (announce once).
-- Unknown values → warn once, behave as unset. Tiers are relative positions, never hard-pinned model ids. When a direction is active, route repeated same-stage calls to the SAME worker so its prompt cache accumulates; unset means dispatch shapes stay byte-equivalent too.
+- Unknown values → warn once, behave as unset. Tiers are relative positions, never hard-pinned model ids. When a direction is active, route repeated same-stage calls to the SAME worker so its prompt cache accumulates, where the protocol permits (never merging seats that must stay blind; `shared/model_tiering.md`); unset means dispatch shapes stay byte-equivalent too.
 
 ---
 

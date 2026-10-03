@@ -133,8 +133,13 @@ ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 sessi
 | `ARS_CROSS_MODEL` | v3.0 | 啟用跨模型驗證（見下節） | [§「跨模型驗證」](#跨模型驗證選用) |
 | `ARS_CROSS_MODEL_TRANSPORT=codex` | #630 | 僅讓引用完整性查驗使用 ChatGPT 訂閱；DA／審稿／判斷路徑仍須 API key | `shared/cross_model_verification.md` |
 | `ARS_SOCRATIC_READING_PROBE=1` | v3.5.1 | 啟用 `socratic_mentor_agent` 的讀書檢查 probe layer。僅 goal-oriented intent；使用者引用過具體論文時最多觸發一次；婉拒不留紀錄懲罰。 | `deep-research/agents/socratic_mentor_agent.md` |
-| `ARS_PASSPORT_RESET=1` | v3.6.3 | 把每個 FULL checkpoint 提升為 context 重置邊界。**emit** boundary entry 必須設此 flag；新 session 用 `resume_from_passport=<hash>` 續跑**不需要** flag。`systematic-review` 模式下 flag ON 時，每個 FULL checkpoint 一律強制重置。 | `academic-pipeline/references/passport_as_reset_boundary.md` |
-| `ARS_CROSS_MODEL_SAMPLE_INTERVAL` | v3.5.0 | 跨模型完整性抽查的取樣間隔（advisory） | `shared/cross_model_verification.md` |
+| `ARS_PASSPORT_RESET=1` | v3.6.3 | 把每個 FULL 與 MANDATORY checkpoint 提升為 context 重置邊界。**emit** boundary entry 必須設此 flag；新 session 用 `resume_from_passport=<hash>` 續跑**不需要** flag。`systematic-review` 模式下 flag ON 時，每個 FULL 與 MANDATORY checkpoint 一律強制重置。 | `academic-pipeline/references/passport_as_reset_boundary.md` |
+| `ARS_AUDIT_ARTIFACT_GATE=1` | #925 | 開啟 v3.6.7 Audit Artifact Gate：`synthesis_agent`／`research_architect_agent`（survey-designer）／`report_compiler_agent`（abstract-only）每次交出產出後，由你在 session 外執行 `scripts/run_codex_audit.sh`，把產出送給外部模型稽核，關卡再依稽核結果擋下。flag 只是設定、不是同意：要你對這次執行明確同意後才會開。預設關閉；Stage 2.5／4.5 完整性關卡不受影響、照常執行。 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` § 3.5 |
+| `ARS_CROSS_MODEL_SAMPLE_INTERVAL` | v3.5.0 | 開啟跨模型時，第二模型的協作深度觀察者改為每 N 個檢查點跑一次，而不是每個都跑（預設 `1`；Stage 6 全程回顧照跑）。不影響完整性關卡的抽查。 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` § Collaboration Depth Observer |
+| `ARS_CLAIM_AUDIT=1` | v3.8 | 開啟主張忠實度稽核：逐一比對主張與引用來源，不被支持的主張會擋下最後輸出。pipeline 中先在 Stage 4.5 跑，讓問題還來得及修正。 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` § 3.6 |
+| `ARS_SOCRATIC_ADJACENT_PROBE=1` | v3.13.0 (#461) | 讓蘇格拉底導師以提問方式提出一個相鄰的研究框架，一次一個，每個 session 最多兩次。 | `deep-research/agents/socratic_mentor_agent.md` |
+| `ARS_RE_REVIEW_LEGACY=1` | v3.20.0 (#576) | Stage 3′ 再審改用封存的舊版 schema 與檢查器，不走三道關卡契約。 | `academic-paper-reviewer/references/re_review_mode_protocol.md` § Legacy Mode |
+| `ARS_INQUIRY_LEDGER=1` | v3.21.1 (#743) | 探究分支帳本（alpha）。需要研究流程設定檔的綁定，而 pipeline 沒有任何步驟會建立它；沒有綁定時照線性流程跑，並說明一次。 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` § Inquiry Branch Ledger |
 | `ARS_VERIFICATION_CACHE_PATH` | v3.11 | 覆寫引用查驗 cache 的位置（見下節）。不是 on/off flag——cache 預設開啟，此變數只改位置。 | `scripts/verification_cache.py` |
 | `ARS_CACHE_STALE_ADVISORY_DAYS` | v3.18.0 (#541) | cache 時效 advisory 的天數門檻：由 cache 供應且超過此天數的查驗結果，會在誠信檢查點以 `ADV-CACHE` advisory 列呈現（永不擋關）。預設 30；`0` 停用；格式錯誤或負值回落預設。 | `scripts/verification_cache.py` |
 | `ARS_CACHE_REVALIDATE=1` | v3.18.0 (#541) | 選擇性即時重驗（gate 層）：超過時效門檻的快取列改為逐列繞過、即時查驗並回寫。成本隨過期列數量增加。預設關閉＝僅 advisory。 | `scripts/verification_gate/__init__.py` + `integrity_verification_agent.md` § A0.5 |

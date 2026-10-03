@@ -13,6 +13,7 @@ Entry schema: shared/contracts/passport/run_ledger.schema.json.
 Usage:
     python3 scripts/run_ledger.py append --passport-path P --entry-file F
     python3 scripts/run_ledger.py report --passport-path P [--claims F] [--render LANG]
+    python3 scripts/run_ledger.py show --passport-path P
 
 ``append`` validates one entry (a JSON object with ``kind`` and that kind's
 fields), gives it the next ``seq``, the UTC time, the previous entry's hash,
@@ -39,6 +40,15 @@ verbatim, and prints nothing when there is nothing to report (#898). Exit
 0 means there is nothing to report, 1 means the handoff check has items, and
 2 means a usage or environment error.
 
+``show`` prints the entries the break rule trusts, as one JSON object with
+the ledger's status, the seq from which entries are untrusted, and
+``trusted_entries``. Every read of the ledger outside ``report`` goes
+through it (the retries a receipt used, the recorded answers of a partly
+collected answer, the words a record quotes), so the break rule covers
+every read (#898). Exit 0 means the whole ledger is trusted, 1 means it
+is missing, unreadable, or broken (the entries before a break are still
+printed), and 2 means a usage or environment error.
+
 What the hashes catch: an accidental change to any entry (each entry carries
 its own hash) and a deleted entry that has a later entry (each entry carries
 the previous entry's hash). What they do not catch: a lost tail, an edit
@@ -52,10 +62,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import re
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -63,12 +71,16 @@ from typing import Any, Callable
 import yaml
 
 try:  # Dual-path import: sibling module on sys.path vs package import.
-    from ars_mark_read import LedgerLockError, _ledger_lock
-    from human_read_attestation_resolver import _UniqueKeySafeLoader
+    from ars_mark_read import LedgerLockError, atomic_replace, ledger_lock
+    from human_read_attestation_resolver import UniqueKeySafeLoader
 except ImportError:  # pragma: no cover - package-import path
-    from scripts.ars_mark_read import LedgerLockError, _ledger_lock  # type: ignore[no-redef]
+    from scripts.ars_mark_read import (  # type: ignore[no-redef]
+        LedgerLockError,
+        atomic_replace,
+        ledger_lock,
+    )
     from scripts.human_read_attestation_resolver import (  # type: ignore[no-redef]
-        _UniqueKeySafeLoader,
+        UniqueKeySafeLoader,
     )
 
 LEDGER_FORMAT = "ars-run-ledger/1.0"
@@ -302,9 +314,9 @@ def load_ledger(path: Path) -> dict[str, Any] | None:
         return None
     try:
         text = path.read_bytes().decode("utf-8")
-        data = yaml.load(text, Loader=_UniqueKeySafeLoader)
+        data = yaml.load(text, Loader=UniqueKeySafeLoader)
     except (OSError, ValueError, yaml.YAMLError) as exc:  # ValueError: bad bytes, impossible dates
-        raise LedgerUnreadable(f"cannot parse {path.name}: {exc}") from exc
+        raise LedgerUnreadable(f"cannot parse {path.name}: {_where(exc)}") from exc
     if (
         not isinstance(data, dict)
         or set(data) != {"ledger", "created_at", "entries"}
@@ -320,6 +332,23 @@ def load_ledger(path: Path) -> dict[str, Any] | None:
     return data
 
 
+def _where(exc: BaseException) -> str:
+    """Name the error kind and position without quoting the ledger's text.
+
+    YAML and decode errors otherwise carry an excerpt of the unreadable file,
+    which can hold the user's words; a read that promises only trusted text
+    must not print them (#898).
+    """
+    mark = getattr(exc, "problem_mark", None)
+    if mark is not None:
+        return f"{type(exc).__name__} at line {mark.line + 1}, column {mark.column + 1}"
+    if isinstance(exc, UnicodeDecodeError):
+        return f"invalid UTF-8 at byte {exc.start}"
+    if isinstance(exc, OSError):
+        return f"{type(exc).__name__}: {exc.strerror or exc}"
+    return type(exc).__name__
+
+
 def first_untrusted_seq(entries: list[Any]) -> int | None:
     """Return the seq of the first entry that fails validation, or None.
 
@@ -332,28 +361,6 @@ def first_untrusted_seq(entries: list[Any]) -> int | None:
             return index
         prev_hash = entry["hash"]
     return None
-
-
-def _write_atomic(path: Path, data: dict[str, Any]) -> None:
-    """Replace the ledger from a same-directory temp file (never open "w")."""
-    payload = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).encode("utf-8")
-    temp_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False
-        ) as handle:
-            temp_path = Path(handle.name)
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temp_path, path)
-        temp_path = None
-    finally:
-        if temp_path is not None:
-            try:
-                temp_path.unlink()
-            except FileNotFoundError:
-                pass
 
 
 def _state(entries: list[dict[str, Any]]) -> dict[str, Any]:
@@ -457,7 +464,7 @@ def append_entry(
     """Validate and append one entry under the peer lock; return the entry."""
     path = ledger_path(passport_path)
     fields = dict(fields)
-    with _ledger_lock(path):
+    with ledger_lock(path):
         data = load_ledger(path)
         if data is None:
             data = {"ledger": LEDGER_FORMAT, "created_at": now(), "entries": []}
@@ -477,7 +484,8 @@ def append_entry(
         }
         entry["hash"] = entry_hash(entry)
         entries.append(entry)
-        _write_atomic(path, data)
+        payload = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).encode("utf-8")
+        atomic_replace(path, payload)
     return entry
 
 
@@ -531,9 +539,13 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Classify the ledger against the claims into the handoff check's groups."""
-    claims = claims or {}
+def read_trusted(passport_path: Path) -> dict[str, Any]:
+    """Apply the break rule once, for ``report`` and ``show`` alike.
+
+    Returns the ledger path, its status (``ok``, ``missing``, ``unreadable``,
+    or ``chain_broken``), a detail line, the seq from which entries are
+    untrusted, the number of stored entries, and the trusted entries.
+    """
     path = ledger_path(passport_path)
     status, detail, entries, broken = "ok", None, [], None
     try:
@@ -549,8 +561,22 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
             if broken is not None:
                 status = "chain_broken"
                 detail = f"entry {broken} fails validation; entries from {broken} on are untrusted"
-    trusted = entries[: broken - 1] if broken is not None else entries
-    state = _state(trusted)
+    return {
+        "ledger": str(path),
+        "ledger_status": status,
+        "detail": detail,
+        "untrusted_from_seq": broken,
+        "entries": len(entries),
+        "trusted_entries": entries[: broken - 1] if broken is not None else entries,
+    }
+
+
+def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Classify the ledger against the claims into the handoff check's groups."""
+    claims = claims or {}
+    read = read_trusted(passport_path)
+    path = ledger_path(passport_path)
+    state = _state(read["trusted_entries"])
 
     awaiting: list[dict[str, Any]] = []
     cannot_confirm: list[dict[str, Any]] = []
@@ -630,11 +656,7 @@ def build_report(passport_path: Path, claims: dict[str, Any] | None = None) -> d
             backed += 1
 
     return {
-        "ledger": str(path),
-        "ledger_status": status,
-        "detail": detail,
-        "untrusted_from_seq": broken,
-        "entries": len(entries),
+        **{key: value for key, value in read.items() if key != "trusted_entries"},
         "awaiting_answer": awaiting,
         "cannot_confirm": cannot_confirm,
         "not_run": not_run,
@@ -847,6 +869,8 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--claims", type=Path, help="JSON file of what a summary or report claims.")
     report.add_argument("--render", choices=RENDER_LANGUAGES,
                         help="Print the finished handoff-check block in this language instead of JSON.")
+    show = sub.add_parser("show", help="Print only the entries the break rule trusts.")
+    show.add_argument("--passport-path", type=Path, required=True)
     args = parser.parse_args(argv)
 
     try:
@@ -865,6 +889,10 @@ def main(argv: list[str] | None = None) -> int:
             entry = append_entry(args.passport_path, fields)
             print(json.dumps({"seq": entry["seq"], "hash": entry["hash"]}))
             return 0
+        if args.command == "show":
+            shown = read_trusted(args.passport_path)
+            print(json.dumps(shown, ensure_ascii=False, indent=2))
+            return 0 if shown["ledger_status"] == "ok" else 1
         claims = None
         if args.claims is not None:
             claims = _read_json_file(args.claims, "the claims file")
@@ -879,7 +907,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(json.dumps(result, ensure_ascii=False, indent=2))
     except (LedgerRefused, LedgerUnreadable) as exc:
-        outcome = "nothing written" if args.command == "append" else "no report"
+        outcome = {"append": "nothing written", "show": "nothing shown"}.get(
+            args.command, "no report")
         print(_err(f"{outcome}: {exc}"), file=sys.stderr)
         return 2
     except LedgerLockError as exc:

@@ -65,6 +65,22 @@ id = "892-routing-core-sync"
 path = "scripts/test_check_routing_core_sync.py"
 
 [[pytest]]
+id = "916-method-weaknesses-sync"
+path = "scripts/test_check_method_weaknesses_sync.py"
+
+[[pytest]]
+id = "921-review-form-note-sync"
+path = "scripts/test_check_review_form_note_sync.py"
+
+[[pytest]]
+id = "923-shared-marker-block"
+path = "scripts/test_skill_lint_marker_block.py"
+
+[[pytest]]
+id = "915-experiment-alignment-overclaim-fixtures"
+path = "scripts/test_experiment_alignment_overclaim_fixtures.py"
+
+[[pytest]]
 id = "v3.10-policy-layer"
 path = "scripts/test_check_v3_10_policy.py"
 
@@ -707,6 +723,14 @@ path = "scripts/test_run_ledger.py"
 [[pytest]]
 id = "849-acronym-check"
 path = "scripts/test_check_acronyms.py"
+
+[[pytest]]
+id = "927-standing-constraint-entry-schema"
+path = "scripts/test_standing_constraint_entry_schema.py"
+
+[[pytest]]
+id = "936-excluded-source-entry-schema"
+path = "scripts/test_excluded_source_entry_schema.py"
 
 [[pytest]]
 id = "sr-screener-pipeline"

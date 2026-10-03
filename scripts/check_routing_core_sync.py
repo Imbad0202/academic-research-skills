@@ -25,7 +25,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _skill_lint import iter_skill_files, read_or_exit2  # noqa: E402
+from _skill_lint import (  # noqa: E402
+    check_marker_copies,
+    extract_marker_block,
+    iter_skill_files,
+    read_or_exit2,
+)
 
 CANONICAL = Path("shared/references/routing_core.md")
 CLAUDE_MD = Path(".claude/CLAUDE.md")
@@ -34,35 +39,8 @@ END = "<!-- routing-core:end -->"
 
 
 def extract_block(text: str, label: str) -> tuple[str | None, list[str]]:
-    """Return the text between the one marker pair, or None with the errors.
-    A marker line may end in CR; the block keeps its CRs for the comparison."""
-    lines = text.split("\n")
-    begins = [i for i, line in enumerate(lines) if line.rstrip("\r") == BEGIN]
-    ends = [i for i, line in enumerate(lines) if line.rstrip("\r") == END]
-    errors: list[str] = []
-    for marker, whole in ((BEGIN, begins), (END, ends)):
-        total = text.count(marker)
-        if total != 1 or len(whole) != 1:
-            errors.append(f"{label}: expected one {marker} alone on its line, "
-                          f"found {total} occurrence(s), {len(whole)} on their own line")
-    if errors:
-        return None, errors
-    if begins[0] > ends[0]:
-        return None, [f"{label}: {END} comes before {BEGIN}"]
-    block = "\n".join(lines[begins[0] + 1:ends[0]])
-    if not block.strip():
-        return None, [f"{label}: the routing-core block is empty"]
-    return block, []
-
-
-def first_difference(copy: str, canonical: str) -> str:
-    copy_lines, canon_lines = copy.split("\n"), canonical.split("\n")
-    for number, (got, want) in enumerate(zip(copy_lines, canon_lines), start=1):
-        if got != want:
-            if got.rstrip("\r") == want.rstrip("\r"):
-                return f"block line {number} differs only in its line ending"
-            return f"block line {number} differs"
-    return (f"block has {len(copy_lines)} lines, canonical has {len(canon_lines)}")
+    """Return the text between the one marker pair, or None with the errors."""
+    return extract_marker_block(text, label, BEGIN, END, "routing-core")
 
 
 def copies(root: Path) -> list[Path]:
@@ -72,14 +50,11 @@ def copies(root: Path) -> list[Path]:
 
 def check(root: Path) -> list[str]:
     """Run RC-1 and RC-2 under `root`; a missing file exits 2."""
-    canonical, errors = extract_block(read_or_exit2(root, str(CANONICAL), exact=True),
-                                      f"RC-1 {CANONICAL}")
-    for rel in copies(root):
-        block, copy_errors = extract_block(read_or_exit2(root, str(rel), exact=True), f"RC-2 {rel}")
-        errors += copy_errors
-        if block is not None and canonical is not None and block != canonical:
-            errors.append(f"RC-2 {rel}: routing-core block differs from {CANONICAL} "
-                          f"({first_difference(block, canonical)})")
+    # Read the canonical file before copies() scans the tree, so a bad --root
+    # exits 2 on the missing canonical file instead of failing in the scan.
+    read_or_exit2(root, str(CANONICAL), exact=True)
+    _, errors = check_marker_copies(root, CANONICAL, copies(root), BEGIN, END,
+                                    "routing-core", "RC-1", "RC-2")
     return errors
 
 

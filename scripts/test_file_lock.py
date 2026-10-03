@@ -323,9 +323,9 @@ print("BINDING_BOUNDED_OK")
 
 # ars-mark-read: bounded ledger lock with visible contention
 log = tmp / "passport_human_read_log.yaml"
-with ars_mark_read._ledger_lock(log):
+with ars_mark_read.ledger_lock(log):
     try:
-        with ars_mark_read._ledger_lock(log, timeout_seconds=0.05):
+        with ars_mark_read.ledger_lock(log, timeout_seconds=0.05):
             raise SystemExit("nested ledger lock acquired")
     except ars_mark_read.LedgerLockError as exc:
         assert "timed out" in str(exc)

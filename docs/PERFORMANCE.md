@@ -89,7 +89,7 @@ These are on top of the existing per-skill costs in the table above (same 15,000
 
 ### v3.6.3 Passport reset boundary (opt-in)
 
-When `ARS_PASSPORT_RESET=1` is set, every FULL checkpoint becomes a context-reset boundary. The intended workflow is:
+When `ARS_PASSPORT_RESET=1` is set, every FULL and MANDATORY checkpoint becomes a context-reset boundary. The intended workflow is:
 
 1. Run a stage to FULL checkpoint in session A.
 2. Copy the `[PASSPORT-RESET: hash=<hash>, stage=<completed>, next=<next>]` tag from the checkpoint notification.

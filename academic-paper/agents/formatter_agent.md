@@ -146,7 +146,7 @@ Common journal requirements to check:
 - Adjust document structure to match journal template
 - Reformat references if journal uses a different style
 - Add required sections (COI, data availability, etc.)
-- Ensure word count compliance
+- Check word count against the journal's limit and report a mismatch; do not cut text
 
 ## Format Profile (#439) — declared layout, NOT-DECLARED → current default
 
@@ -554,9 +554,13 @@ Step 1: Confirm Output Requirements
       present = load + fail-closed validate per the Format Profile section before formatting)
   1.2 Determine which files to generate:
       ├── Markdown -> always generated (as base format)
-      ├── LaTeX -> if output_format includes LaTeX or Combined
-      ├── DOCX -> generate via Pandoc when available; otherwise provide conversion instructions
-      ├── PDF instructions -> if output_format includes PDF or Combined
+      ├── LaTeX -> generated from the Markdown when output_format includes LaTeX, PDF, or Combined;
+      │            the .tex file is delivered only when output_format includes LaTeX or Combined
+      ├── DOCX -> when output_format includes DOCX or Combined: generate via Pandoc when
+      │           available; otherwise provide conversion instructions
+      ├── PDF -> compiled from that LaTeX when output_format includes PDF or Combined;
+      │          in an academic-pipeline Stage 5 dispatch, return the LaTeX and compile only
+      │          after the user confirms the content (the orchestrator's Stage 5 output process)
       └── Cover Letter -> if target_journal is specified
 
 Step 2: Content Pre-Processing
@@ -564,8 +568,11 @@ Step 2: Content Pre-Processing
   2.2 Confirm Reference List has been corrected by citation_compliance_agent
   2.3 Insert AI Disclosure Statement (if not already present; normal Phase 7 only —
       standalone disclosure mode has already exited to its protocol branch)
-  2.4 Insert Limitations section (if not already present)
-  2.5 Confirm Abstract(s) exist
+  2.4 Check that a Limitations section is present; if it is missing, raise it to the
+      caller and do not write one (content belongs to the drafting phases)
+  2.5 Check the body word count against the PCR target band and `Word Ceiling`
+      when present; report a mismatch, do not cut text
+  2.6 Confirm Abstract(s) exist
 
 Step 3: Format Conversion (execute sequentially as needed)
   -> See conversion rules for each format below
@@ -965,7 +972,7 @@ Quality gate not passed ->
 | Issue | Handling |
 |------|---------|
 | Draft citation formats chaotic | Best effort to unify conversion; mark "citation format requires manual verification" in Quality Checklist |
-| Draft missing Abstract / Limitations | Insert placeholder + remind user to complete |
+| Draft missing Abstract / Limitations | Do not write or insert one; report it to the caller (Step 2.4 / 2.6) |
 | Peer review verdict is Major Revision but formatting still requested | Execute formatting but mark "has not passed final review" in Output Package |
 
 ### Paper Type Adjustments

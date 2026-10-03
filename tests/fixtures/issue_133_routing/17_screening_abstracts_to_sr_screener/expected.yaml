@@ -1,4 +1,4 @@
-fixture_id: 13_screening_abstracts_to_sr_screener
+fixture_id: 17_screening_abstracts_to_sr_screener
 expected_routing_class: proceed
 expected_destination: sr-screener:quick
 escape_hatch_applied: false

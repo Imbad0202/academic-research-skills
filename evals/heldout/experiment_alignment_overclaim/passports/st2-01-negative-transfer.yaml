@@ -1,0 +1,172 @@
+# Held-out case st2-01 (#915): "strictly eliminating negative transfer".
+#
+# Synthetic Material Passport built from the DynaSpec-RAG showcase manuscript in
+# ScientistTwo (Nam et al., 2026, arXiv:2609.19644 v1, Appendix D). Page numbers
+# are arXiv v1 PDF pages. Only short quotes, numbers, and page references are
+# stored; the PDF is not vendored. The paper's own tables stand in for the
+# scholar-declared provenance. result_file values are table locators, not files.
+#
+# Subject-visible input.
+
+origin_skill: academic-paper
+origin_mode: full
+origin_date: "2026-09-30T00:00:00Z"
+verification_status: UNVERIFIED
+version_label: "st2-01"
+
+experiment_intake_declaration:
+  status: experiments_declared
+  declared_at: "2026-09-30T00:00:00Z"
+  declared_by: scholar
+
+experiment_provenance:
+  - experiment_id: exp-main-zero-shot
+    title: "Zero-shot long-term forecasting on seven benchmarks (manuscript Table 1)"
+    description: >-
+      DynaSpec-RAG refines the output of a frozen TS-RAG base. Test MSE / MAE,
+      T = 512, L = 64, lower is better. Same numbers as ScientistTwo main-paper
+      Table 11 (p. 17) and manuscript Table 1 (p. 62).
+    repro_lock: &lock
+      schema_version: "1.0"
+      stochasticity_declaration: "LLM/training outputs are not byte-reproducible. This lockfile documents configuration, not a deterministic replay guarantee."
+      ars_version: "3.22.2"
+      model:
+        family: custom
+        id: dynaspec-rag-on-frozen-ts-rag
+        weight_stable: true
+      prompts:
+        hash_timing: skill-load
+        skill_md_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000915"
+        agents_bundle_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000915"
+      materials:
+        list_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000915"
+        count: 1
+      external_protocols:
+        s2_api_protocol_version: "3.11"
+        s2_snapshot_available: false
+      cross_model:
+        enabled: false
+        secondary_model_id: null
+    planned_vs_executed:
+      - planned: "Average test MSE over seven benchmarks, DynaSpec-RAG"
+        executed: true
+        result_file: "manuscript Table 1, p. 62, row Average"
+        metric: "MSE"
+        value: 0.1892
+      - planned: "Average test MSE over seven benchmarks, frozen TS-RAG base"
+        executed: true
+        result_file: "manuscript Table 1, p. 62, row Average"
+        metric: "MSE"
+        value: 0.1940
+      - planned: "Average test MAE over seven benchmarks, DynaSpec-RAG vs frozen TS-RAG base"
+        executed: true
+        result_file: "manuscript Table 1, p. 62, row Average"
+        metric: "MAE (base / DynaSpec)"
+        value: "0.2492 / 0.2488"
+      - planned: "Electricity test MSE / MAE, DynaSpec-RAG"
+        executed: true
+        result_file: "manuscript Table 1, p. 62, row Electricity"
+        metric: "MSE / MAE"
+        value: "0.1135 / 0.2059"
+      - planned: "Electricity test MSE / MAE, frozen TS-RAG base"
+        executed: true
+        result_file: "manuscript Table 1, p. 62, row Electricity"
+        metric: "MSE / MAE"
+        value: "0.1120 / 0.2002"
+      - planned: "ETTh1 test MSE / MAE, DynaSpec-RAG"
+        executed: true
+        result_file: "manuscript Table 1, p. 62, row ETTh1"
+        metric: "MSE / MAE"
+        value: "0.3467 / 0.3627"
+      - planned: "ETTh1 test MSE / MAE, frozen TS-RAG base"
+        executed: true
+        result_file: "manuscript Table 1, p. 62, row ETTh1"
+        metric: "MSE / MAE"
+        value: "0.3557 / 0.3624"
+    negative_results: []
+    known_limitations:
+      - description: >-
+          Manuscript section 4.2 (p. 62): "On Electricity, where a
+          validation-to-test distribution shift is present, D-Guard selects a
+          conservative lambda = 0.350, bounding test error to 0.1135 MSE and
+          preserving stability rather than compounding the shift."
+
+  - experiment_id: exp-gift-eval
+    title: "Zero-shot transfer to GIFT-Eval, no retraining (manuscript Appendix B, Table 10)"
+    description: >-
+      Residual module applied to five GIFT-Eval datasets. Delta MSE < 0 denotes
+      improvement. Delta MAE is reported with sign. Table 10, p. 70.
+    repro_lock: *lock
+    planned_vs_executed:
+      - planned: "bizitobs l2c test MSE, ARM base vs DynaSpec-RAG"
+        executed: true
+        result_file: "manuscript Table 10, p. 70, row bizitobs l2c"
+        metric: "MSE (base / DynaSpec)"
+        value: "0.4432 / 0.4416"
+      - planned: "bizitobs l2c test MAE change"
+        executed: true
+        result_file: "manuscript Table 10, p. 70, row bizitobs l2c"
+        metric: "delta MAE"
+        value: "+0.0004"
+      - planned: "Average MSE change over five GIFT-Eval datasets"
+        executed: true
+        result_file: "manuscript section 4.4, p. 63"
+        metric: "average MSE (base -> DynaSpec)"
+        value: "0.3768 -> 0.3558 (-5.6%)"
+    negative_results: []
+    known_limitations: []
+
+  - experiment_id: exp-dguard-calibration
+    title: "Validation-calibrated safety scale (manuscript Ablation 4)"
+    description: >-
+      Grid search over lambda in {0.0, 0.025, ..., 1.0} on validation splits,
+      search grid includes zero (section 3.4, p. 61; Ablation 4, pp. 64-65; Table 7, p. 70).
+    repro_lock: *lock
+    planned_vs_executed:
+      - planned: "Negative transfer on validation splits after calibration"
+        executed: true
+        result_file: "manuscript Ablation 4, p. 65"
+        metric: "validation regressions"
+        value: "none (text: calibration eliminates negative transfer on validation splits)"
+      - planned: "Datasets worse than the frozen baseline on either test metric, calibrated dual-metric guard"
+        executed: true
+        result_file: "manuscript Table 7, p. 70, row Calibrated Dual-Metric"
+        metric: "regressing datasets"
+        value: "2 of 7"
+      - planned: "Test regressions with fixed uncalibrated injection (lambda = 1.0)"
+        executed: true
+        result_file: "manuscript Figure 5(b) caption, p. 64"
+        metric: "datasets with test regression"
+        value: "5 of 7"
+    negative_results: []
+    known_limitations: []
+
+claim_intent_manifests:
+  - manifest_version: "1.0"
+    manifest_id: "M-2026-09-30T00:00:00Z-0915"
+    emitted_by: draft_writer_agent
+    emitted_at: "2026-09-30T00:00:00Z"
+    claims:
+      - claim_id: C-001
+        claim_text: "DynaSpec-RAG reduces the average test Mean Squared Error (MSE) of the strong frozen TS-RAG baseline from 0.1940 to 0.1892 while adding only 0.27M trainable parameters (~0.1% of the foundation model backbone) and strictly eliminating negative transfer through validation-calibrated baseline fallback."
+        intended_evidence_kind: empirical
+        planned_refs: []
+        planned_experiment_ids:
+          - exp-main-zero-shot
+          - exp-gift-eval
+          - exp-dguard-calibration
+      - claim_id: C-002
+        claim_text: "Across seven benchmarks, DynaSpec-RAG reduces average MSE from 0.1940 to 0.1892 with only 0.27M trainable parameters, further surpassing RAF/RAEF and transferring zero-shot to GIFT-Eval (-5.6%) while strictly preventing negative transfer."
+        intended_evidence_kind: empirical
+        planned_refs: []
+        planned_experiment_ids:
+          - exp-main-zero-shot
+          - exp-gift-eval
+          - exp-dguard-calibration
+      - claim_id: C-003
+        claim_text: "Specifically, it reduces average test MSE from 0.1940 (TS-RAG) to 0.1892 (a 0.0048 absolute drop, ~2.5% relative) and average MAE from 0.2492 to 0.2488."
+        intended_evidence_kind: empirical
+        planned_refs: []
+        planned_experiment_ids:
+          - exp-main-zero-shot
+    manifest_negative_constraints: []

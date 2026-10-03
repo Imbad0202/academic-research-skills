@@ -611,6 +611,83 @@ class ChainLimitTest(_LedgerCase):
         self.assertEqual(report["cannot_confirm"][0]["recorded"], "pause")
 
 
+class ShowTest(_LedgerCase):
+    """``show`` prints only the entries the break rule trusts (#898 item 3)."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.append(kind="initial_instructions", user_words="Keep it under 6,000 words.")
+        self.open_checkpoint()
+        self.append(kind="partial_answer", checkpoint_id=GATE, item_id="E6-1",
+                    answer="accept", user_words="Accept E6-1.")
+        self.receipt("verify_passport", "failed")
+
+    def show(self):
+        result = run_script(SCRIPT, "show", "--passport-path", str(self.passport))
+        return result.returncode, (json.loads(result.stdout) if result.stdout else None), result
+
+    def test_whole_ledger_trusted(self) -> None:
+        code, shown, result = self.show()
+        self.assertEqual(code, 0, result.stderr)
+        self.assertEqual((shown["ledger_status"], shown["untrusted_from_seq"], shown["entries"]),
+                         ("ok", None, 4))
+        self.assertEqual(shown["trusted_entries"], self.load_raw()["entries"])
+
+    def test_entries_from_the_break_on_are_not_shown(self) -> None:
+        def tamper(entries):
+            entries[2]["user_words"] = "Reject E6-1."
+            entries[3]["retries_used"] = 3
+        self.edit_entries(tamper)
+        code, shown, result = self.show()
+        self.assertEqual(code, 1, result.stderr)
+        self.assertEqual((shown["ledger_status"], shown["untrusted_from_seq"], shown["entries"]),
+                         ("chain_broken", 3, 4))
+        self.assertEqual([e["seq"] for e in shown["trusted_entries"]], [1, 2])
+        self.assertNotIn("Reject E6-1.", result.stdout)
+        self.assertNotIn("retries_used", result.stdout)
+
+    def test_show_and_report_apply_the_same_break(self) -> None:
+        self.edit_entries(lambda e: e.pop(1))
+        shown = run_ledger.read_trusted(self.passport)
+        report = self.report()
+        for key in ("ledger", "ledger_status", "detail", "untrusted_from_seq", "entries"):
+            self.assertEqual(shown[key], report[key], key)
+
+    def test_missing_or_unreadable_ledger_shows_nothing_trusted(self) -> None:
+        self.ledger.write_text("ledger: [unclosed\n", encoding="utf-8")
+        code, shown, _ = self.show()
+        self.assertEqual((code, shown["ledger_status"], shown["trusted_entries"]),
+                         (1, "unreadable", []))
+        self.ledger.unlink()
+        code, shown, _ = self.show()
+        self.assertEqual((code, shown["ledger_status"], shown["trusted_entries"]),
+                         (1, "missing", []))
+
+    def test_unreadable_ledger_detail_quotes_none_of_its_text(self) -> None:
+        cases = {
+            "unterminated quote": "ledger: ars-run-ledger/1.0\nentries:\n- user_words: \"I approve it.\n",
+            "duplicate key": "ledger: x\nI approve it.: 1\nI approve it.: 2\n",
+            "impossible date": "ledger: x\nI approve it.: 2026-13-45\n",
+        }
+        for label, text in cases.items():
+            with self.subTest(label):
+                self.ledger.write_text(text, encoding="utf-8")
+                code, shown, result = self.show()
+                self.assertEqual((code, shown["ledger_status"]), (1, "unreadable"))
+                self.assertNotIn("approve", result.stdout)
+                report = run_script(SCRIPT, "report", "--passport-path", str(self.passport))
+                self.assertNotIn("approve", report.stdout)
+        self.ledger.write_bytes(b"ledger: \xff I approve it.\n")
+        code, shown, result = self.show()
+        self.assertEqual(shown["detail"], f"cannot parse {self.ledger.name}: invalid UTF-8 at byte 8")
+        self.assertNotIn("approve", result.stdout)
+
+    def test_missing_passport_exits_2(self) -> None:
+        result = run_script(SCRIPT, "show", "--passport-path", str(self.root / "none.yaml"))
+        self.assertEqual((result.returncode, result.stdout), (2, ""))
+        self.assertTrue(result.stderr.startswith(run_ledger.ERR_PREFIX), result.stderr)
+
+
 class AppendValidationTest(_LedgerCase):
     def test_writer_assigns_seq_time_and_hashes(self) -> None:
         first = self.append(kind="initial_instructions", user_words="Go.")
@@ -694,7 +771,7 @@ class AppendValidationTest(_LedgerCase):
     def test_failed_replace_keeps_the_previous_ledger(self) -> None:
         self.open_checkpoint()
         before = self.ledger.read_bytes()
-        with patch.object(run_ledger.os, "replace", side_effect=OSError("disk full")):
+        with patch.object(os, "replace", side_effect=OSError("disk full")):
             with self.assertRaises(OSError):
                 self.close_checkpoint("continue", "Continue.")
         self.assertEqual(self.ledger.read_bytes(), before)

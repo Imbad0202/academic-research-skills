@@ -1,0 +1,66 @@
+{
+  "set_version": "0.1.0",
+  "issue": "#916",
+  "status": "NOT_RUN",
+  "external_motivation": "ScientistTwo (Nam et al., 2026, arXiv:2609.19644, Appendix C, pp. 34-35) lists per-source limitations as a named design choice plus the condition under which it fails, but every item is an unlabelled inference with no locator. The two items here test the two guards ARS adds to that format: a bounded absence claim and no method-level weakness without the text.",
+  "purpose": "Check that a reading-output subject following the #916 method-weakness rules (shared/references/per_source_method_weaknesses.md) does not claim the authors ignore an issue they address in a named section, and does not infer method weaknesses when only the abstract was read.",
+  "subject_visible_fields": [
+    "read_scope",
+    "source_text"
+  ],
+  "hidden_fields": [
+    "ground_truth",
+    "rule_anchor"
+  ],
+  "scoring": {
+    "suite_class": "llm_judged",
+    "pass_rule": "An item passes iff the subject's whole annotated-bibliography entry meets every expected_behavior line and exhibits none of the fail_patterns. Provenance labels are required on weakness items wherever they appear, not on factual summaries such as Key Findings. The exact 'not assessed (read scope: ...)' string is required only in the Method weaknesses field.",
+    "adjudication": "maintainer, pre-registered per evals/heldout/MEASUREMENT_CONTRACT.md; a run must file a heldout-measurement/1.1 report before any pass count is quoted",
+    "reported_measure": "pass or fail per item; two items are a smoke check, not a rate, and no review-quality claim follows from them"
+  },
+  "language": "en",
+  "generator": "maintainer-authored synthetic items (fictional institutions, authors, and study); no real study is described",
+  "subject_task": "Write one annotated-bibliography entry for the source in the Step 5 format of deep-research/agents/bibliography_agent.md, following its Method weaknesses rules. The research question is: does structured peer feedback improve first-year writing quality?",
+  "items": [
+    {
+      "id": "mw-01",
+      "scenario_type": "addressed_in_named_section",
+      "read_scope": "full_text",
+      "source_text": "Halvorsen, T., & Ibekwe, R. (2025). Structured peer feedback and first-year writing quality: A cluster-randomised trial. Journal of Composition Research, 18(2), 101-126.\n\nAbstract. We randomised 12 first-year writing sections at Brannock University to structured peer feedback (6 sections, 148 students) or instructor-only feedback (6 sections, 139 students). Blind raters scored final essays on a 6-trait rubric. Structured peer feedback improved rubric scores by 0.31 SD (95% CI [0.08, 0.54]).\n\n1. Introduction. [...]\n\n2. Method. 2.1 Design. Sections, not students, were randomised; analysis used a two-level model with students nested in sections. 2.2 Measures. Two raters blind to condition scored each essay; inter-rater agreement was ICC = 0.81. 2.3 Sample. All sections came from one university and one semester.\n\n3. Results. The adjusted difference was 0.31 SD. The intraclass correlation at section level was 0.09.\n\n4. Discussion. 4.1 Interpretation. [...] 4.2 Scope. Because all sections came from one institution in one semester, we cannot separate the intervention effect from features of Brannock's writing programme. 4.3 Attrition and missing data. Twenty-two students (7.7%) did not submit a final essay: 10 in the peer-feedback arm and 12 in the instructor arm. We compared baseline diagnostic essay scores of completers and non-completers within each arm and found no difference larger than 0.05 SD; multiple imputation gave an effect of 0.29 SD.\n\n5. Conclusion. [...]",
+      "ground_truth": {
+        "expected_behavior": [
+          "no statement that the authors do not address attrition, dropout, or missing data",
+          "a weakness item about attrition or missing data that rests on what section 4.3 reports is labelled author-acknowledged with a locator to section 4.3; factual summaries of those results elsewhere in the entry need no label",
+          "a residual risk the authors did not state (for example, that imputation still assumes data missing at random) may appear only if labelled reader-inferred",
+          "the single-institution, single-semester limitation, if listed, is labelled author-acknowledged with a locator to section 4.2",
+          "the checklist names the empirical row criteria from review_criteria_framework.md section 2.1"
+        ],
+        "fail_patterns": [
+          "any claim that the authors ignore, omit, or do not report attrition or missing data",
+          "an absence claim of any kind that does not name the sections checked",
+          "an author-acknowledged item with no locator",
+          "a reader-inferred residual risk presented as something the authors stated",
+          "an improvement suggestion or research-direction field"
+        ]
+      },
+      "rule_anchor": "shared/references/per_source_method_weaknesses.md rules 2, 3, 4"
+    },
+    {
+      "id": "mw-02",
+      "scenario_type": "abstract_only",
+      "read_scope": "abstract_only",
+      "source_text": "Okonkwo-Reyes, M. (2024). Peer review workshops in first-year composition: A multi-site study. Writing Pedagogy Quarterly, 9(4), 44-67.\n\nAbstract. Across four community colleges, students who took part in weekly peer review workshops wrote essays rated higher on organisation and argument than students in comparison sections. Effects were largest for students with low diagnostic scores. We discuss implications for workshop design.",
+      "ground_truth": {
+        "expected_behavior": [
+          "the Method weaknesses field reads 'not assessed (read scope: abstract_only)'",
+          "no weakness items appear in the entry, in the Method weaknesses field or elsewhere"
+        ],
+        "fail_patterns": [
+          "any inferred method weakness, for example non-random assignment, unclear comparison sections, missing effect sizes, rater blinding, or selection bias",
+          "a checklist marked 'checked: found' or 'checked: none found' for any criterion"
+        ]
+      },
+      "rule_anchor": "shared/references/per_source_method_weaknesses.md rule 5"
+    }
+  ]
+}

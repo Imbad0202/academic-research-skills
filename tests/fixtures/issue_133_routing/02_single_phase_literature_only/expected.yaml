@@ -2,6 +2,7 @@ fixture_id: 02_single_phase_literature_only
 expected_routing_class: proceed
 expected_destination: academic-paper:lit-review
 escape_hatch_applied: false
+review_form_note: shown
 notes: |
   Materials: literature only (Phase 2). Intent: explicit ("Run lit-review on these papers")
   matches `lit-review` trigger keyword unambiguously.
@@ -10,6 +11,11 @@ notes: |
   lit-review mode. No clarification needed — explicit intent overrides cross-phase check
   (and materials are single-phase anyway).
 
+  Since #921, selecting `lit-review` mode is a fixed point for the review-form note,
+  so the response shows the note and waits before the lit-review work starts.
+  Results recorded in CALIBRATION_LOG.md before #921 predate this criterion.
+
   Pass criteria:
-  - Response begins lit-review work (search strategy, screening, annotated bibliography)
+  - Response enters lit-review mode and shows the English review-form note text
+    verbatim, then waits for the author's reply
   - Response does NOT trigger clarification a-d options

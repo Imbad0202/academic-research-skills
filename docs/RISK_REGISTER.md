@@ -41,7 +41,9 @@ does not support.
   (`scripts/verify_passport.py`, `scripts/verification_gate/__init__.py`) with opt-in
   terminal policies (`shared/contracts/passport/terminal_policies.schema.json`);
   locator-bearing citation emission (`scripts/check_v3_7_3_three_layer_citation.py`);
-  Phase E claim verification for the supports-the-claim half.
+  Phase E claim verification for the supports-the-claim half; the passport list
+  that keeps a reference an integrity gate judged `NOT_FOUND` off later writer
+  dispatches (`shared/contracts/passport/excluded_source_entry.schema.json`, #936).
 - **Evidence status**: `NOT_RUN` (capability matrix row `retrieval.citation_existence_gate`);
   `NOT_RUN` (capability matrix row `integrity_check.claim_verification`).
 - **Residual gap**: no measured hallucinated-citation catch rate — that needs an
@@ -275,12 +277,16 @@ differently: fabricating a decision is R11's risk; this row covers losing one.
   (`academic-pipeline/references/pipeline_state_machine.md`); the SessionStart
   reminder after a compaction or resume (`scripts/announce-ars-loaded.sh`); the opt-in
   passport reset for MANDATORY decisions
-  (`academic-pipeline/references/passport_as_reset_boundary.md`).
+  (`academic-pipeline/references/passport_as_reset_boundary.md`); the user-confirmed
+  `standing_constraints[]` passport list that later dispatches quote
+  (`shared/contracts/passport/standing_constraint_entry.schema.json`, #927).
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — how the
-  report reads a ledger is CI-pinned by six synthetic scenarios, and the handoff-check
-  block it renders in English and Traditional Chinese by line-exact tests (#898,
-  `scripts/test_run_ledger.py`); whether the orchestrator writes the entries and inserts
-  the block unchanged is not measured on any session model.
+  report reads a ledger is CI-pinned by six synthetic scenarios, the `show` read that
+  prints only entries before a break by synthetic tests, and the handoff-check block the
+  report renders in English and Traditional Chinese by line-exact tests (#898,
+  `scripts/test_run_ledger.py`); whether the orchestrator writes the entries, reads the
+  ledger only through the script, and inserts the block unchanged is not measured on any
+  session model.
 - **Residual gap**: anything lost before its entry is written cannot be recovered; the
   hashes catch accidental damage, not deliberate edits, a lost tail, or a restored older
   copy of the ledger

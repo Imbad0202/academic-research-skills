@@ -1,0 +1,102 @@
+{
+  "set_version": "0.1.0",
+  "issue": "#915",
+  "status": "NOT_RUN",
+  "external_motivation": "ScientistTwo (Nam et al., 2026, arXiv:2609.19644) runs its own integrity audits before release (Table 7, p. 14), yet its showcase manuscript DynaSpec-RAG (Appendix D) states conclusions stronger than its own result tables. The paper's tables serve as the scholar-declared provenance.",
+  "purpose": "Check whether the #260 claim-to-provenance fidelity check (integrity_verification_agent C4, check 3) returns OVERSTATED for two claims the showcase manuscript's own tables do not support as stated, and ALIGNED for one supported claim per passport.",
+  "source": {
+    "citation": "Nam et al. (2026). ScientistTwo. arXiv:2609.19644, version 1.",
+    "page_convention": "arXiv v1 PDF page numbers",
+    "vendored": "no; passports hold short quotes, numbers, and page references only"
+  },
+  "subject_visible_fields": [
+    "passport",
+    "manuscript_locators"
+  ],
+  "hidden_fields": [
+    "ground_truth",
+    "rule_anchor"
+  ],
+  "scoring": {
+    "suite_class": "mechanical_match",
+    "pass_rule": "A claim passes iff the subject's alignment_verdict for it is in expected_verdicts. An item passes iff every listed claim passes. Where two verdicts are listed, both block at the gate; the set records that the #260 enum admits either reading, not a preference.",
+    "adjudication": "none; the verdict enum is matched mechanically. A run must file a heldout-measurement/1.1 report per evals/heldout/MEASUREMENT_CONTRACT.md before any result is quoted",
+    "reported_measure": "verdict per claim; two cases from one paper are a smoke check, not a detection rate"
+  },
+  "scope_note": "The check stays on the scholar-declared provenance route. ARS does not read code or re-run experiments, and the verdict does not judge whether the experiments were well designed.",
+  "subject_task": "Act as integrity_verification_agent at Stage 2.5 and run section C4 (Experiment Provenance & Claim Alignment) on the passport. Emit one experiment_alignment_results[] row per experiment-backed claim.",
+  "items": [
+    {
+      "id": "st2-01",
+      "scenario_type": "unconditional_claim_over_validation_scoped_result",
+      "passport": "passports/st2-01-negative-transfer.yaml",
+      "manuscript_locators": {
+        "C-001": "Abstract (p. 56)",
+        "C-002": "5. Conclusion (p. 65)",
+        "C-003": "4.2 Main Results for Zero-Shot Forecasting (p. 62)"
+      },
+      "ground_truth": {
+        "claims": {
+          "C-001": {
+            "expected_verdicts": [
+              "OVERSTATED",
+              "NOT_SUPPORTED_BY_PROVENANCE"
+            ],
+            "why": "Electricity test MSE / MAE 0.1135 / 0.2059 vs frozen base 0.1120 / 0.2002; ETTh1 MAE 0.3627 vs 0.3624; bizitobs l2c MAE +0.0004; the calibrated dual-metric guard still regresses on 2 of 7 datasets (Table 7, p. 70). The calibration evidence is validation-scoped ('eliminates negative transfer on validation splits', p. 65). OVERSTATED reads the provenance as supporting a validation-scoped or average-case claim; NOT_SUPPORTED_BY_PROVENANCE reads the test rows as contradicting the unconditional clause. Both block."
+          },
+          "C-002": {
+            "expected_verdicts": [
+              "OVERSTATED",
+              "NOT_SUPPORTED_BY_PROVENANCE"
+            ],
+            "why": "Same provenance as C-001; 'strictly preventing negative transfer' is unconditional."
+          },
+          "C-003": {
+            "expected_verdicts": [
+              "ALIGNED"
+            ],
+            "why": "Control. Average MSE 0.1940 -> 0.1892 (0.0048, 2.47% relative) and average MAE 0.2492 -> 0.2488 are in the declared provenance."
+          }
+        },
+        "fail_patterns": [
+          "ALIGNED on C-001 or C-002",
+          "any verdict other than ALIGNED on C-003 (over-correction)",
+          "judging whether the experiment was well designed instead of claim-to-provenance fidelity"
+        ]
+      },
+      "rule_anchor": "academic-pipeline/agents/integrity_verification_agent.md section C4, check 3; shared/contracts/passport/experiment_alignment_result.schema.json alignment_verdict"
+    },
+    {
+      "id": "st2-02",
+      "scenario_type": "component_credit_not_isolated_by_ablation",
+      "passport": "passports/st2-02-neighbour-attention.yaml",
+      "manuscript_locators": {
+        "C-001": "1. Introduction, contributions list (p. 58)",
+        "C-002": "4.5 Ablation Studies, Ablation 6 (p. 65)"
+      },
+      "ground_truth": {
+        "claims": {
+          "C-001": {
+            "expected_verdicts": [
+              "OVERSTATED",
+              "NOT_SUPPORTED_BY_PROVENANCE"
+            ],
+            "why": "The claim credits neighbour attention itself. Table 9 isolates it against a non-learned aggregator: learned Content + Distance Attention 0.1891 / 0.2479 at 4.02 ms, Uniform Averaging (1/k) 0.1891 / 0.2474 at 3.55 ms. The ablation supports the value of multi-neighbour aggregation over Top-1 and over the frozen baseline, not a contribution of the attention mechanism over averaging. The claim text is cut to the neighbour-attention part of a seven-component sentence (Introduction, p. 58), so the other components are out of this passport's scope."
+          },
+          "C-002": {
+            "expected_verdicts": [
+              "ALIGNED"
+            ],
+            "why": "Control. Top-1 at 0.1922 MSE is worse than every multi-neighbour variant (0.1890 to 0.1891)."
+          }
+        },
+        "fail_patterns": [
+          "ALIGNED on C-001",
+          "any verdict other than ALIGNED on C-002 (over-correction)",
+          "judging whether the experiment was well designed instead of claim-to-provenance fidelity"
+        ]
+      },
+      "rule_anchor": "academic-pipeline/agents/integrity_verification_agent.md section C4, check 3"
+    }
+  ]
+}

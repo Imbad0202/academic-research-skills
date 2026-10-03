@@ -89,7 +89,7 @@ Schema 13 sprint contract 把每個 reviewer agent 切成 Phase 1（不見論文
 
 ### v3.6.3 Passport 重置邊界（opt-in）
 
-設定 `ARS_PASSPORT_RESET=1` 後，每個 FULL checkpoint 變成 context 重置邊界。預期工作流程：
+設定 `ARS_PASSPORT_RESET=1` 後，每個 FULL 與 MANDATORY checkpoint 變成 context 重置邊界。預期工作流程：
 
 1. Session A 跑完一個 stage 到 FULL checkpoint。
 2. 從 checkpoint 通知抄下 `[PASSPORT-RESET: hash=<hash>, stage=<completed>, next=<next>]` tag。

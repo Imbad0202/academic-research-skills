@@ -746,7 +746,8 @@ def _build_manifest_constraint_index(
 #   EP-INV-3  planned_experiment_ids present => owning claim is empirical
 #   EP-INV-4  experiment_intake_declaration <-> experiment_provenance symmetry
 #   EP-INV-5  experiment_intake_declaration well-formedness when present
-#             (status enum / declared_by==scholar / declared_at date-time)
+#             (status enum / declared_by==scholar / declared_at date-time /
+#             scholar_answer non-empty string when present, #925)
 #   EA-INV-1  experiment_alignment_results[].finding_id unique
 #   EA-INV-2  alignment row (scoped_manifest_id, claim_id) + experiment_id resolve
 # These are cross-array integrity checks that JSON Schema cannot express; they
@@ -915,6 +916,17 @@ def _check_experiment_provenance_invariants(
                         f"date-time string; got {declared_at!r}",
                     )
                 )
+            # #925: optional, but when present it holds the scholar's words.
+            if "scholar_answer" in declaration:
+                scholar_answer = declaration["scholar_answer"]
+                if not isinstance(scholar_answer, str) or not scholar_answer.strip():
+                    findings.append(
+                        Finding(
+                            "EP-INV-5",
+                            "experiment_intake_declaration.scholar_answer, when present, "
+                            f"must be a non-empty string; got {scholar_answer!r}",
+                        )
+                    )
 
     return findings
 

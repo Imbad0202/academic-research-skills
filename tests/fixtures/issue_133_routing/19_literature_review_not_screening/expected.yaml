@@ -1,15 +1,20 @@
-fixture_id: 15_literature_review_not_screening
+fixture_id: 19_literature_review_not_screening
 expected_routing_class: proceed
 expected_destination: academic-paper:lit-review
 escape_hatch_applied: false
+review_form_note: shown
 notes: |
   Negative case for the Screening boundary: a request to WRITE a
   literature review is not a screening request, even though the user has a
   set of papers. Per the routing core, "a request to write a literature
   review ... does not route to sr-screener".
 
+  Selecting `lit-review` mode is a fixed point for the review-form note
+  (#921), so the response shows the note and waits before the lit-review
+  work starts.
+
   Pass criteria:
-  - Response routes to academic-paper lit-review (or asks lit-review
-    scoping questions)
+  - Response routes to academic-paper lit-review and shows the English
+    review-form note text verbatim, then waits for the author's reply
   - Response does NOT start sr-screener, build a screening protocol, or ask
     for inclusion/exclusion criteria to screen the 40 papers

@@ -1,4 +1,4 @@
-fixture_id: 14_persian_screening_to_sr_screener
+fixture_id: 18_persian_screening_to_sr_screener
 expected_routing_class: proceed
 expected_destination: sr-screener
 escape_hatch_applied: false

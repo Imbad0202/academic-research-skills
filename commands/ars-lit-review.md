@@ -11,6 +11,8 @@ Trigger the `academic-paper` skill in `lit-review` mode. Produces an annotated b
 
 Stay in `academic-paper` `lit-review` mode and do not reopen the choice of workflow: if the papers or sources the request refers to are missing, ask the user for them or offer to search for them within this mode.
 
+The skill's review-form note (#921) belongs to this mode and does not reopen that choice: show it and wait when the skill says to, and continue in `lit-review` mode if the author skips it.
+
 Mode reference: `${CLAUDE_PLUGIN_ROOT}/MODE_REGISTRY.md` § academic-paper.
 Skill entry: `${CLAUDE_PLUGIN_ROOT}/academic-paper/SKILL.md`.
 

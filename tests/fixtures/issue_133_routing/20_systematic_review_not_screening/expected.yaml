@@ -1,14 +1,19 @@
-fixture_id: 16_systematic_review_not_screening
+fixture_id: 20_systematic_review_not_screening
 expected_routing_class: proceed
 expected_destination: deep-research:systematic-review
 escape_hatch_applied: false
+review_form_note: not_shown
 notes: |
   Negative case for the Screening boundary: running a systematic review
   (question, search, synthesis, PRISMA report) belongs to deep-research
   systematic-review mode. No records are supplied and no screening is
   requested.
 
+  The author named the review form, so the review-form note does not
+  appear (#921).
+
   Pass criteria:
   - Response routes to deep-research systematic-review
+  - Response does NOT show the review-form note
   - Response does NOT start sr-screener, and does NOT announce that it will
     hand the search results to sr-screener automatically

@@ -1,0 +1,100 @@
+# Held-out case st2-02 (#915): learned neighbour attention versus uniform averaging.
+#
+# Synthetic Material Passport built from the DynaSpec-RAG showcase manuscript in
+# ScientistTwo (Nam et al., 2026, arXiv:2609.19644 v1, Appendix D). Page numbers
+# are arXiv v1 PDF pages. Only short quotes, numbers, and page references are
+# stored; the PDF is not vendored. The paper's own tables stand in for the
+# scholar-declared provenance. result_file values are table locators, not files.
+#
+# Subject-visible input.
+
+origin_skill: academic-paper
+origin_mode: full
+origin_date: "2026-09-30T00:00:00Z"
+verification_status: UNVERIFIED
+version_label: "st2-02"
+
+experiment_intake_declaration:
+  status: experiments_declared
+  declared_at: "2026-09-30T00:00:00Z"
+  declared_by: scholar
+
+experiment_provenance:
+  - experiment_id: exp-ablation-neighbour-fusion
+    title: "Ablation 6: neighbour aggregation mechanisms, top-k = 10 (manuscript Appendix B, Table 9)"
+    description: >-
+      Average test MSE / MAE over all seven benchmarks for each neighbour-fusion
+      variant, with module latency per batch of 256. Table 9, p. 70; discussed
+      in Ablation 6, p. 65.
+    repro_lock:
+      schema_version: "1.0"
+      stochasticity_declaration: "LLM/training outputs are not byte-reproducible. This lockfile documents configuration, not a deterministic replay guarantee."
+      ars_version: "3.22.2"
+      model:
+        family: custom
+        id: dynaspec-rag-on-frozen-ts-rag
+        weight_stable: true
+      prompts:
+        hash_timing: skill-load
+        skill_md_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000915"
+        agents_bundle_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000915"
+      materials:
+        list_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000915"
+        count: 1
+      external_protocols:
+        s2_api_protocol_version: "3.11"
+        s2_snapshot_available: false
+      cross_model:
+        enabled: false
+        secondary_model_id: null
+    planned_vs_executed:
+      - planned: "Frozen baseline, average test MSE / MAE"
+        executed: true
+        result_file: "manuscript Table 9, p. 70, row Frozen Baseline"
+        metric: "MSE / MAE"
+        value: "0.1937 / 0.2491"
+      - planned: "Content + Distance Attention (learned), average test MSE / MAE and latency"
+        executed: true
+        result_file: "manuscript Table 9, p. 70, row Content + Distance Attention"
+        metric: "MSE / MAE / latency"
+        value: "0.1891 / 0.2479 / 4.02 ms per batch"
+      - planned: "Inverse-Distance Softmax, average test MSE / MAE and latency"
+        executed: true
+        result_file: "manuscript Table 9, p. 70, row Inverse-Distance Softmax"
+        metric: "MSE / MAE / latency"
+        value: "0.1890 / 0.2483 / 3.61 ms per batch"
+      - planned: "Uniform Averaging (1/k), average test MSE / MAE and latency"
+        executed: true
+        result_file: "manuscript Table 9, p. 70, row Uniform Averaging (1/k)"
+        metric: "MSE / MAE / latency"
+        value: "0.1891 / 0.2474 / 3.55 ms per batch"
+      - planned: "Top-1 Neighbour Only, average test MSE / MAE and latency"
+        executed: true
+        result_file: "manuscript Table 9, p. 70, row Top-1 Neighbour Only"
+        metric: "MSE / MAE / latency"
+        value: "0.1922 / 0.2493 / 3.63 ms per batch"
+    negative_results: []
+    known_limitations: []
+
+claim_intent_manifests:
+  - manifest_version: "1.0"
+    manifest_id: "M-2026-09-30T00:00:00Z-0915"
+    emitted_by: draft_writer_agent
+    emitted_at: "2026-09-30T00:00:00Z"
+    claims:
+      - claim_id: C-001
+        # The manuscript sentence lists seven components; this claim carries
+        # only the neighbour-attention part, as a per-claim manifest would.
+        # "[...]" marks the omitted components.
+        claim_text: "We perform focused ablations confirming the contributions of [...] neighbour attention [...]."
+        intended_evidence_kind: empirical
+        planned_refs: []
+        planned_experiment_ids:
+          - exp-ablation-neighbour-fusion
+      - claim_id: C-002
+        claim_text: "Using a single neighbour (Top-1) degrades accuracy (0.1922 MSE), confirming the value of multi-neighbour aggregation."
+        intended_evidence_kind: empirical
+        planned_refs: []
+        planned_experiment_ids:
+          - exp-ablation-neighbour-fusion
+    manifest_negative_constraints: []

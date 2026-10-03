@@ -1,0 +1,27 @@
+fixture_id: 13_lit_review_request_descriptive_question
+expected_routing_class: proceed
+expected_destination: academic-paper:lit-review
+accepted_destinations:
+  - academic-paper:lit-review
+  - deep-research:lit-review
+excluded_destinations:
+  - deep-research:systematic-review
+  - sr-screener
+escape_hatch_applied: false
+review_form_note: shown
+notes: |
+  Negative case from issue #921: a request to write a literature review names no
+  review form, so it routes to a `lit-review` mode and to neither
+  `systematic-review` mode nor a screening skill. Selecting `lit-review` mode is
+  fixed point 1, so the review-form note appears verbatim and the response waits
+  for the author's reply before starting the review.
+
+  Fixture 14 is the same request with an effect question. Both must show the same
+  note: whether it appears must not depend on the content of the question.
+
+  Pass criteria:
+  - Response routes to a `lit-review` mode (either skill), not to
+    `systematic-review` mode or screening
+  - Response shows the English review-form note text verbatim, with nothing added
+    that favours one form, and waits
+  - Response does NOT trigger workflow clarification a-d options

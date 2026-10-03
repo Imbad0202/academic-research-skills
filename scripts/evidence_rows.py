@@ -4,7 +4,8 @@
 The module is deliberately standard-library-only and hermetic.  Builders may
 inspect only the ``session_source_or_none`` string explicitly supplied by their
 caller.  Validators optionally replay against that same explicit string.
-Renderers require an explicit in-memory source map to replay source-bound rows;
+Renderers require an explicit source map (in memory, a JSON file, or the
+named files of a ``--source-dir`` folder, #933) to replay source-bound rows;
 they never retrieve, re-extract, invoke a model, consult a cache, follow a row
 pointer, or read/write the human-read ledger.  Integrity validation checks that
 the persisted encoded and decoded anchors agree but never alters provenance.
@@ -22,6 +23,7 @@ import hashlib
 import html
 import json
 import re
+import stat
 import sys
 import unicodedata
 from collections.abc import Mapping, Sequence
@@ -1912,6 +1914,81 @@ def _source_map(path: Path | None) -> dict[str, str]:
     return result
 
 
+_WINDOWS_RESERVED_NAMES = frozenset(
+    {"con", "prn", "aux", "nul"}
+    | {f"{device}{digit}" for device in ("com", "lpt") for digit in "123456789"}
+)
+
+
+def source_file_name(source_key: str) -> str:
+    """File name of one source's text inside a ``--source-dir`` folder (#933).
+
+    The ref_slug with ``:`` written ``%3A`` (invalid in Windows names), each
+    capital letter written ``^`` plus its lowercase form (so ``Smith2024`` and
+    ``smith2024`` stay apart on case-insensitive file systems), and ``~``
+    after a name Windows reserves (``con``, ``nul``, ``com1``, ...), then
+    ``.txt``. ``%``, ``^``, and ``~`` cannot occur in a ref_slug, so distinct
+    slugs always get distinct names.
+    """
+    if not isinstance(source_key, str) or _REF_SLUG_RE.fullmatch(source_key) is None:
+        _input_fail("source dir", f"invalid ref_slug {source_key!r}")
+    name = "".join(
+        "%3A" if char == ":" else f"^{char.lower()}" if "A" <= char <= "Z" else char
+        for char in source_key
+    )
+    if name in _WINDOWS_RESERVED_NAMES:
+        name += "~"
+    return name + ".txt"
+
+
+def _source_dir(path: Path, rows: Sequence[Any]) -> dict[str, str]:
+    """Read the source texts that the rows' source-bound entries name (#933).
+
+    Covers V1 Phase E rows, keyed by ``ref_slug``; advisory rows keep their
+    own in-memory API. Only ``<folder>/<source_file_name(slug)>`` is read for
+    each slug a source-bound V1 row names; no other file in the folder is
+    opened. Each file is read as exact bytes and decoded as strict UTF-8,
+    with no newline translation, because replay hashes the exact text. A slug
+    with no file is left out, so replay fails for it as for a missing
+    source-map entry.
+    """
+    try:
+        if path.is_symlink() or not path.is_dir():
+            _input_fail(str(path), "is not a folder")
+    except OSError as exc:
+        _input_fail(str(path), f"cannot inspect folder: {exc}")
+    slugs: set[str] = set()
+    for row in rows:
+        if not isinstance(row, Mapping) or row.get("schema_version") != SCHEMA_VERSION:
+            continue
+        source = row.get("source")
+        excerpt = row.get("excerpt")
+        if not isinstance(source, Mapping) or not isinstance(excerpt, Mapping):
+            continue
+        slug, state = source.get("ref_slug"), excerpt.get("state")
+        if (isinstance(state, str) and state in SOURCE_BOUND_STATES
+                and isinstance(slug, str) and _REF_SLUG_RE.fullmatch(slug)):
+            slugs.add(slug)
+    result: dict[str, str] = {}
+    for slug in sorted(slugs):
+        target = path / source_file_name(slug)
+        try:
+            # One lstat: it does not follow a link, and it raises the same
+            # error for an over-long name on every platform (exists() hides it).
+            mode = target.lstat().st_mode
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            _input_fail(str(target), f"cannot inspect source file: {exc}")
+        if not stat.S_ISREG(mode):
+            _input_fail(str(target), "must be a regular file, not a link or folder")
+        try:
+            result[slug] = target.read_bytes().decode("utf-8")
+        except (OSError, UnicodeError) as exc:
+            _input_fail(str(target), f"cannot read exact UTF-8 source text: {exc}")
+    return result
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1921,7 +1998,9 @@ def _parser() -> argparse.ArgumentParser:
         allow_abbrev=False,
     )
     validate_parser.add_argument("rows", type=Path)
-    validate_parser.add_argument("--source-map", type=Path)
+    validate_sources = validate_parser.add_mutually_exclusive_group()
+    validate_sources.add_argument("--source-map", type=Path)
+    validate_sources.add_argument("--source-dir", type=Path)
     render_parser = sub.add_parser(
         "render",
         help="render one persisted evidence-row page",
@@ -1929,10 +2008,19 @@ def _parser() -> argparse.ArgumentParser:
     )
     render_parser.add_argument("rows", type=Path)
     render_parser.add_argument("--format", choices=("markdown", "html"), required=True)
-    render_parser.add_argument(
+    render_sources = render_parser.add_mutually_exclusive_group()
+    render_sources.add_argument(
         "--source-map",
         type=Path,
         help="explicit ref_slug-to-source-text JSON used only for source replay",
+    )
+    render_sources.add_argument(
+        "--source-dir",
+        type=Path,
+        help=(
+            "folder of source texts named by source_file_name(ref_slug), used only "
+            "for source replay; only the files the source-bound rows name are read"
+        ),
     )
     render_parser.add_argument(
         "--allow-legacy-absence",
@@ -1967,24 +2055,29 @@ def main(argv: Sequence[str] | None = None) -> int:
                     + "</p>\n"
                 )
             return 0
+        sources = (
+            _source_dir(args.source_dir, rows)
+            if args.source_dir is not None
+            else _source_map(args.source_map)
+        )
         if args.command == "validate":
-            sources = _source_map(args.source_map)
             seen: list[dict[str, Any]] = []
             for index, row in enumerate(rows):
                 if not isinstance(row, Mapping):
                     _fail(f"rows[{index}]", "must be an object")
                 slug = row.get("source", {}).get("ref_slug") if isinstance(row.get("source"), dict) else None
                 state = row.get("excerpt", {}).get("state") if isinstance(row.get("excerpt"), dict) else None
-                if state in SOURCE_BOUND_STATES and slug not in sources:
+                slug = slug if isinstance(slug, str) else None
+                if isinstance(state, str) and state in SOURCE_BOUND_STATES and slug not in sources:
                     _fail(
                         f"rows[{index}].source.ref_slug",
-                        f"source-bound row requires {slug!r} in --source-map for CLI trust establishment",
+                        f"source-bound row requires {slug!r} in --source-map or --source-dir "
+                        "for CLI trust establishment",
                     )
                 seen.append(validate(row, sources.get(slug)))
             paginate(seen)
             print(f"PASS: {len(seen)} evidence row(s)")
             return 0
-        sources = _source_map(args.source_map)
         if args.format == "markdown":
             sys.stdout.write(
                 render_markdown(
@@ -2034,6 +2127,7 @@ __all__ = [
     "paginate",
     "render_html",
     "render_markdown",
+    "source_file_name",
     "strict_percent_decode",
     "validate",
 ]

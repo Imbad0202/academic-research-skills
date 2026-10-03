@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ars://shared/contracts/passport/excluded_source_entry.schema.json",
+  "title": "Material Passport excluded source entry 1.0",
+  "description": "One entry in Material Passport Schema 9 excluded_sources[] (#936): a reference an integrity gate judged NOT_FOUND, kept off every later writer dispatch without mutating literature_corpus[]. How entries are recorded, carried, and restored: academic-pipeline/agents/pipeline_orchestrator_agent.md § Integrity-Excluded Sources (#936).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "citation_key",
+    "gate",
+    "recorded_at"
+  ],
+  "properties": {
+    "citation_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_:-]*$",
+      "description": "The literature_corpus[] citation_key the draft cited in <!--ref:slug-->; same grammar as literature_corpus_entry.schema.json."
+    },
+    "gate": {
+      "enum": [
+        "2.5",
+        "4.5"
+      ]
+    },
+    "correction_id": {
+      "type": "string",
+      "pattern": "^IL-(?:SERIOUS|MEDIUM|MINOR)-[1-9][0-9]*$",
+      "description": "The Integrity Report issue row that carried the verdict; absent when the user's checkpoint resolution confirmed a cross-model NOT_FOUND."
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "restored_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "restoration_words": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "The user's words, unchanged, from the turn that restored the source."
+    }
+  },
+  "dependentRequired": {
+    "restored_at": [
+      "restoration_words"
+    ],
+    "restoration_words": [
+      "restored_at"
+    ]
+  }
+}
