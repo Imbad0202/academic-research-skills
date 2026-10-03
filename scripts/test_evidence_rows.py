@@ -2562,6 +2562,32 @@ def test_advisory_positive_timestamp_is_explicit_stable_and_never_uses_clock(
     assert first["excerpt"]["captured_at"] == ADVISORY_CAPTURED_AT
 
 
+def test_cli_refuses_advisory_rows_and_names_their_entry_point(tmp_path: Path) -> None:
+    """#947: V1.1 rows get one clear refusal, not a ref_slug error."""
+    _runtime_required()
+    row = er.build_advisory(
+        _raw_advisory_row(),
+        "Participation is voluntary.",
+        captured_at=ADVISORY_CAPTURED_AT,
+    )
+    rows_path = tmp_path / "rows.json"
+    _write_json(rows_path, [row])
+    source_map = tmp_path / "sources.json"
+    _write_json(source_map, {"fixture.us-consent": "Participation is voluntary."})
+    for command in (
+        ("validate",),
+        ("validate", "--source-map", source_map),
+        ("render", "--format", "markdown"),
+    ):
+        result = _run_cli(command[0], rows_path, *command[1:])
+        assert result.returncode == 2, (command, result.stderr)
+        assert result.stderr == (
+            "ERROR: rows[0]: is an evidence-row/1.1 advisory row, which this CLI "
+            "does not handle; use scripts/build_content_coverage_advisory.py "
+            "(shared/references/authority_content_coverage_advisory_protocol.md)\n"
+        )
+
+
 @pytest.mark.parametrize("captured_at", [None, "2026-08-09T24:00:00Z"])
 def test_advisory_positive_requires_valid_explicit_timestamp(
     captured_at: str | None,

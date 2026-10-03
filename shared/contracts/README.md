@@ -486,7 +486,8 @@ the provenance or absence of one bounded advisory passage. The shared 25-word,
 rights, and human-read-ledger boundaries still apply. V1.1 performs no cache
 lookup. `scripts/evidence_rows.py` exposes `build_advisory(...)` for this
 surface, while the existing `evidence-row/1.0` builder and rendered bytes remain
-unchanged. The versioned surfaces cannot be mixed in one page.
+unchanged. Its CLI refuses V1.1 rows with exit 2 and names
+`scripts/build_content_coverage_advisory.py` instead (#947). The versioned surfaces cannot be mixed in one page.
 
 `shared/contracts/evidence/evidence_row_v1_2.schema.json` is the separate closed
 version for `surface: cross_document_consistency` (#672). It binds one complete

@@ -249,9 +249,10 @@ order and can reach each persisted `row_id` exactly once.
 
 The renderer requires the explicit source texts and replay-validates every
 source-bound persisted row before display. At the pipeline checkpoint they come
-from the evidence source folder the report names in
-`phases.E_claims.evidence_source_dir`, read with `--source-dir`, because the
-integrity agent may have run as a subagent (#933). It performs no
+from the evidence source folder the orchestrator named in the integrity dispatch,
+read with `--source-dir`, because the integrity agent may have run as a subagent
+(#933); a report whose `phases.E_claims.evidence_source_dir` names another folder
+does not pass the checkpoint (#948). It performs no
 display-time retrieval, ambient filesystem/network/API/model call, extraction,
 state derivation, or cache lookup. Replay may recompute the strict once-decode
 and hashes, but never decodes stored display text again or changes the row. The

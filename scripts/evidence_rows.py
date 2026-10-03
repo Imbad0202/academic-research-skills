@@ -11,7 +11,8 @@ pointer, or read/write the human-read ledger.  Integrity validation checks that
 the persisted encoded and decoded anchors agree but never alters provenance.
 
 CLI exit codes: 0 success, 1 contract/data failure, 2 named-input or argparse
-usage failure.
+usage failure. The CLI handles ``evidence-row/1.0`` rows only and refuses
+``evidence-row/1.1`` advisory rows with exit 2 (#947).
 """
 
 from __future__ import annotations
@@ -2055,6 +2056,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     + "</p>\n"
                 )
             return 0
+        for index, row in enumerate(rows):
+            if isinstance(row, Mapping) and row.get("schema_version") == ADVISORY_SCHEMA_VERSION:
+                _input_fail(
+                    f"rows[{index}]",
+                    f"is an {ADVISORY_SCHEMA_VERSION} advisory row, which this CLI does not "
+                    "handle; use scripts/build_content_coverage_advisory.py "
+                    "(shared/references/authority_content_coverage_advisory_protocol.md)",
+                )
         sources = (
             _source_dir(args.source_dir, rows)
             if args.source_dir is not None
