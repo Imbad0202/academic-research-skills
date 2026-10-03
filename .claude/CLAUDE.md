@@ -9,8 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.22.2 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.23.0 | Full pipeline orchestrator | (coordinates all above) |
 | `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
+
+## v3.23.0 Key Additions (`sr-screener` as a fifth skill + repairs from a pipeline walk-through + evidence and ledger hardening)
+
+- **A fifth skill, `sr-screener` v1.0.0 (#919, contributed by @erfanz97).** It turns a review protocol into eligibility rules the user confirms, then screens titles/abstracts and full texts with two blinded reviewer subagents and a third-reviewer adjudicator; reviewers default to Sonnet, never a smaller model. Standard-library scripts parse, de-duplicate, merge, and write a screening log, RIS groups, PRISMA 2020 counts, a methods draft, and a `literature_corpus[]` file; spreadsheet exports neutralise formula text, including after a `;`, tab, quote, or line break (#951). Tests use synthetic records; no screening-accuracy claim ships.
+- **Repairs from a paper walk-through of a default pipeline run (#925-#929).** The v3.6.7 Audit Artifact Gate is opt-in (`ARS_AUDIT_ARTIFACT_GATE=1` plus consent), and the orchestrator asks once whether the paper reports the scholar's own experiments (#925). Constraints set for a run live in `standing_constraints[]` in the user's words and reach every later dispatch; a declined-only Major re-review gets a limitations-only revision path (#927). The integrity gates follow one rule set and treat `UNVERIFIABLE_ACCESS` as a note (#926); Stages 5-6 produce only requested files (#928); opt-in switches surface Stage 5 refusals at Stage 4.5 (#929).
+- **Evidence and ledger hardening.** The Stage 2.5/4.5 checkpoints replay evidence rows from a folder the orchestrator names, and a report naming another folder does not pass (#933, #948); the evidence-row CLI refuses advisory rows by name (#947). A source the gate judges `NOT_FOUND` goes into `excluded_sources[]` and stays out of later writer dispatches, and abstracts are checked against the revised body (#936). Ledger readers report parse failures without quoting file text, and the run ledger is read only through `show` or `report` (#898, #945); writers share one atomic write (#946).
+- **Smaller changes.** Per-source method weaknesses in reading outputs (#916); a review-form note at a fixed point, with no default (#921); held-out overclaim cases from ScientistTwo (#915); Schema 1 aligned with `research_question_agent` (#938); `/ars-citation-check` inherits the session model (#912); acronym-check and marker-lint repairs (#906, #923); a `MODE_REGISTRY` count fix (#944); an OpenClaw port listed in `THIRD_PARTY.md` (#910). Prompt-level changes are unmeasured.
 
 ## v3.22.2 Key Additions (run ledger and handoff check + acronym check + wider instruction/data boundary + routing and front-page repairs)
 
@@ -406,7 +413,7 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
-- **Suite version**: 3.22.2 (per CHANGELOG.md)
-- **Last Updated**: 2026-09-25
+- **Suite version**: 3.23.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-10-03
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
