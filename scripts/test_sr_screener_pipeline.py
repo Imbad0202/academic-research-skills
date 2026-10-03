@@ -756,8 +756,9 @@ def test_screening_logs_store_untrusted_cells_as_text(prepared, prefix, format):
         sh = wb["All_Records"]
         cells = dict(zip([c.value for c in sh[1]], sh[2]))
         for column in ("Title", "Abstract", "Journal", "Final reason", "A reason"):
-            # XML readers normalize CR to LF; the apostrophe and text type remain inert.
-            assert cells[column].value.startswith("'" + prefix.replace("\r", "\n")) and cells[column].data_type == "s"
+            # XML backends may preserve CR or normalize it to LF; both stay escaped text.
+            escaped = ("'\r", "'\n") if prefix == "\r" else ("'" + prefix,)
+            assert cells[column].value.startswith(escaped) and cells[column].data_type == "s"
         wb.close()
     else:
         # -S runs with stdlib only, deliberately exercising the real CSV fallback.
@@ -787,6 +788,47 @@ def test_dedup_preserves_distinct_reports(tmp_path, case):
                                 for t, d, pmid in rows), encoding="utf-8")
     ok(run("prepare_records.py", "--inputs", export, "--work", tmp_path / "work", cwd=tmp_path))
     assert LIB.load_json(tmp_path / "work" / "identification.json")["unique_total"] == 2
+
+
+def test_all_csv_exports_quote_semicolon_formula_payloads(prepared):
+    p = prepared
+    payload = "Synthetic;=HYPERLINK(CHAR(104)&CHAR(116))"
+    source = p / "injected.ris"
+    record = f"TY  - JOUR\nTI  - {payload}\nPY  - 2021\nDO  - 10.1000/synthetic\nER  -\n"
+    source.write_text(record * 2, encoding="utf-8")
+    cfg = LIB.load_json(p / "cfg.json")
+    cfg["review_title"] = payload
+    cfg["model_labels"] = {"A": payload}
+    cfg["seeds"] = [{"label": payload, "doi": "10.1000/synthetic"}]
+    LIB.save_json(str(p / "cfg.json"), cfg)
+    ok(run("prepare_records.py", "--inputs", source, "--work", p / "work",
+           "--config", p / "cfg.json", "--force", cwd=p))
+    ok(run("build_workflow.py", "ta", "--work", p / "work", "--protocol", PROTOCOL,
+           "--config", p / "cfg.json", "--jobs", "pilot", cwd=p))
+
+    def fallback(out):
+        ok(subprocess.run([sys.executable, "-S", str(SCRIPTS / "build_outputs.py"),
+                           "--work", str(p / "work"), "--config", str(p / "cfg.json"), "--out", str(out)],
+                          capture_output=True, text=True, encoding="utf-8"))
+
+    fallback(p / "pending_csv")
+    _all_include(p)
+    ok(run("prepare_fulltext.py", "--work", p / "work", "--pdf-dir", p, cwd=p))
+    ok(run("merge_decisions.py", "--work", p / "work", "--from", p / "dec",
+           "--config", p / "cfg.json", "--audit", cwd=p))
+    fallback(p / "finished_csv")
+    paths = [p / "work" / name for name in ("duplicates.csv", "ft_not_retrieved.csv", "audit_report.csv")]
+    paths += [p / "pending_csv" / "TA_screening_log_Pending.csv",
+              p / "finished_csv" / "TA_screening_log_All_Records.csv",
+              p / "finished_csv" / "TA_screening_log_Summary.csv"]
+    # Every field, including headers and empty fields, is enclosed by CSV quotes.
+    quoted_row = re.compile(r'"(?:[^"\r\n]|"")*"(?:,"(?:[^"\r\n]|"")*")*')
+    for path in paths:
+        text = path.read_text(encoding="utf-8-sig")
+        assert '"' + payload + '"' in text, path
+        assert all(quoted_row.fullmatch(row) for row in text.splitlines()), path
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            assert any(payload in row for row in csv.reader(f)), path
 
 
 def test_dedup_still_merges_identical_full_titles_without_conflicting_ids(tmp_path):
@@ -929,6 +971,144 @@ def test_passing_pilot_expires_when_inputs_change(pilot_partial, change):
     assert proc.returncode != 0 and "pilot comparison is stale" in proc.stdout + proc.stderr
     ok(run(*args, "--pilot-override", "Team accepts amended pilot risk", cwd=p))
     assert LIB.load_json(p / "work" / "pilot_override.json")[-1]["reason"] == "Team accepts amended pilot risk"
+
+
+@pytest.mark.parametrize("field", ["model_labels", "review_title", "languages_allowed", "seeds",
+                                  "batching", "dedup", "report_code_label"])
+def test_reporting_and_preparation_edits_preserve_finished_screening(prepared, field):
+    p = prepared
+    _all_include(p)
+    _prepare_ft(p)
+    _finish_ft(p)
+    state = LIB.load_json(p / "work" / "review_state.json")
+    saved = {name: (p / "work" / name).read_bytes() for name in ("decisions.json", "ft_decisions.json")}
+    cfg = LIB.load_json(p / "cfg.json")
+    changes = {"model_labels": {"A": "Synthetic exact model label"},
+               "review_title": "Updated report title", "languages_allowed": ["English", "Persian"],
+               "seeds": [], "batching": {"max_records": 2, "wrap": 100},
+               "dedup": {"doi_title_guard": False}}
+    if field == "report_code_label":
+        cfg["exclusion_codes"][0]["label"] = "Updated reporting label (short screening rule unchanged)"
+    else:
+        cfg[field] = changes[field]
+    LIB.save_json(str(p / "cfg.json"), cfg)
+    for stage in ("ta", "ft"):
+        assert _counts(p, stage)["complete"] is True
+        ok(run("build_workflow.py", stage, "--work", p / "work", "--protocol", PROTOCOL,
+               "--config", p / "cfg.json", "--jobs", "pilot" if stage == "ta" else "all", cwd=p))
+    assert LIB.load_json(p / "work" / "review_state.json") == state
+    assert all((p / "work" / name).read_bytes() == value for name, value in saved.items())
+    assert not (p / "work" / "revision_history.json").exists()
+    if field == "model_labels":
+        assert "Synthetic exact model label" in (p / "out" / "TA_methods_selection.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("change", ["ft_exclusion_codes", "FTA", "FTB", "FTADJ"])
+def test_fulltext_config_edits_only_replace_fulltext_decisions(prepared, change):
+    p = prepared
+    _all_include(p)
+    _prepare_ft(p)
+    _finish_ft(p)
+    ta_decisions = (p / "work" / "decisions.json").read_bytes()
+    old = LIB.load_json(p / "work" / "review_state.json")
+    cfg = LIB.load_json(p / "cfg.json")
+    if change == "ft_exclusion_codes":
+        cfg[change] = [{"code": "F1", "label": "Synthetic full-text eligibility rule"}]
+    else:
+        cfg["models"] = {change: "opus"}
+    LIB.save_json(str(p / "cfg.json"), cfg)
+    assert _counts(p)["complete"] is True
+    assert _counts(p, "ft")["complete"] is False
+    ok(run("prepare_fulltext.py", "--work", p / "work", "--pdf-dir", p / "pdfs", cwd=p))
+    ok(run("build_workflow.py", "ft", "--work", p / "work", "--protocol", PROTOCOL,
+           "--config", p / "cfg.json", "--jobs", "all", cwd=p))
+    state = LIB.load_json(p / "work" / "review_state.json")
+    assert state["ta"] == old["ta"] and state["ft"]["context_id"] != old["ft"]["context_id"]
+    assert (p / "work" / "decisions.json").read_bytes() == ta_decisions
+    history = LIB.load_json(p / "work" / "revision_history.json")
+    assert len(history) == 1 and history[0]["context"]["stage"] == "ft"
+    assert len(history[0]["state"]["ft_decisions.json"]) == 5
+    out = ok(run("merge_decisions.py", "--stage", "ft", "--work", p / "work", "--from", p / "ft_dec",
+                 "--config", p / "cfg.json", cwd=p))
+    assert "results rejected" in out and _counts(p, "ft")["pending_records"] == 5
+
+
+@pytest.mark.parametrize("change", ["A", "ADJ", "QC", "qc_policy", "code_prompt"])
+def test_title_abstract_screening_edits_expire_decisions(prepared, change):
+    p = prepared
+    _all_include(p)
+    _prepare_ft(p)
+    _finish_ft(p)
+    old = LIB.load_json(p / "work" / "review_state.json")
+    cfg = LIB.load_json(p / "cfg.json")
+    if change == "qc_policy":
+        cfg["qc"] = {"policy": "flag"}
+    elif change == "code_prompt":
+        cfg["exclusion_codes"][0]["short"] = "Synthetic revised screening rule"
+    else:
+        cfg["models"] = {change: "opus"}
+    LIB.save_json(str(p / "cfg.json"), cfg)
+    assert _counts(p)["complete"] is False
+    assert _counts(p, "ft")["complete"] is False  # upstream TA is stale
+    ft_context = LIB.current_context(str(p / "work"), "ft", LIB.load_config(p / "cfg.json"))
+    # FT inherits TA code wording until explicit FT codes are supplied.
+    assert (ft_context is None if change == "code_prompt" else ft_context == old["ft"])
+    ok(run("build_workflow.py", "ta", "--work", p / "work", "--protocol", PROTOCOL,
+           "--config", p / "cfg.json", "--jobs", "pilot", cwd=p))
+    history = LIB.load_json(p / "work" / "revision_history.json")
+    assert len(history) == 1 and history[0]["context"]["stage"] == "ta"
+    assert len(history[0]["state"]["decisions.json"]) == 5
+
+
+@pytest.mark.parametrize("change", ["model_labels", "ft_exclusion_codes"])
+def test_reporting_and_fulltext_edits_keep_passing_title_abstract_pilot(pilot_partial, change):
+    p = pilot_partial
+    _write_result(p / "dec", "B_retry.json", "B:b001:retry", [_dec("R00002", "unclear", "UNC", "Markers unnamed")])
+    ok(run("merge_decisions.py", "--work", p / "work", "--from", p / "dec", "--config", p / "cfg.json",
+           "--pilot-labels", p / "pilot_labels.csv", cwd=p))
+    context = LIB.load_json(p / "work" / "review_state.json")["ta"]
+    history = LIB.load_json(p / "work" / "revision_history.json", [])
+    cfg = LIB.load_json(p / "cfg.json")
+    cfg[change] = ({"A": "Synthetic exact model label"} if change == "model_labels" else
+                   [{"code": "F1", "label": "Synthetic full-text rule"}])
+    LIB.save_json(str(p / "cfg.json"), cfg)
+    ok(run("build_workflow.py", "ta", "--work", p / "work", "--protocol", PROTOCOL,
+           "--config", p / "cfg.json", "--jobs", "pending", cwd=p))
+    assert LIB.load_json(p / "work" / "review_state.json")["ta"] == context
+    assert LIB.load_json(p / "work" / "revision_history.json", []) == history
+
+
+@pytest.mark.parametrize("changed_before_upgrade", [False, True])
+def test_whole_config_identity_upgrade_preserves_existing_decisions(prepared, changed_before_upgrade):
+    p = prepared
+    _all_include(p)
+    _prepare_ft(p)
+    _finish_ft(p)
+    saved = {name: (p / "work" / name).read_bytes() for name in ("decisions.json", "ft_decisions.json")}
+    state = LIB.load_json(p / "work" / "review_state.json")
+    cfg = LIB.load_config(p / "cfg.json")
+    for stage, context in state.items():
+        context.pop("config_scope")
+        context["config_hash"] = LIB.digest(cfg)
+        context["content_id"] = LIB.digest({k: context[k] for k in
+            ("review_id", "dataset", "stage", "protocol_hash", "config_hash", "input_hash") if k in context})
+    LIB.save_json(str(p / "work" / "review_state.json"), state)
+    if changed_before_upgrade:
+        edited = dict(cfg, model_labels={"A": "Synthetic reporting edit"})
+        LIB.save_json(str(p / "cfg.json"), edited)
+        proc = run("build_workflow.py", "ta", "--work", p / "work", "--protocol", PROTOCOL,
+                   "--config", p / "cfg.json", "--jobs", "pilot", cwd=p)
+        assert proc.returncode != 0 and "Restore the config" in proc.stdout + proc.stderr
+        assert LIB.load_json(p / "work" / "review_state.json") == state
+        LIB.save_json(str(p / "cfg.json"), cfg)
+    for stage in ("ta", "ft"):
+        ok(run("build_workflow.py", stage, "--work", p / "work", "--protocol", PROTOCOL,
+               "--config", p / "cfg.json", "--jobs", "pilot" if stage == "ta" else "all", cwd=p))
+        new = LIB.load_json(p / "work" / "review_state.json")[stage]
+        assert new["context_id"] == state[stage]["context_id"] and new["revision"] == state[stage]["revision"]
+        assert _counts(p, stage)["complete"] is True
+    assert all((p / "work" / name).read_bytes() == value for name, value in saved.items())
+    assert not (p / "work" / "revision_history.json").exists()
 
 
 def test_fulltext_mermaid_includes_awaiting_classification(prepared):

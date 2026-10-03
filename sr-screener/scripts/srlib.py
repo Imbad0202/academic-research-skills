@@ -114,6 +114,52 @@ def dataset_identity(work):
     return review_id, digest(recs["unique"])
 
 
+def screening_config(cfg, stage):
+    """Only effective decision inputs belong to a stage's configuration identity.
+
+    Reporting labels/flags and preparation settings are not screening rules. The
+    prepared dataset already binds actual de-duplication and batch membership.
+    """
+    roles = ("A", "B", "ADJ", "QC") if stage == "ta" else ("FTA", "FTB", "FTADJ")
+    settings = {
+        "codes": exclusion_codes(cfg, stage),
+        "codes_text": codes_text(cfg, stage),
+        "core_criteria": cfg["core_criteria"],
+        "personas": {r: cfg["personas"][r] for r in ("A", "B")},
+        "models": {r: cfg["models"].get(r) or "" for r in roles},
+        "agent_type": cfg.get("agent_type") or "",
+    }
+    if stage == "ta":
+        qc = cfg["qc"]
+        settings.update(
+            conflict_policy=cfg["conflict_policy"],
+            qc={"near_miss": qc.get("near_miss") or {},
+                "random_exclusion_sample": qc["random_exclusion_sample"],
+                "random_seed": int(qc.get("random_seed", 2026)),
+                "policy": qc.get("policy", "advance")},
+            read_limit=int(cfg.get("read_limit", 900)),
+            grep_after=int(cfg.get("grep_after", 60)),
+        )
+    return settings
+
+
+def upgrade_config_identity(work, state, stage, cfg):
+    """Upgrade an unchanged whole-config identity without discarding paid work.
+
+    Old states did not store the config itself, so a changed legacy hash cannot
+    establish which fields changed. Require the original config for that migration.
+    Keep result/pilot context IDs and decision metadata intact.
+    """
+    old = state.get(stage)
+    if old and "config_scope" not in old and old.get("config_hash") == digest(cfg):
+        old["config_hash"] = digest(screening_config(cfg, stage))
+        old["config_scope"] = "stage-v1"
+        fields = ("review_id", "dataset", "stage", "protocol_hash", "config_hash", "input_hash")
+        old["content_id"] = digest({k: old[k] for k in fields if k in old})
+        save_json(os.path.join(work, "review_state.json"), state, indent=1)
+    return old
+
+
 def activate_context(work, stage, protocol_path, cfg):
     """Bind a revision to this review, dataset, confirmed protocol and effective config.
 
@@ -125,12 +171,16 @@ def activate_context(work, stage, protocol_path, cfg):
     if len(protocol) < 200:
         raise SystemExit("the protocol file looks empty - write and confirm it first (protocol mode)")
     identity = dict(review_id=review_id, dataset=dataset, stage=stage,
-                    protocol_hash=digest(protocol), config_hash=digest(cfg))
+                    protocol_hash=digest(protocol), config_hash=digest(screening_config(cfg, stage)))
     if stage == "ft":
         identity["input_hash"] = digest(load_json(os.path.join(work, "ft_preparation.json")))
     path = os.path.join(work, "review_state.json")
     state = load_json(path, {}) or {}
-    old = state.get(stage)
+    old = upgrade_config_identity(work, state, stage, cfg)
+    if old and "config_scope" not in old:
+        raise SystemExit("legacy config identity cannot be upgraded with a changed config. Restore the "
+                         "config used for this stage and regenerate its workflow first; then apply edits. "
+                         "Existing decisions have been kept.")
     identity["content_id"] = digest(identity)
     if old and old.get("content_id") == identity["content_id"]:
         old["protocol_path"] = os.path.abspath(protocol_path)
@@ -150,7 +200,7 @@ def activate_context(work, stage, protocol_path, cfg):
             if os.path.exists(p):
                 os.remove(p)
         print(f"{stage} protocol/config revision changed: earlier decisions archived; re-screen this revision")
-    identity.update(revision=(old or {}).get("revision", 0) + 1,
+    identity.update(config_scope="stage-v1", revision=(old or {}).get("revision", 0) + 1,
                     protocol_path=os.path.abspath(protocol_path))
     identity["context_id"] = digest({"content_id": identity["content_id"], "revision": identity["revision"]})
     state[stage] = identity
@@ -159,13 +209,15 @@ def activate_context(work, stage, protocol_path, cfg):
 
 
 def current_context(work, stage, cfg):
-    context = (load_json(os.path.join(work, "review_state.json"), {}) or {}).get(stage)
+    state = load_json(os.path.join(work, "review_state.json"), {}) or {}
+    context = upgrade_config_identity(work, state, stage, cfg)
     if not context:
         return None
     review_id, dataset = dataset_identity(work)
     path = context.get("protocol_path", "")
     if (context.get("review_id") != review_id or context.get("dataset") != dataset or
-            context.get("config_hash") != digest(cfg) or not os.path.isfile(path) or
+            context.get("config_scope") != "stage-v1" or
+            context.get("config_hash") != digest(screening_config(cfg, stage)) or not os.path.isfile(path) or
             context.get("protocol_hash") != digest(read_text(path).strip())):
         return None
     if stage == "ft" and context.get("input_hash") != digest(load_json(os.path.join(work, "ft_preparation.json"))):
@@ -315,6 +367,17 @@ def model_overrides(cfg):
 def exclusion_codes(cfg, stage="ta"):
     lst = cfg.get("ft_exclusion_codes") if stage == "ft" and cfg.get("ft_exclusion_codes") else cfg["exclusion_codes"]
     return [c["code"] for c in lst]
+
+
+def codes_text(cfg, stage):
+    """The effective code descriptions supplied to screening agents."""
+    lst = cfg.get("ft_exclusion_codes") if stage == "ft" and cfg.get("ft_exclusion_codes") else cfg["exclusion_codes"]
+    parts = []
+    for c in lst:
+        short = c.get("short") or c["label"]
+        short = short if len(short) <= 48 else short[:45].rstrip() + "..."
+        parts.append(f"{c['code']} ({short})")
+    return " > ".join(parts)
 
 
 def code_labels(cfg, stage="ta"):

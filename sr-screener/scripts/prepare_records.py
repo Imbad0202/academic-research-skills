@@ -234,7 +234,7 @@ def main():
     srlib.save_json(os.path.join(work, "identification.json"), ident, indent=1)
 
     with open(os.path.join(work, "duplicates.csv"), "w", encoding="utf-8-sig", newline="") as f:
-        w = csv.writer(f)
+        w = csv.writer(f, quoting=csv.QUOTE_ALL)
         w.writerow(["kept_as", "member_index", "matched_on", "database", "file", "year", "doi", "pmid", "title"])
         for u in unique:
             if len(u["members"]) < 2:

@@ -445,7 +445,7 @@ def audit_report(work, manifest, qc, codes):
     rows.sort(key=lambda r: (order.get(r[1], 9), r[0]))
     path = os.path.join(work, "audit_report.csv")
     with open(path, "w", encoding="utf-8-sig", newline="") as f:
-        w = csv.writer(f)
+        w = csv.writer(f, quoting=csv.QUOTE_ALL)
         w.writerow(["id", "qc_decision", "code", "why", "year", "title", "doi", "pmid"])
         w.writerows([srlib.spreadsheet_text(v) for v in row] for row in rows)
     n_adv = sum(1 for r in rows if r[1] in srlib.ADVANCE)

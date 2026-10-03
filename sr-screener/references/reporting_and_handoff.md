@@ -64,6 +64,8 @@ its original fields untouched plus the label and note.
 Every rebuild writes all three category files, including empty categories, so earlier group
 files cannot retain overridden records. Strings beginning with formula/control prefixes are
 escaped as text in XLSX and CSV screening logs; the original record text remains in the source data.
+All CSV exports quote every field, including empty fields, to protect embedded semicolons when
+spreadsheet readers use a locale-specific list separator.
 
 ## 4. Handoff to Academic Research Skills
 

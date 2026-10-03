@@ -50,13 +50,7 @@ def fill(tpl, vars_):
 
 
 def codes_text(cfg, stage):
-    lst = cfg["ft_exclusion_codes"] if stage == "ft" and cfg.get("ft_exclusion_codes") else cfg["exclusion_codes"]
-    parts = []
-    for c in lst:
-        short = c.get("short") or c["label"]
-        short = short if len(short) <= 48 else short[:45].rstrip() + "..."
-        parts.append(f"{c['code']} ({short})")
-    return " > ".join(parts)
+    return srlib.codes_text(cfg, stage)
 
 
 def next_out(work, stage, jobs):

@@ -359,15 +359,15 @@ def main():
     except ImportError:
         log_path = os.path.join(out, f"{P}_screening_log_*.csv")
         with open(os.path.join(out, f"{P}_screening_log_Summary.csv"), "w", encoding="utf-8-sig", newline="") as f:
-            csv.writer(f).writerows([srlib.spreadsheet_text(v) for v in row] for row in summary)
+            csv.writer(f, quoting=csv.QUOTE_ALL).writerows([srlib.spreadsheet_text(v) for v in row] for row in summary)
         for name, rs in cols:
             with open(os.path.join(out, f"{P}_screening_log_{name}.csv"), "w", encoding="utf-8-sig", newline="") as f:
-                w = csv.writer(f)
+                w = csv.writer(f, quoting=csv.QUOTE_ALL)
                 w.writerow(head)
                 w.writerows([srlib.spreadsheet_text(v) for v in line(r)] for r in
                             sorted(rs, key=lambda r: (order.get(r["f"]["d"], 3), r["u"]["id"])))
         with open(os.path.join(out, f"{P}_screening_log_Pending.csv"), "w", encoding="utf-8-sig", newline="") as f:
-            w = csv.writer(f)
+            w = csv.writer(f, quoting=csv.QUOTE_ALL)
             w.writerow(["ID", "Title", "Batch"])
             for rid in pending_ids:
                 u = U.get(rid, {})

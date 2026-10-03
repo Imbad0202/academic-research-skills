@@ -128,12 +128,26 @@ The workflow builder registers a protocol/config/dataset revision in `review_sta
 labels and emitted prompt indexes carry its `@context_id`; the merger checks this identity before
 using any decision. `decision_audit.json` retains accepted and rejected results.
 
-After editing the confirmed protocol or config, regenerate a pilot workflow on the recorded
+Configuration identity is specific to each stage: effective exclusion codes and prompt wording,
+core criteria, A/B personas, that stage's role models and agent type. Title/abstract also binds
+conflict policy, QC selection/policy and batch reading limits. Full text uses its own exclusion
+codes when supplied, otherwise the title/abstract codes. Updating reporting fields (`model_labels`,
+`review_title`, language flags or labels unused in prompts) preserves decisions and a passing pilot.
+Preparation options (`seeds`, `batching`, `dedup`) do not reset an existing prepared dataset; actual
+changes to prepared records or batch membership change its dataset identity. Full-text-only model
+or code edits preserve title/abstract decisions and require a new full-text revision only.
+
+After editing the confirmed protocol or screening settings, regenerate a pilot workflow on the recorded
 batches. This archives the previous stage decisions, agreement and QC state in
 `revision_history.json` and starts a new revision. Old exclusions cannot overrule new decisions.
 Re-screen the current revision; review state is reset conservatively because an amendment can
 change eligibility throughout the dataset. A merge can also activate the revision explicitly with
-`--protocol <confirmed protocol>`; a changed file/config without regeneration refuses to merge.
+`--protocol <confirmed protocol>`; changed screening inputs without regeneration refuse to merge.
+
+For an existing revision made with the older whole-config hash, first use the original unchanged
+config to regenerate its workflow (or read/build outputs). This upgrades the identity while keeping
+context IDs, decisions and pilot validity. If the old config has already changed, regeneration
+refuses to clear decisions: restore the original config for the upgrade, then apply the edits.
 
 Pilot scope stays fixed across retries/amendments. Widening it requires `--pilot-override
 "<reason>"`; the override is recorded. Generated workflows reject runtime `screen`, `adj`,

@@ -106,7 +106,7 @@ def main():
                     {"ta_snapshot": srlib.ta_snapshot(work),
                      "retrieval_hash": srlib.digest({"manifest": man, "not_retrieved": missing})}, indent=1)
     with open(os.path.join(work, "ft_not_retrieved.csv"), "w", encoding="utf-8-sig", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["id", "ta_decision", "doi", "pmid", "title"])
+        w = csv.DictWriter(f, fieldnames=["id", "ta_decision", "doi", "pmid", "title"], quoting=csv.QUOTE_ALL)
         w.writeheader()
         w.writerows({k: srlib.spreadsheet_text(v) for k, v in row.items()} for row in missing)
     print(f"records advanced at title/abstract: {len(ids)}")

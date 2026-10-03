@@ -279,14 +279,15 @@ python $S/build_outputs.py --work sr_work --out Screening_TA --config screening_
   without a recorded `--pilot-override "<reason>"`. Generated workflows reject runtime job
   replacements and check the IDs they dispatch against the authorized scope.
 - `review_state.json` binds every generated result label to this review, dataset, protocol and
-  effective config revision. Preserve the full label from `index.json` when saving manual agent
-  returns. A protocol/config amendment starts a new revision and archives the earlier decisions
-  and QC state in `revision_history.json`; re-pilot and re-screen that revision. Results from
-  other reviews/revisions are rejected. Old unbound results need a verified, explicit
+  stage's effective screening settings. Reporting labels/flags preserve decisions and pilot validity;
+  full-text-only settings do not reset title/abstract screening. Preserve the full label from
+  `index.json` when saving manual agent returns. A protocol/screening amendment starts a new revision
+  and archives the earlier decisions and QC state in `revision_history.json`; re-pilot and re-screen
+  that revision. Results from other reviews/revisions are rejected. Old unbound results need a verified, explicit
   `--legacy-import-reason "<reason>"`, recorded in `decision_audit.json`.
-- Pilot comparisons expire when the protocol, config, dataset or labels change. Full-text
-  preparation waits for every title/abstract decision and QC recheck. If those decisions change
-  later, refresh preparation: the retrieved and not-retrieved sets must cover exactly the current
+- Pilot comparisons expire when the protocol, title/abstract screening settings, dataset or labels
+  change. Full-text preparation waits for every title/abstract decision and QC recheck. If those
+  decisions change later, refresh preparation: the retrieved and not-retrieved sets must cover exactly the current
   advances. Missing state files never certify a record as screened; incomplete or stale sets keep
   the counts provisional and withhold methods text.
 
