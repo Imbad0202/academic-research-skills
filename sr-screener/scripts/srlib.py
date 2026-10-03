@@ -293,8 +293,9 @@ def spreadsheet_text(value):
     """Keep untrusted text inert in both Excel and CSV readers."""
     if isinstance(value, str):
         # A locale-specific CSV/TSV reader can split inside a quoted comma field.
-        # Escape formula prefixes after alternative separators as well as at the start.
-        value = re.sub(r"([;\t])(?=[=+\-@])", r"\1'", value)
+        # Escape formula prefixes after alternative separators and line breaks as well
+        # as at the start, also when quotes or spaces sit in between (#951).
+        value = re.sub(r"([;\t\r\n][\"'\s]*)(?=[=+\-@])", r"\1'", value)
         if value.startswith(("=", "+", "-", "@", "\t", "\r")):
             return "'" + value
     return value

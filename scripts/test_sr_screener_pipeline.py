@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import csv
 import importlib.util
+import io
 import re
 import shutil
 import subprocess
@@ -790,13 +791,14 @@ def test_dedup_preserves_distinct_reports(tmp_path, case):
     assert LIB.load_json(tmp_path / "work" / "identification.json")["unique_total"] == 2
 
 
+@pytest.mark.parametrize("gap", ["", '"', " "])
 @pytest.mark.parametrize("separator", [";", "\t"])
 @pytest.mark.parametrize("prefix", ["=", "+", "-", "@"])
-def test_all_csv_exports_neutralize_alternative_separator_formulas(prepared, separator, prefix):
+def test_all_csv_exports_neutralize_alternative_separator_formulas(prepared, separator, prefix, gap):
     p = prepared
     formula = prefix + "HYPERLINK(CHAR(104)&CHAR(116))"
-    payload = "Synthetic" + separator + formula + separator + "tail"
-    escaped = "Synthetic" + separator + "'" + formula + separator + "tail"
+    payload = "Synthetic" + separator + gap + formula + separator + "tail"
+    escaped = "Synthetic" + separator + gap + "'" + formula + separator + "tail"
     source = p / "injected.ris"
     record = f"TY  - JOUR\nTI  - {payload}\nPY  - 2021\nDO  - 10.1000/synthetic\nER  -\n"
     source.write_text(record * 2, encoding="utf-8")
@@ -829,7 +831,7 @@ def test_all_csv_exports_neutralize_alternative_separator_formulas(prepared, sep
     quoted_row = re.compile(r'"(?:[^"\r\n]|"")*"(?:,"(?:[^"\r\n]|"")*")*')
     for path in paths:
         text = path.read_text(encoding="utf-8-sig")
-        assert '"' + escaped + '"' in text, path
+        assert '"' + escaped.replace('"', '""') + '"' in text, path
         assert all(quoted_row.fullmatch(row) for row in text.splitlines()), path
         with path.open(encoding="utf-8-sig", newline="") as f:
             assert any(escaped in row for row in csv.reader(f)), path
@@ -839,6 +841,27 @@ def test_all_csv_exports_neutralize_alternative_separator_formulas(prepared, sep
         assert not any(cell.startswith(("=", "+", "-", "@")) for row in alternate for cell in row), path
     # Sanitization is confined to exports; bibliographic source data stays intact.
     assert LIB.load_json(p / "work" / "records.json")["unique"][0]["title"] == payload
+
+
+@pytest.mark.parametrize("value", [
+    "Synthetic;\"=1+2;tail",
+    "Synthetic\n=1+2\ntail",
+    "Synthetic\r\n@SUM(1)\r\ntail",
+    "Synthetic\t \"-1\ttail",
+])
+def test_spreadsheet_text_neutralizes_formulas_after_quotes_and_line_breaks(value):
+    """#951: a quote, space, or line break between a separator and a formula."""
+    buffer = io.StringIO()
+    csv.writer(buffer, quoting=csv.QUOTE_ALL).writerow(["R00001", LIB.spreadsheet_text(value), "b001"])
+    for delimiter in (",", ";", "\t"):
+        cells = [cell for row in csv.reader(io.StringIO(buffer.getvalue()), delimiter=delimiter)
+                 for cell in row]
+        assert not any(cell.startswith(("=", "+", "-", "@")) for cell in cells), (delimiter, cells)
+
+
+@pytest.mark.parametrize("value", ["plain; text - ok", "well-known @ place", 'A "quoted" title; with = sign'])
+def test_spreadsheet_text_leaves_text_without_formula_starts_unchanged(value):
+    assert LIB.spreadsheet_text(value) == value
 
 
 def test_dedup_still_merges_identical_full_titles_without_conflicting_ids(tmp_path):
