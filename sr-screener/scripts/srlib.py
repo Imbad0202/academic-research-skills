@@ -291,8 +291,12 @@ def fulltext_status(work, cfg):
 
 def spreadsheet_text(value):
     """Keep untrusted text inert in both Excel and CSV readers."""
-    if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r")):
-        return "'" + value
+    if isinstance(value, str):
+        # A locale-specific CSV/TSV reader can split inside a quoted comma field.
+        # Escape formula prefixes after alternative separators as well as at the start.
+        value = re.sub(r"([;\t])(?=[=+\-@])", r"\1'", value)
+        if value.startswith(("=", "+", "-", "@", "\t", "\r")):
+            return "'" + value
     return value
 
 

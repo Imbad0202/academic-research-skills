@@ -790,9 +790,13 @@ def test_dedup_preserves_distinct_reports(tmp_path, case):
     assert LIB.load_json(tmp_path / "work" / "identification.json")["unique_total"] == 2
 
 
-def test_all_csv_exports_quote_semicolon_formula_payloads(prepared):
+@pytest.mark.parametrize("separator", [";", "\t"])
+@pytest.mark.parametrize("prefix", ["=", "+", "-", "@"])
+def test_all_csv_exports_neutralize_alternative_separator_formulas(prepared, separator, prefix):
     p = prepared
-    payload = "Synthetic;=HYPERLINK(CHAR(104)&CHAR(116))"
+    formula = prefix + "HYPERLINK(CHAR(104)&CHAR(116))"
+    payload = "Synthetic" + separator + formula + separator + "tail"
+    escaped = "Synthetic" + separator + "'" + formula + separator + "tail"
     source = p / "injected.ris"
     record = f"TY  - JOUR\nTI  - {payload}\nPY  - 2021\nDO  - 10.1000/synthetic\nER  -\n"
     source.write_text(record * 2, encoding="utf-8")
@@ -825,10 +829,16 @@ def test_all_csv_exports_quote_semicolon_formula_payloads(prepared):
     quoted_row = re.compile(r'"(?:[^"\r\n]|"")*"(?:,"(?:[^"\r\n]|"")*")*')
     for path in paths:
         text = path.read_text(encoding="utf-8-sig")
-        assert '"' + payload + '"' in text, path
+        assert '"' + escaped + '"' in text, path
         assert all(quoted_row.fullmatch(row) for row in text.splitlines()), path
         with path.open(encoding="utf-8-sig", newline="") as f:
-            assert any(payload in row for row in csv.reader(f)), path
+            assert any(escaped in row for row in csv.reader(f)), path
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            alternate = list(csv.reader(f, delimiter=separator))
+        assert any("'" + formula in cell for row in alternate for cell in row), path
+        assert not any(cell.startswith(("=", "+", "-", "@")) for row in alternate for cell in row), path
+    # Sanitization is confined to exports; bibliographic source data stays intact.
+    assert LIB.load_json(p / "work" / "records.json")["unique"][0]["title"] == payload
 
 
 def test_dedup_still_merges_identical_full_titles_without_conflicting_ids(tmp_path):
