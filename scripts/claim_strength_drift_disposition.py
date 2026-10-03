@@ -18,12 +18,16 @@ import math
 import os
 import stat
 import sys
-import tempfile
 import unicodedata
 from pathlib import Path
 from typing import Any
 
 import jsonschema
+
+try:  # Dual-path import: sibling module on sys.path vs package import.
+    from ars_mark_read import atomic_replace
+except ImportError:  # pragma: no cover - package-import path
+    from scripts.ars_mark_read import atomic_replace  # type: ignore[no-redef]
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -558,23 +562,7 @@ def _atomic_write_json(path: Path, value: dict[str, Any]) -> None:
     payload = json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False).encode(
         "utf-8"
     ) + b"\n"
-    temporary: str | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb", prefix=f".{path.name}.", dir=path.parent, delete=False
-        ) as handle:
-            temporary = handle.name
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        temporary = None
-    finally:
-        if temporary is not None:
-            try:
-                os.unlink(temporary)
-            except FileNotFoundError:
-                pass
+    atomic_replace(path, payload)
 
 
 def main(argv: list[str] | None = None) -> int:

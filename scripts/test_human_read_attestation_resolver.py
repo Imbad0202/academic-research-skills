@@ -374,6 +374,52 @@ class UserAttestedReadResolverTests(unittest.TestCase):
         self.assertEqual(out["state"], "ledger_invalid")
         self.assertEqual(out["finalizer_disposition"], "block_invalid_ledger")
 
+    def test_cli_invalid_ledger_reason_quotes_none_of_its_text(self) -> None:
+        head = "session_id: s\ncreated_at: '2026-08-14T23:59:00Z'\nhuman_read:\n"
+        cases = {
+            "unterminated quote in note": (
+                head + "  - citation_key: ref1\n    note: \"I read it closely\n"
+            ).encode(),
+            "duplicate key": (head + "  - I read it closely: 1\n    I read it closely: 2\n").encode(),
+            "unexpected key": (
+                head
+                + "  - citation_key: ref1\n    marked_at: '2026-08-15T00:00:00Z'\n"
+                + "    I read it closely: true\n"
+            ).encode(),
+            "invalid UTF-8": b"session_id: \xff I read it closely\n",
+            **{
+                f"bad !!{tag}": (head + f"  - citation_key: ref1\n    note: !!{tag} closely\n").encode()
+                for tag in ("int", "float", "bool", "timestamp")
+            },
+            "impossible date": (head + "  - citation_key: ref1\n    closely: 2026-13-45\n").encode(),
+        }
+        for label, raw in cases.items():
+            with self.subTest(label), TemporaryDirectory() as tmp:
+                path = Path(tmp) / "read.yaml"
+                path.write_bytes(raw)
+                proc = subprocess.run(
+                    [
+                        sys.executable,
+                        str(SCRIPT),
+                        "--read-log",
+                        str(path),
+                        "--citation-key",
+                        "ref1",
+                        "--anchor-kind",
+                        "page",
+                        "--anchor-value",
+                        "12",
+                    ],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                out = json.loads(proc.stdout)
+                self.assertEqual(out["state"], "ledger_invalid")
+                self.assertNotIn("created_at", out["reason"])
+                self.assertNotIn("closely", proc.stdout + proc.stderr)
+
     def test_cli_anchor_precedence_does_not_open_invalid_yaml(self) -> None:
         duplicate = "session_id: first\nsession_id: second\n"
         with TemporaryDirectory() as tmp:
