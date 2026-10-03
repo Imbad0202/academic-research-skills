@@ -57,12 +57,14 @@ try:
         LedgerValidationError,
         UniqueKeySafeLoader,
         _validated_rows,
+        parse_error_where,
     )
 except ModuleNotFoundError:  # direct ``python scripts/ars_mark_read.py`` use
     from human_read_attestation_resolver import (  # type: ignore[no-redef]
         LedgerValidationError,
         UniqueKeySafeLoader,
         _validated_rows,
+        parse_error_where,
     )
 
 ERR_PREFIX = "[ARS-MARK-READ ERROR:"
@@ -252,13 +254,13 @@ def _load_log(log_path: Path) -> dict[str, Any]:
         text = raw.decode("utf-8")
     except (OSError, UnicodeDecodeError) as exc:
         raise LedgerValidationError(
-            f"existing ledger cannot be read as UTF-8: {exc}"
+            f"existing ledger cannot be read as UTF-8: {parse_error_where(exc)}"
         ) from exc
     try:
         data = yaml.load(text, Loader=UniqueKeySafeLoader)
     except yaml.YAMLError as exc:
         raise LedgerValidationError(
-            f"existing ledger is not duplicate-safe valid YAML: {exc}"
+            f"existing ledger is not duplicate-safe valid YAML: {parse_error_where(exc)}"
         ) from exc
 
     # This is the same closed runtime contract used by the resolver.  Calling

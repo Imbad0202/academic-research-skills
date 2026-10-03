@@ -56,6 +56,24 @@ class UniqueKeySafeLoader(yaml.SafeLoader):
     """Safe YAML loader that rejects duplicate mapping keys."""
 
 
+def parse_error_where(exc: BaseException) -> str:
+    """Name the error kind and position without quoting the ledger's text.
+
+    YAML and decode errors otherwise carry an excerpt of the unreadable file,
+    and a ledger can hold the user's own words (a read log's ``note``, the
+    run ledger's instructions).  Every ledger reader reports parse failures
+    through this helper (#898, #945).
+    """
+    mark = getattr(exc, "problem_mark", None)
+    if mark is not None:
+        return f"{type(exc).__name__} at line {mark.line + 1}, column {mark.column + 1}"
+    if isinstance(exc, UnicodeDecodeError):
+        return f"invalid UTF-8 at byte {exc.start}"
+    if isinstance(exc, OSError):
+        return f"{type(exc).__name__}: {exc.strerror or exc}"
+    return type(exc).__name__
+
+
 def _construct_unique_mapping(
     loader: UniqueKeySafeLoader, node: yaml.MappingNode, deep: bool = False
 ) -> dict[Any, Any]:
@@ -75,7 +93,7 @@ def _construct_unique_mapping(
             raise yaml.constructor.ConstructorError(
                 "while constructing a mapping",
                 node.start_mark,
-                f"found duplicate key {key!r}",
+                "found duplicate key",
                 key_node.start_mark,
             )
         mapping[key] = loader.construct_object(value_node, deep=deep)
@@ -140,7 +158,7 @@ def _closed_object(
     if missing:
         raise LedgerValidationError(f"{label} missing required keys: {missing!r}")
     if extra:
-        raise LedgerValidationError(f"{label} has unexpected keys: {extra!r}")
+        raise LedgerValidationError(f"{label} has {len(extra)} unexpected key(s)")
     return value
 
 
@@ -445,7 +463,7 @@ def main(argv: list[str] | None = None) -> int:
                     _result(
                         args.citation_key,
                         "ledger_invalid",
-                        f"cannot parse read ledger: {exc}",
+                        f"cannot parse read ledger: {parse_error_where(exc)}",
                     ),
                     sort_keys=True,
                 )

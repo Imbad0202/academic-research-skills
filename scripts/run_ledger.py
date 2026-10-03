@@ -72,7 +72,7 @@ import yaml
 
 try:  # Dual-path import: sibling module on sys.path vs package import.
     from ars_mark_read import LedgerLockError, atomic_replace, ledger_lock
-    from human_read_attestation_resolver import UniqueKeySafeLoader
+    from human_read_attestation_resolver import UniqueKeySafeLoader, parse_error_where
 except ImportError:  # pragma: no cover - package-import path
     from scripts.ars_mark_read import (  # type: ignore[no-redef]
         LedgerLockError,
@@ -81,6 +81,7 @@ except ImportError:  # pragma: no cover - package-import path
     )
     from scripts.human_read_attestation_resolver import (  # type: ignore[no-redef]
         UniqueKeySafeLoader,
+        parse_error_where,
     )
 
 LEDGER_FORMAT = "ars-run-ledger/1.0"
@@ -316,7 +317,7 @@ def load_ledger(path: Path) -> dict[str, Any] | None:
         text = path.read_bytes().decode("utf-8")
         data = yaml.load(text, Loader=UniqueKeySafeLoader)
     except (OSError, ValueError, yaml.YAMLError) as exc:  # ValueError: bad bytes, impossible dates
-        raise LedgerUnreadable(f"cannot parse {path.name}: {_where(exc)}") from exc
+        raise LedgerUnreadable(f"cannot parse {path.name}: {parse_error_where(exc)}") from exc
     if (
         not isinstance(data, dict)
         or set(data) != {"ledger", "created_at", "entries"}
@@ -330,23 +331,6 @@ def load_ledger(path: Path) -> dict[str, Any] | None:
             "(keys ledger, created_at, entries)"
         )
     return data
-
-
-def _where(exc: BaseException) -> str:
-    """Name the error kind and position without quoting the ledger's text.
-
-    YAML and decode errors otherwise carry an excerpt of the unreadable file,
-    which can hold the user's words; a read that promises only trusted text
-    must not print them (#898).
-    """
-    mark = getattr(exc, "problem_mark", None)
-    if mark is not None:
-        return f"{type(exc).__name__} at line {mark.line + 1}, column {mark.column + 1}"
-    if isinstance(exc, UnicodeDecodeError):
-        return f"invalid UTF-8 at byte {exc.start}"
-    if isinstance(exc, OSError):
-        return f"{type(exc).__name__}: {exc.strerror or exc}"
-    return type(exc).__name__
 
 
 def first_untrusted_seq(entries: list[Any]) -> int | None:

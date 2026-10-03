@@ -515,3 +515,13 @@ def test_e6_authority_docs_do_not_offer_default_open() -> None:
     assert "raw session-event" in joined
     assert "does not authenticate" in joined
     assert "sidecar retains no path or raw message" in joined
+
+
+def test_sidecar_write_uses_the_shared_atomic_replace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[Path, bytes]] = []
+    monkeypatch.setattr(runtime, "atomic_replace", lambda path, payload: calls.append((path, payload)))
+    target = tmp_path / "sidecar.json"
+    runtime._atomic_write_json(target, {"a": 1})
+    assert calls == [(target, b'{\n  "a": 1\n}\n')]
