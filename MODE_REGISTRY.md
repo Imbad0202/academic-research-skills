@@ -75,9 +75,9 @@ Last updated: v3.22.2 (2026-09-25)
 | Metric | Count |
 |--------|-------|
 | Total modes | 35 |
-| Fidelity | 24 (69%) |
+| Fidelity | 25 (71%) |
 | Balanced | 7 (20%) |
-| Originality | 4 (11%) |
+| Originality | 3 (9%) |
 
 ### Oversight levels
 
