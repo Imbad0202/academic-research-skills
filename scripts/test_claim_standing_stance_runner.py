@@ -244,7 +244,7 @@ def test_forged_cross_candidate_evidence_is_rejected():
     resealed["stance_record_sha256"] = ledger.bound_digest(
         resealed, "stance_record_sha256"
     )
-    with pytest.raises(runner.StanceError, match="different\s+candidate|candidate"):
+    with pytest.raises(runner.StanceError, match=r"different\s+candidate|candidate"):
         runner.validate_stance_record(plan, ledger_value, resealed, forged)
 
 
