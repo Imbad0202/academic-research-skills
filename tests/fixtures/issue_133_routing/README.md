@@ -18,7 +18,7 @@ This is acceptable for **routing discipline** (which is a calibration target, no
 
 ## Acceptance criterion (v3.9.2 ship gate)
 
-- **100% pass on the current primary model** — the inherited Claude Code session model (Opus 4.7 at the v3.9.2 ship; Fable 5 at the 2026-06 recalibration; Claude Opus 5.5 and Claude Fable 5.1, the two supported session models, at the 2026-09-23 calibration in `CALIBRATION_LOG.md`, #889, repo-clone install only; at the 2026-09-24 pass, #892, also the plugin install, where Claude Fable 5.1 still fails fixture 06 and fixture 05 passes on both models only under two scoring readings the log records)
+- **100% pass on the current primary model** — the inherited Claude Code session model (Opus 4.7 at the v3.9.2 ship; Fable 5 at the 2026-06 recalibration; Claude Opus 5.5 and Claude Fable 5.1, the two supported session models, at the 2026-09-23 calibration in `CALIBRATION_LOG.md`, #889, repo-clone install only; at the 2026-09-24 pass, #892, also the plugin install, where Claude Fable 5.1 still fails fixture 06 and fixture 05 passes on both models only under two scoring readings the log records; the 2026-10 pass ran all 21 fixtures in both installs, and its open gaps, #892 and #960, are in the log)
 - **≥ 75% pass on Claude Sonnet 5 and GPT-6 Astra** (degradation flagged but non-blocking ship; not run at the 2026-09-23 calibration)
 - Cross-model divergence > 1 fixture between primary and Sonnet/GPT → recalibrate routing prose
 
@@ -50,7 +50,7 @@ If you cannot reach 100% on the current primary model, the routing prose in CLAU
 | 20 | `20_systematic_review_not_screening/` | "Do a systematic review with PRISMA" | **Proceed** → `deep-research:systematic-review` (not sr-screener) |
 | 21 | `21_no_automatic_handover_to_screening/` | Finished search exports, "what next?" | **Clarify** (no automatic handover to sr-screener) |
 
-Fixtures 17-21 (sr-screener, #919) were added with the skill and have not been run in a calibration session yet; record their first run in `CALIBRATION_LOG.md`.
+Fixtures 13-21 were first run in the 2026-10 pass in `CALIBRATION_LOG.md`.
 
 ## Fixture file format
 
