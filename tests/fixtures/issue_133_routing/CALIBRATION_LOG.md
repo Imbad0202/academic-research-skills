@@ -355,3 +355,85 @@ tested cause.
   part of the acceptance rule; a failure there opens its own issue.
 - **Stop rule.** If acceptance is not met, the result is recorded as it is, no further
   wording change is made in this change, and #892 stays open.
+
+### Amendment before scoring
+
+The first sessions started under Claude Code 2.1.296's default for `claude -p`, which
+reports permission mode `auto`; the 2026-09 passes ran in `default`. All runs were stopped,
+their outputs deleted unscored, and the runner restarted with `--permission-mode manual`,
+which the init event reports as `default`. Every session below reports `default`.
+
+### Probes and checks
+
+- Plugin install, both models: no instruction file, no routing heading, no output style,
+  no user-level instruction. Repo clone: the subject's `.claude/CLAUDE.md` only, routing
+  heading version 3.9.2. Every init event showed the requested model, output style
+  `default`, permission mode `default`, and no API key source.
+- The SessionStart output carried the routing core of its own subject byte for byte in
+  all 105 sessions.
+- No tool call or tool result in any of the 105 streams contains `issue_133_routing`,
+  `expected.yaml`, `rationale.md`, or `CALIBRATION_LOG`. Sessions tried 42 Glob searches
+  outside the working directory and the subject (from `/`, `/Users`, or a home path); the
+  permission check refused all 42, and reads outside the working directory were refused,
+  as in the 2026-09-24 pass.
+- No Skill argument in a post-change session carried the `[direct-mode]` token. Two
+  baseline sessions forwarded the variant `[direct-mode honored]`. Fixture 07's Skill
+  arguments carried the stripped message word for word in all four cells. Fixture 05's
+  were paraphrased in both plugin-install cells and absent in both repo-clone cells (no
+  Skill call), and in both plugin-install cells the only read of `bibliography_agent.md`
+  was refused, so fixture 05 passes there only under the two 2026-09-24 readings.
+- `review_form_note` was checked mechanically: the English note text from
+  `shared/references/review_form_note.md`, blockquote markers and whitespace normalized,
+  appears whole in every cell scored `shown`, and in no cell of fixtures 15 and 20. The
+  text around it was read for added preference or a started review; none was found.
+- Fixture 04 ran on `claude-sonnet-5-5` in every cell, through its command's model pin.
+- Cost: the CLI reported 5.92 USD (baseline) and 67.80 USD (post-change) of
+  API-equivalent cost; the runs used a subscription token.
+
+### Results: fixture 06 on Claude Fable 5.1
+
+| Condition | Baseline (`e614b322`) | Post-change, full run | Post-change, five more | Post-change, together |
+|---|---|---|---|---|
+| Plugin install | 0 of 6 | pass | 2 of 5 | **3 of 6** |
+| Repo clone | not run | pass | 5 of 5 | 6 of 6 |
+
+Every failing session, before and after the change, opened with a sentence such as
+"I'll honor the `[direct-mode]` token" and called a Skill without asking which workflow
+the user wanted. Every passing session said the token was not at the start of the message
+and gave workflow options.
+
+### Results: all fixtures, post-change
+
+| Fixture | Expected | Opus 5.5, plugin | Opus 5.5, repo | Fable 5.1, plugin | Fable 5.1, repo |
+|---|---|---|---|---|---|
+| 01, 03, 08 | clarify | pass | pass | pass | pass |
+| 02, 04 (on `claude-sonnet-5-5`) | `academic-paper:lit-review`, note shown | pass | pass | pass | pass |
+| 05 | `bibliography_agent` | pass, under the two readings | pass | pass, under the two readings | pass |
+| 06 | clarify | pass | pass | pass | pass |
+| 07 | `academic-paper:abstract` | pass | pass | pass | pass |
+| 09, 11 | `academic-paper:revision` | pass | pass | pass | pass |
+| 10, 12 | `academic-paper-reviewer:full` | pass | pass | pass | pass |
+| 13, 14 (pair) | a `lit-review` mode, note shown | pass | pass | pass | pass |
+| 15, 20 | `deep-research:systematic-review`, note not shown | pass | pass | pass | pass |
+| 16 | `deep-research:lit-review`, note shown | **fail (RC, D, note)**: "'Evidence matrix + thematic synthesis' could mean a few different things", options a-d, no Skill call | pass | pass | pass |
+| 17 | `sr-screener:quick` | pass | pass | pass | pass |
+| 18 | `sr-screener` | pass | pass | pass | pass |
+| 19 | `academic-paper:lit-review`, note shown | pass | pass | pass | pass |
+| 21 | clarify, no screening started | pass | pass | pass | pass |
+| **Total** | | **20 of 21** | **21 of 21** | **21 of 21** | **21 of 21** |
+
+### What this pass shows
+
+- **The acceptance rule is not met.** Fixture 06 on Claude Fable 5.1 in the plugin install
+  passed 3 of 6 sessions after the change, against 0 of 6 before it on the same Claude Code
+  version. The added sentence moved the result, and it did not close the gap: the repo
+  clone passed 6 of 6, where Fable reads `intent_clarification_protocol.md` before
+  answering. Under the stop rule, no further wording change is made here and #892 stays
+  open.
+- The second half of the rule holds: on fixtures 01-12 the plugin install matched the repo
+  clone on both models, fixture by fixture.
+- Fixtures 13-21 ran for the first time. One cell failed: fixture 16 on Claude Opus 5.5 in
+  the plugin install asked which deliverable the user wanted instead of entering
+  `deep-research` `lit-review` mode. It is recorded in #960.
+- As before, one session per fixture is a smoke test, not a rate, and the pass is not held
+  out. The fixture 06 counts are six sessions per cell.

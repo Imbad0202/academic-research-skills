@@ -123,9 +123,10 @@ runtime graceful-degradation mechanisms is
    request that no skill picks up gets no routing guard, and a clarifying question can
    come only after a skill call. As with note 7, these are prompt-level instructions, not
    runtime enforcement. The #133 routing fixtures were run with the plugin loaded, in
-   sessions started inside and outside the checkout; outside it, Claude Fable 5.1 still
-   failed one fixture (a mid-message `[direct-mode]` token), and fixture 05 passed on both
-   models only under two scoring readings
+   sessions started inside and outside the checkout. Outside it, Claude Fable 5.1 honored
+   a mid-message `[direct-mode]` token in 3 of 6 sessions after the routing core gained a
+   sentence against it (6 of 6 before), Claude Opus 5.5 failed fixture 16 (#960), and
+   fixture 05 passed on both models only under two scoring readings
    ([`CALIBRATION_LOG.md`](../tests/fixtures/issue_133_routing/CALIBRATION_LOG.md)). The
    other channels are covered only by the copy check (`scripts/check_routing_core_sync.py`).
 10. sr-screener's dual review needs subagents plus its own Python scripts, which live
