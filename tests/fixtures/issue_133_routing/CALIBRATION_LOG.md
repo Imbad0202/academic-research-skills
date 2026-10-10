@@ -415,7 +415,8 @@ and gave workflow options.
 | 06 | clarify | pass | pass | pass | pass |
 | 07 | `academic-paper:abstract` | pass | pass | pass | pass |
 | 09, 11 | `academic-paper:revision` | pass | pass | pass | pass |
-| 10, 12 | `academic-paper-reviewer:full` | pass | pass | pass | pass |
+| 10 | `academic-paper-reviewer:full` | pass | pass | pass | **fail (RC)**: Skill names `full`, then offers `quick` under the budget cap and asks "원하시는 쪽을 알려 주세요" |
+| 12 | `academic-paper-reviewer:full` | pass | pass | pass | pass |
 | 13, 14 (pair) | a `lit-review` mode, note shown | pass | pass | pass | pass |
 | 15, 20 | `deep-research:systematic-review`, note not shown | pass | pass | pass | pass |
 | 16 | `deep-research:lit-review`, note shown | **fail (RC, D, note)**: "'Evidence matrix + thematic synthesis' could mean a few different things", options a-d, no Skill call | pass | pass | pass |
@@ -423,14 +424,16 @@ and gave workflow options.
 | 18 | `sr-screener` | pass | pass | pass | pass |
 | 19 | `academic-paper:lit-review`, note shown | pass | pass | pass | pass |
 | 21 | clarify, no screening started | pass | pass | pass | pass |
-| **Total** | | **20 of 21** (19 read strictly) | **21 of 21** (20 read strictly) | **20 of 21** (19 read strictly) | **21 of 21** |
+| **Total** | | **20 of 21** (19 read strictly) | **21 of 21** (20 read strictly) | **20 of 21** (19 read strictly) | **20 of 21** |
 
 Two scoring notes. Fixture 01: every cell asks the workflow question first, and three cells
 then comment on the user's abstract. The clarify rule says the response "does not begin
 producing a deliverable"; it does not say whether such remarks count. Both readings are
-reported, as for fixture 05; the case was found after scoring. Fixture 02: the failing cell
-offered a different workflow because the session's 3 USD budget cap (`--max-budget-usd`,
-set by the runner in every pass) looked too small for 30 papers.
+reported, as for fixture 05; the case was found after scoring. Fixtures 02 and 10: each
+failing cell asked the user to pick a lighter workflow or mode because the session's 3 USD
+budget cap (`--max-budget-usd`, set by the runner in every pass) looked too small. Cells
+that only mentioned the cap, or kept the expected mode and named others as available,
+are scored as passes.
 
 ### What this pass shows
 
@@ -441,8 +444,8 @@ set by the runner in every pass) looked too small for 30 papers.
   answering. Under the stop rule, no further wording change is made here and #892 stays
   open.
 - The second half of the rule holds on Claude Opus 5.5 (fixtures 01-12 match between the
-  installs under either reading) and not on Claude Fable 5.1, where fixture 02 differs, and
-  read strictly fixture 01 as well.
+  installs under either reading) and not on Claude Fable 5.1, where fixtures 02 and 10
+  differ, and read strictly fixture 01 as well.
 - Fixtures 13-21 ran for the first time. One cell failed: fixture 16 on Claude Opus 5.5 in
   the plugin install asked which deliverable the user wanted instead of entering
   `deep-research` `lit-review` mode. It is recorded in #960.
