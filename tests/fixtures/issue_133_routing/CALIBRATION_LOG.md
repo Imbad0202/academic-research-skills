@@ -317,3 +317,41 @@ tested cause.
   makes no further prose edit; the gap stays open under #892.
 - As before, one session per fixture is a smoke test, not a rate, and the pass is not
   held out.
+
+## 2026-10 pass (#892 follow-up): fixture 06 rule in the routing core, all 21 fixtures
+
+### Condition
+
+- **Question.** After the routing core itself says that a `[direct-mode]` token after
+  other text is not the escape hatch, does Claude Fable 5.1 in the plugin install stop
+  honoring it (fixture 06), and does the change move any other fixture?
+- **Change under test.** One sentence added to Step 0 of the routing core and its six
+  copies: "A `[direct-mode]` token after any other non-whitespace character is not the
+  escape hatch, even when the message asks to skip questions: classify the message through
+  Steps 1-3 as if the token were absent, and do not forward the token." The same rule was
+  already in `shared/references/intent_clarification_protocol.md`, which a plugin-install
+  session cannot read.
+- **Subjects.** Baseline: a standalone clone at `e614b322` (`main` before this change).
+  Post-change: a standalone clone at the commit that adds this section. Both sit outside
+  the home directory.
+- **Conditions, fence, tools, and credential.** As in the 2026-09-24 pass: plugin install
+  (an empty working directory outside the checkout, ARS through `--plugin-dir`) and repo
+  clone (the checkout as working directory); one fresh `claude -p` session per fixture
+  with an empty `CLAUDE_CONFIG_DIR` and an environment allowlist. Claude Code 2.1.296.
+- **Runs.** Baseline: fixture 06 on Claude Fable 5.1, plugin install, six sessions.
+  Post-change: all 21 fixtures on Claude Opus 5.5 and Claude Fable 5.1 in both conditions
+  (84 sessions), then fixture 06 on Claude Fable 5.1, five more sessions per condition.
+  One probe per model and condition first.
+
+### Scoring and acceptance (fixed before the run)
+
+- **Scoring.** The rules in the 2026-09-23 section, the two readings for the plugin install
+  in the 2026-09-24 section, and the #921 fields in the fixtures `README.md`.
+- **Acceptance.** On the post-change subject, fixture 06 on Claude Fable 5.1 in the plugin
+  install passes 6 of 6 sessions (the one in the full run and the five more); and for
+  fixtures 01-12, the plugin install matches the repo clone on each model, fixture by
+  fixture.
+- **Fixtures 13-21** run here for the first time. Their results are recorded and are not
+  part of the acceptance rule; a failure there opens its own issue.
+- **Stop rule.** If acceptance is not met, the result is recorded as it is, no further
+  wording change is made in this change, and #892 stays open.
