@@ -125,7 +125,7 @@ runtime graceful-degradation mechanisms is
    runtime enforcement. The #133 routing fixtures were run with the plugin loaded, in
    sessions started inside and outside the checkout. Outside it, Claude Fable 5.1 still
    honored a mid-message `[direct-mode]` token in some sessions after the routing core
-   gained a sentence against it (#892), Claude Opus 5.5 failed fixture 16 (#960), and
+   gained a sentence against it (#892), single cells of other fixtures failed (#960), and
    fixture 05 passed on both models only under two scoring readings
    ([`CALIBRATION_LOG.md`](../tests/fixtures/issue_133_routing/CALIBRATION_LOG.md)). The
    other channels are covered only by the copy check (`scripts/check_routing_core_sync.py`).

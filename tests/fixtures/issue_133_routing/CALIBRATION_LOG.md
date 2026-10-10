@@ -372,15 +372,16 @@ which the init event reports as `default`. Every session below reports `default`
 - The SessionStart output carried the routing core of its own subject byte for byte in
   all 105 sessions.
 - No tool call or tool result in any of the 105 streams contains `issue_133_routing`,
-  `expected.yaml`, `rationale.md`, or `CALIBRATION_LOG`. Sessions tried 42 Glob searches
-  outside the working directory and the subject (from `/`, `/Users`, or a home path); the
-  permission check refused all 42, and reads outside the working directory were refused,
-  as in the 2026-09-24 pass.
+  `expected.yaml`, `rationale.md`, or `CALIBRATION_LOG`. The permission check refused all
+  58 Glob calls whose `path` lay outside the working directory (13 baseline, 45
+  post-change) and every Read or Grep outside it, as in the 2026-09-24 pass. Two more Glob
+  calls put `~/...` in the pattern with no `path`; they searched the working directory and
+  matched nothing.
 - No Skill argument in a post-change session carried the `[direct-mode]` token. Two
   baseline sessions forwarded the variant `[direct-mode honored]`. Fixture 07's Skill
   arguments carried the stripped message word for word in all four cells. Fixture 05's
   were paraphrased in both plugin-install cells and absent in both repo-clone cells (no
-  Skill call), and in both plugin-install cells the only read of `bibliography_agent.md`
+  Skill call), and in both plugin-install cells every read of `bibliography_agent.md`
   was refused, so fixture 05 passes there only under the two 2026-09-24 readings.
 - `review_form_note` was checked mechanically: the English note text from
   `shared/references/review_form_note.md`, blockquote markers and whitespace normalized,
@@ -406,8 +407,10 @@ and gave workflow options.
 
 | Fixture | Expected | Opus 5.5, plugin | Opus 5.5, repo | Fable 5.1, plugin | Fable 5.1, repo |
 |---|---|---|---|---|---|
-| 01, 03, 08 | clarify | pass | pass | pass | pass |
-| 02, 04 (on `claude-sonnet-5-5`) | `academic-paper:lit-review`, note shown | pass | pass | pass | pass |
+| 01 | clarify | pass, or fail (RC, D) read strictly: options a-d, then three "gaps in the abstract" | pass, or fail (RC, D) read strictly: options a-d, then a paragraph on the abstract's topic counts and regulation claim | pass, or fail (RC, D) read strictly: options a-d, then a remark on a thin cluster | pass |
+| 03, 08 | clarify | pass | pass | pass | pass |
+| 02 | `academic-paper:lit-review`, note shown | pass | pass | **fail (RC)**: Skill and note correct, then "raise the budget, or have me run the lighter `/ars-3w` scan" | pass |
+| 04 (on `claude-sonnet-5-5`) | `academic-paper:lit-review`, note shown | pass | pass | pass | pass |
 | 05 | `bibliography_agent` | pass, under the two readings | pass | pass, under the two readings | pass |
 | 06 | clarify | pass | pass | pass | pass |
 | 07 | `academic-paper:abstract` | pass | pass | pass | pass |
@@ -420,7 +423,14 @@ and gave workflow options.
 | 18 | `sr-screener` | pass | pass | pass | pass |
 | 19 | `academic-paper:lit-review`, note shown | pass | pass | pass | pass |
 | 21 | clarify, no screening started | pass | pass | pass | pass |
-| **Total** | | **20 of 21** | **21 of 21** | **21 of 21** | **21 of 21** |
+| **Total** | | **20 of 21** (19 read strictly) | **21 of 21** (20 read strictly) | **20 of 21** (19 read strictly) | **21 of 21** |
+
+Two scoring notes. Fixture 01: every cell asks the workflow question first, and three cells
+then comment on the user's abstract. The clarify rule says the response "does not begin
+producing a deliverable"; it does not say whether such remarks count. Both readings are
+reported, as for fixture 05; the case was found after scoring. Fixture 02: the failing cell
+offered a different workflow because the session's 3 USD budget cap (`--max-budget-usd`,
+set by the runner in every pass) looked too small for 30 papers.
 
 ### What this pass shows
 
@@ -430,8 +440,9 @@ and gave workflow options.
   clone passed 6 of 6, where Fable reads `intent_clarification_protocol.md` before
   answering. Under the stop rule, no further wording change is made here and #892 stays
   open.
-- The second half of the rule holds: on fixtures 01-12 the plugin install matched the repo
-  clone on both models, fixture by fixture.
+- The second half of the rule holds on Claude Opus 5.5 (fixtures 01-12 match between the
+  installs under either reading) and not on Claude Fable 5.1, where fixture 02 differs, and
+  read strictly fixture 01 as well.
 - Fixtures 13-21 ran for the first time. One cell failed: fixture 16 on Claude Opus 5.5 in
   the plugin install asked which deliverable the user wanted instead of entering
   `deep-research` `lit-review` mode. It is recorded in #960.
