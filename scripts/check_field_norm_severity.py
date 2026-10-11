@@ -101,7 +101,11 @@ def validate(data: dict[str, Any]) -> list[str]:
         # case (SAR) must explain why it is non-clean; a clean case must not carry a
         # stray reason that implies it is contextual.
         is_exception = item.get("exception") is True
-        has_reason = bool(str(item.get("exception_reason", "")).strip())
+        # exception_reason must be a real non-empty string: a null value falls through
+        # .get()'s default only when the key is absent, so str(None) would otherwise
+        # read as the non-empty "None" and let a null reason masquerade as present.
+        reason_val = item.get("exception_reason")
+        has_reason = isinstance(reason_val, str) and bool(reason_val.strip())
         if is_exception and not has_reason:
             errors.append(
                 f"{where}: exception=true but exception_reason missing/empty"

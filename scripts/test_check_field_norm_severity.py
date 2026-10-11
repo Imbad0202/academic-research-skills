@@ -134,6 +134,33 @@ class TestValidatorInvariants(unittest.TestCase):
             msg=f"expected stray exception_reason error: {errors!r}",
         )
 
+    def test_null_exception_reason_is_not_treated_as_present(self) -> None:
+        """A null exception_reason must not satisfy has_reason: str(None) is the
+        non-empty string "None", so a naive str()-coercion check would wrongly treat
+        a null reason as present on both sides of the paired check."""
+        def null_reason_on_exception_item(d: dict) -> None:
+            for it in d["items"]:
+                if it.get("exception") is True:
+                    it["exception_reason"] = None
+
+        errors = self._mutate(null_reason_on_exception_item)
+        self.assertTrue(
+            any("exception_reason" in e and "missing/empty" in e for e in errors),
+            msg=f"expected missing/empty exception_reason error for null reason: {errors!r}",
+        )
+
+        errors = self._mutate(
+            lambda d: d["items"][0].__setitem__("exception_reason", None)
+        )
+        self.assertEqual(
+            errors,
+            [],
+            msg=(
+                f"a null exception_reason on a non-exception item must not be "
+                f"treated as a stray reason: {errors!r}"
+            ),
+        )
+
     def test_exception_id_losing_both_flag_and_reason_fails(self) -> None:
         """codex P1: if the SAR item loses BOTH its exception flag and its reason, the paired
         check is satisfied (both branches false) and the case silently reverts to a clean
