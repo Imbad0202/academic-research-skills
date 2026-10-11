@@ -317,7 +317,9 @@ def _check_reverse_scan(manifest: dict, fixture_root: Path) -> list[str]:
     for path in sorted(fixture_root.rglob("*")):
         if not path.is_file():
             continue
-        rel = str(path.relative_to(fixture_root))
+        # ponytail: manifest.yaml paths are always forward-slash; as_posix()
+        # keeps this comparison correct on Windows, where str(Path) uses "\\".
+        rel = path.relative_to(fixture_root).as_posix()
         if rel == MANIFEST_RELPATH:
             continue
         if rel not in declared:
