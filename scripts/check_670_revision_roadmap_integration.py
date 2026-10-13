@@ -68,18 +68,19 @@ RUNTIME_HASHES = {
 # criterion judgements, an explicit NOT_CALIBRATED boundary, typed provenance,
 # and confidence-as-disclosure-only semantics. These hashes are re-pinned with
 # those reviewed changes; exact hashes keep later drift auditable without a
-# live-model comparison.
+# live-model comparison. Re-pinned for #973 (Phase Boundary enforcement sentence
+# reworded to the actual coverage condition; no detection-surface change).
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
-        "c5ec3150c7e7cc4c89358853d13af0bde8f211e0a735bcd8c72330d1f931943d",
+        "9690e570d081bfcdef6da23fb93064af4028c9d6b766fcbcf0cf0981463d492f",
     Path("academic-paper-reviewer/agents/methodology_reviewer_agent.md"):
-        "91e462ee104cc253a44d387570ea95a49a4efffcc2b4765617baf292431de6cb",
+        "7369527eb99f1ca2a7351a338a4e7ef0df482d3fb516056d271a944eb7d6d8b9",
     Path("academic-paper-reviewer/agents/domain_reviewer_agent.md"):
-        "eb6660aafadc851e3fc4545111b5113d467c9eb263ef069394db62c944ece1e5",
+        "3da456496aab799929e08a21d4746cf51265980c9d6743a694a6047bf5a012b4",
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
-        "49bb946547593a918bd60faee88555d46a2a10b39f2857ef94163eef65920d81",
+        "27764ff193db4cfbd95145bf56cbb1675df4c259ce1a1f48e409dadb68fe6781",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
-        "b42eb5559bf91c8767f85e532dfa240e5e30feb92ae3fc0be96f20058acfcf6a",
+        "c8b7da641e8f6ee1c8ce630233c5c045758516b12c45feee40fe74c07aeff2e0",
     Path("academic-paper-reviewer/templates/peer_review_report_template.md"):
         "5da1f9d24d6e321cec5f38c13fa03fe23b9363b1842cb0d8111c5e39a810c7d1",
 }

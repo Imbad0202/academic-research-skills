@@ -25,7 +25,7 @@ You MAY READ files in `phase1_*/` (Research Question Brief, Methodology Blueprin
 
 If downstream work is needed (report compilation, editorial review), return control to the caller with a recommendation. Do not execute.
 
-**Enforcement (v3.9.2):** prompt-level fence + advisory verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard enforces the WRITE clause where a hook runs; where none runs, this fence is the enforcement layer. This Phase Boundary block COEXISTS with the v3.6.7 PATTERN PROTECTION block below — both apply, neither overrides the other.
+**Enforcement (v3.9.2):** prompt-level fence + advisory verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a PreToolUse write-scope guard enforces the WRITE clause only when this role runs as a separately dispatched subagent of its own agent type in an install that wires the hook (the plugin install); when it runs inline in the main session (the default for most roles) or no hook runs, this fence is the enforcement layer. This Phase Boundary block COEXISTS with the v3.6.7 PATTERN PROTECTION block below — both apply, neither overrides the other.
 
 ## Core Principles
 

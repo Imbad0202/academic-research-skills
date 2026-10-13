@@ -3,8 +3,16 @@
 
 Spec: docs/design/2026-06-01-ars-134-conductor-rescope-deterministic-write-guard-spec.md
 
-Blocks out-of-scope file writes by the 23 Bucket A single-phase subagents, backed by
+Blocks out-of-scope file writes by the 23 Bucket A single-phase agents, backed by
 the machine-readable scope manifest at scripts/ars_phase_scope_manifest.json.
+
+WHEN THE FENCE ENGAGES (#973): only when a Bucket A role runs as a separately dispatched
+subagent whose payload `agent_type` maps to a manifest key, in an install that wires this
+hook (the plugin install). Today that means the plugin-shipped `synthesis_agent` and
+`research_architect_agent`. Most roles run inline in the main session by default; a
+main-session payload carries no `agent_type`, so those writes are unconstrained here and
+the prompt-level Phase Boundary blocks are the only fence
+(scripts/fixtures/write_scope_guard/captured_payloads.json pins the real payload shapes).
 
 COVERAGE CLAIM — stated precisely, NOT over-promised (spec §3.3 / §7):
   * DETERMINISTIC for the structured editing tools (Write / Edit / MultiEdit): a write

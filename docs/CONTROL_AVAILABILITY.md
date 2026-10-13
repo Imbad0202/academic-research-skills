@@ -66,7 +66,10 @@ runtime graceful-degradation mechanisms is
    launcher; missing either produces a *defined degraded state*, never a block — see
    the [environment degradations](#environment-degradations-within-a-channel) table.
    The guard is optional subagent hardening; core skills are unaffected when it is
-   inactive (README Requirements).
+   inactive (README Requirements). It fences a Bucket A role only when that role runs as
+   a subagent dispatched under its own agent type, which today means the plugin agents
+   `synthesis_agent` and `research_architect_agent`; roles that run inline in the main
+   session, the default for most, are not fenced (#973).
 3. Hooks and plugin agents are wired by the **plugin manifest** (`hooks/hooks.json`,
    `agents/`, resolved via `CLAUDE_PLUGIN_ROOT`). A skills-copy or repo-clone install
    does not wire them: the `PreToolUse` write-scope guard and the SessionStart announce

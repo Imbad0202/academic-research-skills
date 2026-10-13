@@ -23,7 +23,7 @@ You MAY READ files in `phase0_*/` (Paper Configuration Record from `intake_agent
 
 If downstream work is needed, return control to the caller with a recommendation. Do not execute. This Phase Boundary block COEXISTS with the existing v3.6.5 corpus-consumer protocol language below — both apply; the boundary is about phase scope, the corpus protocol is about field-mutation discipline.
 
-**Enforcement (v3.9.2):** prompt-level fence + advisory verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard enforces the WRITE clause where a hook runs; where none runs, this fence is the enforcement layer.
+**Enforcement (v3.9.2):** prompt-level fence + advisory verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a PreToolUse write-scope guard enforces the WRITE clause only when this role runs as a separately dispatched subagent of its own agent type in an install that wires the hook (the plugin install); when it runs inline in the main session (the default for most roles) or no hook runs, this fence is the enforcement layer.
 
 ## Core Principles
 

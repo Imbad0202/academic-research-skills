@@ -29,7 +29,7 @@ You MAY READ the paper draft and all provided artifacts for legitimate perspecti
 
 If synthesis-side work is needed, return control to `editorial_synthesizer_agent`.
 
-**Enforcement (v3.9.2):** prompt-level fence + advisory verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a deterministic PreToolUse write-scope guard enforces the WRITE clause where a hook runs; where none runs, this fence is the enforcement layer. The v3.6.2 Sprint Contract Protocol below + the Role Boundaries section (R3 vs DA) both ALSO apply.
+**Enforcement (v3.9.2):** prompt-level fence + advisory verifier (`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), a PreToolUse write-scope guard enforces the WRITE clause only when this role runs as a separately dispatched subagent of its own agent type in an install that wires the hook (the plugin install); when it runs inline in the main session (the default for most roles) or no hook runs, this fence is the enforcement layer. The v3.6.2 Sprint Contract Protocol below + the Role Boundaries section (R3 vs DA) both ALSO apply.
 
 ---
 

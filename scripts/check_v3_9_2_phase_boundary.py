@@ -130,14 +130,18 @@ CANONICAL_ENFORCEMENT = {
     "2": (
         "**Enforcement (v3.9.2):** prompt-level fence + advisory verifier "
         "(`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), "
-        "a deterministic PreToolUse write-scope guard enforces the WRITE clause "
-        "where a hook runs; where none runs, this fence is the enforcement layer."
+        "a PreToolUse write-scope guard enforces the WRITE clause only when this role runs "
+        "as a separately dispatched subagent of its own agent type in an install that wires "
+        "the hook (the plugin install); when it runs inline in the main session (the default "
+        "for most roles) or no hook runs, this fence is the enforcement layer."
     ),
     "4": (
         "**Enforcement (v3.9.4):** prompt-level fence + advisory verifier "
         "(`scripts/check_pipeline_integrity.py` v3.9.4 extension). Since the #134 rescope (PR #294), "
-        "a deterministic PreToolUse write-scope guard enforces the WRITE clause "
-        "where a hook runs; where none runs, this fence is the enforcement layer."
+        "a PreToolUse write-scope guard enforces the WRITE clause only when this role runs "
+        "as a separately dispatched subagent of its own agent type in an install that wires "
+        "the hook (the plugin install); when it runs inline in the main session (the default "
+        "for most roles) or no hook runs, this fence is the enforcement layer."
     ),
 }
 

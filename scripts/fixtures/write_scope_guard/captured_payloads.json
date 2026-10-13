@@ -1,0 +1,74 @@
+{
+  "_about": "PreToolUse payloads captured from a real Claude Code 2.1.296 session on 2026-10-13 (#973), with the ARS plugin loaded via --plugin-dir and a temporary hook that dumped stdin. Identifiers and paths are replaced with placeholders; field names, nesting, and the agent_type value are as captured. {WORKSPACE} is the session cwd; the tests substitute a temp dir. Note: the captured payloads carry tool_use_id and prompt_id, which the guard does not read.",
+  "claude_code_version": "2.1.296",
+  "captured": "2026-10-13",
+  "cases": [
+    {
+      "label": "main_session_write",
+      "expected_decision": "allow",
+      "payload": {
+        "session_id": "00000000-0000-0000-0000-000000000000",
+        "transcript_path": "{HOME}/.claude/projects/{PROJECT}/00000000-0000-0000-0000-000000000000.jsonl",
+        "cwd": "{WORKSPACE}",
+        "prompt_id": "11111111-1111-1111-1111-111111111111",
+        "permission_mode": "acceptEdits",
+        "effort": {
+          "level": "medium"
+        },
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Write",
+        "tool_input": {
+          "file_path": "{WORKSPACE}/main_probe.txt",
+          "content": "main"
+        },
+        "tool_use_id": "toolu_FIXTURE0"
+      }
+    },
+    {
+      "label": "plugin_subagent_in_scope_write",
+      "expected_decision": "allow",
+      "payload": {
+        "session_id": "00000000-0000-0000-0000-000000000000",
+        "transcript_path": "{HOME}/.claude/projects/{PROJECT}/00000000-0000-0000-0000-000000000000.jsonl",
+        "cwd": "{WORKSPACE}",
+        "prompt_id": "11111111-1111-1111-1111-111111111111",
+        "permission_mode": "acceptEdits",
+        "agent_id": "a0000000000000000",
+        "agent_type": "academic-research-skills:synthesis_agent",
+        "effort": {
+          "level": "medium"
+        },
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Write",
+        "tool_input": {
+          "file_path": "{WORKSPACE}/phase3_analysis/agent_probe.md",
+          "content": "in-scope"
+        },
+        "tool_use_id": "toolu_FIXTURE1"
+      }
+    },
+    {
+      "label": "plugin_subagent_out_of_scope_write",
+      "expected_decision": "deny",
+      "payload": {
+        "session_id": "00000000-0000-0000-0000-000000000000",
+        "transcript_path": "{HOME}/.claude/projects/{PROJECT}/00000000-0000-0000-0000-000000000000.jsonl",
+        "cwd": "{WORKSPACE}",
+        "prompt_id": "11111111-1111-1111-1111-111111111111",
+        "permission_mode": "acceptEdits",
+        "agent_id": "a0000000000000000",
+        "agent_type": "academic-research-skills:synthesis_agent",
+        "effort": {
+          "level": "medium"
+        },
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Write",
+        "tool_input": {
+          "file_path": "{WORKSPACE}/agent_root_probe.txt",
+          "content": "out-of-scope"
+        },
+        "tool_use_id": "toolu_FIXTURE2"
+      }
+    }
+  ]
+}

@@ -375,6 +375,47 @@ class PluginScopedAgentTypeTest(unittest.TestCase):
         self.assertEqual(self.decide(p)["decision"], "allow")
 
 
+class CapturedPayloadTest(unittest.TestCase):
+    """#973: payloads captured from a real Claude Code session, run against the shipped
+    manifest. The other tests synthesize payloads from what we assume the runtime sends;
+    these pin what it did send (scripts/fixtures/write_scope_guard/captured_payloads.json)."""
+
+    FIXTURE = os.path.join(REPO_ROOT, "scripts", "fixtures", "write_scope_guard",
+                           "captured_payloads.json")
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.ws = os.path.realpath(self._tmp.name)
+        os.makedirs(os.path.join(self.ws, "phase3_analysis"))
+        with open(self.FIXTURE, encoding="utf-8") as fh:
+            self.cases = json.load(fh)["cases"]
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _payload(self, case):
+        text = json.dumps(case["payload"]).replace("{WORKSPACE}", self.ws.replace("\\", "/"))
+        return json.loads(text)
+
+    def test_captured_payloads_decide_as_expected(self):
+        manifest = guard._load_manifest()
+        self.assertEqual(len(self.cases), 3)
+        for case in self.cases:
+            with self.subTest(case=case["label"]):
+                d = guard.evaluate_decision(self._payload(case), manifest, self.ws)
+                self.assertEqual(d["decision"], case["expected_decision"])
+
+    def test_main_session_write_carries_no_agent_type(self):
+        # Why inline roles are never fenced: the main session's payload has no agent_type.
+        main = next(c for c in self.cases if c["label"] == "main_session_write")
+        self.assertNotIn("agent_type", main["payload"])
+
+    def test_plugin_subagent_agent_type_is_plugin_scoped(self):
+        for case in self.cases:
+            if case["label"].startswith("plugin_subagent"):
+                self.assertTrue(case["payload"]["agent_type"].startswith(guard.PLUGIN_AGENT_NAMESPACE))
+
+
 class GlobMatchBoundaryTest(unittest.TestCase):
     """Negative + positive glob-match cases (feedback: widening a matcher needs
     explicit 'should-be-rejected' cases — unit pass at one layer can still mismatch)."""
