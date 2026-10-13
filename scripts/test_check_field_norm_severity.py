@@ -161,6 +161,40 @@ class TestValidatorInvariants(unittest.TestCase):
             ),
         )
 
+    def test_non_string_exception_reason_fails_on_both_sides(self) -> None:
+        """A non-string exception_reason (int, list, bool, ...) must not silently satisfy
+        has_reason's isinstance(..., str) check on either side of the paired guard: it
+        must be rejected on its own, not quietly treated as absent."""
+        def non_string_reason_on_exception_item(d: dict) -> None:
+            for it in d["items"]:
+                if it.get("exception") is True:
+                    it["exception_reason"] = 42
+
+        errors = self._mutate(non_string_reason_on_exception_item)
+        self.assertTrue(
+            any("exception_reason must be a string" in e for e in errors),
+            msg=f"expected a type error for the non-string reason: {errors!r}",
+        )
+        self.assertTrue(
+            any("missing/empty" in e for e in errors),
+            msg=f"a non-string reason must not count as present: {errors!r}",
+        )
+
+        errors = self._mutate(
+            lambda d: d["items"][0].__setitem__("exception_reason", ["reason"])
+        )
+        self.assertTrue(
+            any("exception_reason must be a string" in e for e in errors),
+            msg=f"expected a type error for the non-string reason: {errors!r}",
+        )
+        self.assertFalse(
+            any("exception_reason present but exception is not true" in e for e in errors),
+            msg=(
+                f"a non-string reason on a non-exception item must not be "
+                f"treated as a stray reason: {errors!r}"
+            ),
+        )
+
     def test_exception_id_losing_both_flag_and_reason_fails(self) -> None:
         """codex P1: if the SAR item loses BOTH its exception flag and its reason, the paired
         check is satisfied (both branches false) and the case silently reverts to a clean

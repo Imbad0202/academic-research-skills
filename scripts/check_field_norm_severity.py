@@ -105,6 +105,10 @@ def validate(data: dict[str, Any]) -> list[str]:
         # .get()'s default only when the key is absent, so str(None) would otherwise
         # read as the non-empty "None" and let a null reason masquerade as present.
         reason_val = item.get("exception_reason")
+        if reason_val is not None and not isinstance(reason_val, str):
+            errors.append(
+                f"{where}: exception_reason must be a string, got {type(reason_val).__name__}"
+            )
         has_reason = isinstance(reason_val, str) and bool(reason_val.strip())
         if is_exception and not has_reason:
             errors.append(
