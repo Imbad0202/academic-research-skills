@@ -145,7 +145,7 @@ runtime graceful-degradation mechanisms is
 
 Independent of install channel, the write-scope guard has documented degraded states.
 None of them *introduces* a block: launcher failure paths resolve to **pass-through**,
-and a missing `timeout` binary is a bounding-mechanism swap under which the guard keeps
+and a missing or unusable `timeout` binary is a bounding-mechanism swap under which the guard keeps
 operating normally — its real decisions (including deny) still apply, with only an
 overrun resolving to pass-through. The guard is an optional
 hardening layer, and a broken guard must not lock a user out of their own files
@@ -162,4 +162,4 @@ accepted, untested case with no pinned outcome):
 |---|---|
 | No real Python found (Git Bash / POSIX shell present) | Guard silently no-ops (pass-through); core skills unaffected. On Windows, the 0-byte Microsoft Store `python3` stub is rejected, not mistaken for Python. |
 | Windows without Git Bash | Claude Code falls back to PowerShell, which cannot run the `.sh` launcher: guard inactive, and the `PreToolUse` hook logs an error per call (accepted degradation — noisy, never blocking). |
-| No `timeout` binary | Portable background-watchdog fallback with the same wall-clock bound and the same pass-through-on-overrun posture. |
+| No usable `timeout` binary (none on PATH, or one that rejects the GNU `timeout <N>s cmd` form, such as the Windows built-in `timeout.exe` under Git for Windows) | Portable background-watchdog fallback with the same wall-clock bound and the same pass-through-on-overrun posture. Before #970 a foreign `timeout` was trusted, and the guard passed every write through. |

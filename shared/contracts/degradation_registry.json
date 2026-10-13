@@ -365,7 +365,7 @@
     },
     {
       "mechanism": "write_scope_guard_no_timeout_binary",
-      "failure_class": "No `timeout` binary on PATH when the launcher wall-clock-bounds its interpreter probes and the guard subprocess",
+      "failure_class": "No usable `timeout` binary on PATH when the launcher wall-clock-bounds its interpreter probes and the guard subprocess: none present, or one that rejects the GNU `timeout <N>s cmd` form (the Windows built-in timeout.exe under Git for Windows, #970)",
       "degraded_state": "run_bounded switches to the portable background-and-watchdog fallback: same wall-clock bound (ARS_PROBE_BOUND, integer seconds, default 3) and same pass-through-on-overrun posture — a bounding-mechanism swap, never a change to the security decision",
       "diagnostic_marker": "None when healthy (the two bounding paths are decision-equivalent); an overrun on either path surfaces only as the canonical pass-through output in place of a guard decision",
       "downstream_consumer": "Claude Code PreToolUse permission flow (the pass-through output carries no permissionDecision, so the session's normal permission rules decide)",
@@ -373,7 +373,7 @@
       "authority": [
         {
           "file": "hooks/run_guard.sh",
-          "anchor": "No `timeout` binary: a portable background-and-watchdog fallback"
+          "anchor": "No usable `timeout` binary: a portable background-and-watchdog fallback"
         },
         {
           "file": "hooks/run_guard.sh",

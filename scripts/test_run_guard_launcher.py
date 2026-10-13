@@ -232,6 +232,25 @@ class LauncherRealPythonForwardsTest(unittest.TestCase):
             self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny")
 
 
+class LauncherForeignTimeoutTest(unittest.TestCase):
+    """#970: a `timeout` on PATH that rejects the GNU form (the Windows built-in timeout.exe
+    under Git for Windows) must route to the watchdog fallback, not fail every bounded call
+    and leave the guard passing everything through."""
+
+    def test_foreign_timeout_still_forwards_deny(self):
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            # Mimics timeout.exe given `1s true` / `30s python3 ...`: error text, exit 1.
+            _write_exec(os.path.join(bin_dir, "timeout"),
+                        "#!/bin/sh\necho 'ERROR: Invalid syntax.' >&2\nexit 1\n")
+            payload = _bucket_a_payload(ws, os.path.join(ws, "totally_out_of_scope_dir", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"launcher always exits 0; got {code} err={err!r}")
+            decision = json.loads(out)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             f"a foreign timeout must not disable the guard; got {out!r}")
+
+
 class LauncherStubSkipOrderingTest(unittest.TestCase):
     """First candidate is a stub, a later one is real -> skip the stub, use the real one."""
 

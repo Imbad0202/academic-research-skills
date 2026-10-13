@@ -1,5 +1,5 @@
 #!/bin/sh
-# version: 1.0.1
+# version: 1.0.2
 #
 # ARS write-scope guard LAUNCHER — PreToolUse hook (#454 Windows portability fix).
 #
@@ -69,9 +69,21 @@ esac
 # `timeout`. This is a test/debug switch: it only changes the BOUNDING MECHANISM (timeout
 # binary vs process-group watchdog), never the security decision — both paths enforce the
 # same wall-clock bound and the same pass-through-on-overrun posture. Honored if set; safe
-# to leave unset (the default prefers the `timeout` binary when present).
+# to leave unset (the default prefers a usable `timeout` binary when present).
+#
+# #970: a `timeout` on PATH is used only if it accepts the GNU form we call it with
+# (`timeout <N>s cmd`). On Git for Windows, `timeout` can resolve to the Windows built-in
+# timeout.exe (`/T <seconds>`), which rejects that form and exits non-zero; trusting mere
+# existence failed every bounded call, so no Python was ever found and every write passed
+# through. A present-but-foreign `timeout` now takes the watchdog fallback, like a missing one.
+# Decided once per launch, not per bounded call.
+TIMEOUT_USABLE=
+if [ -z "${ARS_GUARD_FORCE_WATCHDOG:-}" ] && command -v timeout >/dev/null 2>&1 \
+        && timeout 1s true </dev/null >/dev/null 2>&1; then
+    TIMEOUT_USABLE=1
+fi
 have_timeout() {
-    [ -z "${ARS_GUARD_FORCE_WATCHDOG:-}" ] && command -v timeout >/dev/null 2>&1
+    [ -n "$TIMEOUT_USABLE" ]
 }
 
 # Reserved exit status meaning "the bounded command was killed for overrunning its bound".
@@ -89,7 +101,7 @@ run_bounded() {
         [ "$_st" -eq 124 ] && return "$TIMEOUT_STATUS"
         return "$_st"
     fi
-    # No `timeout` binary: a portable background-and-watchdog fallback. Several POSIX subtleties
+    # No usable `timeout` binary: a portable background-and-watchdog fallback. Several POSIX subtleties
     # bite here, all of which broke a naive version (#454 dual-track):
     #
     #  1. STDIN: a backgrounded (`&`) command's stdin defaults to /dev/null, which would feed

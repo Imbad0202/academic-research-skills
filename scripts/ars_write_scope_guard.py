@@ -29,9 +29,12 @@ function. `main()` only wires stdin -> evaluate_decision -> stdout JSON.
 
 PAYLOAD CONTRACT (first-party verified against official Claude Code hook docs 2026-06-01):
   Available: session_id, transcript_path, cwd, permission_mode, hook_event_name, effort,
-  tool_name, tool_input, plus subagent-conditional agent_id / agent_type. `agent_type`
-  equals the subagent's frontmatter `name` (e.g. "bibliography_agent"). `tool_use_id` is
-  NOT a payload field — do not rely on it.
+  tool_name, tool_input, plus subagent-conditional agent_id / agent_type. For an agent
+  defined in a project or user agents dir, `agent_type` equals its frontmatter `name`
+  (e.g. "bibliography_agent"); for an agent shipped by this plugin it is the plugin-scoped
+  identifier ("academic-research-skills:synthesis_agent", #971). The manifest keys the bare
+  name; `_manifest_key` maps the scoped form back to it. `tool_use_id` is NOT a payload
+  field — do not rely on it.
 
 TOOL_INPUT SHAPES: Write / Edit / MultiEdit each carry a SINGLE top-level `file_path`.
   Write: {file_path, content}; Edit: {file_path, old_string, new_string};
@@ -59,6 +62,12 @@ STRUCTURED_WRITE_TOOLS = {"Write", "Edit", "MultiEdit"}
 
 # Tools the guard inspects at all. Everything else -> allow (out of scope).
 INSPECTED_TOOLS = STRUCTURED_WRITE_TOOLS | {"Bash"}
+
+# Claude Code reports an agent shipped by a plugin as "<plugin name>:<agent name>" (#971).
+# Only THIS plugin's prefix is stripped: another plugin's agent that happens to share a
+# manifest name is not an ARS agent and stays out of the fence. Pinned to the `name` in
+# .claude-plugin/plugin.json by the guard tests.
+PLUGIN_AGENT_NAMESPACE = "academic-research-skills:"
 
 # Step 2 infrastructure self-protection — normalized workspace-relative path patterns
 # that NO agent (and not even the unconstrained main session) may write. These are the
@@ -261,6 +270,15 @@ def _infra_protected_target(raw_path, cwd, plugin_root):
     return _matches_any(rel, INFRA_PROTECTED_GLOBS)
 
 
+def _manifest_key(agent_type):
+    """The manifest key for a payload agent_type: this plugin's scoped identifier
+    ("academic-research-skills:synthesis_agent") maps to the bare name the manifest keys
+    ("synthesis_agent"); anything else is returned unchanged (#971)."""
+    if isinstance(agent_type, str) and agent_type.startswith(PLUGIN_AGENT_NAMESPACE):
+        return agent_type[len(PLUGIN_AGENT_NAMESPACE):]
+    return agent_type
+
+
 def _allow_unconstrained(agent_type):
     """The decision for an actor that Slice 1 does not fence (main session / Bucket B/C/D).
 
@@ -324,8 +342,9 @@ def evaluate_decision(payload, manifest, workspace_root, plugin_root=None):
         tool_input = {}
     cwd = payload.get("cwd") or workspace_root
     agent_type = payload.get("agent_type")
+    agent_key = _manifest_key(agent_type)
     agents = (manifest or {}).get("agents", {})
-    is_bucket_a = bool(agent_type) and agent_type in agents
+    is_bucket_a = bool(agent_key) and agent_key in agents
 
     # Tools we don't inspect (Read, Grep, WebFetch, ...) -> allow.
     if tool_name not in INSPECTED_TOOLS:
@@ -407,7 +426,7 @@ def evaluate_decision(payload, manifest, workspace_root, plugin_root=None):
         return _allow_unconstrained(agent_type)
 
     # --- Step 4: Bucket A glob check (path already normalized in Step 1). ---
-    allowed = agents[agent_type].get("allowed_write_globs", [])
+    allowed = agents[agent_key].get("allowed_write_globs", [])
     if not _matches_any(rel, allowed):
         return {
             "decision": "deny",
