@@ -69,7 +69,8 @@ RUNTIME_HASHES = {
 # and confidence-as-disclosure-only semantics. These hashes are re-pinned with
 # those reviewed changes; exact hashes keep later drift auditable without a
 # live-model comparison. Re-pinned for #973 (Phase Boundary enforcement sentence
-# reworded to the actual coverage condition; no detection-surface change).
+# reworded to the actual coverage condition; devils_advocate's #523 transport note
+# states the same condition; no detection-surface change).
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
         "9690e570d081bfcdef6da23fb93064af4028c9d6b766fcbcf0cf0981463d492f",
@@ -80,7 +81,7 @@ DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
         "27764ff193db4cfbd95145bf56cbb1675df4c259ce1a1f48e409dadb68fe6781",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
-        "c8b7da641e8f6ee1c8ce630233c5c045758516b12c45feee40fe74c07aeff2e0",
+        "a3ddde4c1e26e9e8603f71e47b3afb0c83131e0428b84048c0c3e634f19e5b5c",
     Path("academic-paper-reviewer/templates/peer_review_report_template.md"):
         "5da1f9d24d6e321cec5f38c13fa03fe23b9363b1842cb0d8111c5e39a810c7d1",
 }

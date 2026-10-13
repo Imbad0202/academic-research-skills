@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Imbad0202/academic-research-skills/shared/contracts/patch/block_manifest.schema.json",
   "title": "Block Manifest",
-  "description": "#89 Item 7 block manifest (spec docs/design/2026-06-10-390-diff-patch-revision-mode-spec.md §3.1). Machine-generated sidecar emitted by scripts/ars_anchorize_draft.py beside the anchored draft (<draft>.block-manifest.json) and included in the writer's revision-invocation context. It is the ONLY legitimate hash source for a patch document: the writer copies base_draft_hash and per-op old_hash values from here, never computes them (Bucket A agents have all Bash denied, #134; an LLM asked to emit a SHA-256 would hallucinate one). Sidecar artifact, NOT a passport field (§6).",
+  "description": "#89 Item 7 block manifest (spec docs/design/2026-06-10-390-diff-patch-revision-mode-spec.md §3.1). Machine-generated sidecar emitted by scripts/ars_anchorize_draft.py beside the anchored draft (<draft>.block-manifest.json) and included in the writer's revision-invocation context. It is the ONLY legitimate hash source for a patch document: the writer copies base_draft_hash and per-op old_hash values from here, never computes them (a Bucket A agent has all Bash denied when it runs as a separately dispatched subagent under the plugin hook, #134/#973, and an LLM asked to emit a SHA-256 would hallucinate one). Sidecar artifact, NOT a passport field (§6).",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest_format_version", "base_draft_hash", "blocks"],

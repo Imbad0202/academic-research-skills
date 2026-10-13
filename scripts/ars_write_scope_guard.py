@@ -41,8 +41,9 @@ PAYLOAD CONTRACT (first-party verified against official Claude Code hook docs 20
   defined in a project or user agents dir, `agent_type` equals its frontmatter `name`
   (e.g. "bibliography_agent"); for an agent shipped by this plugin it is the plugin-scoped
   identifier ("academic-research-skills:synthesis_agent", #971). The manifest keys the bare
-  name; `_manifest_key` maps the scoped form back to it. `tool_use_id` is NOT a payload
-  field — do not rely on it.
+  name; `_manifest_key` maps the scoped form back to it. Captured payloads (Claude Code
+  2.1.296, #973) also carry `tool_use_id` and `prompt_id`; the guard does not read them, so
+  their presence or absence never changes a decision.
 
 TOOL_INPUT SHAPES: Write / Edit / MultiEdit each carry a SINGLE top-level `file_path`.
   Write: {file_path, content}; Edit: {file_path, old_string, new_string};

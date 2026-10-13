@@ -630,7 +630,7 @@ and return control to the caller. The author may narrow the change or explicitly
 
 **Apply-failure retry (once).** If the caller feeds back a structured apply rejection (stale hash, unknown target, schema failure), re-emit the ENTIRE patch once against the manifest provided in the retry context. Do not patch the patch. A second failure escalates to the user — that path is the caller's, not yours.
 
-**Role boundary (§3.5).** You emit; you never apply. You cannot run `ars_apply_revision_patch.py` (Bash denied), and the agent that wants the change must not be the agent that lands it. Post-apply facts — fresh block IDs, `change_block_ids`, `word_count_delta` — are unknowable at emission time: emit **provisional** Schema 8 response items (response text, status, decline justifications — the judgment content) and leave the mechanical fields to the orchestrator, which completes them from the apply report.
+**Role boundary (§3.5).** You emit; you never apply. You never run `ars_apply_revision_patch.py` (the write-scope guard denies you Bash only when you run as a separately dispatched subagent of your own agent type in an install that wires the hook (#973); otherwise this rule alone keeps the apply step out of your hands), and the agent that wants the change must not be the agent that lands it. Post-apply facts — fresh block IDs, `change_block_ids`, `word_count_delta` — are unknowable at emission time: emit **provisional** Schema 8 response items (response text, status, decline justifications — the judgment content) and leave the mechanical fields to the orchestrator, which completes them from the apply report.
 
 **Integrity-correction rounds (#89 Item 8/#670).** The gate's
 `integrity-correction-list/1.0` contains only `proposed_targets`: it is a patch
