@@ -76,10 +76,12 @@ esac
 # timeout.exe (`/T <seconds>`), which rejects that form and exits non-zero; trusting mere
 # existence failed every bounded call, so no Python was ever found and every write passed
 # through. A present-but-foreign `timeout` now takes the watchdog fallback, like a missing one.
-# Decided once per launch, not per bounded call.
+# Decided once per launch, not per bounded call. `-k 1s` bounds the probe itself at about 2s
+# even if the `true` on PATH hangs and ignores SIGTERM; a `timeout` without `-k` fails the
+# probe and also takes the fallback, so the probe can never disable the guard.
 TIMEOUT_USABLE=
 if [ -z "${ARS_GUARD_FORCE_WATCHDOG:-}" ] && command -v timeout >/dev/null 2>&1 \
-        && timeout 1s true </dev/null >/dev/null 2>&1; then
+        && timeout -k 1s 1s true </dev/null >/dev/null 2>&1; then
     TIMEOUT_USABLE=1
 fi
 have_timeout() {

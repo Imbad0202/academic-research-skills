@@ -32,6 +32,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -249,6 +250,25 @@ class LauncherForeignTimeoutTest(unittest.TestCase):
             decision = json.loads(out)
             self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
                              f"a foreign timeout must not disable the guard; got {out!r}")
+
+    def test_hanging_true_does_not_stall_timeout_probe(self):
+        """The usability probe runs the `true` on PATH; one that hangs and ignores SIGTERM
+        must not stall the launcher (`-k` bounds the probe), and the guard still decides."""
+        real_timeout = shutil.which("timeout")
+        if not real_timeout:
+            self.skipTest("no `timeout` binary on this host")
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            os.symlink(real_timeout, os.path.join(bin_dir, "timeout"))
+            _write_exec(os.path.join(bin_dir, "true"), "#!/bin/sh\ntrap '' TERM\nsleep 30\n")
+            payload = _bucket_a_payload(ws, os.path.join(ws, "totally_out_of_scope_dir", "x.md"))
+            start = time.monotonic()
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            elapsed = time.monotonic() - start
+            self.assertLess(elapsed, 15, f"a hanging `true` stalled the probe for {elapsed:.1f}s")
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             f"guard must still decide after the probe; got {out!r}")
 
 
 class LauncherStubSkipOrderingTest(unittest.TestCase):
