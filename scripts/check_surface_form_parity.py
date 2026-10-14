@@ -255,8 +255,14 @@ def validate(data: dict[str, Any], manifest: dict[str, Any] | None = None) -> li
         # --- exception <-> reason pairing (both ways) ---
         # has_reason must require a real non-empty STRING (codex P2 round 12): str(None) is the
         # non-empty 'None', so a null exception_reason would otherwise read as present.
+        # A non-string reason (int, list, bool) must also fail on its own (#968): treating it
+        # as absent lets a stray typed reason on a non-exception item pass.
         is_exception = item.get("exception") is True
         reason_val = item.get("exception_reason")
+        if reason_val is not None and not isinstance(reason_val, str):
+            errors.append(
+                f"{where}: exception_reason must be a string, got {type(reason_val).__name__}"
+            )
         has_reason = isinstance(reason_val, str) and bool(reason_val.strip())
         if is_exception and not has_reason:
             errors.append(f"{where}: exception=true but exception_reason missing/empty")

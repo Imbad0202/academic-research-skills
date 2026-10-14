@@ -175,6 +175,44 @@ class TestMutations(unittest.TestCase):
                 break
         self.assertTrue(any("exception_reason missing" in e for e in self._v(self.data)))
 
+    def test_non_string_exception_reason_fails_on_both_sides(self) -> None:
+        """#968: a non-string exception_reason must not count as absent.
+
+        An int, list, or bool fails the string type check. On an exception item it
+        also stays missing; on a non-exception item the type error is enough to
+        fail the item, and it is not also reported as a present string reason.
+        """
+        data = _load()
+        for it in data["items"]:
+            if it.get("exception") is True:
+                it["exception_reason"] = 42
+                break
+        errors = self._v(data)
+        self.assertTrue(
+            any("exception_reason must be a string" in e for e in errors),
+            msg=f"expected a type error for the non-string reason: {errors!r}",
+        )
+        self.assertTrue(
+            any("missing/empty" in e for e in errors),
+            msg=f"a non-string reason must not count as present: {errors!r}",
+        )
+
+        data = _load()
+        target = next(it for it in data["items"] if it.get("exception") is not True)
+        target["exception_reason"] = ["reason"]
+        errors = self._v(data)
+        self.assertTrue(
+            any("exception_reason must be a string" in e for e in errors),
+            msg=f"expected a type error for the non-string reason: {errors!r}",
+        )
+        self.assertFalse(
+            any("exception_reason present but exception is not true" in e for e in errors),
+            msg=(
+                f"a non-string reason on a non-exception item must not be "
+                f"treated as a stray string reason: {errors!r}"
+            ),
+        )
+
     def test_pdftotext_line_anchor_fails(self) -> None:
         self.data["items"][0]["provenance"]["section"] = "§F.3.6 L4753"
         self.assertTrue(any("pdftotext line-number anchor" in e for e in self._v(self.data)))
