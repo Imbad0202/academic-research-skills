@@ -6,7 +6,7 @@ import hashlib
 import json
 import shutil
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any, Callable
 
 import pytest
@@ -1304,3 +1304,16 @@ def test_cli_main_reports_success_and_invocation_error(
     assert integration.main(["--root", str(root)]) == 0
     assert "integration: ok" in capsys.readouterr().out
     assert integration.main(["--unknown"]) == 2
+
+
+def test_frozen_and_ci_paths_match_windows_posix_form() -> None:
+    """#964: frozen report and CI manifest paths stay forward-slash on Windows."""
+    for path in (
+        integration.RUNTIME_TEST,
+        integration.MEASUREMENT_PLAN,
+        integration.MEASUREMENT_EXECUTION_MANIFEST,
+        integration.MEASUREMENT_TRANSCRIPT,
+    ):
+        windows = PureWindowsPath(*path.parts)
+        assert windows.as_posix() == path.as_posix()
+        assert str(windows) != path.as_posix()

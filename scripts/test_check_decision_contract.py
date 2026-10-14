@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
@@ -385,3 +385,10 @@ def test_re_review_sanctioned_literals_alone_pass(tmp_path):
     for literal in lint.RE_REVIEW_SANCTIONED_LITERALS:
         assert literal in text, f"sanctioned literal missing from protocol: {literal!r}"
     assert lint.check(root) == []
+
+
+def test_re_review_protocol_matches_windows_relative_path():
+    """#964: the mask compares a posix relative path, not str(Path) backslashes."""
+    windows = PureWindowsPath(lint.RE_REVIEW_PROTOCOL)
+    assert windows.as_posix() == lint.RE_REVIEW_PROTOCOL
+    assert str(windows) != lint.RE_REVIEW_PROTOCOL

@@ -415,12 +415,12 @@ REQUIRED_POINTERS: dict[Path, tuple[str, ...]] = {
     CONTRACT_README: (
         "Cross-document consistency advisory (#672)",
         "preregistration-artifact/1.0",
-        str(EVIDENCE_SCHEMA),
+        EVIDENCE_SCHEMA.as_posix(),
         "#660 runs first and #672 second",
         "ADVISORY_UNAVAILABLE:<CODE>",
     ),
     EVIDENCE_PROTOCOL: (
-        str(EVIDENCE_SCHEMA),
+        EVIDENCE_SCHEMA.as_posix(),
         "cross_document_consistency",
         "disclosure_scope",
         "UNMEASURED",
@@ -458,7 +458,7 @@ REQUIRED_POINTERS: dict[Path, tuple[str, ...]] = {
     ),
     PAPER_SKILL: (
         "preregistration-artifact/1.0",
-        str(PROTOCOL),
+        PROTOCOL.as_posix(),
     ),
     INTAKE_AGENT: (
         "preregistration-artifact/1.0",
@@ -1143,7 +1143,7 @@ def _ci_errors(root: Path) -> list[str]:
         for marker in (
             "672-cross-document-consistency-advisory",
             "672-cross-document-consistency-integration",
-            str(RUNTIME_TEST),
+            RUNTIME_TEST.as_posix(),
             "scripts/test_check_cross_document_consistency_advisory_integration.py",
         ):
             if marker not in serialized:

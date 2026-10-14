@@ -1704,7 +1704,7 @@ def _expected_measurement_report(manifest_sha256: str) -> dict[str, Any]:
         },
         "adjudication": {"applies": False},
         "preregistration": {
-            "plan_ref": str(MEASUREMENT_PLAN),
+            "plan_ref": MEASUREMENT_PLAN.as_posix(),
             "plan_sha256": FROZEN_PLAN_SHA256,
             "frozen_commit": FROZEN_MAIN_SHA,
             "frozen_before_dispatch": True,
@@ -1713,7 +1713,7 @@ def _expected_measurement_report(manifest_sha256: str) -> dict[str, Any]:
             "amendments": [],
         },
         "execution_manifest": {
-            "ref": str(MEASUREMENT_EXECUTION_MANIFEST),
+            "ref": MEASUREMENT_EXECUTION_MANIFEST.as_posix(),
             "sha256": manifest_sha256,
             "write_once": True,
             "claims": [],
@@ -1728,7 +1728,7 @@ def _expected_measurement_report(manifest_sha256: str) -> dict[str, Any]:
         },
         "raw_outputs": {
             "retained": True,
-            "paths": [str(MEASUREMENT_TRANSCRIPT)],
+            "paths": [MEASUREMENT_TRANSCRIPT.as_posix()],
         },
         "results": {
             "design": "single-arm deterministic synthetic conformance",
@@ -1909,7 +1909,7 @@ def _ci_errors(root: Path) -> list[str]:
         manifest = {}
     entries = manifest.get("pytest", [])
     expected = {
-        "660-tortured-phrase-screening": str(RUNTIME_TEST),
+        "660-tortured-phrase-screening": RUNTIME_TEST.as_posix(),
         "660-tortured-phrase-integration": "scripts/test_check_tortured_phrase_screening_integration.py",
     }
     for identifier, path in expected.items():

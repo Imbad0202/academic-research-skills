@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from scripts import check_684_review_criteria_binding as guard
 from scripts import check_phase_conformance as phase
@@ -272,3 +272,15 @@ def test_phase1_checker_accepts_pointer_commitment_without_extra_h2() -> None:
     )
     parsed = phase.parse_phase1("bound-phase1.md", "\n".join(lines), contract, "eic")
     assert parsed is not None
+
+
+def test_locked_asset_keys_match_windows_posix_paths() -> None:
+    """#964: suite-lock keys are forward-slash; str(Path) on Windows would miss them."""
+    texts = _texts()
+    lock = json.loads(texts[guard.SUITE_LOCK])
+    for path in guard.LOCKED_MEASUREMENT_ASSETS:
+        windows = PureWindowsPath(*path.parts)
+        assert windows.as_posix() == path.as_posix()
+        assert windows.as_posix() in lock["assets"]
+        assert str(windows) not in lock["assets"]
+    assert guard.check_measurement_assets(texts) == []

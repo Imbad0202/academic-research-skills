@@ -462,13 +462,14 @@ def check_measurement_assets(texts: dict[Path, str]) -> list[str]:
         if set(lock) != {"schema_version", "suite", "assets"}:
             errors.append("suite lock: root must be the closed three-field object")
         assets = lock.get("assets")
-        expected_refs = {str(path) for path in LOCKED_MEASUREMENT_ASSETS}
+        # as_posix() so lock keys (always '/') match on Windows, where str(Path) uses '\\'.
+        expected_refs = {path.as_posix() for path in LOCKED_MEASUREMENT_ASSETS}
         if not isinstance(assets, dict) or set(assets) != expected_refs:
             errors.append("suite lock: exact locked asset set drift")
         else:
             for path in LOCKED_MEASUREMENT_ASSETS:
                 actual = hashlib.sha256(texts[path].encode("utf-8")).hexdigest()
-                if assets[str(path)] != actual:
+                if assets[path.as_posix()] != actual:
                     errors.append(f"suite lock: hash mismatch for {path}")
 
     call_plan = _read_json(texts[CALL_PLAN], str(CALL_PLAN), errors)

@@ -6,7 +6,7 @@ import ast
 import json
 import shutil
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any, Callable
 
 import pytest
@@ -696,3 +696,11 @@ def test_duplicate_or_nonfinite_schema_json_fails_closed(
     root = _tree(tmp_path)
     (root / guard.SIDECAR_SCHEMA).write_text(payload, encoding="utf-8")
     _assert_error(root, "schema load/check failed")
+
+
+def test_pointer_and_ci_paths_match_windows_posix_form() -> None:
+    """#964: manifest and Markdown paths are forward-slash; str(Path) would miss them."""
+    for path in (guard.EVIDENCE_SCHEMA, guard.PROTOCOL, guard.RUNTIME_TEST):
+        windows = PureWindowsPath(*path.parts)
+        assert windows.as_posix() == path.as_posix()
+        assert str(windows) != path.as_posix()
