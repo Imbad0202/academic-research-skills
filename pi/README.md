@@ -130,7 +130,7 @@ To hide the ARS skills again and continue unrelated work without the compatibili
 
 ## Wrapper regression test
 
-When Pi provides `event.systemPromptOptions`, the wrapper filters its structured skill list while inactive and sets only `sections.ars_compatibility` while active. It does not return a replacement `systemPrompt`, so sections contributed by other extensions remain part of Pi's structured prompt. Skills are identified by their canonical file paths, including symlinks, rather than their names. Stopping ARS removes its compatibility section. Hosts without this structured API retain the rendered-prompt fallback described below.
+When Pi provides `event.systemPromptOptions.sections` and no `forceSystemPrompt` override is set, the wrapper filters its structured skill list while inactive and sets only `sections.ars_compatibility` while active. It does not return a replacement `systemPrompt`, so sections contributed by other extensions remain part of Pi's structured prompt. Skills are identified by their canonical file paths, including symlinks, rather than their names. Stopping ARS removes its compatibility section. Older Pi versions can provide `systemPromptOptions` without `sections`; those hosts use the rendered-prompt fallback described below. The same fallback applies when an earlier extension returns a complete `systemPrompt` (including an empty override), because Pi gives that override precedence over structured options. In that case the wrapper filters or appends to the rendered override while preserving the earlier extension's text.
 
 
 The wrapper accepts both upstream Pi's single-string system prompt and a string-array prompt (as observed in OMP 18.2.6). Array inputs remain arrays: the inactive XML filter runs per block, and activation appends the compatibility note as a separate block without mutating the host's array.
@@ -155,7 +155,19 @@ PI_CODING_AGENT_ROOT=/tmp/ars-pi-runtime/node_modules/@earendil-works/pi-coding-
   node --test pi/wrapper.test.mjs pi/wrapper.integration.test.mjs
 ```
 
-Contributor validation on macOS arm64 with Node.js 25.9.0 passed all 17 checks against Pi 1.1.0 and 1.3.0. On the original wrapper, all six new checks failed; the 11 existing regressions passed. This verifies local prompt composition, including retained structured-option rebuilding. It does not exercise a live MCP server, provider requests, background-task session replay, or provider cache-hit rates. Those upstream lifecycle and provider behaviors are not claimed as fixed by this wrapper test.
+Contributor validation on macOS arm64 with Node.js 25.9.0 passed 22 unit tests and four real-runner scenarios (active/inactive ARS, each with/without an earlier complete-prompt override) on every version below. Node reports 27 passing tests including the integration parent test.
+
+| Pi package version | Runner arguments | Result |
+| --- | --- | --- |
+| 0.74.0 | prompt, images, rendered prompt, options | Passed |
+| 0.85.1 | prompt, images, rendered prompt, options | Passed |
+| 0.86.0 | prompt, images, options | Passed |
+| 1.1.0 | prompt, images, options | Passed |
+| 1.3.0 | trigger, options | Passed |
+
+The six new fallback unit tests fail against the previous PR head. The real-runner scenarios also reproduce the older-runner failures on 0.74.0/0.85.1 and the prior-override failures on 0.86.0/1.1.0/1.3.0 without the correction. The original 16 unit tests remain passing. The fallback tests include frozen string-array prompts and an explicitly empty complete-prompt override.
+
+This verifies local prompt composition, including retained structured-option rebuilding where supported. It does not exercise a live MCP server, provider requests, background-task session replay, or provider cache-hit rates. Those upstream lifecycle and provider behaviors are not claimed as fixed by this wrapper test.
 
 ## What the wrapper translates
 

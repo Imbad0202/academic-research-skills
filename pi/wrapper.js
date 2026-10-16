@@ -189,7 +189,7 @@ export default function (pi) {
 
   pi.on("before_agent_start", (event) => {
     const options = event.systemPromptOptions;
-    if (options) {
+    if (options?.sections && options.forceSystemPrompt === undefined) {
       // Compose with Pi's structured prompt instead of freezing a rendered snapshot.
       if (arsActive) {
         options.sections.ars_compatibility = compatibility;
@@ -203,7 +203,7 @@ export default function (pi) {
       return;
     }
 
-    // Older Pi versions expose only the rendered string or array prompt (#880).
+    // Older runners and earlier complete-prompt overrides require the rendered fallback (#880).
     if (!arsActive) return { systemPrompt: hideArsSkills(event.systemPrompt) };
     const sp = event.systemPrompt;
     return { systemPrompt: Array.isArray(sp) ? [...sp, compatibility] : `${sp}\n${compatibility}` };

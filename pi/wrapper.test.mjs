@@ -325,3 +325,46 @@ test("stopping ARS removes its structured section but retains other extensions",
   assert.equal(options.sections.mcp_servers, "Keep the MCP server instructions.");
   assert.deepEqual(options.skills, [{ name: "deep-research", filePath: externalSkillLocation }]);
 });
+
+for (const active of [false, true]) {
+  for (const array of [false, true]) {
+    test(`legacy options without sections use rendered fallback (active=${active}, array=${array})`, () => {
+      const harness = createHarness();
+      if (active) harness.handlers.get("input")({ text: "/ars-plan topic" });
+      const options = structuredOptions();
+      delete options.sections;
+      const skills = options.skills;
+      const prompt = array ? Object.freeze(["First block", baseSystemPrompt]) : baseSystemPrompt;
+      const { systemPrompt } = harness.handlers.get("before_agent_start")({
+        systemPrompt: prompt, systemPromptOptions: options,
+      });
+      assert.equal(Array.isArray(systemPrompt), array);
+      const rendered = array ? systemPrompt.join("\n") : systemPrompt;
+      for (const location of arsSkillLocations) assert.equal(rendered.includes(location), active);
+      assert.equal(rendered.includes(externalSkillLocation), true);
+      assert.equal(rendered.includes(compatibilityMarker), active);
+      assert.equal(options.skills, skills);
+      assert.equal(options.sections, undefined);
+    });
+  }
+  test(`earlier complete-prompt override uses rendered fallback (active=${active})`, () => {
+    const harness = createHarness();
+    if (active) harness.handlers.get("input")({ text: "/ars-plan topic" });
+    for (const forceSystemPrompt of [`${baseSystemPrompt}\nEarlier extension sentinel`, ""]) {
+      const options = { ...structuredOptions(), forceSystemPrompt };
+      const skills = options.skills;
+      const { systemPrompt } = harness.handlers.get("before_agent_start")({
+        systemPrompt: forceSystemPrompt, systemPromptOptions: options,
+      });
+      assert.equal(systemPrompt.includes(compatibilityMarker), active);
+      if (forceSystemPrompt) {
+        assert.equal(systemPrompt.includes("Earlier extension sentinel"), true);
+        for (const location of arsSkillLocations) assert.equal(systemPrompt.includes(location), active);
+        assert.equal(systemPrompt.includes(externalSkillLocation), true);
+      }
+      assert.equal(options.skills, skills);
+      assert.equal(options.sections.ars_compatibility, undefined);
+      assert.equal(options.forceSystemPrompt, forceSystemPrompt);
+    }
+  });
+}
