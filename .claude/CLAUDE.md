@@ -9,8 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.23.0 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.23.1 | Full pipeline orchestrator | (coordinates all above) |
 | `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
+
+## v3.23.1 Key Additions (write-scope guard repairs + RFC 4180 CSV reading in `sr-screener` + Gemini 4 Argon as a provisional verifier)
+
+- **Two write-scope guard fail-open paths closed (#972), and the docs state where the fence engages (#974).** Plugin-dispatched Bucket A agents are reported as `academic-research-skills:<agent>`; the guard now strips this plugin's own prefix before the manifest lookup (#971). `hooks/run_guard.sh` no longer trusts a `timeout` that rejects the GNU form, such as Windows `timeout.exe`, which had left every write unchecked (#970). Inline main-session roles carry no agent type and are not fenced; the docs now say so.
+- **`sr-screener` reads CSV exports by RFC 4180 quoting (#979, reported by @paololimo).** `parse_csv` sniffs only the delimiter; quote rules no longer come from a 5,000-character sample, which had split later quoted fields, guessed `'` as the quote character, and read single-column exports with semicolons as semicolon-delimited.
+- **Gemini 4 Argon is a provisional Google verifier and the recommended Google id (#980).** `gemini-3.1-pro-preview` stays validated; no Gemini smoke script ships, so the Promotion Bakeoff entry gate for a Gemini candidate is pending.
+- **Smaller changes.** A mid-message `[direct-mode]` token is not the escape hatch (#892); lint type checks for `exception_reason` (#965, #977) and a Windows path comparison (#963), contributed by @SID-6921 and @daniyyell-dev; `THIRD_PARTY.md` lists md-to-word (#969, @ls-open). No measured claim ships.
 
 ## v3.23.0 Key Additions (`sr-screener` as a fifth skill + repairs from a pipeline walk-through + evidence and ledger hardening)
 
@@ -413,7 +420,7 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
-- **Suite version**: 3.23.0 (per CHANGELOG.md)
-- **Last Updated**: 2026-10-03
+- **Suite version**: 3.23.1 (per CHANGELOG.md)
+- **Last Updated**: 2026-10-16
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

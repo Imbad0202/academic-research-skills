@@ -6,15 +6,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.23.1] - 2026-10-16 — Write-scope guard repairs, RFC 4180 CSV reading in sr-screener, and Gemini 4 Argon as a provisional verifier
+
+> **Repairs and model currency; no new skill, and nothing here is a measured claim:** v3.23.1 closes two write-scope guard paths that let writes through without a check, one for plugin-dispatched agents and one for Windows `timeout.exe` (#972), and the docs now state where the fence engages (#974). `sr-screener` reads CSV exports by RFC 4180 quoting instead of quote rules guessed from a sample (#979). Gemini 4 Argon is listed as a provisional Google verifier and the recommended Google id; `gemini-3.1-pro-preview` stays validated (#980). The routing core states that a mid-message `[direct-mode]` token is not the escape hatch (#892). Smaller lint and Windows repairs come from outside contributors (#956, #963, #965, #977), and `THIRD_PARTY.md` lists md-to-word (#969).
+
 ### Changed
 
 - **Gemini 4 Argon (`gemini-4-argon`) is listed as a provisional Google verifier and becomes the recommended Google id (#980).** Google released it on 2026-10-13. `shared/cross_model_verification.md` adds it to the supported-model table and to the `provisional` branch of `id_status`, with a note on the provider facts that touch the Gemini call pattern: Search grounding is supported, sampling parameters are ignored, and `thinking_level` is left at the provider default. `gemini-3.1-pro-preview` keeps its validated status as the previous generation. The SETUP examples (en / zh-TW) and the `.claude/CLAUDE.md` summary follow. No smoke or bakeoff run is claimed; `scripts/cross_model_smoke_test.sh` covers the OpenAI route only, so the provisional and unlisted notices for a `gemini-*` id no longer point to it, and § Promotion Bakeoff marks the entry gate for a Gemini candidate as pending until a Gemini smoke script ships.
 
 - **The routing core says that a mid-message `[direct-mode]` token is not the escape hatch (#892).** The rule was only in `shared/references/intent_clarification_protocol.md`, which a plugin-install session cannot read. One sentence joins Step 0 of `shared/references/routing_core.md` and its six copies; the `academic-pipeline/SKILL.md` content lock is updated. Measured on Claude Code 2.1.296 with the #133 fixtures (smoke test, one session per cell except fixture 06): on a plugin install, Claude Fable 5.1 honored the mid-message token in 6 of 6 sessions before the change and 3 of 6 after it, so the acceptance rule fixed before the run is not met and #892 stays open. All 21 fixtures ran in both installs on both models, and fixtures 13-21 ran for the first time; fixture 16 failed on Claude Opus 5.5 in the plugin install (#960), and the other single-cell failures and scoring readings are in the log. Results are in `tests/fixtures/issue_133_routing/CALIBRATION_LOG.md`.
 
+- **The documentation states where the write-scope fence actually engages (#973, #974).** The fence acts only when a `PreToolUse` payload names a Bucket A agent type, which happens for separately dispatched, named subagents. Roles that run inline in the main session carry no agent type and are not fenced. The coverage claims in the docs now say so, and captured hook payloads are pinned as test fixtures.
+
+- **`THIRD_PARTY.md` lists md-to-word, a Markdown-to-DOCX typesetting companion for Stage 5 output (#969, contributed by @ls-open).** It is an out-of-tree project; ARS does not bundle or endorse it.
+
 ### Fixed
 
 - **`sr-screener` reads a CSV export correctly when a doubled quote appears only after the first 5,000 characters (#979, reported by @paololimo).** `srlib.parse_csv` sniffed the whole dialect from that sample, and a sample with no doubled quote switched RFC 4180 quote doubling off. A later field holding a quoted term was then split: with commas the year was lost and the DOI or journal received abstract text; with semicolons the fields stayed in place but the abstract gained stray quotes. `parse_csv` now sniffs only the delimiter, reads quotes by RFC 4180 (`"` as the quote character, doubling on), and also accepts a space before a quoted field, which RFC 4180 does not define. The same review found three related misreads, now fixed: apostrophes in the sample could make `'` the quote character, a quote-free sample could split a later `, "a, b"` field, and a single-column export with semicolons in its titles was read as semicolon-delimited; a header record that the sniffed delimiter splits into fewer than two fields now means a single column. Six regression tests in `scripts/test_sr_screener_pipeline.py` cover these cases.
+
+- **Two write-scope guard paths no longer let writes through unchecked (#972; #970 and #971 reported by @xihuheyi007).** Claude Code names a plugin-shipped agent `academic-research-skills:<agent>`, while the scope manifest keys the bare name, so the fence never engaged for plugin-dispatched Bucket A agents; the guard now strips this plugin's own prefix before the lookup (#971). `hooks/run_guard.sh` trusted any `timeout` on `PATH`; the Windows built-in `timeout.exe` rejects the GNU form, so no Python was found and every write passed. The launcher now probes `timeout` once per launch and otherwise uses its watchdog fallback (#970).
+
+- **Lints reject a non-string `exception_reason` (#965 by @SID-6921, #977 by @daniyyell-dev).** `check_field_norm_severity.py` read a `null` reason as present through `str(None)` (#965). `check_surface_form_parity.py` treated an int, list, or bool reason as absent, so a stray typed reason on a non-exception item passed (#977).
+
+- **Windows: the v3.6.6 A/B fixture-manifest reverse scan compares POSIX paths (#963, contributed by @SID-6921).** `str(Path)` renders `\` on Windows and missed the forward-slash manifest entries.
+
+- **A test regex uses a raw string, removing an invalid-escape warning (#956, contributed by @SID-6921).** Test-only; no behavior change.
 
 ## [3.23.0] - 2026-10-03 — `sr-screener` as a fifth skill, repairs from a pipeline walk-through, and evidence and ledger hardening
 
