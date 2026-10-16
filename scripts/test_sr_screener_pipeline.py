@@ -1278,3 +1278,25 @@ def test_parse_csv_keeps_sniffed_delimiter_with_late_doubled_quote() -> None:
     assert last["DO"] == ["10.1000/q"]
     assert last["T2"] == ["Journal Q"]
     assert last["AB"] == ['They call it "zero-target", a baseline, with 69% accuracy.']
+
+
+def test_parse_csv_ignores_apostrophes_when_guessing_the_quote_character() -> None:
+    """#979 review: apostrophes in the sample must not make "'" the quote character."""
+    text = "title,abstract,year\n" + "P,'term',2021\n" * 400 + 'Q,"The ""term"", result",2022\n'
+    last = LIB.parse_csv(text)[-1]
+    assert last["AB"] == ['The "term", result']
+    assert last["PY"] == ["2022"]
+
+
+def test_parse_csv_reads_a_space_before_a_late_quoted_field() -> None:
+    """#979 review: a quote-free sample must not decide how ', "a, b"' is read."""
+    text = "title,abstract,year\n" + "P, plain, 2021\n" * 400 + 'Q, "alpha, beta", 2022\n'
+    last = LIB.parse_csv(text)[-1]
+    assert last["AB"] == ["alpha, beta"]
+    assert last["PY"] == ["2022"]
+
+
+def test_parse_csv_keeps_semicolons_in_a_single_column_export() -> None:
+    """#979 review: a header without the guessed delimiter means one column."""
+    last = LIB.parse_csv("title\n" + "Study; subtitle\n" * 40)[-1]
+    assert last["TI"] == ["Study; subtitle"]

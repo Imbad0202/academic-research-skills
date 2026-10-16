@@ -640,15 +640,16 @@ def _hkey(h):
 
 
 def parse_csv(text):
-    sample = text[:5000]
+    # Sniff only the delimiter. Quote rules guessed from a 5,000-character sample
+    # misread later rows (#979), so they follow RFC 4180 instead.
     try:
-        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
-        # The sniffer infers quote doubling from the sample alone; a sample without a
-        # doubled quote turns it off and splits a later RFC 4180 field (#979).
-        dialect.doublequote = True
+        delimiter = csv.Sniffer().sniff(text[:5000], delimiters=",;\t").delimiter
     except csv.Error:
-        dialect = csv.excel
-    rows = list(csv.DictReader(io.StringIO(text), dialect=dialect))
+        delimiter = ","
+    if delimiter not in text.split("\n", 1)[0]:
+        delimiter = ","  # a header without it is a single-column export
+    rows = list(csv.DictReader(io.StringIO(text), delimiter=delimiter, quotechar='"',
+                               doublequote=True, skipinitialspace=True))
     recs = []
     for row in rows:
         keyed = {_hkey(k): (v or "").strip() for k, v in row.items() if k}
