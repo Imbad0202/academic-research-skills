@@ -1246,3 +1246,35 @@ def test_ft_page_reasons_and_pending_titles_are_escaped(prepared):
     wb = openpyxl.load_workbook(p / "out" / "TA_screening_log.xlsx", data_only=False)
     assert wb["Pending"]["B2"].data_type == "s" and wb["Pending"]["B2"].value.startswith("'=")
     wb.close()
+
+
+def _quoted_late_csv(delimiter: str) -> str:
+    """40 plain rows, then one row whose abstract holds a doubled quote (#979)."""
+    rows = [["title", "abstract", "year", "doi", "journal"]]
+    rows += [[f"Paper {i}", "A plain abstract without any quote characters. " * 3,
+              "2021", f"10.1000/{i}", "Journal"] for i in range(40)]
+    rows += [["Quoted paper", 'They call it "zero-target", a baseline, with 69% accuracy.',
+              "2022", "10.1000/q", "Journal Q"]]
+    buf = io.StringIO()
+    csv.writer(buf, delimiter=delimiter, quoting=csv.QUOTE_ALL).writerows(rows)
+    return buf.getvalue()
+
+
+def test_parse_csv_reads_doubled_quote_after_sniffed_sample() -> None:
+    """#979: a sample with no doubled quote must not switch off RFC 4180 quote doubling."""
+    last = LIB.parse_csv(_quoted_late_csv(","))[-1]
+    assert last["PY"] == ["2022"]
+    assert last["DO"] == ["10.1000/q"]
+    assert last["T2"] == ["Journal Q"]
+    assert last["AB"] == ['They call it "zero-target", a baseline, with 69% accuracy.']
+
+
+def test_parse_csv_keeps_sniffed_delimiter_with_late_doubled_quote() -> None:
+    """#979: the fix keeps delimiter sniffing; a semicolon export still parses.
+
+    With ';' the fields do not shift, but the abstract gained stray quotes."""
+    last = LIB.parse_csv(_quoted_late_csv(";"))[-1]
+    assert last["PY"] == ["2022"]
+    assert last["DO"] == ["10.1000/q"]
+    assert last["T2"] == ["Journal Q"]
+    assert last["AB"] == ['They call it "zero-target", a baseline, with 69% accuracy.']

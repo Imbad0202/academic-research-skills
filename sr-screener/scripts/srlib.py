@@ -643,6 +643,9 @@ def parse_csv(text):
     sample = text[:5000]
     try:
         dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+        # The sniffer infers quote doubling from the sample alone; a sample without a
+        # doubled quote turns it off and splits a later RFC 4180 field (#979).
+        dialect.doublequote = True
     except csv.Error:
         dialect = csv.excel
     rows = list(csv.DictReader(io.StringIO(text), dialect=dialect))
