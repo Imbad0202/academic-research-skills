@@ -1300,3 +1300,11 @@ def test_parse_csv_keeps_semicolons_in_a_single_column_export() -> None:
     """#979 review: a header without the guessed delimiter means one column."""
     last = LIB.parse_csv("title\n" + "Study; subtitle\n" * 40)[-1]
     assert last["TI"] == ["Study; subtitle"]
+
+
+def test_parse_csv_reads_a_quoted_header_field_with_a_line_break() -> None:
+    """#979 review: the header check reads the whole first record, not the first line."""
+    records = LIB.parse_csv('"Article\nTitle";Abstract;Year\nStudy;Plain abstract;2022\n')
+    assert len(records) == 1
+    assert records[0]["AB"] == ["Plain abstract"]
+    assert records[0]["PY"] == ["2022"]
