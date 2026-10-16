@@ -359,7 +359,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.23.1 (2026-10-16) — write-scope ガードの修正、sr-screener の RFC 4180 準拠 CSV 読み込み、モデル現況の整合（Gemini 4 Argon）
 
-> **修正とモデル現況の整合、新しい skill はなく、本版の内容に測定結果はない:** v3.23.1 は、チェックなしで書き込みを通していた write-scope ガードの 2 つの経路を塞ぎます。1 つは plugin から派遣された agent、もう 1 つは Windows 組み込みの `timeout.exe` です（#972）。ドキュメントもガードが実際に作動する場面を明記しました（#974）。`sr-screener` は、サンプルから推測した引用符規則ではなく RFC 4180 の引用符規則で CSV エクスポートを読み込みます（#979）。Gemini 4 Argon を provisional として掲載し、推奨 Google モデルとしました。`gemini-3.1-pro-preview` は validated のままです（#980）。ルーティング中核は、メッセージ途中の `[direct-mode]` トークンがエスケープハッチではないと明記しました（#892）。外部貢献者による lint と Windows の小さな修正（#956、#963、#965、#977）があり、`THIRD_PARTY.md` に md-to-word を掲載しました（#969）。
+> **修正とモデル現況の整合、新しい skill はなく、精度や性能の向上は主張しない:** v3.23.1 は、チェックなしで書き込みを通していた write-scope ガードの 2 つの経路を塞ぎます。1 つは plugin から派遣された agent、もう 1 つは Windows 組み込みの `timeout.exe` です（#972）。ドキュメントもガードが実際に作動する場面を明記しました（#974）。`sr-screener` は、サンプルから推測した引用符規則ではなく RFC 4180 の引用符規則で CSV エクスポートを読み込みます（#979）。Gemini 4 Argon を provisional として掲載し、推奨 Google 検証モデルとしました。`gemini-3.1-pro-preview` は validated のままです（#980）。ルーティング中核は、メッセージ途中の `[direct-mode]` トークンがエスケープハッチではないと明記しました（#892）。plugin インストールでのスモークテストでは、Claude Fable 5.1 が変更後も 6 セッション中 3 回このトークンに従ったため（変更前は 6 回中 6 回）、受け入れ基準は満たされず、#892 は未解決のままです。外部貢献者による lint と Windows の小さな修正（#956、#963、#965、#977）があり、`THIRD_PARTY.md` に md-to-word を掲載しました（#969）。
 
 ### v3.23.0 (2026-10-03) — 5 つ目の skill `sr-screener`、パイプラインの机上ウォークスルーによる修正、証拠と台帳の強化
 

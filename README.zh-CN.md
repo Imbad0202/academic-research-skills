@@ -342,7 +342,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.23.1（2026-10-16）— write-scope guard 修复、sr-screener 按 RFC 4180 读取 CSV、模型现况对齐（Gemini 4 Argon）
 
-> **修复与模型现况对齐；没有新 skill，本版内容都不是测量结果：**v3.23.1 补上 write-scope guard 两条未经检查就放行写入的路径，一条出现在 plugin 派发的 agent，一条出现在 Windows 内置的 `timeout.exe`（#972），文档也改为说明防护实际在哪些情况下启用（#974）。`sr-screener` 改按 RFC 4180 的引号规则读取 CSV 导出文件，不再使用从样本推测的引号规则（#979）。Gemini 4 Argon 以 provisional 身份列入，并成为推荐的 Google 模型；`gemini-3.1-pro-preview` 保持 validated（#980）。路由核心写明：消息中段出现的 `[direct-mode]` 标记不是跳出机制（#892）。另有数项由外部贡献者提供的 lint 与 Windows 修复（#956、#963、#965、#977），`THIRD_PARTY.md` 也列入 md-to-word（#969）。
+> **修复与模型现况对齐；没有新 skill，也不宣称任何准确度或性能提升：**v3.23.1 补上 write-scope guard 两条未经检查就放行写入的路径，一条出现在 plugin 派发的 agent，一条出现在 Windows 内置的 `timeout.exe`（#972），文档也改为说明防护实际在哪些情况下启用（#974）。`sr-screener` 改按 RFC 4180 的引号规则读取 CSV 导出文件，不再使用从样本推测的引号规则（#979）。Gemini 4 Argon 以 provisional 身份列入，并成为推荐的 Google 验证模型；`gemini-3.1-pro-preview` 保持 validated（#980）。路由核心写明：消息中段出现的 `[direct-mode]` 标记不是跳出机制（#892）；在 plugin 安装环境的冒烟测试中，Claude Fable 5.1 修改后仍有 6 次中 3 次遵从该标记（修改前 6 次中 6 次），未达到验收标准，#892 仍未关闭。另有数项由外部贡献者提供的 lint 与 Windows 修复（#956、#963、#965、#977），`THIRD_PARTY.md` 也列入 md-to-word（#969）。
 
 ### v3.23.0（2026-10-03）— 第五个 skill `sr-screener`、pipeline 纸上走查修复，以及证据与记录文件强化
 

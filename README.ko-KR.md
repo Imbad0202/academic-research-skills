@@ -372,7 +372,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.23.1 (2026-10-16) — write-scope guard 수정, sr-screener의 RFC 4180 기준 CSV 읽기, 모델 현황 정렬(Gemini 4 Argon)
 
-> **수정과 모델 현황 정렬, 새 skill 없음, 이번 버전의 내용은 측정 결과가 아님:** v3.23.1은 검사 없이 쓰기를 통과시키던 write-scope guard의 두 경로를 막습니다. 하나는 plugin이 파견한 agent, 다른 하나는 Windows 내장 `timeout.exe`입니다(#972). 문서도 guard가 실제로 작동하는 경우를 명시합니다(#974). `sr-screener`는 샘플에서 추측한 따옴표 규칙 대신 RFC 4180 따옴표 규칙으로 CSV 내보내기 파일을 읽습니다(#979). Gemini 4 Argon을 provisional로 등재하고 권장 Google 모델로 지정했으며, `gemini-3.1-pro-preview`는 validated를 유지합니다(#980). 라우팅 코어는 메시지 중간의 `[direct-mode]` 토큰이 escape hatch가 아니라고 명시합니다(#892). 외부 기여자의 작은 lint 및 Windows 수정(#956, #963, #965, #977)이 있고, `THIRD_PARTY.md`에 md-to-word를 등재했습니다(#969).
+> **수정과 모델 현황 정렬, 새 skill 없음, 정확도나 성능 향상은 주장하지 않음:** v3.23.1은 검사 없이 쓰기를 통과시키던 write-scope guard의 두 경로를 막습니다. 하나는 plugin이 파견한 agent, 다른 하나는 Windows 내장 `timeout.exe`입니다(#972). 문서도 guard가 실제로 작동하는 경우를 명시합니다(#974). `sr-screener`는 샘플에서 추측한 따옴표 규칙 대신 RFC 4180 따옴표 규칙으로 CSV 내보내기 파일을 읽습니다(#979). Gemini 4 Argon을 provisional로 등재하고 권장 Google 검증 모델로 지정했으며, `gemini-3.1-pro-preview`는 validated를 유지합니다(#980). 라우팅 코어는 메시지 중간의 `[direct-mode]` 토큰이 escape hatch가 아니라고 명시합니다(#892). plugin 설치 환경의 스모크 테스트에서 Claude Fable 5.1은 변경 후에도 6개 세션 중 3개에서 이 토큰을 따랐으므로(변경 전 6개 중 6개) 수용 기준을 충족하지 못했고 #892는 계속 열려 있습니다. 외부 기여자의 작은 lint 및 Windows 수정(#956, #963, #965, #977)이 있고, `THIRD_PARTY.md`에 md-to-word를 등재했습니다(#969).
 
 ### v3.23.0 (2026-10-03) — 다섯 번째 skill `sr-screener`, 파이프라인 지상 점검에 따른 수정, 증거와 원장 강화
 
