@@ -229,3 +229,142 @@ test("array prompts append compatibility as a separate block and stop cleanly", 
   await harness.commands.get("ars-pi-stop").handler("", harness.commandContext);
   assert.deepEqual(runBeforeAgentStart(harness, prompt), prompt);
 });
+
+function structuredOptions() {
+  return {
+    skills: [
+      ...arsSkillNames.map((name, index) => ({ name, filePath: arsSkillLocations[index] })),
+      { name: "deep-research", filePath: externalSkillLocation },
+    ],
+    sections: { mcp_servers: "Keep the MCP server instructions." },
+  };
+}
+
+function runStructuredBeforeAgentStart(harness, options) {
+  const result = harness.handlers.get("before_agent_start")({
+    systemPromptOptions: options,
+    get systemPrompt() {
+      assert.fail("Structured handling must not read or replace a rendered prompt snapshot");
+    },
+  });
+  assert.equal(result, undefined);
+}
+
+test("structured inactive prompts filter package skills and preserve extension sections", () => {
+  const options = structuredOptions();
+  const originalSkills = Object.freeze(options.skills);
+  const sections = options.sections;
+  runStructuredBeforeAgentStart(createHarness(), options);
+
+  assert.deepEqual(options.skills, [{ name: "deep-research", filePath: externalSkillLocation }]);
+  assert.equal(originalSkills.length, 5);
+  assert.equal(options.sections, sections);
+  assert.equal(options.sections.mcp_servers, "Keep the MCP server instructions.");
+  assert.equal(options.sections.ars_compatibility, undefined);
+});
+
+test("structured active prompts add one compatibility section without replacing skills or MCP", () => {
+  const harness = createHarness();
+  harness.handlers.get("input")({ text: "/ars-plan topic" });
+  const options = structuredOptions();
+  const skills = options.skills;
+  const sections = options.sections;
+  runStructuredBeforeAgentStart(harness, options);
+  const compatibility = options.sections.ars_compatibility;
+  runStructuredBeforeAgentStart(harness, options);
+
+  assert.equal(options.skills, skills);
+  assert.equal(options.sections, sections);
+  assert.equal(options.sections.mcp_servers, "Keep the MCP server instructions.");
+  assert.ok(compatibility.includes(compatibilityMarker));
+  assert.equal(options.sections.ars_compatibility, compatibility);
+  assert.equal(compatibility.split(compatibilityMarker).length - 1, 1);
+});
+
+test("later extensions can add sections after either structured ARS branch", () => {
+  for (const active of [false, true]) {
+    const harness = createHarness();
+    if (active) harness.handlers.get("input")({ text: "/skill:academic-pipeline topic" });
+    const options = structuredOptions();
+    runStructuredBeforeAgentStart(harness, options);
+    options.sections.later_extension = "Added after ARS.";
+
+    assert.equal(options.sections.later_extension, "Added after ARS.");
+    assert.equal(options.sections.mcp_servers, "Keep the MCP server instructions.");
+    assert.equal(Object.hasOwn(options, "forceSystemPrompt"), false);
+  }
+});
+
+test("structured inactive filtering resolves symlinks and keeps missing or colliding skills", (t) => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "ars-pi-structured-&-"));
+  t.after(() => rmSync(tempRoot, { recursive: true, force: true }));
+  const linkedRoot = join(tempRoot, "linked-checkout");
+  symlinkSync(repoRoot, linkedRoot, process.platform === "win32" ? "junction" : "dir");
+  const options = structuredOptions();
+  options.skills = [
+    ...arsSkillNames.map((name) => ({ name, filePath: resolve(linkedRoot, name, "SKILL.md") })),
+    { name: "deep-research", filePath: externalSkillLocation },
+    { name: "academic-paper", filePath: "/missing/academic-paper/SKILL.md" },
+  ];
+  runStructuredBeforeAgentStart(createHarness(), options);
+  assert.deepEqual(options.skills.map((skill) => skill.filePath), [
+    externalSkillLocation, "/missing/academic-paper/SKILL.md",
+  ]);
+});
+
+test("stopping ARS removes its structured section but retains other extensions", async () => {
+  const harness = createHarness();
+  await harness.commands.get("ars-pi-start").handler("", harness.commandContext);
+  const options = structuredOptions();
+  runStructuredBeforeAgentStart(harness, options);
+  assert.ok(options.sections.ars_compatibility.includes(compatibilityMarker));
+
+  await harness.commands.get("ars-pi-stop").handler("", harness.commandContext);
+  runStructuredBeforeAgentStart(harness, options);
+  assert.equal(options.sections.ars_compatibility, undefined);
+  assert.equal(options.sections.mcp_servers, "Keep the MCP server instructions.");
+  assert.deepEqual(options.skills, [{ name: "deep-research", filePath: externalSkillLocation }]);
+});
+
+for (const active of [false, true]) {
+  for (const array of [false, true]) {
+    test(`legacy options without sections use rendered fallback (active=${active}, array=${array})`, () => {
+      const harness = createHarness();
+      if (active) harness.handlers.get("input")({ text: "/ars-plan topic" });
+      const options = structuredOptions();
+      delete options.sections;
+      const skills = options.skills;
+      const prompt = array ? Object.freeze(["First block", baseSystemPrompt]) : baseSystemPrompt;
+      const { systemPrompt } = harness.handlers.get("before_agent_start")({
+        systemPrompt: prompt, systemPromptOptions: options,
+      });
+      assert.equal(Array.isArray(systemPrompt), array);
+      const rendered = array ? systemPrompt.join("\n") : systemPrompt;
+      for (const location of arsSkillLocations) assert.equal(rendered.includes(location), active);
+      assert.equal(rendered.includes(externalSkillLocation), true);
+      assert.equal(rendered.includes(compatibilityMarker), active);
+      assert.equal(options.skills, skills);
+      assert.equal(options.sections, undefined);
+    });
+  }
+  test(`earlier complete-prompt override uses rendered fallback (active=${active})`, () => {
+    const harness = createHarness();
+    if (active) harness.handlers.get("input")({ text: "/ars-plan topic" });
+    for (const forceSystemPrompt of [`${baseSystemPrompt}\nEarlier extension sentinel`, ""]) {
+      const options = { ...structuredOptions(), forceSystemPrompt };
+      const skills = options.skills;
+      const { systemPrompt } = harness.handlers.get("before_agent_start")({
+        systemPrompt: forceSystemPrompt, systemPromptOptions: options,
+      });
+      assert.equal(systemPrompt.includes(compatibilityMarker), active);
+      if (forceSystemPrompt) {
+        assert.equal(systemPrompt.includes("Earlier extension sentinel"), true);
+        for (const location of arsSkillLocations) assert.equal(systemPrompt.includes(location), active);
+        assert.equal(systemPrompt.includes(externalSkillLocation), true);
+      }
+      assert.equal(options.skills, skills);
+      assert.equal(options.sections.ars_compatibility, undefined);
+      assert.equal(options.forceSystemPrompt, forceSystemPrompt);
+    }
+  });
+}
