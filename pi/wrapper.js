@@ -188,6 +188,22 @@ export default function (pi) {
   });
 
   pi.on("before_agent_start", (event) => {
+    const options = event.systemPromptOptions;
+    if (options) {
+      // Compose with Pi's structured prompt instead of freezing a rendered snapshot.
+      if (arsActive) {
+        options.sections.ars_compatibility = compatibility;
+      } else {
+        options.skills = options.skills.filter((skill) => {
+          const location = canonicalPath(skill.filePath);
+          return !location || !skillLocations.has(location);
+        });
+        delete options.sections.ars_compatibility;
+      }
+      return;
+    }
+
+    // Older Pi versions expose only the rendered string or array prompt (#880).
     if (!arsActive) return { systemPrompt: hideArsSkills(event.systemPrompt) };
     const sp = event.systemPrompt;
     return { systemPrompt: Array.isArray(sp) ? [...sp, compatibility] : `${sp}\n${compatibility}` };

@@ -130,6 +130,9 @@ To hide the ARS skills again and continue unrelated work without the compatibili
 
 ## Wrapper regression test
 
+When Pi provides `event.systemPromptOptions`, the wrapper filters its structured skill list while inactive and sets only `sections.ars_compatibility` while active. It does not return a replacement `systemPrompt`, so sections contributed by other extensions remain part of Pi's structured prompt. Skills are identified by their canonical file paths, including symlinks, rather than their names. Stopping ARS removes its compatibility section. Hosts without this structured API retain the rendered-prompt fallback described below.
+
+
 The wrapper accepts both upstream Pi's single-string system prompt and a string-array prompt (as observed in OMP 18.2.6). Array inputs remain arrays: the inactive XML filter runs per block, and activation appends the compatibility note as a separate block without mutating the host's array.
 
 This is prompt-container compatibility, not a full OMP port. Skill hiding still recognizes Pi's XML `<skill>` entries; it does not hide OMP's different `<skills>` text listing. Package discovery and complete research workflows in other hosts are outside this change.
@@ -141,6 +144,18 @@ node --test pi/wrapper.test.mjs
 The test covers idle-prompt skill hiding through canonical and symlink-spelled load paths, XML-escaped locations, preservation of missing and adjacent unrelated skills across alternate block formatting, same-request `/ars-*` and direct `/skill:*` activation while idle, manual start/stop toggling, `/tree` state restoration, argument-safe script-path rewriting, and single-pass argument-placeholder substitution.
 
 The array regressions additionally cover selective XML filtering, preservation of block boundaries and frozen input arrays, activation, repeated preparation, and deactivation.
+
+The structured regressions cover inactive filtering, active compatibility insertion, earlier/later extension sections, repeated preparation, symlink paths, same-name unrelated skills, and stopping ARS.
+
+An optional integration test loads the wrapper between two sentinel extensions using an installed Pi package's actual extension loader, runner, and prompt builder. Install Pi into a temporary directory, then run:
+
+```bash
+npm install --prefix /tmp/ars-pi-runtime --no-audit --no-fund @earendil-works/pi-coding-agent@1.3.0
+PI_CODING_AGENT_ROOT=/tmp/ars-pi-runtime/node_modules/@earendil-works/pi-coding-agent \
+  node --test pi/wrapper.test.mjs pi/wrapper.integration.test.mjs
+```
+
+Contributor validation on macOS arm64 with Node.js 25.9.0 passed all 17 checks against Pi 1.1.0 and 1.3.0. On the original wrapper, all six new checks failed; the 11 existing regressions passed. This verifies local prompt composition, including retained structured-option rebuilding. It does not exercise a live MCP server, provider requests, background-task session replay, or provider cache-hit rates. Those upstream lifecycle and provider behaviors are not claimed as fixed by this wrapper test.
 
 ## What the wrapper translates
 
