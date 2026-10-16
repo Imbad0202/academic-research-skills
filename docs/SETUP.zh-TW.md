@@ -196,11 +196,12 @@ ARS 使用繼承的 Claude session 模型即可完整運作。想要更高信心
 ```bash
 # Step 1: Set your API key (choose one or both)
 export OPENAI_API_KEY="sk-your-key-here"        # For GPT-6 Astra / GPT-5.6 Sol / GPT-5.5
-export GOOGLE_AI_API_KEY="AIza-your-key-here"    # For Gemini 3.1 Pro
+export GOOGLE_AI_API_KEY="AIza-your-key-here"    # For Gemini 4 Argon / Gemini 3.1 Pro
 
 # Step 2: Choose your cross-verification model
 export ARS_CROSS_MODEL="gpt-6-astra"            # Current OpenAI flagship — provisional pending ARS validation (run scripts/cross_model_smoke_test.sh)
-# or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"  # Current Google flagship — validated, strong at factual verification
+# or: export ARS_CROSS_MODEL="gemini-4-argon"  # Current Google flagship — provisional pending ARS validation (no Gemini smoke script; check one known citation first)
+# or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"  # Previous Google generation — validated, strong at factual verification
 # or: export ARS_CROSS_MODEL="gpt-5.6-sol"      # Previous generation — validated on the ChatGPT-subscription citation transport, provisional on this API route
 # or: export ARS_CROSS_MODEL="gpt-5.5"          # Previous generation — validated (designated API-route bakeoff baseline)
 
