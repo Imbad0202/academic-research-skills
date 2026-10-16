@@ -698,9 +698,13 @@ def test_duplicate_or_nonfinite_schema_json_fails_closed(
     _assert_error(root, "schema load/check failed")
 
 
-def test_pointer_and_ci_paths_match_windows_posix_form() -> None:
-    """#964: manifest and Markdown paths are forward-slash; str(Path) would miss them."""
-    for path in (guard.EVIDENCE_SCHEMA, guard.PROTOCOL, guard.RUNTIME_TEST):
-        windows = PureWindowsPath(*path.parts)
-        assert windows.as_posix() == path.as_posix()
-        assert str(windows) != path.as_posix()
+def test_pointer_and_ci_paths_match_windows_posix_form(tmp_path, monkeypatch) -> None:
+    root = _tree(tmp_path)
+    pointers = guard._required_pointers(
+        evidence_schema=PureWindowsPath(*guard.EVIDENCE_SCHEMA.parts),
+        protocol=PureWindowsPath(*guard.PROTOCOL.parts),
+    )
+    monkeypatch.setattr(guard, "REQUIRED_POINTERS", pointers)
+    monkeypatch.setattr(guard, "RUNTIME_TEST", PureWindowsPath(*guard.RUNTIME_TEST.parts))
+    assert guard._documentation_errors(root) == []
+    assert guard._ci_errors(root) == []

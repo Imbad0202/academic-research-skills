@@ -225,16 +225,16 @@ class TestCollaborationDepthRubric(unittest.TestCase):
             self.assertIn("dispatch anchor", r.stdout.lower())
 
     def test_windows_rubric_path_matches_frontmatter_ref(self) -> None:
-        """#964: str(Path) uses backslashes on Windows and misses rubric_ref."""
         from pathlib import PureWindowsPath
+        from unittest.mock import patch
 
         import scripts.check_collaboration_depth_rubric as lint
 
-        windows = PureWindowsPath(*lint.RUBRIC_PATH.parts)
-        canonical = lint.RUBRIC_PATH.as_posix()
-        self.assertEqual(windows.as_posix(), canonical)
-        self.assertEqual(canonical, "shared/collaboration_depth_rubric.md")
-        self.assertNotEqual(str(windows), canonical)
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _make_repo(root)
+            with patch.object(lint, "RUBRIC_PATH", PureWindowsPath(*lint.RUBRIC_PATH.parts)):
+                self.assertEqual(lint._check_agent_files(root), [])
 
     def test_skill_md_without_nonblocking_phrase_fails(self) -> None:
         with TemporaryDirectory() as tmp:

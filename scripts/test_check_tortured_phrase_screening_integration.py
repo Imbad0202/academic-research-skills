@@ -1306,14 +1306,14 @@ def test_cli_main_reports_success_and_invocation_error(
     assert integration.main(["--unknown"]) == 2
 
 
-def test_frozen_and_ci_paths_match_windows_posix_form() -> None:
-    """#964: frozen report and CI manifest paths stay forward-slash on Windows."""
-    for path in (
-        integration.RUNTIME_TEST,
-        integration.MEASUREMENT_PLAN,
-        integration.MEASUREMENT_EXECUTION_MANIFEST,
-        integration.MEASUREMENT_TRANSCRIPT,
+def test_frozen_and_ci_paths_match_windows_posix_form(tmp_path, monkeypatch) -> None:
+    root = _copy_repo(tmp_path)
+    report = json.loads((root / integration.MEASUREMENT_REPORT).read_text(encoding="utf-8"))
+    for name in (
+        "RUNTIME_TEST", "MEASUREMENT_PLAN", "MEASUREMENT_EXECUTION_MANIFEST", "MEASUREMENT_TRANSCRIPT",
     ):
-        windows = PureWindowsPath(*path.parts)
-        assert windows.as_posix() == path.as_posix()
-        assert str(windows) != path.as_posix()
+        monkeypatch.setattr(integration, name, PureWindowsPath(*getattr(integration, name).parts))
+    expected = integration._expected_measurement_report(report["execution_manifest"]["sha256"])
+    for section in ("preregistration", "execution_manifest", "raw_outputs"):
+        assert expected[section] == report[section]
+    assert integration._ci_errors(root) == []

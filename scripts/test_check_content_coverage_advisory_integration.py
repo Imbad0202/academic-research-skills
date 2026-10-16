@@ -308,12 +308,11 @@ def test_guard_cli_success_and_unknown_flag(tmp_path: Path) -> None:
     assert guard.main(["--root", str(root), "--unknown"]) == 2
 
 
-def test_required_pointers_match_windows_posix_paths() -> None:
-    """#964: Markdown path tokens stay forward-slash, which str(Path) is not on Windows."""
-    for tokens in guard.REQUIRED_POINTERS.values():
-        for token in tokens:
-            if not token.startswith(("shared/", "scripts/", "academic-", "docs/", "evals/")):
-                continue
-            windows = PureWindowsPath(token)
-            assert windows.as_posix() == token
-            assert str(windows) != token
+def test_required_pointers_match_windows_posix_paths(tmp_path, monkeypatch) -> None:
+    root = _tree(tmp_path)
+    pointers = guard._required_pointers(**{
+        name.lower(): PureWindowsPath(*getattr(guard, name).parts)
+        for name in ("EVIDENCE_SCHEMA", "ADVISORY_SCHEMA", "ADVISORY_RUNTIME", "ADVISORY_PROTOCOL")
+    })
+    monkeypatch.setattr(guard, "REQUIRED_POINTERS", pointers)
+    assert guard._documentation_errors(root) == []

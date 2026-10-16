@@ -387,8 +387,13 @@ def test_re_review_sanctioned_literals_alone_pass(tmp_path):
     assert lint.check(root) == []
 
 
-def test_re_review_protocol_matches_windows_relative_path():
-    """#964: the mask compares a posix relative path, not str(Path) backslashes."""
-    windows = PureWindowsPath(lint.RE_REVIEW_PROTOCOL)
-    assert windows.as_posix() == lint.RE_REVIEW_PROTOCOL
-    assert str(windows) != lint.RE_REVIEW_PROTOCOL
+def test_re_review_protocol_matches_windows_relative_path(tmp_path, monkeypatch):
+    root = mirror(tmp_path)
+    path_type = type(root)
+    relative_to = path_type.relative_to
+
+    def windows_relative_to(path, *args, **kwargs):
+        return PureWindowsPath(*relative_to(path, *args, **kwargs).parts)
+
+    monkeypatch.setattr(path_type, "relative_to", windows_relative_to)
+    assert lint.check(root) == []
