@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Windows: six lints compare repository paths in POSIX form (#964, #978, contributed by @daniyyell-dev).** `check_684_review_criteria_binding.py`, `check_collaboration_depth_rubric.py`, `check_content_coverage_advisory_integration.py`, `check_cross_document_consistency_advisory_integration.py`, `check_decision_contract.py`, and `check_tortured_phrase_screening_integration.py` compared `str(Path)`, which uses `\` on Windows, with forward-slash paths, and failed on a correct tree. They now use `Path.as_posix()`. The new tests pass Windows-style paths into each lint's comparison, so the Ubuntu CI fails if a conversion is reverted.
+
 ## [3.23.1] - 2026-10-16 — Write-scope guard repairs, RFC 4180 CSV reading in sr-screener, and Gemini 4 Argon as a provisional verifier
 
 > **Repairs and model currency; no new skill, and no accuracy or performance claim:** v3.23.1 closes two write-scope guard paths that let writes through without a check, one for plugin-dispatched agents and one for Windows `timeout.exe` (#972), and the docs now state where the fence engages (#974). `sr-screener` reads CSV exports by RFC 4180 quoting instead of quote rules guessed from a sample (#979). Gemini 4 Argon is listed as a provisional Google verifier and the recommended Google id; `gemini-3.1-pro-preview` stays validated (#980). The routing core states that a mid-message `[direct-mode]` token is not the escape hatch (#892); in a smoke test on a plugin install, Claude Fable 5.1 still honored the token in 3 of 6 sessions (6 of 6 before), so the acceptance rule is not met and #892 stays open. Smaller lint and Windows repairs come from outside contributors (#956, #963, #965, #977), and `THIRD_PARTY.md` lists md-to-word (#969).
