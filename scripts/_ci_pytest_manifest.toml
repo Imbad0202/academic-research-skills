@@ -735,3 +735,7 @@ path = "scripts/test_excluded_source_entry_schema.py"
 [[pytest]]
 id = "sr-screener-pipeline"
 path = "scripts/test_sr_screener_pipeline.py"
+
+[[pytest]]
+id = "830-writing-surface"
+path = "scripts/test_check_writing_surface.py"

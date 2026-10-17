@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- English writing-surface estimates and advisory caller hooks for saved drafts, formatted Markdown, reviewer reports, and decision letters (#830). A frozen saved-output baseline describes the measurements without thresholds; heuristic coverage and unmeasured prompt compliance remain explicit.
+
 ### Fixed
 
 - **Windows: six lints compare repository paths in POSIX form (#964, #978, contributed by @daniyyell-dev).** `check_684_review_criteria_binding.py`, `check_collaboration_depth_rubric.py`, `check_content_coverage_advisory_integration.py`, `check_cross_document_consistency_advisory_integration.py`, `check_decision_contract.py`, and `check_tortured_phrase_screening_integration.py` compared `str(Path)`, which uses `\` on Windows, with forward-slash paths, and failed on a correct tree. They now use `Path.as_posix()`. The new tests pass Windows-style paths into each lint's comparison, so the Ubuntu CI fails if a conversion is reverted.
