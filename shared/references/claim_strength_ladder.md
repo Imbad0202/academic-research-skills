@@ -16,6 +16,8 @@ not detect unregistered semantic movement. E6 therefore remains mandatory for
 unregistered prose. The deterministic sibling `#570` separately conserves
 numbers and citation tokens; see `scripts/check_revision_token_conservation.py`.
 
+**External evidence (#830):** [Gartenberg et al. (2026), *Organization Science* 37(3), Figure 8](https://doi.org/10.1287/orsc.2026.ed.v37.n3) associate higher model-use scores with less hedging in observational aggregate evidence from one journal; this observation changes no rung or authorisation rule.
+
 ## The ladder
 
 Epistemic claims sit on an ordered strength scale. Revision must never move a claim

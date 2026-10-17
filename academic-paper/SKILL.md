@@ -349,6 +349,8 @@ See `references/mode_selection_guide.md` for details.
 
 **Disclosure dispatch contract:** when mode=`disclosure`, agent 9 takes its standalone branch and MUST load `references/disclosure_mode_protocol.md` before producing text. It does not run normal Phase 7 formatting or substitute the generic full-pipeline AI statement; the protocol selects the venue database or policy-anchor path and owns all halt/render decisions.
 
+**Writing-surface advisory (#830):** after saving the self-reviewed draft, and again after the formatter saves the final Markdown paper, the calling session runs `python3 scripts/check_writing_surface.py --input <saved file> --language en`. Follow `shared/references/writing_surface/README.md` for coverage and failure handling. Show the report to the author as a separate advisory; do not send it to the in-pair evaluator or treat its values as revision authority. Phase-limited agents do not run shell commands. For a non-English draft, record that this English-only check did not run.
+
 **Acronym check (#849):** when the writer drafts or revises, or the abstracts are written, the caller runs `scripts/check_acronyms.py` and routes its report as `references/writing_quality_check.md` § F says.
 
 ### Quick Mode Selection Guide
