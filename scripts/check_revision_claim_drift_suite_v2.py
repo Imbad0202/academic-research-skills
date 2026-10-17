@@ -30,6 +30,9 @@ RUNS_PREFIX = f"{SUITE_REL}/runs/"
 V1_RUBRIC_SHA256 = "56e014d5da2c9074afa7d327803caa2de0e16c864cf0374e4cd1f3cf90e35863"
 V2_RUBRIC_SHA256 = "6bb537807f7f0ab02ae2379764551aa0896ca9390919a69cc5812e2f889a315d"
 CLAIM_LADDER_SHA256 = "22f51a6fefb2525e685b6938cc446fa658bdfb6e43157b5d2e6d5051f2212dfe"
+# #830 adds evidence prose only; the rubric and historical reference hash stay frozen.
+LADDER_AMENDMENT_REL = "shared/references/writing_surface/claim_ladder_amendment.json"
+LADDER_AMENDMENT_SHA256 = "cfcc9c3df36d03ddc2ec1145eacd1c0c6380e14fcdbf4e34482f8502dbaeb8c8"
 SUBJECT_SCHEMA_SHA256 = "c6c317610958cb72f7370d6c2099b93dfebae77381381122aea70d960799e4ab"
 LAUNCHER_SCHEMA_SHA256 = "897ea22dc64af59e787976e161e687a2b20b52a9ca16f8ef6c22bee8eeba5070"
 CALL_PLAN_SCHEMA_SHA256 = "360ca3f54fa653c79550df61609dc14714d9f628f955376178d30bd75ff4e647"
@@ -390,13 +393,26 @@ def _check_rubric(root: Path) -> None:
         "shared/references/claim_strength_ladder.md",
         "canonical claim-strength ladder",
     )
-    if _sha256(ladder_path) != CLAIM_LADDER_SHA256:
-        raise ContractError("canonical claim-strength ladder target hash drifted")
     ladder_text = ladder_path.read_text(encoding="utf-8")
     if ladder_text.count("## The ladder") != 1 or ladder_text.count(
         "## What counts as a move (and what does not)"
     ) != 1:
         raise ContractError("canonical claim-strength ladder target headings drifted")
+
+    # Bind the current bytes and prove that removing only the recorded addition
+    # recovers the exact reference pinned by the immutable v2 rubric.
+    amendment_path = _safe_file(root, LADDER_AMENDMENT_REL, "ladder documentation amendment")
+    if _sha256(amendment_path) != LADDER_AMENDMENT_SHA256:
+        raise ContractError("ladder documentation amendment hash drifted")
+    amendment = _strict_json(amendment_path)
+    if (amendment["from_sha256"] != CLAIM_LADDER_SHA256
+            or _sha256(ladder_path) != amendment["to_sha256"]):
+        raise ContractError("canonical claim-strength ladder target hash drifted")
+    addition = amendment["inserted_text"].encode("utf-8")
+    raw = ladder_path.read_bytes()
+    if (raw.count(addition) != 1
+            or hashlib.sha256(raw.replace(addition, b"", 1)).hexdigest() != CLAIM_LADDER_SHA256):
+        raise ContractError("ladder documentation amendment changes frozen rules")
 
     ledger_path = _safe_file(root, f"{SUITE_REL}/rubric_amendments.json", "rubric ledger")
     ledger = _strict_json(ledger_path)

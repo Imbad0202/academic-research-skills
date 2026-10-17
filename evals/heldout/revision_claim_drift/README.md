@@ -91,6 +91,14 @@ pre-registering its exact hash from
 [`rubric_amendments.json`](rubric_amendments.json). The complete frozen design is
 [`docs/design/2026-08-10-679-revision-claim-drift-suite-v2-spec.md`](../../../docs/design/2026-08-10-679-revision-claim-drift-suite-v2-spec.md).
 
+### Documentation-only reference amendment (#830)
+
+The [#830 amendment record](../../../shared/references/writing_surface/claim_ladder_amendment.json)
+binds the original ladder hash to the current file after adding one external-evidence
+note. The guard verifies both hashes and proves that removing only that exact note
+recovers the original bytes. No rung, rule, historical rubric, measurement, or
+closed rubric-amendment ledger changes; no historical result is rescored.
+
 ### v2 subject-context isolation protocol (prospective)
 
 The bounded claim is **repository-instruction isolation**, not global context or

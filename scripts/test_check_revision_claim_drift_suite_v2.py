@@ -41,6 +41,7 @@ def _mirror(tmp_path: Path) -> Path:
     shutil.copytree(REPO_ROOT / FIXTURES, root / FIXTURES)
     _copy_file(root, DESIGN)
     _copy_file(root, LADDER)
+    _copy_file(root, guard.LADDER_AMENDMENT_REL)
     return root
 
 
@@ -1923,3 +1924,29 @@ def test_future_resource_grammar_requires_at_least_two_judges(tmp_path: Path) ->
     row["judges"].pop()
     with pytest.raises(guard.ContractError, match="same 2..8 sorted judges"):
         guard.validate_prospective_measurement(row, root)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "record", "rule", "evidence"])
+def test_830_documentation_amendment_is_exact_and_rules_remain_frozen(tmp_path, mutation):
+    root = _mirror(tmp_path)
+    record = root / guard.LADDER_AMENDMENT_REL
+    if mutation == "missing":
+        record.unlink()
+    elif mutation == "record":
+        record.write_bytes(record.read_bytes() + b"\n")
+    elif mutation == "rule":
+        _replace(root / LADDER, "Revision must never", "Revision may")
+    else:
+        _replace(root / LADDER, "less hedging", "more hedging")
+    with pytest.raises(guard.ContractError, match="amendment|ladder target hash drifted"):
+        guard._check_rubric(root)
+
+
+def test_830_note_removal_recovers_historical_ladder_bytes():
+    record = _read_json(REPO_ROOT / guard.LADDER_AMENDMENT_REL)
+    raw = (REPO_ROOT / LADDER).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == record["to_sha256"]
+    addition = record["inserted_text"].encode()
+    assert raw.count(addition) == 1
+    assert hashlib.sha256(raw.replace(addition, b"", 1)).hexdigest() == guard.CLAIM_LADDER_SHA256
+    assert record["rescoring_permitted"] is False
