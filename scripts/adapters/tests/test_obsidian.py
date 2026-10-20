@@ -149,6 +149,23 @@ def test_year_leading_4_digit_string_accepted(tmp_path, load_yaml):
     assert passport["literature_corpus"][0]["year"] == 2024
 
 
+def test_year_unquoted_iso_date_accepted(tmp_path, load_yaml):
+    """Convention A: unquoted year: 2024-01-15 is loaded by YAML as a date; year extracted as 2024."""
+    vault = tmp_path / "v"
+    vault.mkdir()
+    (vault / "date_year.md").write_text(
+        "---\ncitekey: date2024\ntitle: T\nauthors:\n  - family: Smith\nyear: 2024-01-15\n---\n",
+        encoding="utf-8",
+    )
+    p = tmp_path / "p.yaml"
+    r = tmp_path / "r.yaml"
+    res = _run("--input", str(vault), "--passport", str(p), "--rejection-log", str(r))
+    assert res.returncode == 0
+    passport = load_yaml(p)
+    assert len(passport["literature_corpus"]) == 1
+    assert passport["literature_corpus"][0]["year"] == 2024
+
+
 def test_year_unparseable_is_rejected(tmp_path, load_yaml):
     """Convention A: year='not-a-year' (non-numeric string) must be rejected with year_unparseable."""
     vault = tmp_path / "v"
