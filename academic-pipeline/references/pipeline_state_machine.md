@@ -332,10 +332,11 @@ If a stage shows no progress for an extended period (e.g., Socratic mode exceeds
 
 ### Missing Materials
 
-If required materials are found missing during transition:
+If materials are found missing during transition (gap types per `../agents/state_tracker_agent.md`):
 1. state_tracker reports the material gap
-2. orchestrator suggests returning to the stage that produces that material
-3. User can choose: backfill / skip (at own risk, but cannot skip integrity checks)
+2. Missing required material: the transition is blocked with `HANDOFF_INCOMPLETE` (`shared/handoff_schemas.md` Validation Rules, rule 5); orchestrator suggests returning to the stage that produces that material, and the user backfills it before the next stage runs
+3. Missing recommended material: the transition is not blocked; the user is told it may affect quality and can backfill or continue
+4. Integrity checks cannot be skipped in either case
 
 ### Integrity Check FAIL Loop
 

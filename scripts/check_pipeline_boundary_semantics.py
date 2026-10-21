@@ -73,7 +73,7 @@ CONTENT_LOCKS = {
     "academic-pipeline/SKILL.md": "5f2091fd3216adbb7f2a4cb15422c9f001bb74d4455c0aebfbc91157663f33ef",
     "academic-pipeline/agents/pipeline_orchestrator_agent.md": "2258dbceb17054bf447eeb938df700e4d303b840099a364d622195659815f51f",
     "academic-pipeline/agents/state_tracker_agent.md": "787b994b727235451ca885f5be51ce3590dca9fd7134c66f38ba6ac4287eca26",
-    "academic-pipeline/references/pipeline_state_machine.md": "e8a8e9641403af59b74aa8b27e4709bb87ea4ae6af9978c08628cd6fdc2c58b7",
+    "academic-pipeline/references/pipeline_state_machine.md": "50135e9240aa34b0e26362e7744c421dad754491024e63acd099b28f33987ef2",
     "academic-pipeline/references/process_summary_protocol.md": "6d50369df1400bd43a0b8b8ff9805085ffac4e6059711a5b1095968410aa3f5d",
 }
 
