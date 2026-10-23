@@ -18,7 +18,7 @@ Suite class: `llm_judged` (`../suite_registry.json`). Status: `NOT_RUN`.
 - **Verdicts**: `true`, `false`, or `not_verifiable` per `rubric.md`. Only a
   claim that the manuscript text positively contradicts is `false`.
 - **Judges**: two model families (`gpt-6-astra` through codex,
-  `gemini-3.8-flash-high` through agy), each reading every batch twice.
+  `gemini-4-argon-high` through agy), each reading every batch twice.
 - **Contrast gate**: before a judge's claim verdicts count, it must find at
   least 95% of the false contrast sentences and call at most 5% of the
   accurate ones false (`PREREGISTRATION.md`, Decoys).

@@ -391,7 +391,7 @@ def test_an_oversized_prompt_is_never_sent(tmp_path):
 
 def test_the_agy_transport_passes_the_prompt_as_an_argument():
     cmd, stdin = d.TRANSPORTS["gemini"]("P")
-    assert cmd[:2] == ["agy", "--model=Gemini 3.8 Flash (High)"] and stdin is None
+    assert cmd[:2] == ["agy", "--model=Gemini 4 Argon (High)"] and stdin is None
     assert cmd[cmd.index("-p") + 1] == "P" and {"--disable-slash-commands", "stream-json"} <= set(cmd)
 
 

@@ -172,7 +172,7 @@ def _agy_cmd(model: str) -> Callable[[str], tuple[list[str], str | None]]:
 
 TRANSPORTS: dict[str, Callable[[str], tuple[list[str], str | None]]] = {
     "codex": _codex_cmd,
-    "gemini": _agy_cmd("Gemini 3.8 Flash (High)"),
+    "gemini": _agy_cmd("Gemini 4 Argon (High)"),
     "claude_agy": _agy_cmd("Claude Opus 5.5 (High)"),
 }
 

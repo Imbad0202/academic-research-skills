@@ -1,6 +1,6 @@
 {
   "suite": "panel_claim_factuality",
-  "plan_version": "2",
+  "plan_version": "3",
   "issue": "#1002",
   "claims": {
     "extractor": "scripts/extract_panel_claims.py",
@@ -23,10 +23,10 @@
       "settings": "codex exec --json, model_reasoning_effort=xhigh, -c skills.include_instructions=false, read-only, empty working directory, prompt on stdin; a reply with any item other than a message or reasoning (a command, a file read, a tool) is a transport failure"
     },
     "gemini": {
-      "model_id": "gemini-3.8-flash-high",
+      "model_id": "gemini-4-argon-high",
       "model_family": "google",
-      "agy_model": "Gemini 3.8 Flash (High)",
-      "settings": "agy -p, model 'Gemini 3.8 Flash (High)', --disable-slash-commands, --output-format stream-json, empty working directory; a reply with any step other than the answer (a tool, a skill, a subagent) is a transport failure"
+      "agy_model": "Gemini 4 Argon (High)",
+      "settings": "agy -p, model 'Gemini 4 Argon (High)', --disable-slash-commands, --output-format stream-json, empty working directory; a reply with any step other than the answer (a tool, a skill, a subagent) is a transport failure"
     }
   },
   "replicates": 2,
@@ -128,6 +128,20 @@
       "change": "R4 and auditor rule 4: a claim that states a reported value or result differently from the manuscript is false; R4's not_verifiable covers only a recomputation dispute with correct inputs",
       "reason": "the v1 pilot (3 batches per judge, replicate 1): both judges rated the false contrast sentence that reverses the manuscript's stated power result not_verifiable, citing R4",
       "v1_outputs": "kept as the v1 pilot record; not scored with v2"
+    },
+    {
+      "version": "3",
+      "date": "2026-10-23",
+      "files": [
+        "plan.json",
+        "scripts/dispatch_panel_claim_audit.py",
+        "scripts/test_dispatch_panel_claim_audit.py",
+        "PREREGISTRATION.md",
+        "README.md"
+      ],
+      "change": "the Google judge is gemini-4-argon-high (Gemini 4 Argon (High) through agy), the model the plan named before v1",
+      "reason": "in the v2 pilot, gemini-3.8-flash-high answered its first batch as a long list instead of JSON Lines, exceeded its output token limit, and agy reported an error; the stop rule ended its run",
+      "v2_outputs": "kept as the v2 pilot record; not scored with v3"
     }
   ]
 }
