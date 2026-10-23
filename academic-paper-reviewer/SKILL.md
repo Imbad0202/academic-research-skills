@@ -233,6 +233,12 @@ The dispatching session adds the acronym check to the Editorial Decision Letter 
 
 No call that writes this round's decision, roadmap, or letter sees the report. Later readers of the letter see it but take nothing from it: it is script output, not a reviewer finding, so no weakness, consensus item, revision, or roadmap entry comes from it, and it asks for no reply. A re-review reads it as `references/re_review_mode_protocol.md` input 7 says.
 
+### Suggested-reference check attachment (#1001)
+
+The dispatching session adds the suggested-reference check to the Editorial Decision Letter after `scripts/check_panel_synthesis.py` exits 0 and after any #518 cross-model decision check has written to the letter, and before the acronym check attachment, which stays the letter's last write. It saves the Phase 2 reports of Reviewer 2 and Reviewer 3, unchanged, to files, runs `python3 scripts/verify_panel_recommendations.py --report R2=<R2 report file> --report R3=<R3 report file> --lang <en|zh-TW>` in the user's language, with one `--report` for each of those seats that ran, and appends the printed report, unchanged, under `## Attachment: Suggested-Reference Check (advisory, #1001)`. The script reads each seat's `yaml suggested-references` block and looks each work up in the four bibliographic indexes of the citation gate, sending only the suggested titles and identifiers (`docs/DATA_FLOWS.md`). When neither seat ran, or the script cannot run, the section is one line saying the suggested-reference check did not run.
+
+No call that writes this round's decision, roadmap, or letter sees the report. Later readers of the letter see it but take nothing from it: it is script output, not a reviewer finding, so no weakness, consensus item, revision, or roadmap entry comes from it, and it asks for no reply. A suggestion the report cannot find stays in the reviewer's report and in the roadmap as the reviewer wrote it; the author reads the attachment before acting on it. A re-review reads it as `references/re_review_mode_protocol.md` input 7 says.
+
 ### Review-target criteria binding (#684)
 
 When the caller supplies the author-confirmed #683 `ReviewTargetContext`, this

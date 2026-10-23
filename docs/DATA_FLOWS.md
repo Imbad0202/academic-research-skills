@@ -50,6 +50,12 @@ without any account or key; keeping the gate key-free is a deliberate reproducib
 choice. Off switch: don't run script-backed verification; prompt-only modes make no
 calls.
 
+After a review, `scripts/verify_panel_recommendations.py` (#1001) sends the same
+payload class for the works that Reviewer 2 and Reviewer 3 suggest: titles and any DOI or
+arXiv ID they give, through the same four clients. It runs live and does not read or write
+the verification cache. Off switch: don't run it; the letter's attachment then says the
+check did not run.
+
 | Resolver | Endpoint | Credentials (optional) | Per-index note |
 |---|---|---|---|
 | `scripts/semantic_scholar_client.py` | `api.semanticscholar.org` | `S2_API_KEY` (raises rate limit) | |

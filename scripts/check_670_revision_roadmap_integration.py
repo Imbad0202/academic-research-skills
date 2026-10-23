@@ -71,15 +71,18 @@ RUNTIME_HASHES = {
 # live-model comparison. Re-pinned for #973 (Phase Boundary enforcement sentence
 # reworded to the actual coverage condition; devils_advocate's #523 transport note
 # states the same condition; no detection-surface change).
+# Re-pinned for #1001 (domain and perspective reviewers repeat the works they
+# recommend in a `yaml suggested-references` block for a post-decision lookup;
+# no finding, score, or detection rule changes).
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
         "9690e570d081bfcdef6da23fb93064af4028c9d6b766fcbcf0cf0981463d492f",
     Path("academic-paper-reviewer/agents/methodology_reviewer_agent.md"):
         "7369527eb99f1ca2a7351a338a4e7ef0df482d3fb516056d271a944eb7d6d8b9",
     Path("academic-paper-reviewer/agents/domain_reviewer_agent.md"):
-        "3da456496aab799929e08a21d4746cf51265980c9d6743a694a6047bf5a012b4",
+        "706a70fab08a37dff52f6e097787cf8d5712fff02bcce87ac0a184109f478f55",
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
-        "27764ff193db4cfbd95145bf56cbb1675df4c259ce1a1f48e409dadb68fe6781",
+        "a99386515c1e9e5b73e91f3f9cd62f6ec3660f03e229371ad53531fa165cf007",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
         "a3ddde4c1e26e9e8603f71e47b3afb0c83131e0428b84048c0c3e634f19e5b5c",
     Path("academic-paper-reviewer/templates/peer_review_report_template.md"):

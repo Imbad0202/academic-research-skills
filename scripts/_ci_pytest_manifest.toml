@@ -729,6 +729,10 @@ id = "849-acronym-check"
 path = "scripts/test_check_acronyms.py"
 
 [[pytest]]
+id = "1001-panel-suggested-references"
+path = "scripts/test_verify_panel_recommendations.py"
+
+[[pytest]]
 id = "927-standing-constraint-entry-schema"
 path = "scripts/test_standing_constraint_entry_schema.py"
 
