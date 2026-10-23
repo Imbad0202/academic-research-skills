@@ -17,11 +17,13 @@ For each pair, answer each question with true or false:
    the manuscript) shows which one is false.
 7. evidence_quote_verbatim: the evidence quote appears verbatim in the
    manuscript.
+8. single_sentences: each of the two sentences is exactly one sentence (a
+   period after an initial or an abbreviation does not end a sentence).
 
 Answer with JSON Lines only, one line per pair, in the order given, and
 nothing else:
 
-{"pair_id": "p01", "accurate_supported": true, "false_contradicted": true, "false_unsupported": true, "same_topic": true, "plain_description": true, "no_tell": true, "evidence_quote_verbatim": true, "note": "<one sentence>"}
+{"pair_id": "p01", "accurate_supported": true, "false_contradicted": true, "false_unsupported": true, "same_topic": true, "plain_description": true, "no_tell": true, "evidence_quote_verbatim": true, "single_sentences": true, "note": "<one sentence>"}
 
 <manuscript>
 {manuscript}

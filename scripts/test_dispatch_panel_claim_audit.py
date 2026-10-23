@@ -665,5 +665,18 @@ def test_a_completed_call_whose_output_is_gone_stops(tmp_path):
         d.call_model("codex", "P", out, log, "c1", runner=_ok)
 
 
-def test_a_lone_letter_before_a_period_still_ends_a_sentence():
-    assert not d._one_sentence("The authors enrolled 120 participants in group A. The controls received saline.")
+def test_initials_pass_the_script_and_the_verifier_checks_single_sentences():
+    assert d._one_sentence("The study by A. Smith enrolled 120 participants at one university.")
+    assert "single_sentences" in d.PAIR_QUESTIONS
+    assert "single_sentences" in (d.SUITE / "prompts" / "contrast_verify.md").read_text(encoding="utf-8")
+
+
+def test_events_split_on_lf_only_and_unreadable_lines_fail():
+    tool = {"type": "command_execution", "command": "printf 'a\u2028b'"}
+    events = [{"type": "turn.started"}, {"type": "item.completed", "item": tool},
+              {"type": "item.completed", "item": {"type": "agent_message", "text": "OK"}},
+              {"type": "turn.completed"}]
+    stream = "\n".join(json.dumps(e, ensure_ascii=False) for e in events)
+    assert d.codex_answer(stream) == ("", "items other than the reply: command_execution")
+    assert d.codex_answer(stream + "\nnot json")[1] == "1 unreadable event lines"
+    assert d.codex_answer(codex_events("a\u2028b")) == ("a\u2028b", None)

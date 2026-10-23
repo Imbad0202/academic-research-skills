@@ -46,7 +46,7 @@
       "transport": "codex",
       "model_id": "gpt-6-astra"
     },
-    "acceptance": "build reads the pairs back from the logged generator and verifier outputs (plan transports only); a pair enters when the four mechanical checks, run again at build, and the verifier's one answer to all seven questions are true; a pair with no answer or a repeated answer is rejected; per fixture between min_accepted_per_fixture and per_fixture_requested pairs; no repeated pair id or sentence; build refuses anything else",
+    "acceptance": "build reads the pairs back from the logged generator and verifier outputs (plan transports only); a pair enters when the four mechanical checks, run again at build, and the verifier's one answer to all eight questions are true; a pair with no answer or a repeated answer is rejected; per fixture between min_accepted_per_fixture and per_fixture_requested pairs; no repeated pair id or sentence; build refuses anything else",
     "min_accepted_per_fixture": 15
   },
   "contrast_gate": {

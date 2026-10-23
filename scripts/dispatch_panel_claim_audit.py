@@ -8,7 +8,7 @@ the order of the steps and ``plan.json`` holds the frozen numbers. Subcommands:
   check-pairs   mechanical checks on the generated pairs (no model): one
                 sentence each, 8-50 whitespace-delimited words, one to four
                 changed tokens, and a verbatim evidence quote
-  verify-pairs  ask the verifier model the seven pair questions, one call per
+  verify-pairs  ask the verifier model the eight pair questions, one call per
                 manuscript
   build         read the pairs back from the logged generator and verifier
                 outputs, check them and the claim inventory against plan.json,
@@ -70,7 +70,7 @@ SEVERITIES = ("cosmetic", "minor", "major", "fundamental")
 EVIDENCE = ("contradiction", "absent_quotation")
 CRITERIA = ("V1", "V2", "V3", "R1", "R2", "R3", "R4", "R5")
 PAIR_QUESTIONS = ("accurate_supported", "false_contradicted", "false_unsupported", "same_topic",
-                  "plain_description", "no_tell", "evidence_quote_verbatim")
+                  "plain_description", "no_tell", "evidence_quote_verbatim", "single_sentences")
 # agy takes the prompt as an argument and fails silently above about 30 KB.
 # Every prompt sent, a retry included, stays at or under PROMPT_LIMIT; a first
 # attempt stays at or under PROMPT_BUDGET, which leaves room for the retry note.
@@ -177,16 +177,23 @@ TRANSPORTS: dict[str, Callable[[str], tuple[list[str], str | None]]] = {
 }
 
 
-def _events(stream: str) -> list[dict[str, Any]]:
-    events = []
-    for line in stream.splitlines():
+def _events(stream: str) -> tuple[list[dict[str, Any]], int]:
+    """(events, unreadable lines). Lines split on LF only: JSON strings can hold
+    U+2028 and other characters that ``str.splitlines`` breaks on."""
+    events, unreadable = [], 0
+    for line in stream.split("\n"):
+        if not line.strip():
+            continue
         try:
             event = json.loads(line)
         except ValueError:
+            unreadable += 1
             continue
         if isinstance(event, dict):
             events.append(event)
-    return events
+        else:
+            unreadable += 1
+    return events, unreadable
 
 
 def agy_answer(stream: str) -> tuple[str, str | None]:
@@ -194,7 +201,10 @@ def agy_answer(stream: str) -> tuple[str, str | None]:
     result, or any step that is not part of a plain reply, is a problem."""
     steps: set[str] = set()
     result: dict[str, Any] | None = None
-    for event in _events(stream):
+    events, unreadable = _events(stream)
+    if unreadable:
+        return "", f"{unreadable} unreadable event lines"
+    for event in events:
         if event.get("event") == "step_update":
             steps.add(str((event.get("step_update") or {}).get("step_type")))
         elif event.get("event") == "result":
@@ -216,7 +226,10 @@ def codex_answer(stream: str) -> tuple[str, str | None]:
     failed: str | None = None
     other: set[str] = set()
     answer: str | None = None
-    for event in _events(stream):
+    events, unreadable = _events(stream)
+    if unreadable:
+        return "", f"{unreadable} unreadable event lines"
+    for event in events:
         kind = event.get("type")
         if kind == "turn.started":
             started = True
@@ -344,7 +357,7 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
 def json_lines(text: str) -> list[dict[str, Any]]:
     """Every line of ``text`` that is one JSON object; other lines are ignored."""
     rows = []
-    for line in text.splitlines():
+    for line in text.split("\n"):
         line = line.strip().strip("`")
         if line.startswith("{") and line.endswith("}"):
             try:
@@ -420,10 +433,12 @@ def changed_tokens(a: str, b: str) -> int:
 
 # A sentence end inside the text: . ! or ?, maybe a closing quote or bracket,
 # then space and a capital, a digit, or an opening quote or bracket (a second
-# sentence can start with a digit). The last period of a dotted abbreviation
-# (U.S., e.g.) and the period after "et al" are not ends; a period after a lone
-# letter ("group A. The") is.
-_SENTENCE_BREAK = re.compile(r"(?<!\.[A-Za-z])(?<!\bal)[.!?][\"'”’)\]]*\s+[A-Z0-9\"'“‘(\[]")
+# sentence can start with a digit). A period after a lone letter (an initial
+# such as "A. Smith", or "U.S.", "e.g.") or after "et al" is not counted as an
+# end, so this check never rejects such a sentence; "group A. The" cannot be
+# told from an initial by its characters, and the verifier's single_sentences
+# question catches it.
+_SENTENCE_BREAK = re.compile(r"(?<!\b[A-Za-z])(?<!\bal)[.!?][\"'”’)\]]*\s+[A-Z0-9\"'“‘(\[]")
 
 
 def _one_sentence(text: str) -> bool:
@@ -549,7 +564,7 @@ def cmd_verify_pairs(args) -> int:
 def pair_problems(pairs: list[dict[str, Any]], plan: dict[str, Any]) -> list[str]:
     """The stop rule on contrast pairs: per manuscript, between the minimum and
     the requested number of accepted pairs, each with all four mechanical
-    checks true when run again here and all seven verifier answers ``true``,
+    checks true when run again here and all eight verifier answers ``true``,
     and no repeated pair id or sentence."""
     cfg = plan["contrast_pairs"]
     found = []
