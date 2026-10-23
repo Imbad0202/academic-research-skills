@@ -814,3 +814,40 @@ def test_announce_normal_behavior_with_standard_path(tmp_path):
     ctx = _additional_context(r.stdout)
     assert "ARS update available: v3.18.0 (installed: v3.17.0)." in ctx
     assert "ARS (academic-research-skills) plugin loaded." in ctx
+
+
+# ------------------------------------------- user-facing systemMessage (#999)
+
+
+def test_system_message_carries_reminder_on_startup(tmp_path):
+    # additionalContext reaches only the model, so the reminder the user acts
+    # on must also be in systemMessage.
+    root = make_plugin_root(tmp_path, "3.17.0")
+    env = {
+        "CLAUDE_PLUGIN_ROOT": str(root),
+        "ARS_UPDATE_CHECK_STATE_DIR": str(tmp_path / "state"),
+        "ARS_UPDATE_CHECK_REMOTE_URL": make_remote(tmp_path, "3.18.0"),
+    }
+    r = run_announce('{"source":"startup"}', env)
+    msg = json.loads(r.stdout)["systemMessage"]
+    assert msg.startswith("ARS update available: v3.18.0 (installed: v3.17.0).")
+    assert msg.endswith("ARS (academic-research-skills) loaded. Its slash commands start with /ars-.")
+
+
+def test_system_message_without_reminder_when_current(tmp_path):
+    root = make_plugin_root(tmp_path, "3.18.0")
+    env = {
+        "CLAUDE_PLUGIN_ROOT": str(root),
+        "ARS_UPDATE_CHECK_STATE_DIR": str(tmp_path / "state"),
+        "ARS_UPDATE_CHECK_REMOTE_URL": make_remote(tmp_path, "3.18.0"),
+    }
+    r = run_announce('{"source":"clear"}', env)
+    msg = json.loads(r.stdout)["systemMessage"]
+    assert msg == "ARS (academic-research-skills) loaded. Its slash commands start with /ars-."
+
+
+def test_no_system_message_after_compact_or_resume():
+    for source in ("compact", "resume"):
+        r = run_announce(json.dumps({"source": source}), {})
+        assert r.returncode == 0
+        assert "systemMessage" not in json.loads(r.stdout), source

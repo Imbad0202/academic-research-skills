@@ -52,6 +52,7 @@ fi
 # and re-injecting the full slash-command list every resume burns context.
 # `startup` and `clear` get the full version.
 # ---------------------------------------------------------------------------
+SYSTEM_MSG=""
 case "${SOURCE}" in
   compact|resume)
     ANNOUNCE="ARS plugin still loaded after ${SOURCE}. Slash commands: /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate. Plugin agents: synthesis_agent, research_architect_agent, report_compiler_agent, screening_reviewer_agent. If an ARS pipeline run is in progress, run its handoff check before continuing (academic-pipeline orchestrator, section Run ledger and handoff check, #887): compare what the session now shows with the run ledger beside the Material Passport, and ask again for any decision it cannot show in the user's words."
@@ -74,36 +75,16 @@ case "${SOURCE}" in
 "
       fi
     fi
+    # The user never sees additionalContext (Claude Code hooks reference), so
+    # what the user should read goes in systemMessage below (#999). The model
+    # gets the command and agent names only; the lint in
+    # .command-invariants.toml still checks every /ars-* token and the count.
+    SYSTEM_MSG="${UPDATE_LINE}ARS (academic-research-skills) loaded. Its slash commands start with /ars-."
     ANNOUNCE="${UPDATE_LINE}ARS (academic-research-skills) plugin loaded.
 
-Slash commands (16) — light modes pin sonnet in frontmatter; the three heavy modes and /ars-citation-check inherit the session model (the v3.7.0 opus floor was retired in the 2026-06 harness pass):
-  /ars-full              inherit Full pipeline (research → write → review → revise → finalize)
-  /ars-revision-coach    inherit Parse reviewer comments → Revision Roadmap + Response Letter skeleton
-  /ars-reviewer          inherit academic-paper-reviewer full mode — simulated peer-review panel
-  /ars-plan              sonnet  Socratic chapter-by-chapter planning
-  /ars-outline           sonnet  Detailed outline + evidence map (no full draft)
-  /ars-revision          sonnet  Revised draft + R&R responses
-  /ars-rebuttal-audit    sonnet  QA an existing rebuttal draft against reviewer comments (advisory)
-  /ars-abstract          sonnet  Bilingual abstract + keywords
-  /ars-lit-review        sonnet  Annotated bibliography in paper format
-  /ars-3w                sonnet  WHY / HOW / WHAT three-way paper scan (lighter than lit-review)
-  /ars-format-convert    sonnet  Convert paper between LaTeX / DOCX / PDF / Markdown
-  /ars-citation-check    inherit Citation error report
-  /ars-disclosure        sonnet  venue status bundle / policy-anchor render
-  /ars-mark-read         sonnet  Record human-read signal for one or more citation keys
-  /ars-unmark-read       sonnet  Rescind a prior human-read mark for one or more citation keys
-  /ars-cache-invalidate  sonnet  Drop cached verification rows for one or more citation keys
+Slash commands (16): /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate.
 
-Plugin agents (4, model: inherit):
-  synthesis_agent             Cross-source integration, contradiction resolution, gap analysis
-  research_architect_agent    Methodology blueprint (paradigm, method, data strategy)
-  report_compiler_agent       APA 7.0 report drafting (Phase 4 + Phase 6)
-  screening_reviewer_agent    sr-screener blinded screening reviewer (tools: Read/Grep only)
-The first three are v3.6.7-hardened pipeline agents (tools allowlist: Read/Write/Edit/Grep/Glob per #514); sr-screener's screening workflows dispatch the fourth.
-
-Other ARS agents (bibliography_agent, literature_strategist_agent, field_analyst_agent, etc.) remain in-skill prompt templates loaded via SKILL.md, not plugin agents.
-
-Token budget reference: docs/PERFORMANCE.md (a single full pipeline run ≈ \$4–6, order-of-magnitude; measured on Opus 4.x)."
+Plugin agents (model: inherit): synthesis_agent, research_architect_agent, report_compiler_agent, screening_reviewer_agent."
     ;;
 esac
 
@@ -190,8 +171,13 @@ escape_json() {
 # 3.2 runs ${var//a/b} far faster on it in the C locale.
 ESCAPED=$(LC_ALL=C; escape_json "${ANNOUNCE}")
 
+SYSTEM_FIELD=""
+if [[ -n "${SYSTEM_MSG}" ]]; then
+  SYSTEM_FIELD="\"systemMessage\":\"$(LC_ALL=C; escape_json "${SYSTEM_MSG}")\","
+fi
+
 cat <<JSON
-{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"${ESCAPED}"}}
+{${SYSTEM_FIELD}"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"${ESCAPED}"}}
 JSON
 
 exit 0
