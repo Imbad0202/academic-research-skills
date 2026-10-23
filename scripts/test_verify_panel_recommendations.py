@@ -103,6 +103,16 @@ def test_a_deeper_indented_fence_line_is_block_content():
     assert vpr.extract_blocks(text) == ["- title: |\n    Alpha\n    ~~~\n    Omega"]
 
 
+def test_tab_and_space_indents_compare_by_column():
+    text = "\t~~~yaml suggested-references\n\t- title: A\n\t  year: 2020\n     ~~~\n"
+    assert vpr.extract_blocks(text) == ["- title: A\n  year: 2020"]
+
+
+def test_a_less_indented_body_line_keeps_its_inner_indent():
+    text = "    ~~~yaml suggested-references\n  - title: A\n    year: 2020\n    ~~~\n"
+    assert vpr.extract_blocks(text) == ["- title: A\nyear: 2020"]
+
+
 def test_unclosed_block_runs_to_the_end():
     assert vpr.extract_blocks("~~~yaml suggested-references\n- title: A\n") == ["- title: A\n"]
 
@@ -263,7 +273,10 @@ def test_one_unreadable_report_of_two_is_partial(tmp_path):
     report = vpr.build_report([("R2", tmp_path / "absent.md"),
                                ("R3", _write(tmp_path, "r3.md", BLOCK))], _factory(_clients()))
     assert report["status"] == "partial"
-    assert "- R2: the report file could not be read." in vpr.render(report, "en")
+    out = vpr.render(report, "en")
+    assert "- R2: the report file could not be read." in out
+    assert "Seats read: R3 (partial)." in out
+    assert "已讀審稿席次：R3（部分）。" in vpr.render(report, "zh-TW")
 
 
 # ---------- rendering and CLI ----------

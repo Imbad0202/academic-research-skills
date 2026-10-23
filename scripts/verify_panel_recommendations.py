@@ -150,11 +150,13 @@ def extract_blocks(text: str) -> list[str]:
     least as long, has no info string, and is indented at most three columns
     more than the opening fence; a deeper fence line is block content, as in a
     YAML literal scalar. The opening fence's indentation is
-    removed from each body line, so a block inside a list item reads the same
-    as one at the margin. An unclosed block runs to the end of the text.
+    removed from each body line (up to as many leading spaces as the line has),
+    so a block inside a list item reads the same as one at the margin. An unclosed block runs to the end of the text.
     """
     blocks: list[str] = []
-    lines = text.split("\n")
+    # Tabs count as four columns, so a tab-indented fence and a space-indented
+    # one compare by column.
+    lines = [line.expandtabs(4) for line in text.split("\n")]
     i = 0
     while i < len(lines):
         m = _FENCE_RE.match(lines[i])
@@ -172,7 +174,8 @@ def extract_blocks(text: str) -> list[str]:
                 i += 1
                 break
             line = lines[i]
-            body.append(line[len(indent):] if line.startswith(indent) else line.lstrip())
+            lead = len(line) - len(line.lstrip(" "))
+            body.append(line[min(lead, len(indent)):])
             i += 1
         blocks.append("\n".join(body))
     return blocks
@@ -361,7 +364,7 @@ def render(report: dict[str, Any], lang: str) -> str:
     if report["status"] == "not_checked":
         lines.append(text["not_checked"].format(reason=text["reasons"][report["reason"]]))
         return "\n".join(lines)
-    seats = ", ".join(r["seat"] for r in report["reports"])
+    seats = ", ".join(r["seat"] for r in report["reports"] if r["input_sha256"] is not None)
     lines.append(text["coverage"].format(seats=seats, state=text["states"][report["status"]]))
     problems = [text["report_problems"][p["kind"]].format(seat=r["seat"], block=p.get("block"))
                 for r in report["reports"] for p in r["problems"]]
