@@ -26,13 +26,14 @@ citation gate (C-V6(a)):
                   arXiv ID and title, or the title;
   id_not_found    no index matches, and at least one index queried by the DOI
                   or arXiv ID reports no record for it;
-  title_not_found no DOI or arXiv ID was given and no index that answered
-                  matches the title, so this check cannot tell a missing work
-                  from an unindexed one;
-  no_answer       the indexes that could settle the item did not answer (for
-                  an item with a DOI or arXiv ID, an index queried by it did
-                  not answer, no index matched, and no index queried by it
-                  reported no record), or the lookup failed.
+  title_not_found no DOI or arXiv ID was given, no index matches, and at
+                  least one index answered that it holds no match for the
+                  title, so this check cannot tell a missing work from an
+                  unindexed one;
+  no_answer       every other case: no index matches, none reports no record
+                  for the DOI or arXiv ID, and either the item has a DOI or
+                  arXiv ID or no index answered for its title (each one failed
+                  to answer or was skipped); also when the lookup failed.
 
 ``found`` shows only that a record exists. It does not show that the work
 supports the recommendation, or that the given authors and year are right.
