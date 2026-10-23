@@ -1,4 +1,4 @@
-# Auditor prompt (v1, #1002)
+# Auditor prompt (v2, #1002)
 
 You check the claims that peer reviewers made about one manuscript. You do not
 review the manuscript yourself, and you do not judge whether a claim is fair,
@@ -34,7 +34,12 @@ Rules:
 3. When the manuscript itself states two different values for one quantity, a
    claim that reports either value, or the inconsistency, is not "false" for
    that reason.
-4. A disputed arithmetic result with correct inputs is "not_verifiable".
+4. A claim that states a value or result the manuscript reports (a mean, a
+   reliability, a power statement, a test result) differently from the
+   manuscript is "false": quote the passage. A claim that recomputes a
+   statistic is "false" only when it misstates the manuscript's inputs; when
+   the inputs are correct and only the arithmetic is disputed, it is
+   "not_verifiable". Other "not_verifiable" cases are unchanged.
 5. A wrong locator does not make a claim "false" when the quoted text exists
    elsewhere in the manuscript; a quotation that exists nowhere does
    ("absent_quotation").

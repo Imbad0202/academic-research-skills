@@ -1,6 +1,6 @@
 {
   "suite": "panel_claim_factuality",
-  "plan_version": "1",
+  "plan_version": "2",
   "issue": "#1002",
   "claims": {
     "extractor": "scripts/extract_panel_claims.py",
@@ -116,5 +116,18 @@
     "false_claim_rate": "adjudicated false claims / all claims, overall and by seat (seat joined after scoring from key.jsonl, which must be the file the build hashed)",
     "panels_with_false_claim": "share of the 17 panels with at least one adjudicated false claim"
   },
-  "build_binding": "build copies claims.jsonl, summary.json, accepted_pairs.jsonl, and the pairs call log into the batches directory and records their hashes, the seat key hash, and the hashes of plan.json, rubric.md, PREREGISTRATION.md, prompts/, the three manuscripts, and both scripts; every later step stops on any difference"
+  "build_binding": "build copies claims.jsonl, summary.json, accepted_pairs.jsonl, and the pairs call log into the batches directory and records their hashes, the seat key hash, and the hashes of plan.json, rubric.md, PREREGISTRATION.md, prompts/, the three manuscripts, and both scripts; every later step stops on any difference",
+  "amendments": [
+    {
+      "version": "2",
+      "date": "2026-10-23",
+      "files": [
+        "rubric.md",
+        "prompts/auditor.md"
+      ],
+      "change": "R4 and auditor rule 4: a claim that states a reported value or result differently from the manuscript is false; R4's not_verifiable covers only a recomputation dispute with correct inputs",
+      "reason": "the v1 pilot (3 batches per judge, replicate 1): both judges rated the false contrast sentence that reverses the manuscript's stated power result not_verifiable, citing R4",
+      "v1_outputs": "kept as the v1 pilot record; not scored with v2"
+    }
+  ]
 }

@@ -1,4 +1,4 @@
-# Panel Claim Factuality Rubric (v1, #1002)
+# Panel Claim Factuality Rubric (v2, #1002)
 
 This rubric is frozen before any judge output exists. A change after the first
 judge call is a new rubric version with a new hash, logged in the run notes.
@@ -60,10 +60,14 @@ judgment, or a low-importance claim, is never `false`.
   for one quantity, a claim that reports the inconsistency is `true`; a claim
   that states only one of the values as the manuscript's value is `true` for
   that value and does not become `false` because the other value exists.
-- **R4 Computations.** A claim that recomputes a statistic is `false` only when
-  the claim misstates the manuscript's inputs. A disputed arithmetic result with
-  correct inputs is `not_verifiable` in this rubric (the E4 receipt checker
-  covers arithmetic).
+- **R4 Computations.** A claim that states a value or result the manuscript
+  reports (a mean, a reliability, a power statement, a test result) differently
+  from the manuscript is `false` under V1, with the manuscript passage quoted.
+  R4 covers only a claim that recomputes a statistic from the manuscript's
+  inputs: such a claim is `false` only when it misstates those inputs, and a
+  disputed arithmetic result with correct inputs is `not_verifiable` in this
+  rubric (the E4 receipt checker covers arithmetic). (v2: the first sentence is
+  new; see the amendment in `PREREGISTRATION.md`.)
 - **R5 Locators and quotations.** A wrong section or table number in an
   Evidence Anchor, when the quoted text exists elsewhere in the manuscript,
   does not make the claim `false`. A quotation that exists nowhere in the
