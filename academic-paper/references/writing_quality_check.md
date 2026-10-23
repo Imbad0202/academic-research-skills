@@ -1,5 +1,9 @@
 # Writing Quality Check
 
+## Measured versus rule (#830)
+
+`scripts/check_writing_surface.py` provides deterministic English prose estimates with ADV-WS rows for the document and its sections. See `shared/references/writing_surface/README.md` for formulas, vocabulary provenance, caller integration, and the frozen baseline. These values are measurements, not rules: no threshold, word ban, detector score, or automatic rewrite follows from them. Preserve protected hedges and the claim-strength ladder regardless of the measured density. Author-approved scope and the existing scientific-content constraints still govern every edit.
+
 ## Purpose
 
 A set of context-sensitive writing diagnostics for clear, precise academic prose, regardless of who wrote it.

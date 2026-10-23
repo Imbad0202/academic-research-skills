@@ -76,6 +76,10 @@ For each section in the outline:
 6. **Self-review** for clarity, logic, and completeness
 7. **Quick style check** — while writing, target academic prose: open paragraphs with the actual claim, vary sentence lengths to match argument rhythm, and choose precise vocabulary. `references/writing_quality_check.md` is the style diagnostic after drafting. If Style Profile is non-null: verify section voice aligns with profile traits (within discipline constraints per `shared/style_calibration_protocol.md` priority system)
 
+### Writing-surface self-review advisory (#830)
+
+After saving the self-reviewed draft, ask the calling session to run `scripts/check_writing_surface.py` on that file under `shared/references/writing_surface/README.md`. Its ADV-WS rows are advisory estimates. They neither authorise edits nor change claim strength; any subsequent edit still requires the existing author-approved scope. Do not invoke shell tools from this role.
+
 ### Step 3: Full Draft Assembly
 Combine all sections into a coherent document with:
 - Title page

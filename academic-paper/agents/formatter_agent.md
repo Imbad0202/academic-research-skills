@@ -858,6 +858,10 @@ Template C: "Data sharing is not applicable as no new data were created or analy
 Template D: "The data that support the findings of this study are available from [third party]. Restrictions apply."
 ```
 
+### Writing-surface final-pass advisory (#830)
+
+After saving the final Markdown paper, ask the calling session to run `scripts/check_writing_surface.py` under `shared/references/writing_surface/README.md`. Report its ADV-WS rows separately from formatting checks; they never block delivery or authorise prose changes. The check measures the saved Markdown file, not the rendered DOCX or PDF. Do not invoke shell tools from this role.
+
 ### Pre-Output Final Checklist
 
 ```

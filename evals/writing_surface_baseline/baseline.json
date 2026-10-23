@@ -1,0 +1,3601 @@
+{
+  "schema_version": "writing-surface-baseline/1.0",
+  "input_commit": "060cb3cbffc2ca1bdfb8f7c6d2ffa4883cf09b1a",
+  "implementation_sha256": {
+    "scripts/check_writing_surface.py": "f440cf8fa033b564f44da2107df1b7603954d0ad070078ab879f00531c612c59",
+    "scripts/build_writing_surface_baseline.py": "e231074cf513b29600969cdda35be82540494dee025e6be381cd30fc681d916f"
+  },
+  "vocabulary_sha256": "559bfd38cab03c5c93cfe7606a39f4e2b26d7e87f7fb766e15c5a662e1f814e7",
+  "selection": "All eligible paths at input_commit; see eligible() and README. Partial outputs excluded from distributions.",
+  "coverage_counts": {
+    "complete": 86,
+    "partial": 54,
+    "not_checked": 0
+  },
+  "records": [
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r1/da.phase2.a1.md",
+      "sha256": "1be35bad65b7702d8bceb297f3636f92bbd881e31a12ab33dda14eb41512f3ea",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1224,
+        "sentences": 48,
+        "syllables_estimated": 2159,
+        "polysyllables_estimated": 256,
+        "unsupported_tokens": 4
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 31.72750000000002,
+        "flesch_kincaid_grade_estimate": 15.16888888888889,
+        "fog_estimate": 18.566013071895423,
+        "smog_estimate": 16.32212239822248,
+        "nominalization_token_share_heuristic": 0.056372549019607844,
+        "passive_sentence_share_heuristic": 0.3125,
+        "hedge_hits_per_1000_words": 5.718954248366013,
+        "sentence_length_population_sd": 17.57128339080558,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r1/domain.phase2.a1.md",
+      "sha256": "3c2d851e8a393232f22109716f32af2debc6bcde396187ca406c78c92aaa3219",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2095,
+        "sentences": 77,
+        "syllables_estimated": 3932,
+        "polysyllables_estimated": 520,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 20.437611195487136,
+        "flesch_kincaid_grade_estimate": 17.16786473669529,
+        "fog_estimate": 20.811517837770822,
+        "smog_estimate": 17.97481930955795,
+        "nominalization_token_share_heuristic": 0.0973747016706444,
+        "passive_sentence_share_heuristic": 0.11688311688311688,
+        "hedge_hits_per_1000_words": 0.954653937947494,
+        "sentence_length_population_sd": 15.417427870388776,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r1/eic.phase2.a1.md",
+      "sha256": "aebabed028807ccb30a4aeb16dcf83e485be6d517edf1050f4f4428631f6741f",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1745,
+        "sentences": 78,
+        "syllables_estimated": 3075,
+        "polysyllables_estimated": 378,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 35.047398978767205,
+        "flesch_kincaid_grade_estimate": 13.928696275071633,
+        "fog_estimate": 17.613474395709353,
+        "smog_estimate": 15.705129121369687,
+        "nominalization_token_share_heuristic": 0.0836676217765043,
+        "passive_sentence_share_heuristic": 0.2948717948717949,
+        "hedge_hits_per_1000_words": 0.5730659025787965,
+        "sentence_length_population_sd": 14.358155883266445,
+        "flagged_term_hits_per_1000_words": 0.5730659025787965
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r1/methodology.phase2.a1.md",
+      "sha256": "56f3dc4bfa988bfdb2632c0015c2e25a4517b7062708c6b9ec4c3a56d567ff7b",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2281,
+        "sentences": 83,
+        "syllables_estimated": 4382,
+        "polysyllables_estimated": 605,
+        "unsupported_tokens": 8
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.416862663279176,
+        "flesch_kincaid_grade_estimate": 17.796781267991744,
+        "fog_estimate": 21.602152934403108,
+        "smog_estimate": 18.55262269780281,
+        "nominalization_token_share_heuristic": 0.10083296799649277,
+        "passive_sentence_share_heuristic": 0.3493975903614458,
+        "hedge_hits_per_1000_words": 3.0688294607628235,
+        "sentence_length_population_sd": 16.21048407279352,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r1/perspective.phase2.a1.md",
+      "sha256": "4e12a913e78e1c0e690bac59962f04c80e8b0669f89f4c25012cfffadebd8aea",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1536,
+        "sentences": 69,
+        "syllables_estimated": 2644,
+        "polysyllables_estimated": 294,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 38.61365489130435,
+        "flesch_kincaid_grade_estimate": 13.403718297101452,
+        "fog_estimate": 16.56059782608696,
+        "smog_estimate": 14.921278800779998,
+        "nominalization_token_share_heuristic": 0.0859375,
+        "passive_sentence_share_heuristic": 0.2463768115942029,
+        "hedge_hits_per_1000_words": 0.6510416666666666,
+        "sentence_length_population_sd": 13.708827341167561,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r1/synthesis.a1.md",
+      "sha256": "fb408360f6683e35c56870994c917ac010c8179dcfa7cefe442a1daf6331faf4",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3472,
+        "sentences": 133,
+        "syllables_estimated": 6402,
+        "polysyllables_estimated": 844,
+        "unsupported_tokens": 6
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 24.34472471501337,
+        "flesch_kincaid_grade_estimate": 16.34900194033471,
+        "fog_estimate": 20.165607567305358,
+        "smog_estimate": 17.520078972588127,
+        "nominalization_token_share_heuristic": 0.07834101382488479,
+        "passive_sentence_share_heuristic": 0.42105263157894735,
+        "hedge_hits_per_1000_words": 1.4400921658986174,
+        "sentence_length_population_sd": 15.136602631253231,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r1/synthesis.a2.md",
+      "sha256": "7725391a7075b86d33724579e847246c0ea337397c2d55cb7ec4625c1cdb9738",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2973,
+        "sentences": 114,
+        "syllables_estimated": 5502,
+        "polysyllables_estimated": 731,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 23.79937901641088,
+        "flesch_kincaid_grade_estimate": 16.418529130596422,
+        "fog_estimate": 20.266762263883727,
+        "smog_estimate": 17.595191195401892,
+        "nominalization_token_share_heuristic": 0.08644466868483014,
+        "passive_sentence_share_heuristic": 0.39473684210526316,
+        "hedge_hits_per_1000_words": 1.0090817356205852,
+        "sentence_length_population_sd": 18.3719583885964,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r2/da.phase2.a1.md",
+      "sha256": "95b3b77a0e65090b6bf4368312fc29df902ceabdd347f393d685fa0e71715088",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 969,
+        "sentences": 49,
+        "syllables_estimated": 1740,
+        "polysyllables_estimated": 210,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 34.84954444935869,
+        "flesch_kincaid_grade_estimate": 13.311303468755927,
+        "fog_estimate": 16.578934731787452,
+        "smog_estimate": 14.955608360458719,
+        "nominalization_token_share_heuristic": 0.06914344685242518,
+        "passive_sentence_share_heuristic": 0.1836734693877551,
+        "hedge_hits_per_1000_words": 3.0959752321981426,
+        "sentence_length_population_sd": 11.627317071909246,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r2/domain.phase2.a1.md",
+      "sha256": "d6cdb0d95b0131976744a69a56f8af1e564b018f7cfb75f2f61e51f232f905c7",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1818,
+        "sentences": 83,
+        "syllables_estimated": 3270,
+        "polysyllables_estimated": 429,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 32.43451449361808,
+        "flesch_kincaid_grade_estimate": 14.176832080798444,
+        "fog_estimate": 18.20038967752197,
+        "smog_estimate": 16.11686840231951,
+        "nominalization_token_share_heuristic": 0.08195819581958196,
+        "passive_sentence_share_heuristic": 0.2289156626506024,
+        "hedge_hits_per_1000_words": 2.2002200220022003,
+        "sentence_length_population_sd": 11.97146653639729,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r2/eic.phase2.a1.md",
+      "sha256": "10906f0b9475e2bd5f45f1752162e3cad55d680b53fb16f2433625b42d945188",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2006,
+        "sentences": 80,
+        "syllables_estimated": 3541,
+        "polysyllables_estimated": 423,
+        "unsupported_tokens": 3
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 32.04758387337989,
+        "flesch_kincaid_grade_estimate": 15.018661764705886,
+        "fog_estimate": 18.46469591226321,
+        "smog_estimate": 16.265311311675827,
+        "nominalization_token_share_heuristic": 0.08075772681954138,
+        "passive_sentence_share_heuristic": 0.2625,
+        "hedge_hits_per_1000_words": 2.991026919242273,
+        "sentence_length_population_sd": 14.23883334406299,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r2/methodology.phase2.a1.md",
+      "sha256": "1baf29e5f27812b2a7ef7a6b0ae4a18b0304a0e3f074ae837204c088c7bee7e5",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2043,
+        "sentences": 87,
+        "syllables_estimated": 3918,
+        "polysyllables_estimated": 538,
+        "unsupported_tokens": 3
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 20.756828193832604,
+        "flesch_kincaid_grade_estimate": 16.19793812344929,
+        "fog_estimate": 19.92663257211336,
+        "smog_estimate": 17.335251678665173,
+        "nominalization_token_share_heuristic": 0.10621634850709741,
+        "passive_sentence_share_heuristic": 0.27586206896551724,
+        "hedge_hits_per_1000_words": 2.447381302006853,
+        "sentence_length_population_sd": 15.178525414852466,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r2/perspective.phase2.a1.md",
+      "sha256": "3c4d43920c8e287dc3a4d1f3f66e63c30a04cc51d02bf53c7e0d023cd7ccc3c8",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1618,
+        "sentences": 72,
+        "syllables_estimated": 2914,
+        "polysyllables_estimated": 358,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 31.66203560637277,
+        "flesch_kincaid_grade_estimate": 14.425835393489908,
+        "fog_estimate": 17.83932152176899,
+        "smog_estimate": 15.867656007910263,
+        "nominalization_token_share_heuristic": 0.08714462299134734,
+        "passive_sentence_share_heuristic": 0.25,
+        "hedge_hits_per_1000_words": 2.4721878862793574,
+        "sentence_length_population_sd": 13.230827031996801,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r2/synthesis.a1.md",
+      "sha256": "f6345182fd36e5e857d43a945e40cc24d31a4b3eacad4d5e830365c442259134",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3473,
+        "sentences": 182,
+        "syllables_estimated": 6202,
+        "polysyllables_estimated": 785,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 36.389697723094656,
+        "flesch_kincaid_grade_estimate": 12.92429949405619,
+        "fog_estimate": 16.67414180981702,
+        "smog_estimate": 14.993453283940674,
+        "nominalization_token_share_heuristic": 0.08350129570976102,
+        "passive_sentence_share_heuristic": 0.3076923076923077,
+        "hedge_hits_per_1000_words": 2.303484019579614,
+        "sentence_length_population_sd": 12.643411118236479,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r2/synthesis.a2.md",
+      "sha256": "6f2dbda41e43bc734da35038b4e9d65eb5a8ed767395fa43039ed1e3b4d9a37b",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 4234,
+        "sentences": 191,
+        "syllables_estimated": 7610,
+        "polysyllables_estimated": 976,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 32.27873602376178,
+        "flesch_kincaid_grade_estimate": 14.264126332086054,
+        "fog_estimate": 18.087610888667406,
+        "smog_estimate": 16.04287338490378,
+        "nominalization_token_share_heuristic": 0.0821917808219178,
+        "passive_sentence_share_heuristic": 0.32460732984293195,
+        "hedge_hits_per_1000_words": 1.6532829475673123,
+        "sentence_length_population_sd": 16.795449200306646,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r99/da.phase2.a1.md",
+      "sha256": "1346bb5db93c820c343d8c91ef1a46a528016a5de89356a8ea04d752061c29e8",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1098,
+        "sentences": 44,
+        "syllables_estimated": 1962,
+        "polysyllables_estimated": 243,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.335644560357707,
+        "flesch_kincaid_grade_estimate": 15.227518628912076,
+        "fog_estimate": 18.834277198211623,
+        "smog_estimate": 16.55432998787256,
+        "nominalization_token_share_heuristic": 0.07103825136612021,
+        "passive_sentence_share_heuristic": 0.22727272727272727,
+        "hedge_hits_per_1000_words": 6.375227686703097,
+        "sentence_length_population_sd": 20.23156236434743,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r99/domain.phase2.a1.md",
+      "sha256": "4b0a2d970e1389f01d325f982f0ee4225257540b5ca4563e3ecbeaea4ebdff1e",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2449,
+        "sentences": 99,
+        "syllables_estimated": 4504,
+        "polysyllables_estimated": 578,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.13718223476087,
+        "flesch_kincaid_grade_estimate": 15.759168244305037,
+        "fog_estimate": 19.335537490049536,
+        "smog_estimate": 16.932664778927965,
+        "nominalization_token_share_heuristic": 0.08574928542262147,
+        "passive_sentence_share_heuristic": 0.2222222222222222,
+        "hedge_hits_per_1000_words": 2.449979583503471,
+        "sentence_length_population_sd": 14.308001475889558,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r99/eic.phase2.a1.md",
+      "sha256": "2e34c1d037ae2c872e776f0f48872aeadc2cafd3b9b16760c5a011785a7f4004",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2424,
+        "sentences": 98,
+        "syllables_estimated": 4356,
+        "polysyllables_estimated": 536,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 29.700572842998582,
+        "flesch_kincaid_grade_estimate": 15.261481107294404,
+        "fog_estimate": 18.738762039469254,
+        "smog_estimate": 16.489341015790096,
+        "nominalization_token_share_heuristic": 0.08250825082508251,
+        "passive_sentence_share_heuristic": 0.20408163265306123,
+        "hedge_hits_per_1000_words": 1.6501650165016502,
+        "sentence_length_population_sd": 14.773494619541985,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r99/methodology.phase2.a1.md",
+      "sha256": "c083ecfc54d6ab6c045faf63c14b1ed22d56c27b4820041e9389a9f28e9bb002",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2967,
+        "sentences": 121,
+        "syllables_estimated": 5552,
+        "polysyllables_estimated": 732,
+        "unsupported_tokens": 7
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 23.638743283557147,
+        "flesch_kincaid_grade_estimate": 16.053812822591205,
+        "fog_estimate": 19.67681855785542,
+        "smog_estimate": 17.1801180331745,
+        "nominalization_token_share_heuristic": 0.09032692955847657,
+        "passive_sentence_share_heuristic": 0.34710743801652894,
+        "hedge_hits_per_1000_words": 2.6963262554769125,
+        "sentence_length_population_sd": 12.746154288633425,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r99/perspective.phase2.a1.md",
+      "sha256": "78882d698d3b5542bbfbbc9a16ee093e5d62a509309e85f4352cdafe4aefc2c4",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1655,
+        "sentences": 84,
+        "syllables_estimated": 3178,
+        "polysyllables_estimated": 440,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 24.38463620342398,
+        "flesch_kincaid_grade_estimate": 14.752780535174796,
+        "fog_estimate": 18.515393468565673,
+        "smog_estimate": 16.20379693721426,
+        "nominalization_token_share_heuristic": 0.1027190332326284,
+        "passive_sentence_share_heuristic": 0.23809523809523808,
+        "hedge_hits_per_1000_words": 1.2084592145015105,
+        "sentence_length_population_sd": 14.163820242253687,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r99/synthesis.a1.md",
+      "sha256": "5b103ec1831ec171b24fa52ac0cd7b92665e7703943811345a6817c4e3115b0b",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 4516,
+        "sentences": 198,
+        "syllables_estimated": 8068,
+        "polysyllables_estimated": 1045,
+        "unsupported_tokens": 6
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 32.543788236662465,
+        "flesch_kincaid_grade_estimate": 14.386285261829993,
+        "fog_estimate": 18.379211065482107,
+        "smog_estimate": 16.253228859978986,
+        "nominalization_token_share_heuristic": 0.07573073516386182,
+        "passive_sentence_share_heuristic": 0.29797979797979796,
+        "hedge_hits_per_1000_words": 1.328609388839681,
+        "sentence_length_population_sd": 18.746138601811268,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms00_clean-baseline-r99/synthesis.a2.md",
+      "sha256": "2264c53ac7de4b0e54d93ba0cd89d3d2a251f13dd53a3c94783ff0fd0e6a7c5f",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 4288,
+        "sentences": 186,
+        "syllables_estimated": 7772,
+        "polysyllables_estimated": 1000,
+        "unsupported_tokens": 3
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.097930107526906,
+        "flesch_kincaid_grade_estimate": 14.788467741935488,
+        "fog_estimate": 18.549863585299313,
+        "smog_estimate": 16.37521324611987,
+        "nominalization_token_share_heuristic": 0.078125,
+        "passive_sentence_share_heuristic": 0.3817204301075269,
+        "hedge_hits_per_1000_words": 1.632462686567164,
+        "sentence_length_population_sd": 16.942258416312598,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms02_qual-baseline-r2/da.phase2.a1.md",
+      "sha256": "58d0257109610fb3e4adce8e91fb4b6446152de0ad7b14323ef15f21539868fc",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1344,
+        "sentences": 55,
+        "syllables_estimated": 2474,
+        "polysyllables_estimated": 312,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.302626623376653,
+        "flesch_kincaid_grade_estimate": 15.66131277056277,
+        "fog_estimate": 19.060259740259742,
+        "smog_estimate": 16.735426496423372,
+        "nominalization_token_share_heuristic": 0.07068452380952381,
+        "passive_sentence_share_heuristic": 0.2727272727272727,
+        "hedge_hits_per_1000_words": 1.4880952380952381,
+        "sentence_length_population_sd": 18.061273121705998,
+        "flagged_term_hits_per_1000_words": 0.7440476190476191
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms02_qual-baseline-r2/domain.phase2.a1.md",
+      "sha256": "53250ba10a5753a5e5c91054ef98ad3f6be32568abe367843bb75224b115630b",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2215,
+        "sentences": 100,
+        "syllables_estimated": 4154,
+        "polysyllables_estimated": 551,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 25.694330135440197,
+        "flesch_kincaid_grade_estimate": 15.178161399548536,
+        "fog_estimate": 18.81033860045147,
+        "smog_estimate": 16.53885166436724,
+        "nominalization_token_share_heuristic": 0.09796839729119639,
+        "passive_sentence_share_heuristic": 0.2,
+        "hedge_hits_per_1000_words": 0.45146726862302483,
+        "sentence_length_population_sd": 13.482859488995649,
+        "flagged_term_hits_per_1000_words": 0.9029345372460497
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms02_qual-baseline-r2/eic.phase2.a1.md",
+      "sha256": "bc38579ff2fb17a228a590c5fe8b908a6a0bab0441f78a35e2abc65ce190cc59",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2545,
+        "sentences": 97,
+        "syllables_estimated": 4713,
+        "polysyllables_estimated": 600,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 23.53643205800745,
+        "flesch_kincaid_grade_estimate": 16.494497802442634,
+        "fog_estimate": 19.925100763575234,
+        "smog_estimate": 17.33715710144558,
+        "nominalization_token_share_heuristic": 0.08212180746561885,
+        "passive_sentence_share_heuristic": 0.30927835051546393,
+        "hedge_hits_per_1000_words": 2.75049115913556,
+        "sentence_length_population_sd": 14.840577694507974,
+        "flagged_term_hits_per_1000_words": 0.7858546168958742
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms02_qual-baseline-r2/methodology.phase2.a1.md",
+      "sha256": "ae81765e50727f24777892d94f89ac6a1c728dcafd7ea545992b14bd8380af65",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2989,
+        "sentences": 110,
+        "syllables_estimated": 5603,
+        "polysyllables_estimated": 741,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 20.668599516408676,
+        "flesch_kincaid_grade_estimate": 17.12693539949512,
+        "fog_estimate": 20.785450895708507,
+        "smog_estimate": 17.956250547682327,
+        "nominalization_token_share_heuristic": 0.09033121445299432,
+        "passive_sentence_share_heuristic": 0.33636363636363636,
+        "hedge_hits_per_1000_words": 3.011040481766477,
+        "sentence_length_population_sd": 13.600039499213423,
+        "flagged_term_hits_per_1000_words": 1.0036801605888257
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms02_qual-baseline-r2/perspective.phase2.a1.md",
+      "sha256": "fff485cf300427176396adfa970c766b585169ea8c995d8056422d675e9422cb",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2681,
+        "sentences": 107,
+        "syllables_estimated": 5047,
+        "polysyllables_estimated": 668,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 22.143031892828418,
+        "flesch_kincaid_grade_estimate": 16.395446182377203,
+        "fog_estimate": 19.988860342946385,
+        "smog_estimate": 17.40295491749189,
+        "nominalization_token_share_heuristic": 0.08616187989556136,
+        "passive_sentence_share_heuristic": 0.35514018691588783,
+        "hedge_hits_per_1000_words": 2.237970906378217,
+        "sentence_length_population_sd": 15.138508041218467,
+        "flagged_term_hits_per_1000_words": 0.37299515106303616
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms02_qual-baseline-r2/synthesis.a1.md",
+      "sha256": "8292f4f93a502c0f3d78e5d47223f731c8f8f86c246437b1e25902a37921d15b",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3138,
+        "sentences": 141,
+        "syllables_estimated": 5710,
+        "polysyllables_estimated": 733,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.305124486391946,
+        "flesch_kincaid_grade_estimate": 14.56121245406344,
+        "fog_estimate": 18.245658570983007,
+        "smog_estimate": 16.154388962368223,
+        "nominalization_token_share_heuristic": 0.07233906947100063,
+        "passive_sentence_share_heuristic": 0.3404255319148936,
+        "hedge_hits_per_1000_words": 1.9120458891013383,
+        "sentence_length_population_sd": 15.780589682066598,
+        "flagged_term_hits_per_1000_words": 0.9560229445506692
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-03-ms02_qual-baseline-r2/synthesis.a2.md",
+      "sha256": "ca5163f52c0fe70377cd42b4f7d54840a0a760cdd138dee9cf0bdedef720d72b",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 4430,
+        "sentences": 189,
+        "syllables_estimated": 8201,
+        "polysyllables_estimated": 1080,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.429225399214147,
+        "flesch_kincaid_grade_estimate": 15.395919954136659,
+        "fog_estimate": 19.127354377918714,
+        "smog_estimate": 16.785175570968402,
+        "nominalization_token_share_heuristic": 0.07562076749435666,
+        "passive_sentence_share_heuristic": 0.37037037037037035,
+        "hedge_hits_per_1000_words": 2.2573363431151243,
+        "sentence_length_population_sd": 17.05586064530658,
+        "flagged_term_hits_per_1000_words": 0.45146726862302483
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r1/da.phase2.a1.md",
+      "sha256": "66a432958ee6523adb06a27dab432f528c859d4cd715d10ef565253f37a645c4",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1015,
+        "sentences": 49,
+        "syllables_estimated": 1822,
+        "polysyllables_estimated": 217,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 33.94674876847293,
+        "flesch_kincaid_grade_estimate": 13.670443349753697,
+        "fog_estimate": 16.83743842364532,
+        "smog_estimate": 15.151101081350806,
+        "nominalization_token_share_heuristic": 0.06798029556650247,
+        "passive_sentence_share_heuristic": 0.22448979591836735,
+        "hedge_hits_per_1000_words": 3.9408866995073892,
+        "sentence_length_population_sd": 18.189478905596577,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r1/domain.phase2.a1.md",
+      "sha256": "31e2264a6bb249e78c162cba1f54d2ae6468407e029d355e09d87b79bd32cdb9",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1947,
+        "sentences": 91,
+        "syllables_estimated": 3514,
+        "polysyllables_estimated": 451,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 32.43001777883137,
+        "flesch_kincaid_grade_estimate": 14.051255411255411,
+        "fog_estimate": 17.8237784814056,
+        "smog_estimate": 15.846915215128494,
+        "nominalization_token_share_heuristic": 0.07755521314843349,
+        "passive_sentence_share_heuristic": 0.23076923076923078,
+        "hedge_hits_per_1000_words": 2.568053415511043,
+        "sentence_length_population_sd": 15.559089157271924,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r1/eic.phase2.a1.md",
+      "sha256": "1f682fad69a83489f180b8915b755404633871c5f394746d7ebace65095f6fe4",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2032,
+        "sentences": 88,
+        "syllables_estimated": 3662,
+        "polysyllables_estimated": 463,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.93453829634936,
+        "flesch_kincaid_grade_estimate": 14.681005726556908,
+        "fog_estimate": 18.35053686471009,
+        "smog_estimate": 16.23280463318051,
+        "nominalization_token_share_heuristic": 0.07677165354330709,
+        "passive_sentence_share_heuristic": 0.14772727272727273,
+        "hedge_hits_per_1000_words": 2.4606299212598426,
+        "sentence_length_population_sd": 12.415749129483931,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r1/methodology.phase2.a1.md",
+      "sha256": "91a75c453f23e7c53ce2d7c07b34895f99c1f6bbc37ef0f21e5492944e3167f0",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1919,
+        "sentences": 87,
+        "syllables_estimated": 3625,
+        "polysyllables_estimated": 469,
+        "unsupported_tokens": 8
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 24.636869897516107,
+        "flesch_kincaid_grade_estimate": 15.302669134427056,
+        "fog_estimate": 18.59891346666427,
+        "smog_estimate": 16.393015022501384,
+        "nominalization_token_share_heuristic": 0.09223553934340803,
+        "passive_sentence_share_heuristic": 0.28735632183908044,
+        "hedge_hits_per_1000_words": 0.5211047420531527,
+        "sentence_length_population_sd": 12.187572643427789,
+        "flagged_term_hits_per_1000_words": 0.5211047420531527
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r1/perspective.phase2.a1.md",
+      "sha256": "84962e8d68a4c889ba36a84a5179c4922258f311ec0413b47c3057202c96186d",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2691,
+        "sentences": 102,
+        "syllables_estimated": 4730,
+        "polysyllables_estimated": 557,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 31.35457062758215,
+        "flesch_kincaid_grade_estimate": 15.440106127177739,
+        "fog_estimate": 18.83239119505104,
+        "smog_estimate": 16.47882893534018,
+        "nominalization_token_share_heuristic": 0.07209215904868078,
+        "passive_sentence_share_heuristic": 0.24509803921568626,
+        "hedge_hits_per_1000_words": 2.6012634708286884,
+        "sentence_length_population_sd": 15.302853839729973,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r1/synthesis.a1.md",
+      "sha256": "7e0eebb42b8a608d1ed73daab01e61b6e0f962b036a8b32fd1cd54aa90f798b5",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3947,
+        "sentences": 186,
+        "syllables_estimated": 6805,
+        "polysyllables_estimated": 794,
+        "unsupported_tokens": 5
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 39.43788999267176,
+        "flesch_kincaid_grade_estimate": 13.030279877734824,
+        "fog_estimate": 16.534789727327958,
+        "smog_estimate": 14.932271430020474,
+        "nominalization_token_share_heuristic": 0.0709399543957436,
+        "passive_sentence_share_heuristic": 0.3387096774193548,
+        "hedge_hits_per_1000_words": 0.7600709399543958,
+        "sentence_length_population_sd": 18.65042914631964,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r2/da.phase2.a1.md",
+      "sha256": "d2d168acc0c5bc23e340a559dfa7939a22a1839cf7ad285354ba65f7cb368a48",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1280,
+        "sentences": 48,
+        "syllables_estimated": 2299,
+        "polysyllables_estimated": 294,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 27.81880208333334,
+        "flesch_kincaid_grade_estimate": 16.003906250000004,
+        "fog_estimate": 19.85416666666667,
+        "smog_estimate": 17.267425705330172,
+        "nominalization_token_share_heuristic": 0.075,
+        "passive_sentence_share_heuristic": 0.22916666666666666,
+        "hedge_hits_per_1000_words": 3.125,
+        "sentence_length_population_sd": 18.183478459549175,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r2/domain.phase2.a1.md",
+      "sha256": "d2f8cbd25168ab7195bb7dfcee38ab4d099d4e0dbd007b0fd63ab557b094779a",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1966,
+        "sentences": 81,
+        "syllables_estimated": 3562,
+        "polysyllables_estimated": 452,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 28.92098934981101,
+        "flesch_kincaid_grade_estimate": 15.255173128367435,
+        "fog_estimate": 18.904979716915967,
+        "smog_estimate": 16.624061309345823,
+        "nominalization_token_share_heuristic": 0.09664292980671414,
+        "passive_sentence_share_heuristic": 0.1728395061728395,
+        "hedge_hits_per_1000_words": 3.051881993896236,
+        "sentence_length_population_sd": 14.787392315694042,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r2/eic.phase2.a1.md",
+      "sha256": "16467a6995904322d677329e76bee68903e113c01c91989c0a00bdfcaea33c27",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2193,
+        "sentences": 85,
+        "syllables_estimated": 4006,
+        "polysyllables_estimated": 513,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.10737072503423,
+        "flesch_kincaid_grade_estimate": 16.027312357501142,
+        "fog_estimate": 19.67704514363885,
+        "smog_estimate": 17.16350985997085,
+        "nominalization_token_share_heuristic": 0.0898312813497492,
+        "passive_sentence_share_heuristic": 0.25882352941176473,
+        "hedge_hits_per_1000_words": 2.279981760145919,
+        "sentence_length_population_sd": 16.749925372968082,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r2/methodology.phase2.a1.md",
+      "sha256": "3793433c1af2d0b63be90bcec5953889f0b7f4ecd025fe44b04f107a88a266ab",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2443,
+        "sentences": 104,
+        "syllables_estimated": 4538,
+        "polysyllables_estimated": 583,
+        "unsupported_tokens": 5
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 25.843344347271653,
+        "flesch_kincaid_grade_estimate": 15.490365841178882,
+        "fog_estimate": 18.94179445196637,
+        "smog_estimate": 16.654886984781783,
+        "nominalization_token_share_heuristic": 0.09414654113794516,
+        "passive_sentence_share_heuristic": 0.375,
+        "hedge_hits_per_1000_words": 1.2279983626688498,
+        "sentence_length_population_sd": 14.436862002092269,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r2/perspective.phase2.a1.md",
+      "sha256": "d727af91ab32931184d83002efbc0760ca0c069f5f708225abdc222de33b8a8d",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1866,
+        "sentences": 79,
+        "syllables_estimated": 3323,
+        "polysyllables_estimated": 400,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 32.20352985469498,
+        "flesch_kincaid_grade_estimate": 14.635510738464465,
+        "fog_estimate": 18.022592155426217,
+        "smog_estimate": 15.98378342962787,
+        "nominalization_token_share_heuristic": 0.08842443729903537,
+        "passive_sentence_share_heuristic": 0.25316455696202533,
+        "hedge_hits_per_1000_words": 1.607717041800643,
+        "sentence_length_population_sd": 13.319162741645563,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r2/synthesis.a1.md",
+      "sha256": "8e568b4da24d4b0eba86906080898282cfe0123821d8743518a117b942806da2",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3340,
+        "sentences": 129,
+        "syllables_estimated": 5923,
+        "polysyllables_estimated": 725,
+        "unsupported_tokens": 3
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.52946641600522,
+        "flesch_kincaid_grade_estimate": 15.433243280880102,
+        "fog_estimate": 19.039223877825744,
+        "smog_estimate": 16.672231143232377,
+        "nominalization_token_share_heuristic": 0.07634730538922156,
+        "passive_sentence_share_heuristic": 0.37209302325581395,
+        "hedge_hits_per_1000_words": 1.1976047904191616,
+        "sentence_length_population_sd": 17.99838076699568,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r99/da.phase2.a1.md",
+      "sha256": "ed58a04ba41714dd450ea5471e97e5317db86ac3cb354ca68a2f6e309b113e94",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 829,
+        "sentences": 42,
+        "syllables_estimated": 1483,
+        "polysyllables_estimated": 168,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 35.4596994370728,
+        "flesch_kincaid_grade_estimate": 13.21690418748923,
+        "fog_estimate": 16.001390085587914,
+        "smog_estimate": 14.554592549557764,
+        "nominalization_token_share_heuristic": 0.09529553679131483,
+        "passive_sentence_share_heuristic": 0.23809523809523808,
+        "hedge_hits_per_1000_words": 1.2062726176115801,
+        "sentence_length_population_sd": 13.221662462664973,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r99/domain.phase2.a1.md",
+      "sha256": "9d3b5f1c8edefcc2473df36afa1688d72f73ad9f6af0f47eb08009fc653e80bf",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2334,
+        "sentences": 109,
+        "syllables_estimated": 4144,
+        "polysyllables_estimated": 491,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 34.89427949812506,
+        "flesch_kincaid_grade_estimate": 13.711823227439606,
+        "fog_estimate": 16.979876260780014,
+        "smog_estimate": 15.253839955595982,
+        "nominalization_token_share_heuristic": 0.07840616966580977,
+        "passive_sentence_share_heuristic": 0.2018348623853211,
+        "hedge_hits_per_1000_words": 1.713796058269066,
+        "sentence_length_population_sd": 13.089817465085348,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r99/eic.phase2.a1.md",
+      "sha256": "9d67438f862e9e9e930a70e7868e925251e10365d833f8625ae54e2fa157f0a4",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2211,
+        "sentences": 91,
+        "syllables_estimated": 4028,
+        "polysyllables_estimated": 516,
+        "unsupported_tokens": 3
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 28.049558501200323,
+        "flesch_kincaid_grade_estimate": 15.382955353104606,
+        "fog_estimate": 19.053823788152148,
+        "smog_estimate": 16.732550806547355,
+        "nominalization_token_share_heuristic": 0.0845771144278607,
+        "passive_sentence_share_heuristic": 0.17582417582417584,
+        "hedge_hits_per_1000_words": 0.4522840343735866,
+        "sentence_length_population_sd": 14.452266642633235,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r99/methodology.phase2.a1.md",
+      "sha256": "c57518794d0f3716b322537d4092ada088966756c053aa252a1e10750b83111b",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3002,
+        "sentences": 117,
+        "syllables_estimated": 5676,
+        "polysyllables_estimated": 771,
+        "unsupported_tokens": 5
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 20.835446255203095,
+        "flesch_kincaid_grade_estimate": 16.727392849211643,
+        "fog_estimate": 20.53639909575952,
+        "smog_estimate": 17.79400297379322,
+        "nominalization_token_share_heuristic": 0.08394403730846102,
+        "passive_sentence_share_heuristic": 0.3504273504273504,
+        "hedge_hits_per_1000_words": 3.331112591605596,
+        "sentence_length_population_sd": 14.257199346872133,
+        "flagged_term_hits_per_1000_words": 0.3331112591605596
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r99/perspective.phase2.a1.md",
+      "sha256": "23f87ad8c1b633997d21dab49f639ed790aae97c64b151044d3fdb753eca37ba",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 2737,
+        "sentences": 122,
+        "syllables_estimated": 4885,
+        "polysyllables_estimated": 593,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 33.06990319363669,
+        "flesch_kincaid_grade_estimate": 14.220076576603557,
+        "fog_estimate": 17.640193582778803,
+        "smog_estimate": 15.723931658589038,
+        "nominalization_token_share_heuristic": 0.07343807088052612,
+        "passive_sentence_share_heuristic": 0.1721311475409836,
+        "hedge_hits_per_1000_words": 4.384362440628426,
+        "sentence_length_population_sd": 12.494580926931478,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r99/synthesis.a1.md",
+      "sha256": "fd700558bf54d413eed9d1587c1b56ea99cb5da64918abe91d3236a8061b9e4e",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 5332,
+        "sentences": 214,
+        "syllables_estimated": 9554,
+        "polysyllables_estimated": 1205,
+        "unsupported_tokens": 9
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 29.957151776261867,
+        "flesch_kincaid_grade_estimate": 15.270707139401676,
+        "fog_estimate": 19.006115080171913,
+        "smog_estimate": 16.685100387110023,
+        "nominalization_token_share_heuristic": 0.07483120780195049,
+        "passive_sentence_share_heuristic": 0.29439252336448596,
+        "hedge_hits_per_1000_words": 0.9377344336084021,
+        "sentence_length_population_sd": 16.96126510409373,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms00_clean-baseline-r99/synthesis.a2.md",
+      "sha256": "52ce1b9b35e8a9c12ea5a65c93f959cc6aaa287db811ea06f9524e36a39a6cdc",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3317,
+        "sentences": 142,
+        "syllables_estimated": 5990,
+        "polysyllables_estimated": 745,
+        "unsupported_tokens": 5
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.350661243614866,
+        "flesch_kincaid_grade_estimate": 14.829084591965422,
+        "fog_estimate": 18.327683678192155,
+        "smog_estimate": 16.214255859722858,
+        "nominalization_token_share_heuristic": 0.08170033162496232,
+        "passive_sentence_share_heuristic": 0.31690140845070425,
+        "hedge_hits_per_1000_words": 0.9044317154054868,
+        "sentence_length_population_sd": 17.47768861394023,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/da.phase2.a1.md",
+      "sha256": "336df8a468a8a7334fca7143a62cb1b087da55202749c62f67b67ef8821f0990",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1501,
+        "sentences": 60,
+        "syllables_estimated": 2682,
+        "polysyllables_estimated": 313,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.279059349322665,
+        "flesch_kincaid_grade_estimate": 15.250843770819454,
+        "fog_estimate": 18.34777259604708,
+        "smog_estimate": 16.177025831334266,
+        "nominalization_token_share_heuristic": 0.06995336442371752,
+        "passive_sentence_share_heuristic": 0.26666666666666666,
+        "hedge_hits_per_1000_words": 3.331112591605596,
+        "sentence_length_population_sd": 20.051177576946003,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/domain.phase2.a1.md",
+      "sha256": "6826a3411512c38af270ec319f3c5c37c3b3082c4ba4c1f00640d6e285cf45d8",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2885,
+        "sentences": 119,
+        "syllables_estimated": 5290,
+        "polysyllables_estimated": 671,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 27.103210317055783,
+        "flesch_kincaid_grade_estimate": 15.501783784571021,
+        "fog_estimate": 19.000771885877402,
+        "smog_estimate": 16.694503465303587,
+        "nominalization_token_share_heuristic": 0.09012131715771231,
+        "passive_sentence_share_heuristic": 0.25210084033613445,
+        "hedge_hits_per_1000_words": 1.733102253032929,
+        "sentence_length_population_sd": 14.366140389471127,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/eic.phase2.a1.md",
+      "sha256": "dd5a5328df1c3fd80235cab7720c8997b4bac82095d922f401dda2ef3895ff96",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3251,
+        "sentences": 132,
+        "syllables_estimated": 5826,
+        "polysyllables_estimated": 693,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.228167568487095,
+        "flesch_kincaid_grade_estimate": 15.16158224042952,
+        "fog_estimate": 18.37812234930045,
+        "smog_estimate": 16.218646115125612,
+        "nominalization_token_share_heuristic": 0.08274377114733927,
+        "passive_sentence_share_heuristic": 0.3106060606060606,
+        "hedge_hits_per_1000_words": 0.9227929867733006,
+        "sentence_length_population_sd": 12.35424433448751,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/methodology.phase2.a1.md",
+      "sha256": "900d9bcebc3fba20faaf5c26be260586ce7c03bc1e6730ea14dacc4e15f9cb85",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3601,
+        "sentences": 149,
+        "syllables_estimated": 6643,
+        "polysyllables_estimated": 849,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.237549972136776,
+        "flesch_kincaid_grade_estimate": 15.603667288542148,
+        "fog_estimate": 19.09782778460122,
+        "smog_estimate": 16.765685716373433,
+        "nominalization_token_share_heuristic": 0.0833101916134407,
+        "passive_sentence_share_heuristic": 0.33557046979865773,
+        "hedge_hits_per_1000_words": 2.4993057484032213,
+        "sentence_length_population_sd": 12.826881736993428,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/perspective.phase2.a1.md",
+      "sha256": "9173206d945ed06472884c704cc87ca8c635a07fa7a8c7b267657aaf94602751",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2112,
+        "sentences": 89,
+        "syllables_estimated": 4034,
+        "polysyllables_estimated": 531,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 21.15950331971399,
+        "flesch_kincaid_grade_estimate": 16.20327843037113,
+        "fog_estimate": 19.548953013278858,
+        "smog_estimate": 17.08305098090602,
+        "nominalization_token_share_heuristic": 0.09990530303030302,
+        "passive_sentence_share_heuristic": 0.2808988764044944,
+        "hedge_hits_per_1000_words": 3.3143939393939394,
+        "sentence_length_population_sd": 13.742220716589317,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/synthesis.a1.md",
+      "sha256": "64b079d22e838a113159493ea0e14a76ae454ce0d7e40837eaebb7b1435a3bfa",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3569,
+        "sentences": 133,
+        "syllables_estimated": 6595,
+        "polysyllables_estimated": 823,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 23.269231245668124,
+        "flesch_kincaid_grade_estimate": 16.68019592270112,
+        "fog_estimate": 19.957706819584686,
+        "smog_estimate": 17.339916543819896,
+        "nominalization_token_share_heuristic": 0.07929391986550854,
+        "passive_sentence_share_heuristic": 0.3684210526315789,
+        "hedge_hits_per_1000_words": 1.6811431773606051,
+        "sentence_length_population_sd": 18.08508730207644,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms01_quant-baseline-r1/synthesis.a2.md",
+      "sha256": "bf1b44cbfdb9026b6637d7a7337f7cb2f769d9ec4c6c70740f5b30265d924278",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3274,
+        "sentences": 124,
+        "syllables_estimated": 5918,
+        "polysyllables_estimated": 737,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 27.11489501842476,
+        "flesch_kincaid_grade_estimate": 16.036641082231462,
+        "fog_estimate": 19.565566437424874,
+        "smog_estimate": 17.05642907203119,
+        "nominalization_token_share_heuristic": 0.08155161881490532,
+        "passive_sentence_share_heuristic": 0.3709677419354839,
+        "hedge_hits_per_1000_words": 0.6108735491753207,
+        "sentence_length_population_sd": 18.513255649816514,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms02_qual-baseline-r2/da.phase2.a1.md",
+      "sha256": "8b6c0fcba91bd70aa15b8061f388acc7a71075fa7c31cada29c79635237f427d",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1037,
+        "sentences": 39,
+        "syllables_estimated": 1881,
+        "polysyllables_estimated": 241,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.39163687164651,
+        "flesch_kincaid_grade_estimate": 16.18385728061717,
+        "fog_estimate": 19.931943723264844,
+        "smog_estimate": 17.330172792628677,
+        "nominalization_token_share_heuristic": 0.06557377049180328,
+        "passive_sentence_share_heuristic": 0.1794871794871795,
+        "hedge_hits_per_1000_words": 2.892960462873674,
+        "sentence_length_population_sd": 18.957060721965973,
+        "flagged_term_hits_per_1000_words": 0.9643201542912246
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms02_qual-baseline-r2/domain.phase2.a1.md",
+      "sha256": "5119d370ee5aefbe996a3838db5e2b2d03114b2bb2c1d7c2a6f25cff3bc62cd1",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2755,
+        "sentences": 103,
+        "syllables_estimated": 5132,
+        "polysyllables_estimated": 703,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 22.09376350148895,
+        "flesch_kincaid_grade_estimate": 16.822533434355893,
+        "fog_estimate": 20.90592567793773,
+        "smog_estimate": 18.053744182712784,
+        "nominalization_token_share_heuristic": 0.08892921960072596,
+        "passive_sentence_share_heuristic": 0.2621359223300971,
+        "hedge_hits_per_1000_words": 1.8148820326678765,
+        "sentence_length_population_sd": 14.775155246405282,
+        "flagged_term_hits_per_1000_words": 1.4519056261343013
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms02_qual-baseline-r2/eic.phase2.a1.md",
+      "sha256": "e4aa687cd1a90267995fd04e1d8f6cf95ad095635b1edbeb04ed3986a3353e1b",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2729,
+        "sentences": 113,
+        "syllables_estimated": 5037,
+        "polysyllables_estimated": 658,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.173455153918752,
+        "flesch_kincaid_grade_estimate": 15.608298803088427,
+        "fog_estimate": 19.304735437467777,
+        "smog_estimate": 16.914477420276494,
+        "nominalization_token_share_heuristic": 0.09270795163063393,
+        "passive_sentence_share_heuristic": 0.2831858407079646,
+        "hedge_hits_per_1000_words": 1.8321729571271528,
+        "sentence_length_population_sd": 12.791881578465604,
+        "flagged_term_hits_per_1000_words": 1.4657383657017222
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms02_qual-baseline-r2/methodology.phase2.a1.md",
+      "sha256": "9e70fdf1b307f625ec90b24543c2be8859a2bbed9ea0b6cb729fbad393c1325e",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2469,
+        "sentences": 99,
+        "syllables_estimated": 4590,
+        "polysyllables_estimated": 602,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 24.24569498140582,
+        "flesch_kincaid_grade_estimate": 16.073180161272507,
+        "fog_estimate": 19.72869398726021,
+        "smog_estimate": 17.216329312287414,
+        "nominalization_token_share_heuristic": 0.08343458890238963,
+        "passive_sentence_share_heuristic": 0.31313131313131315,
+        "hedge_hits_per_1000_words": 1.6200891049007695,
+        "sentence_length_population_sd": 17.142196847662312,
+        "flagged_term_hits_per_1000_words": 0.4050222762251924
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms02_qual-baseline-r2/perspective.phase2.a1.md",
+      "sha256": "4046d34c28668373f006783937e0d4dcf09a63a4c8167cc7ab4a5d7d962d3b16",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2636,
+        "sentences": 88,
+        "syllables_estimated": 4970,
+        "polysyllables_estimated": 644,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.923549110222126,
+        "flesch_kincaid_grade_estimate": 18.340375913919164,
+        "fog_estimate": 21.75420057939026,
+        "smog_estimate": 18.583300179298124,
+        "nominalization_token_share_heuristic": 0.09028831562974203,
+        "passive_sentence_share_heuristic": 0.3409090909090909,
+        "hedge_hits_per_1000_words": 2.655538694992413,
+        "sentence_length_population_sd": 18.18397714454647,
+        "flagged_term_hits_per_1000_words": 1.1380880121396055
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-04-ms02_qual-baseline-r2/synthesis.a1.md",
+      "sha256": "5848c89ab348d85ffaf620b667ae38d0131612938283d53a806a8c079ca54a44",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3895,
+        "sentences": 155,
+        "syllables_estimated": 7136,
+        "polysyllables_estimated": 928,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.334013002608827,
+        "flesch_kincaid_grade_estimate": 15.829013209656718,
+        "fog_estimate": 19.58177978384198,
+        "smog_estimate": 17.10735873137603,
+        "nominalization_token_share_heuristic": 0.07471116816431322,
+        "passive_sentence_share_heuristic": 0.4,
+        "hedge_hits_per_1000_words": 0.25673940949935814,
+        "sentence_length_population_sd": 19.284862750912698,
+        "flagged_term_hits_per_1000_words": 0.7702182284980744
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms00_clean-post-r99/da.phase2.a1.md",
+      "sha256": "78fa8c89931af74c0eb4e153d96c896832ee1ddd27573e99b361d9e719113281",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1001,
+        "sentences": 46,
+        "syllables_estimated": 1808,
+        "polysyllables_estimated": 226,
+        "unsupported_tokens": 4
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 31.943721387308358,
+        "flesch_kincaid_grade_estimate": 14.209826043521698,
+        "fog_estimate": 17.735316857055988,
+        "smog_estimate": 15.791622775635123,
+        "nominalization_token_share_heuristic": 0.07792207792207792,
+        "passive_sentence_share_heuristic": 0.32608695652173914,
+        "hedge_hits_per_1000_words": 5.994005994005994,
+        "sentence_length_population_sd": 13.163164649569739,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms00_clean-post-r99/domain.phase2.a1.md",
+      "sha256": "77c34a1a9cc56cdc8cb42a1b28e7177afbfad40796634dc224227a2f6eebd0f5",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1894,
+        "sentences": 90,
+        "syllables_estimated": 3493,
+        "polysyllables_estimated": 439,
+        "unsupported_tokens": 4
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 29.45176322891004,
+        "flesch_kincaid_grade_estimate": 14.379424146427315,
+        "fog_estimate": 17.689161093511675,
+        "smog_estimate": 15.74609529734926,
+        "nominalization_token_share_heuristic": 0.08183738120380148,
+        "passive_sentence_share_heuristic": 0.2222222222222222,
+        "hedge_hits_per_1000_words": 3.6958817317845827,
+        "sentence_length_population_sd": 13.30071937161555,
+        "flagged_term_hits_per_1000_words": 0.5279831045406547
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms00_clean-post-r99/eic.phase2.a1.md",
+      "sha256": "dde97fddaba2bcad8a9ada91988d1394e8c06cf1b6e712352853086890713f7d",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1818,
+        "sentences": 82,
+        "syllables_estimated": 3276,
+        "polysyllables_estimated": 416,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 31.88418256459795,
+        "flesch_kincaid_grade_estimate": 14.319951702487327,
+        "fog_estimate": 18.021207974455987,
+        "smog_estimate": 15.996318472518144,
+        "nominalization_token_share_heuristic": 0.07700770077007701,
+        "passive_sentence_share_heuristic": 0.2682926829268293,
+        "hedge_hits_per_1000_words": 2.2002200220022003,
+        "sentence_length_population_sd": 13.411684819906366,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms00_clean-post-r99/methodology.phase2.a1.md",
+      "sha256": "ff75a8ff147329758bde231c6ef162ee07afdabe89d8056ae68a9822cbe07a1a",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3580,
+        "sentences": 117,
+        "syllables_estimated": 6504,
+        "polysyllables_estimated": 853,
+        "unsupported_tokens": 13
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 22.079857947763003,
+        "flesch_kincaid_grade_estimate": 17.78109869646183,
+        "fog_estimate": 21.77004249629948,
+        "smog_estimate": 18.554147870099847,
+        "nominalization_token_share_heuristic": 0.08128491620111732,
+        "passive_sentence_share_heuristic": 0.358974358974359,
+        "hedge_hits_per_1000_words": 0.8379888268156425,
+        "sentence_length_population_sd": 29.92956398774879,
+        "flagged_term_hits_per_1000_words": 0.27932960893854747
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms00_clean-post-r99/perspective.phase2.a1.md",
+      "sha256": "307dbf35b56665229b91aa931e4399181511fc82caa1614e3b2bcc482f997c20",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1679,
+        "sentences": 83,
+        "syllables_estimated": 2955,
+        "polysyllables_estimated": 338,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 37.408666087817636,
+        "flesch_kincaid_grade_estimate": 13.066995988719622,
+        "fog_estimate": 16.143978415149583,
+        "smog_estimate": 14.657372663430962,
+        "nominalization_token_share_heuristic": 0.08159618820726623,
+        "passive_sentence_share_heuristic": 0.21686746987951808,
+        "hedge_hits_per_1000_words": 4.169148302561048,
+        "sentence_length_population_sd": 10.938299355938112,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms00_clean-post-r99/synthesis.a1.md",
+      "sha256": "7334322fdc440d3c549003b262c0a16f4ac0c0ad5c72645d26d069d5541ef7db",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 4069,
+        "sentences": 179,
+        "syllables_estimated": 7335,
+        "polysyllables_estimated": 939,
+        "unsupported_tokens": 7
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 31.257632199310507,
+        "flesch_kincaid_grade_estimate": 14.54673872899193,
+        "fog_estimate": 18.32350666093683,
+        "smog_estimate": 16.213421789986313,
+        "nominalization_token_share_heuristic": 0.08134676824772671,
+        "passive_sentence_share_heuristic": 0.2905027932960894,
+        "hedge_hits_per_1000_words": 1.228803145736053,
+        "sentence_length_population_sd": 16.988515425950734,
+        "flagged_term_hits_per_1000_words": 0.2457606291472106
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-baseline-r3/da.phase2.a1.md",
+      "sha256": "48fac9f215196390a454d0c2bf94bf80ceb7bd4f59b4cd8e214aab6a890fcc29",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1072,
+        "sentences": 50,
+        "syllables_estimated": 1933,
+        "polysyllables_estimated": 235,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 32.52507910447764,
+        "flesch_kincaid_grade_estimate": 14.04902537313433,
+        "fog_estimate": 17.344656716417912,
+        "smog_estimate": 15.514038796780547,
+        "nominalization_token_share_heuristic": 0.06623134328358209,
+        "passive_sentence_share_heuristic": 0.18,
+        "hedge_hits_per_1000_words": 2.798507462686567,
+        "sentence_length_population_sd": 13.758139409091623,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-baseline-r3/domain.phase2.a1.md",
+      "sha256": "041395b83333738b2cd1b2eb005a398bfbeaee54784d69cbdd1fc1187d0f3019",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2288,
+        "sentences": 89,
+        "syllables_estimated": 4226,
+        "polysyllables_estimated": 554,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 24.482950420366166,
+        "flesch_kincaid_grade_estimate": 16.230997485660406,
+        "fog_estimate": 19.968460752730415,
+        "smog_estimate": 17.382051746327708,
+        "nominalization_token_share_heuristic": 0.0930944055944056,
+        "passive_sentence_share_heuristic": 0.3146067415730337,
+        "hedge_hits_per_1000_words": 1.3111888111888113,
+        "sentence_length_population_sd": 13.444185282656765,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-baseline-r3/eic.phase2.a1.md",
+      "sha256": "e6c87ecc961fa52dbf1e9f2d03f5f2d64581ce172bcff3de49ec9d828bd99b11",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2437,
+        "sentences": 102,
+        "syllables_estimated": 4539,
+        "polysyllables_estimated": 566,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 25.013923238150426,
+        "flesch_kincaid_grade_estimate": 15.705864853122211,
+        "fog_estimate": 18.846973537055362,
+        "smog_estimate": 16.586249138698598,
+        "nominalization_token_share_heuristic": 0.0791957324579401,
+        "passive_sentence_share_heuristic": 0.27450980392156865,
+        "hedge_hits_per_1000_words": 1.2310217480508823,
+        "sentence_length_population_sd": 11.728887467713895,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-baseline-r3/methodology.phase2.a1.md",
+      "sha256": "55f9e30c640534790815ff9a9e9f502e1d053b9ad93b9f0acf63ca07e7ebe93f",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1957,
+        "sentences": 71,
+        "syllables_estimated": 3612,
+        "polysyllables_estimated": 468,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 22.713457721289444,
+        "flesch_kincaid_grade_estimate": 16.938767875520885,
+        "fog_estimate": 20.591013839809424,
+        "smog_estimate": 17.796012057272815,
+        "nominalization_token_share_heuristic": 0.09862033725089422,
+        "passive_sentence_share_heuristic": 0.39436619718309857,
+        "hedge_hits_per_1000_words": 2.5549310168625445,
+        "sentence_length_population_sd": 12.830127829565514,
+        "flagged_term_hits_per_1000_words": 0.510986203372509
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-baseline-r3/perspective.phase2.a1.md",
+      "sha256": "6973b978ead27bbfa763fad9583d3f21fd6d02421ebc2e25e10d2d29ce039073",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2744,
+        "sentences": 105,
+        "syllables_estimated": 5231,
+        "polysyllables_estimated": 696,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 19.03320894071919,
+        "flesch_kincaid_grade_estimate": 17.096825072886293,
+        "fog_estimate": 20.59910592808552,
+        "smog_estimate": 17.837143513669655,
+        "nominalization_token_share_heuristic": 0.10604956268221574,
+        "passive_sentence_share_heuristic": 0.3333333333333333,
+        "hedge_hits_per_1000_words": 4.373177842565598,
+        "sentence_length_population_sd": 15.25033437052114,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-baseline-r3/synthesis.a1.md",
+      "sha256": "86f18b73d68a1f6ff00a49ca147ba1e3cd0aa429e545815cef7b6e0abfaf2266",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3321,
+        "sentences": 144,
+        "syllables_estimated": 6028,
+        "polysyllables_estimated": 784,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 29.867754911924152,
+        "flesch_kincaid_grade_estimate": 14.82274296145739,
+        "fog_estimate": 18.667938873833183,
+        "smog_estimate": 16.45884130781739,
+        "nominalization_token_share_heuristic": 0.08130081300813008,
+        "passive_sentence_share_heuristic": 0.2916666666666667,
+        "hedge_hits_per_1000_words": 1.2044564890093346,
+        "sentence_length_population_sd": 16.521962971047557,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-post-r1/da.phase2.a1.md",
+      "sha256": "76b933c23e14f44f5dc7049f39e40aab7cb9c841ceabba5c7bc16bf11259f48b",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1110,
+        "sentences": 50,
+        "syllables_estimated": 1952,
+        "polysyllables_estimated": 221,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 35.52794594594599,
+        "flesch_kincaid_grade_estimate": 13.818990990990994,
+        "fog_estimate": 16.843963963963965,
+        "smog_estimate": 15.139461251852499,
+        "nominalization_token_share_heuristic": 0.06306306306306306,
+        "passive_sentence_share_heuristic": 0.4,
+        "hedge_hits_per_1000_words": 1.8018018018018018,
+        "sentence_length_population_sd": 14.531345429794174,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-post-r1/domain.phase2.a1.md",
+      "sha256": "4b5fd341055a6cc1d14bc61b956ef5c5262f73a185c065ecbb96fb603518997c",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2111,
+        "sentences": 97,
+        "syllables_estimated": 3903,
+        "polysyllables_estimated": 509,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 28.329848217730387,
+        "flesch_kincaid_grade_estimate": 14.714389818671957,
+        "fog_estimate": 18.34987278223542,
+        "smog_estimate": 16.215432773696286,
+        "nominalization_token_share_heuristic": 0.0866887730933207,
+        "passive_sentence_share_heuristic": 0.24742268041237114,
+        "hedge_hits_per_1000_words": 0.4737091425864519,
+        "sentence_length_population_sd": 12.404499678991856,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-post-r1/eic.phase2.a1.md",
+      "sha256": "90b301b8d7c417a3f7acb9354a63d3e5a00f3e1c52c1f72779003c9db6084752",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2224,
+        "sentences": 97,
+        "syllables_estimated": 3967,
+        "polysyllables_estimated": 463,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 32.66027979678117,
+        "flesch_kincaid_grade_estimate": 14.39978732477935,
+        "fog_estimate": 17.49847215011496,
+        "smog_estimate": 15.610105200893969,
+        "nominalization_token_share_heuristic": 0.09352517985611511,
+        "passive_sentence_share_heuristic": 0.23711340206185566,
+        "hedge_hits_per_1000_words": 2.2482014388489207,
+        "sentence_length_population_sd": 14.728643404947775,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-post-r1/methodology.phase2.a1.md",
+      "sha256": "8745da2d9c82e51b66bfa4b201d93858c4c461340e1468e36953dd65d54efb3a",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 4610,
+        "sentences": 137,
+        "syllables_estimated": 8343,
+        "polysyllables_estimated": 1014,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 19.57480698893235,
+        "flesch_kincaid_grade_estimate": 18.888542046012322,
+        "fog_estimate": 22.25811865668097,
+        "smog_estimate": 18.670982801703847,
+        "nominalization_token_share_heuristic": 0.07071583514099783,
+        "passive_sentence_share_heuristic": 0.35036496350364965,
+        "hedge_hits_per_1000_words": 1.3015184381778742,
+        "sentence_length_population_sd": 33.421133058340466,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-post-r1/perspective.phase2.a1.md",
+      "sha256": "559413e0981ef397b99c3463c550ebd70dc31c03d0ccad53743f48dc897506a2",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2645,
+        "sentences": 106,
+        "syllables_estimated": 4880,
+        "polysyllables_estimated": 614,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 25.421676980418766,
+        "flesch_kincaid_grade_estimate": 15.912492242393984,
+        "fog_estimate": 19.266576309876235,
+        "smog_estimate": 16.87826072224184,
+        "nominalization_token_share_heuristic": 0.08620037807183364,
+        "passive_sentence_share_heuristic": 0.24528301886792453,
+        "hedge_hits_per_1000_words": 1.890359168241966,
+        "sentence_length_population_sd": 13.112993754195843,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms01_quant-post-r1/synthesis.a1.md",
+      "sha256": "7032785da4e78abd9e4da526948290e582313751a9a147ab9058ad2ac9304fd7",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3723,
+        "sentences": 162,
+        "syllables_estimated": 6740,
+        "polysyllables_estimated": 880,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.351664950607358,
+        "flesch_kincaid_grade_estimate": 14.735119974930612,
+        "fog_estimate": 18.647333393022354,
+        "smog_estimate": 16.44371964519814,
+        "nominalization_token_share_heuristic": 0.07467096427612141,
+        "passive_sentence_share_heuristic": 0.35802469135802467,
+        "hedge_hits_per_1000_words": 1.8802041364491002,
+        "sentence_length_population_sd": 16.014835800171266,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms02_qual-baseline-r3/da.phase2.a1.md",
+      "sha256": "73617cb7eba6ddcda00412c7ec9c63a9d90522960be8c1c329c874e595b437fb",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1174,
+        "sentences": 51,
+        "syllables_estimated": 2127,
+        "polysyllables_estimated": 263,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.195651701907366,
+        "flesch_kincaid_grade_estimate": 14.76635233991382,
+        "fog_estimate": 18.168660854461034,
+        "smog_estimate": 16.102019463704565,
+        "nominalization_token_share_heuristic": 0.07495741056218058,
+        "passive_sentence_share_heuristic": 0.23529411764705882,
+        "hedge_hits_per_1000_words": 1.7035775127768313,
+        "sentence_length_population_sd": 14.790683602012466,
+        "flagged_term_hits_per_1000_words": 0.8517887563884157
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms02_qual-baseline-r3/domain.phase2.a1.md",
+      "sha256": "c1b7f1d0e0d94783b116ec470f03db5a8c5c6a7f91cd654ac75c5146251e39d3",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2478,
+        "sentences": 95,
+        "syllables_estimated": 4829,
+        "polysyllables_estimated": 670,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 15.495361666879091,
+        "flesch_kincaid_grade_estimate": 17.57808020050125,
+        "fog_estimate": 21.24885773756425,
+        "smog_estimate": 18.300320989616804,
+        "nominalization_token_share_heuristic": 0.11783696529459241,
+        "passive_sentence_share_heuristic": 0.18947368421052632,
+        "hedge_hits_per_1000_words": 2.4213075060532687,
+        "sentence_length_population_sd": 12.956334080201232,
+        "flagged_term_hits_per_1000_words": 1.2106537530266344
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms02_qual-baseline-r3/eic.phase2.a1.md",
+      "sha256": "303e27e2e926921e0ab0b0154dafbcd4015bf2757988fb145e73ded4d5b341c0",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2314,
+        "sentences": 94,
+        "syllables_estimated": 4321,
+        "polysyllables_estimated": 577,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 23.872664631567375,
+        "flesch_kincaid_grade_estimate": 16.045124036852464,
+        "fog_estimate": 19.820879383585577,
+        "smog_estimate": 17.28276511062876,
+        "nominalization_token_share_heuristic": 0.0989628349178911,
+        "passive_sentence_share_heuristic": 0.30851063829787234,
+        "hedge_hits_per_1000_words": 3.4572169403630078,
+        "sentence_length_population_sd": 14.041811714789151,
+        "flagged_term_hits_per_1000_words": 1.7286084701815039
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms02_qual-baseline-r3/methodology.phase2.a1.md",
+      "sha256": "b3711bcc2286d5ea4c7136213e31aed42b7655ffdbd65918d1ddd676cbfb414e",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3172,
+        "sentences": 120,
+        "syllables_estimated": 6029,
+        "polysyllables_estimated": 808,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 19.20649075241701,
+        "flesch_kincaid_grade_estimate": 17.147184110971,
+        "fog_estimate": 20.762488440521228,
+        "smog_estimate": 17.952915230904626,
+        "nominalization_token_share_heuristic": 0.08827238335435057,
+        "passive_sentence_share_heuristic": 0.325,
+        "hedge_hits_per_1000_words": 1.5762925598991173,
+        "sentence_length_population_sd": 13.14960920416353,
+        "flagged_term_hits_per_1000_words": 0.9457755359394704
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms02_qual-baseline-r3/perspective.phase2.a1.md",
+      "sha256": "a47574aab6e18172586ef61b81826dda30176b1ee047a4c2fd82e8fb62c931eb",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2137,
+        "sentences": 97,
+        "syllables_estimated": 3964,
+        "polysyllables_estimated": 500,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 27.545952655471382,
+        "flesch_kincaid_grade_estimate": 14.89031641814086,
+        "fog_estimate": 18.171285499954173,
+        "smog_estimate": 16.099222287972015,
+        "nominalization_token_share_heuristic": 0.085634066448292,
+        "passive_sentence_share_heuristic": 0.2268041237113402,
+        "hedge_hits_per_1000_words": 2.339728591483388,
+        "sentence_length_population_sd": 12.925204026982403,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-05-ms02_qual-baseline-r3/synthesis.a1.md",
+      "sha256": "8fa4303056670abe16051486e3a27ef2e860dc515810b51ba6e655d8147c8ef1",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 4014,
+        "sentences": 175,
+        "syllables_estimated": 7540,
+        "polysyllables_estimated": 1040,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 24.639001793722002,
+        "flesch_kincaid_grade_estimate": 15.520906740693288,
+        "fog_estimate": 19.53858409851235,
+        "smog_estimate": 17.055619163093123,
+        "nominalization_token_share_heuristic": 0.09018435475834578,
+        "passive_sentence_share_heuristic": 0.32571428571428573,
+        "hedge_hits_per_1000_words": 0.7473841554559043,
+        "sentence_length_population_sd": 19.511799883503254,
+        "flagged_term_hits_per_1000_words": 0.2491280518186348
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms00_clean-post-r2/da.phase2.a1.md",
+      "sha256": "73e4b2dff0abe56359f7c5a6cc0d73df1399a4c1ec6b0daa38201340c36682da",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 984,
+        "sentences": 45,
+        "syllables_estimated": 1792,
+        "polysyllables_estimated": 219,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.572040650406507,
+        "flesch_kincaid_grade_estimate": 14.427430894308944,
+        "fog_estimate": 17.649105691056914,
+        "smog_estimate": 15.731716950459138,
+        "nominalization_token_share_heuristic": 0.0782520325203252,
+        "passive_sentence_share_heuristic": 0.26666666666666666,
+        "hedge_hits_per_1000_words": 4.065040650406504,
+        "sentence_length_population_sd": 15.348687964194927,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms00_clean-post-r2/domain.phase2.a1.md",
+      "sha256": "dcd52d807c458b58eb190fb0e5f2e111d0e5125c9aa19e8e993a3cef140ae4bb",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 1833,
+        "sentences": 78,
+        "syllables_estimated": 3331,
+        "polysyllables_estimated": 419,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 29.24403846153848,
+        "flesch_kincaid_grade_estimate": 15.018426077468636,
+        "fog_estimate": 18.543480632842336,
+        "smog_estimate": 16.369607935295207,
+        "nominalization_token_share_heuristic": 0.08074195308237861,
+        "passive_sentence_share_heuristic": 0.20512820512820512,
+        "hedge_hits_per_1000_words": 2.182214948172395,
+        "sentence_length_population_sd": 13.212998650319062,
+        "flagged_term_hits_per_1000_words": 0.5455537370430987
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms00_clean-post-r2/eic.phase2.a1.md",
+      "sha256": "7ef43a1542c91456e2434529266526defd8f259870b203bcc39676fd647203df",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1635,
+        "sentences": 74,
+        "syllables_estimated": 2921,
+        "polysyllables_estimated": 359,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 33.26733511033973,
+        "flesch_kincaid_grade_estimate": 14.108115133482105,
+        "fog_estimate": 17.620712455574843,
+        "smog_estimate": 15.711871216488301,
+        "nominalization_token_share_heuristic": 0.07951070336391437,
+        "passive_sentence_share_heuristic": 0.16216216216216217,
+        "hedge_hits_per_1000_words": 2.4464831804281344,
+        "sentence_length_population_sd": 11.091960710497222,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms00_clean-post-r2/methodology.phase2.a1.md",
+      "sha256": "e6a6f8fbce13d1931921779b0504e575ab0c52d44a0212597dc9c53bf9842386",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3419,
+        "sentences": 132,
+        "syllables_estimated": 6249,
+        "polysyllables_estimated": 829,
+        "unsupported_tokens": 12
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 25.919223601177066,
+        "flesch_kincaid_grade_estimate": 16.07877429604616,
+        "fog_estimate": 20.05934838292253,
+        "smog_estimate": 17.445546526158772,
+        "nominalization_token_share_heuristic": 0.0818952910207663,
+        "passive_sentence_share_heuristic": 0.30303030303030304,
+        "hedge_hits_per_1000_words": 3.5097981866042702,
+        "sentence_length_population_sd": 16.446359018854086,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms00_clean-post-r2/perspective.phase2.a1.md",
+      "sha256": "1b54f396d2cf71712b4d6459302fa3734680c6fa6d2a5973985070ddf6aaeb91",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1870,
+        "sentences": 74,
+        "syllables_estimated": 3464,
+        "polysyllables_estimated": 432,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 24.472092787975186,
+        "flesch_kincaid_grade_estimate": 16.12380112733054,
+        "fog_estimate": 19.348749819338053,
+        "smog_estimate": 16.932019315189144,
+        "nominalization_token_share_heuristic": 0.09090909090909091,
+        "passive_sentence_share_heuristic": 0.24324324324324326,
+        "hedge_hits_per_1000_words": 5.347593582887701,
+        "sentence_length_population_sd": 14.78613055142253,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms00_clean-post-r2/synthesis.a1.md",
+      "sha256": "d07ac19a993b85b166024be42e1e1f0c2e87c256df41dafee63b3360a34acfe0",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3089,
+        "sentences": 124,
+        "syllables_estimated": 5752,
+        "polysyllables_estimated": 755,
+        "unsupported_tokens": 3
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 24.017117046439523,
+        "flesch_kincaid_grade_estimate": 16.098080467632286,
+        "fog_estimate": 19.741142869077578,
+        "smog_estimate": 17.225479039176303,
+        "nominalization_token_share_heuristic": 0.08740692780835221,
+        "passive_sentence_share_heuristic": 0.29838709677419356,
+        "hedge_hits_per_1000_words": 0.9711880867594691,
+        "sentence_length_population_sd": 22.288436209336183,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms01_quant-post-r2/da.phase2.a1.md",
+      "sha256": "f028e304571a50b67c2a89e6130f9587bc8b3ec14f1c21d17d0cbdb169efc3e0",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1472,
+        "sentences": 59,
+        "syllables_estimated": 2635,
+        "polysyllables_estimated": 320,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.07071343036114,
+        "flesch_kincaid_grade_estimate": 15.263131448047165,
+        "fog_estimate": 18.675313190862198,
+        "smog_estimate": 16.433457894428834,
+        "nominalization_token_share_heuristic": 0.059782608695652176,
+        "passive_sentence_share_heuristic": 0.3559322033898305,
+        "hedge_hits_per_1000_words": 3.3967391304347827,
+        "sentence_length_population_sd": 19.788220883204573,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms01_quant-post-r2/domain.phase2.a1.md",
+      "sha256": "7a1f41d4c28b7696527028a58a16b4d82849c8d49fc66cb4fa551652d5a0ef8e",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2115,
+        "sentences": 90,
+        "syllables_estimated": 3893,
+        "polysyllables_estimated": 506,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 27.262500000000017,
+        "flesch_kincaid_grade_estimate": 15.294810874704492,
+        "fog_estimate": 18.969739952718676,
+        "smog_estimate": 16.67472160503041,
+        "nominalization_token_share_heuristic": 0.09550827423167849,
+        "passive_sentence_share_heuristic": 0.26666666666666666,
+        "hedge_hits_per_1000_words": 0.4728132387706856,
+        "sentence_length_population_sd": 12.69317401860806,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms01_quant-post-r2/eic.phase2.a1.md",
+      "sha256": "457a860f94c6b74f5ef0cc07ef802ea77765784fc366f07847c1b7453e2c1aae",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1844,
+        "sentences": 82,
+        "syllables_estimated": 3282,
+        "polysyllables_estimated": 390,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 33.43655917676318,
+        "flesch_kincaid_grade_estimate": 14.182196180096295,
+        "fog_estimate": 17.454991799375694,
+        "smog_estimate": 15.587730714018804,
+        "nominalization_token_share_heuristic": 0.0824295010845987,
+        "passive_sentence_share_heuristic": 0.24390243902439024,
+        "hedge_hits_per_1000_words": 1.6268980477223427,
+        "sentence_length_population_sd": 13.368368109576686,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms01_quant-post-r2/methodology.phase2.a1.md",
+      "sha256": "1874bf89ba8261ab752f251b84a3231062b75f8055cd8f0672e5d77af94f28df",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 5074,
+        "sentences": 148,
+        "syllables_estimated": 9229,
+        "polysyllables_estimated": 1163,
+        "unsupported_tokens": 5
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 18.159663440539504,
+        "flesch_kincaid_grade_estimate": 19.2434663733501,
+        "fog_estimate": 22.88182253992266,
+        "smog_estimate": 19.14325159847436,
+        "nominalization_token_share_heuristic": 0.06937327552227039,
+        "passive_sentence_share_heuristic": 0.3310810810810811,
+        "hedge_hits_per_1000_words": 1.1824990145841545,
+        "sentence_length_population_sd": 40.6991334891059,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms01_quant-post-r2/perspective.phase2.a1.md",
+      "sha256": "1a38152a4fe15f81c449fa5dcc3f40e76f70f45a0d6be0d79682b0434e2d384d",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2376,
+        "sentences": 91,
+        "syllables_estimated": 4456,
+        "polysyllables_estimated": 584,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 21.672855477855506,
+        "flesch_kincaid_grade_estimate": 16.722823472823475,
+        "fog_estimate": 20.275605875605876,
+        "smog_estimate": 17.601170289407055,
+        "nominalization_token_share_heuristic": 0.08627946127946128,
+        "passive_sentence_share_heuristic": 0.34065934065934067,
+        "hedge_hits_per_1000_words": 1.6835016835016836,
+        "sentence_length_population_sd": 15.517059417136906,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms01_quant-post-r2/synthesis.a1.md",
+      "sha256": "945679a50e697a8f3a0d0e29dfcfd68713a8f6fa9058f024bcb8dc546b295b30",
+      "corpus": "reviewer_outputs",
+      "coverage": "partial",
+      "counts": {
+        "words": 3783,
+        "sentences": 177,
+        "syllables_estimated": 6866,
+        "polysyllables_estimated": 879,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 31.59576808828075,
+        "flesch_kincaid_grade_estimate": 14.161971442268491,
+        "fog_estimate": 17.843363486068363,
+        "smog_estimate": 15.859813368910476,
+        "nominalization_token_share_heuristic": 0.0647634152788792,
+        "passive_sentence_share_heuristic": 0.2824858757062147,
+        "hedge_hits_per_1000_words": 1.5860428231562251,
+        "sentence_length_population_sd": 16.750308173319613,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r1/da.phase2.a1.md",
+      "sha256": "c900cd99f3d09599d91c38e5cf6066e0fe3a2c4e1508adb4f5482ed76d6bc7dc",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1219,
+        "sentences": 53,
+        "syllables_estimated": 2251,
+        "polysyllables_estimated": 288,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 27.268014766201816,
+        "flesch_kincaid_grade_estimate": 15.169827727645615,
+        "fog_estimate": 18.650369155045123,
+        "smog_estimate": 16.44600326062445,
+        "nominalization_token_share_heuristic": 0.07629204265791632,
+        "passive_sentence_share_heuristic": 0.33962264150943394,
+        "hedge_hits_per_1000_words": 0.8203445447087777,
+        "sentence_length_population_sd": 15.516272651030985,
+        "flagged_term_hits_per_1000_words": 1.6406890894175554
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r1/domain.phase2.a1.md",
+      "sha256": "e99de806260697ab9c95939032e6af0bf8f1da7bbe4842d5d39e7d07bb7b50a0",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2526,
+        "sentences": 95,
+        "syllables_estimated": 4740,
+        "polysyllables_estimated": 624,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 21.0960903862983,
+        "flesch_kincaid_grade_estimate": 16.92241255156895,
+        "fog_estimate": 20.51702462807851,
+        "smog_estimate": 17.770258021499743,
+        "nominalization_token_share_heuristic": 0.08590657165479018,
+        "passive_sentence_share_heuristic": 0.2631578947368421,
+        "hedge_hits_per_1000_words": 1.187648456057007,
+        "sentence_length_population_sd": 14.833457727180278,
+        "flagged_term_hits_per_1000_words": 1.187648456057007
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r1/eic.phase2.a1.md",
+      "sha256": "905f62f9a1a59b963946947fb0077cf787082faecaa42aeaa605d532aadb1061",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1393,
+        "sentences": 56,
+        "syllables_estimated": 2565,
+        "polysyllables_estimated": 328,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 25.80869840272797,
+        "flesch_kincaid_grade_estimate": 15.839175340990668,
+        "fog_estimate": 19.36852117731515,
+        "smog_estimate": 16.954822765917157,
+        "nominalization_token_share_heuristic": 0.09691313711414214,
+        "passive_sentence_share_heuristic": 0.2857142857142857,
+        "hedge_hits_per_1000_words": 1.4357501794687724,
+        "sentence_length_population_sd": 14.482825419884655,
+        "flagged_term_hits_per_1000_words": 2.8715003589375447
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r1/methodology.phase2.a1.md",
+      "sha256": "923f50e893382f89db942b644f564aeff0862b425bf12363130668af0afa6146",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3897,
+        "sentences": 124,
+        "syllables_estimated": 7125,
+        "polysyllables_estimated": 916,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 20.259494989942652,
+        "flesch_kincaid_grade_estimate": 18.240981462166925,
+        "fog_estimate": 21.97307192464013,
+        "smog_estimate": 18.655895392523544,
+        "nominalization_token_share_heuristic": 0.07082371054657428,
+        "passive_sentence_share_heuristic": 0.4032258064516129,
+        "hedge_hits_per_1000_words": 3.335899409802412,
+        "sentence_length_population_sd": 32.421163286102825,
+        "flagged_term_hits_per_1000_words": 0.5132152938157557
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r1/perspective.phase2.a1.md",
+      "sha256": "1910df38ca5a3b5b9ab751dbdd338a8087b7b969fe4a52f5e25193144508418a",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1786,
+        "sentences": 79,
+        "syllables_estimated": 3380,
+        "polysyllables_estimated": 434,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 23.783027981345782,
+        "flesch_kincaid_grade_estimate": 15.558428990602014,
+        "fog_estimate": 18.763082767516693,
+        "smog_estimate": 16.518966742891994,
+        "nominalization_token_share_heuristic": 0.08958566629339305,
+        "passive_sentence_share_heuristic": 0.27848101265822783,
+        "hedge_hits_per_1000_words": 1.6797312430011198,
+        "sentence_length_population_sd": 12.882544093343379,
+        "flagged_term_hits_per_1000_words": 0.5599104143337066
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r1/synthesis.a1.md",
+      "sha256": "70096c5ae213a870f916cc4b48435e3d59a3f39642c6a340a8be1a5b1416cfc8",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 3663,
+        "sentences": 149,
+        "syllables_estimated": 6609,
+        "polysyllables_estimated": 838,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 29.242054152993745,
+        "flesch_kincaid_grade_estimate": 15.287972011059264,
+        "fog_estimate": 18.984526197949016,
+        "smog_estimate": 16.677057041561653,
+        "nominalization_token_share_heuristic": 0.07644007644007644,
+        "passive_sentence_share_heuristic": 0.37583892617449666,
+        "hedge_hits_per_1000_words": 1.092001092001092,
+        "sentence_length_population_sd": 16.901650239567843,
+        "flagged_term_hits_per_1000_words": 1.092001092001092
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r2/da.phase2.a1.md",
+      "sha256": "bfaad2360dc57e9e9e5591e07e8d41abd9cb7188692008a293f57a7db375f1de",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 1312,
+        "sentences": 52,
+        "syllables_estimated": 2392,
+        "polysyllables_estimated": 300,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 26.985525328330198,
+        "flesch_kincaid_grade_estimate": 15.763414634146343,
+        "fog_estimate": 19.238649155722328,
+        "smog_estimate": 16.850672712058472,
+        "nominalization_token_share_heuristic": 0.08155487804878049,
+        "passive_sentence_share_heuristic": 0.25,
+        "hedge_hits_per_1000_words": 1.524390243902439,
+        "sentence_length_population_sd": 18.315205310400703,
+        "flagged_term_hits_per_1000_words": 3.048780487804878
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r2/domain.phase2.a1.md",
+      "sha256": "0b1d971c18875c16bed7cfac7583e7d08180f52a3fdfe262c5446e78797defc3",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2330,
+        "sentences": 94,
+        "syllables_estimated": 4554,
+        "polysyllables_estimated": 648,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.3247128116154,
+        "flesch_kincaid_grade_estimate": 17.140197242260985,
+        "fog_estimate": 21.039357136334583,
+        "smog_estimate": 18.12831436240451,
+        "nominalization_token_share_heuristic": 0.09399141630901288,
+        "passive_sentence_share_heuristic": 0.23404255319148937,
+        "hedge_hits_per_1000_words": 0.4291845493562232,
+        "sentence_length_population_sd": 15.2510009022258,
+        "flagged_term_hits_per_1000_words": 1.7167381974248928
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r2/eic.phase2.a1.md",
+      "sha256": "56639c89e1e01b4bc80d8d33f756171ee72531b09824b7808d4f95b557db3b3c",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2313,
+        "sentences": 101,
+        "syllables_estimated": 4259,
+        "polysyllables_estimated": 556,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 27.81384135300692,
+        "flesch_kincaid_grade_estimate": 15.069099065548581,
+        "fog_estimate": 18.7756143707756,
+        "smog_estimate": 16.532705736244008,
+        "nominalization_token_share_heuristic": 0.08949416342412451,
+        "passive_sentence_share_heuristic": 0.25742574257425743,
+        "hedge_hits_per_1000_words": 0.8646779074794639,
+        "sentence_length_population_sd": 12.529177788243206,
+        "flagged_term_hits_per_1000_words": 1.297016861219196
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r2/methodology.phase2.a1.md",
+      "sha256": "e69fe99a71a55571f3dc9b153436a6d8b7b2096d9856305615cf3c65a76d0a10",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 4377,
+        "sentences": 134,
+        "syllables_estimated": 8181,
+        "polysyllables_estimated": 1061,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 15.555978154123181,
+        "flesch_kincaid_grade_estimate": 19.20427316808691,
+        "fog_estimate": 22.76181054971885,
+        "smog_estimate": 19.204072126899536,
+        "nominalization_token_share_heuristic": 0.0822481151473612,
+        "passive_sentence_share_heuristic": 0.35074626865671643,
+        "hedge_hits_per_1000_words": 3.427004797806717,
+        "sentence_length_population_sd": 29.363126442451325,
+        "flagged_term_hits_per_1000_words": 0.6854009595613434
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r2/perspective.phase2.a1.md",
+      "sha256": "e86caf549c21d4b696d5159ffd5e761fc9bb0de5e26153b7c5fb94fe48272cae",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 2585,
+        "sentences": 111,
+        "syllables_estimated": 4967,
+        "polysyllables_estimated": 655,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 20.641023751023795,
+        "flesch_kincaid_grade_estimate": 16.16577866067228,
+        "fog_estimate": 19.450711833690562,
+        "smog_estimate": 17.0063718617286,
+        "nominalization_token_share_heuristic": 0.0885880077369439,
+        "passive_sentence_share_heuristic": 0.2972972972972973,
+        "hedge_hits_per_1000_words": 0.7736943907156673,
+        "sentence_length_population_sd": 13.130932730287682,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/reviewer_seeded_defects/runs/raw/2026-08-06-ms02_qual-post-r2/synthesis.a1.md",
+      "sha256": "eb3f25e2d601d7302f614499fd867c7aef223f4e417c1af09080327604da76dd",
+      "corpus": "reviewer_outputs",
+      "coverage": "complete",
+      "counts": {
+        "words": 4770,
+        "sentences": 193,
+        "syllables_estimated": 8624,
+        "polysyllables_estimated": 1105,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 28.795286440512285,
+        "flesch_kincaid_grade_estimate": 15.382864296499061,
+        "fog_estimate": 19.152257742149228,
+        "smog_estimate": 16.798436045597136,
+        "nominalization_token_share_heuristic": 0.08280922431865828,
+        "passive_sentence_share_heuristic": 0.3471502590673575,
+        "hedge_hits_per_1000_words": 0.20964360587002095,
+        "sentence_length_population_sd": 23.99042624515453,
+        "flagged_term_hits_per_1000_words": 0.20964360587002095
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-01-G-r1.md",
+      "sha256": "152dfc5ac5eecffa82b2f0dcee733a12097a4d60e6a0e6f6c2d94fae40e662c7",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 205,
+        "sentences": 7,
+        "syllables_estimated": 421,
+        "polysyllables_estimated": 62,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 3.3704878048780813,
+        "flesch_kincaid_grade_estimate": 20.06459930313589,
+        "fog_estimate": 23.81184668989547,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.08780487804878048,
+        "passive_sentence_share_heuristic": 0.2857142857142857,
+        "hedge_hits_per_1000_words": 19.51219512195122,
+        "sentence_length_population_sd": 8.939707341235437,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-01-G-r2.md",
+      "sha256": "ed23377e6d0663adcb9ab5882427ffaa8f6fc574700af9f02caaf591f963257d",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 210,
+        "sentences": 7,
+        "syllables_estimated": 415,
+        "polysyllables_estimated": 58,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 9.199285714285736,
+        "flesch_kincaid_grade_estimate": 19.42904761904762,
+        "fog_estimate": 23.04761904761905,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.09047619047619047,
+        "passive_sentence_share_heuristic": 0.2857142857142857,
+        "hedge_hits_per_1000_words": 19.047619047619047,
+        "sentence_length_population_sd": 9.471762545286158,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-01-U-r1.md",
+      "sha256": "513a3e190c7d0253feeaa45c5458a0b8eb09feb3ac7b6ad9c9a21ce49d1256f0",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 226,
+        "sentences": 8,
+        "syllables_estimated": 460,
+        "polysyllables_estimated": 68,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 5.966559734513282,
+        "flesch_kincaid_grade_estimate": 19.44519911504425,
+        "fog_estimate": 23.335398230088497,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.09734513274336283,
+        "passive_sentence_share_heuristic": 0.375,
+        "hedge_hits_per_1000_words": 13.274336283185841,
+        "sentence_length_population_sd": 8.272696053887149,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-01-U-r2.md",
+      "sha256": "7e4d0362066e03abfa7217c51b6e24896ea86f9102c0f735a92e63edc8c0adaa",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 230,
+        "sentences": 7,
+        "syllables_estimated": 476,
+        "polysyllables_estimated": 70,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": -1.6002173913043123,
+        "flesch_kincaid_grade_estimate": 21.645155279503104,
+        "fog_estimate": 25.316770186335404,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.09130434782608696,
+        "passive_sentence_share_heuristic": 0.2857142857142857,
+        "hedge_hits_per_1000_words": 17.391304347826086,
+        "sentence_length_population_sd": 10.521115794012553,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-02-G-r1.md",
+      "sha256": "a2ba5ce0e703dbe46f46ddfae93c9ae3ff06251de42373978c9fa80168b5de3b",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 135,
+        "sentences": 5,
+        "syllables_estimated": 271,
+        "polysyllables_estimated": 36,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 9.603333333333353,
+        "flesch_kincaid_grade_estimate": 18.627407407407407,
+        "fog_estimate": 21.46666666666667,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.1037037037037037,
+        "passive_sentence_share_heuristic": 0.4,
+        "hedge_hits_per_1000_words": 44.44444444444444,
+        "sentence_length_population_sd": 8.78635305459552,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-02-G-r2.md",
+      "sha256": "050f6030d2301426c03ead9f5cca422d3399d4a2d5b721b85da1ca0b79316640",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 131,
+        "sentences": 5,
+        "syllables_estimated": 260,
+        "polysyllables_estimated": 34,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 12.333603053435155,
+        "flesch_kincaid_grade_estimate": 18.047847328244277,
+        "fog_estimate": 20.86167938931298,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.09923664122137404,
+        "passive_sentence_share_heuristic": 0.4,
+        "hedge_hits_per_1000_words": 45.80152671755725,
+        "sentence_length_population_sd": 7.025667228100119,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-02-U-r1.md",
+      "sha256": "305c582985d61b5d3e2694437f660851901a1aaccfa8d71c7e82c1ec1872af47",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 118,
+        "sentences": 5,
+        "syllables_estimated": 236,
+        "polysyllables_estimated": 30,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 13.681000000000012,
+        "flesch_kincaid_grade_estimate": 17.214000000000002,
+        "fog_estimate": 19.60949152542373,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.11016949152542373,
+        "passive_sentence_share_heuristic": 0.2,
+        "hedge_hits_per_1000_words": 8.474576271186441,
+        "sentence_length_population_sd": 6.248199740725323,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-02-U-r2.md",
+      "sha256": "d340ee9394d9396bc54d0a9bf26e1ba8b351141005fe6d569a84f8c5f5fb0d03",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 129,
+        "sentences": 5,
+        "syllables_estimated": 251,
+        "polysyllables_estimated": 33,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.038697674418643,
+        "flesch_kincaid_grade_estimate": 17.43168992248062,
+        "fog_estimate": 20.552558139534884,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.10077519379844961,
+        "passive_sentence_share_heuristic": 0.4,
+        "hedge_hits_per_1000_words": 0.0,
+        "sentence_length_population_sd": 6.734983296193095,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-03-G-r1.md",
+      "sha256": "94c32a51db915f477d30f0fccd520aac69284cf42ff16c128ad88a58abe7ca74",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 138,
+        "sentences": 6,
+        "syllables_estimated": 289,
+        "polysyllables_estimated": 43,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 6.320434782608714,
+        "flesch_kincaid_grade_estimate": 18.091594202898552,
+        "fog_estimate": 21.663768115942034,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.08695652173913043,
+        "passive_sentence_share_heuristic": 0.0,
+        "hedge_hits_per_1000_words": 21.73913043478261,
+        "sentence_length_population_sd": 10.754843869934453,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-03-G-r2.md",
+      "sha256": "8789b9a693327a7070927271ed7bb1f810c3b52ad80e47e94462dc64cf850985",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 156,
+        "sentences": 7,
+        "syllables_estimated": 320,
+        "polysyllables_estimated": 46,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 10.676538461538485,
+        "flesch_kincaid_grade_estimate": 17.30655677655678,
+        "fog_estimate": 20.709157509157507,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.07051282051282051,
+        "passive_sentence_share_heuristic": 0.14285714285714285,
+        "hedge_hits_per_1000_words": 19.23076923076923,
+        "sentence_length_population_sd": 7.610411772495545,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-03-U-r1.md",
+      "sha256": "f60b497c0f2e1698d29dd6e38c282239c5737d94d3f35f39ebad8bb83bf39b94",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 143,
+        "sentences": 7,
+        "syllables_estimated": 288,
+        "polysyllables_estimated": 40,
+        "unsupported_tokens": 19
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 15.716783216783227,
+        "flesch_kincaid_grade_estimate": 16.142177822177825,
+        "fog_estimate": 19.360239760239764,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.07692307692307693,
+        "passive_sentence_share_heuristic": 0.14285714285714285,
+        "hedge_hits_per_1000_words": 6.993006993006993,
+        "sentence_length_population_sd": 8.068583569395965,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-03-U-r2.md",
+      "sha256": "02d4101a34044551e6fc5bc9cd3a3e24cc47245ac8d044acc4713ea361c9ed41",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 140,
+        "sentences": 6,
+        "syllables_estimated": 287,
+        "polysyllables_estimated": 40,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 9.721666666666692,
+        "flesch_kincaid_grade_estimate": 17.7,
+        "fog_estimate": 20.761904761904763,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.07857142857142857,
+        "passive_sentence_share_heuristic": 0.16666666666666666,
+        "hedge_hits_per_1000_words": 7.142857142857143,
+        "sentence_length_population_sd": 12.283683848458853,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-04-G-r1.md",
+      "sha256": "03546011c5bc868eb30c2957f2b6f9f1c7c71f47e1465b3456206aa6fc4a34ff",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 149,
+        "sentences": 5,
+        "syllables_estimated": 300,
+        "polysyllables_estimated": 43,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 6.252429530201368,
+        "flesch_kincaid_grade_estimate": 19.790389261744966,
+        "fog_estimate": 23.463624161073824,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.087248322147651,
+        "passive_sentence_share_heuristic": 0.2,
+        "hedge_hits_per_1000_words": 33.557046979865774,
+        "sentence_length_population_sd": 25.5530820058951,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-04-G-r2.md",
+      "sha256": "c66525cf68e51e3576f73c3a7401d412e9255f3b9beed63e9a6d8abd08bd6756",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 142,
+        "sentences": 7,
+        "syllables_estimated": 293,
+        "polysyllables_estimated": 44,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 11.68302816901408,
+        "flesch_kincaid_grade_estimate": 16.66931589537224,
+        "fog_estimate": 20.508651911468817,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.09859154929577464,
+        "passive_sentence_share_heuristic": 0.14285714285714285,
+        "hedge_hits_per_1000_words": 35.2112676056338,
+        "sentence_length_population_sd": 9.160696881075085,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-04-U-r1.md",
+      "sha256": "da1da18ede085755c9ec3ccba2117c84f3b478a0e93ef252c542c2de0a7ffa11",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 146,
+        "sentences": 7,
+        "syllables_estimated": 292,
+        "polysyllables_estimated": 40,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.465000000000032,
+        "flesch_kincaid_grade_estimate": 16.14428571428572,
+        "fog_estimate": 19.301761252446184,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0821917808219178,
+        "passive_sentence_share_heuristic": 0.14285714285714285,
+        "hedge_hits_per_1000_words": 34.24657534246575,
+        "sentence_length_population_sd": 10.776012666083492,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-04-U-r2.md",
+      "sha256": "051b49ce699ede29dd19df1ce6cdd8941efdc5a4ce340017e556a234068d72a0",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 146,
+        "sentences": 5,
+        "syllables_estimated": 294,
+        "polysyllables_estimated": 41,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 6.838095890410955,
+        "flesch_kincaid_grade_estimate": 19.559643835616438,
+        "fog_estimate": 22.912876712328767,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.10273972602739725,
+        "passive_sentence_share_heuristic": 0.2,
+        "hedge_hits_per_1000_words": 34.24657534246575,
+        "sentence_length_population_sd": 25.007198963498492,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-05-G-r1.md",
+      "sha256": "dcee45d484f8b145c6cf11597f9f3f3e9659704535e6d1991f1bb3b227613706",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 132,
+        "sentences": 9,
+        "syllables_estimated": 248,
+        "polysyllables_estimated": 36,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 33.002878787878814,
+        "flesch_kincaid_grade_estimate": 12.29969696969697,
+        "fog_estimate": 16.775757575757577,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.07575757575757576,
+        "passive_sentence_share_heuristic": 0.1111111111111111,
+        "hedge_hits_per_1000_words": 7.575757575757576,
+        "sentence_length_population_sd": 5.228129047119374,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-05-G-r2.md",
+      "sha256": "da70d9c4ed9719f8b0ac8feb48286e589dc3c8490a854bd98cc2b5e2b0ff77d2",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 121,
+        "sentences": 8,
+        "syllables_estimated": 230,
+        "polysyllables_estimated": 33,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.673207644628093,
+        "flesch_kincaid_grade_estimate": 12.738502066115704,
+        "fog_estimate": 16.95909090909091,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.08264462809917356,
+        "passive_sentence_share_heuristic": 0.125,
+        "hedge_hits_per_1000_words": 8.264462809917354,
+        "sentence_length_population_sd": 4.342738191510052,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-05-U-r1.md",
+      "sha256": "43ea9c51363a6b81e1289332d12c8f1e95f8d817d50f26f3d6e5a7ed05315742",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 143,
+        "sentences": 9,
+        "syllables_estimated": 271,
+        "polysyllables_estimated": 38,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 30.381903651903656,
+        "flesch_kincaid_grade_estimate": 12.968904428904434,
+        "fog_estimate": 16.984926184926184,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.07692307692307693,
+        "passive_sentence_share_heuristic": 0.2222222222222222,
+        "hedge_hits_per_1000_words": 6.993006993006993,
+        "sentence_length_population_sd": 5.586580039989571,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-05-U-r2.md",
+      "sha256": "f220caf1ddb7cba249d2bb4361bd09ad585868f0ca09369361af58bc76f9743f",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 140,
+        "sentences": 9,
+        "syllables_estimated": 267,
+        "polysyllables_estimated": 39,
+        "unsupported_tokens": 2
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 29.7018253968254,
+        "flesch_kincaid_grade_estimate": 12.980952380952385,
+        "fog_estimate": 17.365079365079364,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.07857142857142857,
+        "passive_sentence_share_heuristic": 0.3333333333333333,
+        "hedge_hits_per_1000_words": 7.142857142857143,
+        "sentence_length_population_sd": 4.833014037984788,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-06-G-r1.md",
+      "sha256": "200eaab22db9479869885b81277153e0e0c8b0788c6693c977b1ad889b5795fe",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 221,
+        "sentences": 7,
+        "syllables_estimated": 467,
+        "polysyllables_estimated": 74,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": -3.980135746606294,
+        "flesch_kincaid_grade_estimate": 21.657698771816417,
+        "fog_estimate": 26.022236586942473,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.13574660633484162,
+        "passive_sentence_share_heuristic": 0.42857142857142855,
+        "hedge_hits_per_1000_words": 13.574660633484163,
+        "sentence_length_population_sd": 17.128565471224984,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-06-G-r2.md",
+      "sha256": "683fc15d88e6ff4bf03cac64e0b364c56c915cf5be535e0e9f9b17aceaa4f24a",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 215,
+        "sentences": 8,
+        "syllables_estimated": 434,
+        "polysyllables_estimated": 63,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 8.782921511627933,
+        "flesch_kincaid_grade_estimate": 18.71078488372093,
+        "fog_estimate": 22.470930232558143,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.11627906976744186,
+        "passive_sentence_share_heuristic": 0.5,
+        "hedge_hits_per_1000_words": 13.953488372093023,
+        "sentence_length_population_sd": 10.925171623365923,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-06-U-r1.md",
+      "sha256": "5401bea6a2fdfc1ed5ef70e4b3abb0030056abdd67af08df8548cfc8f23b1464",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 196,
+        "sentences": 7,
+        "syllables_estimated": 412,
+        "polysyllables_estimated": 61,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 0.5823469387755438,
+        "flesch_kincaid_grade_estimate": 20.13408163265306,
+        "fog_estimate": 23.648979591836735,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.12755102040816327,
+        "passive_sentence_share_heuristic": 0.14285714285714285,
+        "hedge_hits_per_1000_words": 5.1020408163265305,
+        "sentence_length_population_sd": 12.817398889233115,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-06-U-r2.md",
+      "sha256": "70e8f73f2202f08dbf030a76160daa3e8a0972c2d5b16688032e27fd464af34e",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 199,
+        "sentences": 8,
+        "syllables_estimated": 403,
+        "polysyllables_estimated": 56,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 10.261246859296506,
+        "flesch_kincaid_grade_estimate": 18.007732412060303,
+        "fog_estimate": 21.206281407035178,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.12060301507537688,
+        "passive_sentence_share_heuristic": 0.5,
+        "hedge_hits_per_1000_words": 10.050251256281408,
+        "sentence_length_population_sd": 10.300940491042553,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-07-G-r1.md",
+      "sha256": "ffc93672b74c1aaadb4b084da0e68ae121a036c275c59c013899588737cf4f6b",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 103,
+        "sentences": 6,
+        "syllables_estimated": 210,
+        "polysyllables_estimated": 32,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.925396440129475,
+        "flesch_kincaid_grade_estimate": 15.163252427184467,
+        "fog_estimate": 19.293851132686086,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0970873786407767,
+        "passive_sentence_share_heuristic": 0.16666666666666666,
+        "hedge_hits_per_1000_words": 9.70873786407767,
+        "sentence_length_population_sd": 4.336537277085895,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-07-G-r2.md",
+      "sha256": "ffc93672b74c1aaadb4b084da0e68ae121a036c275c59c013899588737cf4f6b",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 103,
+        "sentences": 6,
+        "syllables_estimated": 210,
+        "polysyllables_estimated": 32,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.925396440129475,
+        "flesch_kincaid_grade_estimate": 15.163252427184467,
+        "fog_estimate": 19.293851132686086,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0970873786407767,
+        "passive_sentence_share_heuristic": 0.16666666666666666,
+        "hedge_hits_per_1000_words": 9.70873786407767,
+        "sentence_length_population_sd": 4.336537277085895,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-07-U-r1.md",
+      "sha256": "ffc93672b74c1aaadb4b084da0e68ae121a036c275c59c013899588737cf4f6b",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 103,
+        "sentences": 6,
+        "syllables_estimated": 210,
+        "polysyllables_estimated": 32,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.925396440129475,
+        "flesch_kincaid_grade_estimate": 15.163252427184467,
+        "fog_estimate": 19.293851132686086,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0970873786407767,
+        "passive_sentence_share_heuristic": 0.16666666666666666,
+        "hedge_hits_per_1000_words": 9.70873786407767,
+        "sentence_length_population_sd": 4.336537277085895,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-07-U-r2.md",
+      "sha256": "ffc93672b74c1aaadb4b084da0e68ae121a036c275c59c013899588737cf4f6b",
+      "corpus": "drafts",
+      "coverage": "complete",
+      "counts": {
+        "words": 103,
+        "sentences": 6,
+        "syllables_estimated": 210,
+        "polysyllables_estimated": 32,
+        "unsupported_tokens": 0
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 16.925396440129475,
+        "flesch_kincaid_grade_estimate": 15.163252427184467,
+        "fog_estimate": 19.293851132686086,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0970873786407767,
+        "passive_sentence_share_heuristic": 0.16666666666666666,
+        "hedge_hits_per_1000_words": 9.70873786407767,
+        "sentence_length_population_sd": 4.336537277085895,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-08-G-r1.md",
+      "sha256": "15cb96b6953aa30ea19ce04717b50e1bd87fdc5653416ecf3067c2bfa4bbabf4",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 124,
+        "sentences": 6,
+        "syllables_estimated": 240,
+        "polysyllables_estimated": 36,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 22.116397849462373,
+        "flesch_kincaid_grade_estimate": 15.308709677419355,
+        "fog_estimate": 19.87956989247312,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0967741935483871,
+        "passive_sentence_share_heuristic": 0.0,
+        "hedge_hits_per_1000_words": 32.25806451612903,
+        "sentence_length_population_sd": 4.749268949591669,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-08-G-r2.md",
+      "sha256": "15cb96b6953aa30ea19ce04717b50e1bd87fdc5653416ecf3067c2bfa4bbabf4",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 124,
+        "sentences": 6,
+        "syllables_estimated": 240,
+        "polysyllables_estimated": 36,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 22.116397849462373,
+        "flesch_kincaid_grade_estimate": 15.308709677419355,
+        "fog_estimate": 19.87956989247312,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0967741935483871,
+        "passive_sentence_share_heuristic": 0.0,
+        "hedge_hits_per_1000_words": 32.25806451612903,
+        "sentence_length_population_sd": 4.749268949591669,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-08-U-r1.md",
+      "sha256": "15cb96b6953aa30ea19ce04717b50e1bd87fdc5653416ecf3067c2bfa4bbabf4",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 124,
+        "sentences": 6,
+        "syllables_estimated": 240,
+        "polysyllables_estimated": 36,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 22.116397849462373,
+        "flesch_kincaid_grade_estimate": 15.308709677419355,
+        "fog_estimate": 19.87956989247312,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0967741935483871,
+        "passive_sentence_share_heuristic": 0.0,
+        "hedge_hits_per_1000_words": 32.25806451612903,
+        "sentence_length_population_sd": 4.749268949591669,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    },
+    {
+      "path": "evals/heldout/revision_claim_drift/runs/2026-08-07/subjects/rp-08-U-r2.md",
+      "sha256": "15cb96b6953aa30ea19ce04717b50e1bd87fdc5653416ecf3067c2bfa4bbabf4",
+      "corpus": "drafts",
+      "coverage": "partial",
+      "counts": {
+        "words": 124,
+        "sentences": 6,
+        "syllables_estimated": 240,
+        "polysyllables_estimated": 36,
+        "unsupported_tokens": 1
+      },
+      "metrics": {
+        "flesch_reading_ease_estimate": 22.116397849462373,
+        "flesch_kincaid_grade_estimate": 15.308709677419355,
+        "fog_estimate": 19.87956989247312,
+        "smog_estimate": null,
+        "nominalization_token_share_heuristic": 0.0967741935483871,
+        "passive_sentence_share_heuristic": 0.0,
+        "hedge_hits_per_1000_words": 32.25806451612903,
+        "sentence_length_population_sd": 4.749268949591669,
+        "flagged_term_hits_per_1000_words": 0.0
+      }
+    }
+  ],
+  "distributions": {
+    "all": {
+      "flesch_reading_ease_estimate": {
+        "n": 86,
+        "min": -3.980135746606294,
+        "median": 24.560976107044084,
+        "max": 38.61365489130435,
+        "mean": 22.52962142235276,
+        "population_sd": 9.070693696411503
+      },
+      "flesch_kincaid_grade_estimate": {
+        "n": 86,
+        "min": 13.066995988719622,
+        "median": 15.834094275323693,
+        "max": 21.657698771816417,
+        "mean": 16.244129473522634,
+        "population_sd": 1.7956887731940228
+      },
+      "fog_estimate": {
+        "n": 86,
+        "min": 16.143978415149583,
+        "median": 19.326742628402915,
+        "max": 26.022236586942473,
+        "mean": 19.80597379782087,
+        "population_sd": 1.880320495616036
+      },
+      "smog_estimate": {
+        "n": 67,
+        "min": 14.657372663430962,
+        "median": 16.785175570968402,
+        "max": 19.204072126899536,
+        "mean": 16.832682752985818,
+        "population_sd": 0.9295200964980317
+      },
+      "nominalization_token_share_heuristic": {
+        "n": 86,
+        "min": 0.059782608695652176,
+        "median": 0.08682264741622556,
+        "max": 0.13574660633484162,
+        "mean": 0.08736684872285357,
+        "population_sd": 0.013271033861039016
+      },
+      "passive_sentence_share_heuristic": {
+        "n": 86,
+        "min": 0.0,
+        "median": 0.26747967479674795,
+        "max": 0.5,
+        "mean": 0.27182857107351494,
+        "population_sd": 0.08653719710249107
+      },
+      "hedge_hits_per_1000_words": {
+        "n": 86,
+        "min": 0.20964360587002095,
+        "median": 2.3098551758146533,
+        "max": 35.2112676056338,
+        "mean": 5.445603776459244,
+        "population_sd": 7.993363858005974
+      },
+      "sentence_length_population_sd": {
+        "n": 86,
+        "min": 4.336537277085895,
+        "median": 13.72552402887844,
+        "max": 33.421133058340466,
+        "mean": 14.590169914145227,
+        "population_sd": 5.087924630628577
+      },
+      "flagged_term_hits_per_1000_words": {
+        "n": 86,
+        "min": 0.0,
+        "median": 0.0,
+        "max": 3.048780487804878,
+        "mean": 0.36897419242064394,
+        "population_sd": 0.6355171989477895
+      }
+    },
+    "drafts": {
+      "flesch_reading_ease_estimate": {
+        "n": 19,
+        "min": -3.980135746606294,
+        "median": 9.199285714285736,
+        "max": 16.925396440129475,
+        "mean": 8.854803930864458,
+        "population_sd": 6.20179403303529
+      },
+      "flesch_kincaid_grade_estimate": {
+        "n": 19,
+        "min": 15.163252427184467,
+        "median": 18.091594202898552,
+        "max": 21.657698771816417,
+        "mean": 18.158373390115482,
+        "population_sd": 2.0933788165319998
+      },
+      "fog_estimate": {
+        "n": 19,
+        "min": 19.293851132686086,
+        "median": 21.663768115942034,
+        "max": 26.022236586942473,
+        "mean": 21.86090583828301,
+        "population_sd": 2.072775404238099
+      },
+      "smog_estimate": {
+        "n": 0,
+        "min": null,
+        "median": null,
+        "max": null,
+        "mean": null,
+        "population_sd": null
+      },
+      "nominalization_token_share_heuristic": {
+        "n": 19,
+        "min": 0.07051282051282051,
+        "median": 0.0970873786407767,
+        "max": 0.13574660633484162,
+        "mean": 0.09801431180839323,
+        "population_sd": 0.01621486057911625
+      },
+      "passive_sentence_share_heuristic": {
+        "n": 19,
+        "min": 0.0,
+        "median": 0.16666666666666666,
+        "max": 0.5,
+        "mean": 0.2350250626566416,
+        "population_sd": 0.12982156763949307
+      },
+      "hedge_hits_per_1000_words": {
+        "n": 19,
+        "min": 5.1020408163265305,
+        "median": 13.953488372093023,
+        "max": 35.2112676056338,
+        "mean": 17.690266811258844,
+        "population_sd": 9.636233829869717
+      },
+      "sentence_length_population_sd": {
+        "n": 19,
+        "min": 4.336537277085895,
+        "median": 10.300940491042553,
+        "max": 25.5530820058951,
+        "mean": 10.887865122372235,
+        "population_sd": 5.883056312365562
+      },
+      "flagged_term_hits_per_1000_words": {
+        "n": 19,
+        "min": 0.0,
+        "median": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "population_sd": 0.0
+      }
+    },
+    "reviewer_outputs": {
+      "flesch_reading_ease_estimate": {
+        "n": 67,
+        "min": 15.495361666879091,
+        "median": 26.334013002608827,
+        "max": 38.61365489130435,
+        "mean": 26.407554740834517,
+        "population_sd": 5.160843226254203
+      },
+      "flesch_kincaid_grade_estimate": {
+        "n": 67,
+        "min": 13.066995988719622,
+        "median": 15.603667288542148,
+        "max": 19.20427316808691,
+        "mean": 15.70128418374257,
+        "population_sd": 1.2499461890732806
+      },
+      "fog_estimate": {
+        "n": 67,
+        "min": 16.143978415149583,
+        "median": 19.127354377918714,
+        "max": 22.76181054971885,
+        "mean": 19.22323187589877,
+        "population_sd": 1.3352058963024815
+      },
+      "smog_estimate": {
+        "n": 67,
+        "min": 14.657372663430962,
+        "median": 16.785175570968402,
+        "max": 19.204072126899536,
+        "mean": 16.832682752985818,
+        "population_sd": 0.9295200964980317
+      },
+      "nominalization_token_share_heuristic": {
+        "n": 67,
+        "min": 0.059782608695652176,
+        "median": 0.085634066448292,
+        "max": 0.11783696529459241,
+        "mean": 0.08434741889262591,
+        "population_sd": 0.010499466817188148
+      },
+      "passive_sentence_share_heuristic": {
+        "n": 67,
+        "min": 0.11688311688311688,
+        "median": 0.27450980392156865,
+        "max": 0.4032258064516129,
+        "mean": 0.28226538689322533,
+        "population_sd": 0.06587803120296114
+      },
+      "hedge_hits_per_1000_words": {
+        "n": 67,
+        "min": 0.20964360587002095,
+        "median": 1.8148820326678765,
+        "max": 5.347593582887701,
+        "mean": 1.9732366471877147,
+        "population_sd": 1.0512564110053764
+      },
+      "sentence_length_population_sd": {
+        "n": 67,
+        "min": 10.938299355938112,
+        "median": 14.728643404947775,
+        "max": 33.421133058340466,
+        "mean": 15.640077243155476,
+        "population_sd": 4.292295648703378
+      },
+      "flagged_term_hits_per_1000_words": {
+        "n": 67,
+        "min": 0.0,
+        "median": 0.0,
+        "max": 3.048780487804878,
+        "mean": 0.47360866489814,
+        "population_sd": 0.6847335613781139
+      }
+    }
+  }
+}

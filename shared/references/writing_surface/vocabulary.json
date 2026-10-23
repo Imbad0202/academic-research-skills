@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "sources": ["shared/references/claim_strength_ladder.md", "shared/references/protected_hedging_phrases.md", "academic-paper/references/writing_quality_check.md"],
+  "nominalization_suffixes": ["tion", "sion", "ment", "ness", "ity", "ism", "ance", "ence"],
+  "hedges": ["may", "might", "could", "tentative", "preliminary", "exploratory", "suggests", "indicates", "is consistent with", "in our sample", "in this sample", "for this cohort", "under the conditions tested", "may suggest", "may support", "might improve"],
+  "flagged_terms": ["delve", "tapestry", "landscape", "pivotal", "crucial", "foster", "showcase", "testament", "navigate", "leverage", "realm", "embark", "underscore", "multifaceted", "nuanced", "comprehensive", "robust", "intricate", "cornerstone", "paradigm", "synergy", "holistic", "streamline", "cutting-edge", "groundbreaking"],
+  "passive_auxiliaries": ["am", "is", "are", "was", "were", "be", "been", "being"],
+  "irregular_participles": ["built", "done", "drawn", "eaten", "found", "given", "held", "known", "made", "read", "seen", "shown", "taken", "taught", "told", "written"],
+  "syllable_exceptions": {"a": 1, "are": 1, "being": 2, "business": 2, "every": 2, "fire": 1, "people": 2, "queue": 1, "science": 2, "the": 1, "their": 1, "there": 1, "these": 1, "were": 1},
+  "abbreviations": ["e.g.", "i.e.", "et al.", "Dr.", "Mr.", "Mrs.", "Ms.", "Prof.", "Fig.", "Eq.", "vs."]
+}

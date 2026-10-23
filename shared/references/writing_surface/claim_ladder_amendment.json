@@ -1,0 +1,11 @@
+{
+  "schema_version": "claim-ladder-documentation-amendment/1.0",
+  "issue": 830,
+  "recorded_on": "2026-10-17",
+  "path": "shared/references/claim_strength_ladder.md",
+  "from_sha256": "22f51a6fefb2525e685b6938cc446fa658bdfb6e43157b5d2e6d5051f2212dfe",
+  "to_sha256": "9121b2931b7343c58b16315a3c5fd36278b81a1d05f22b7c6da25e60f507d937",
+  "inserted_text": "**External evidence (#830):** [Gartenberg et al. (2026), *Organization Science* 37(3), Figure 8](https://doi.org/10.1287/orsc.2026.ed.v37.n3) associate higher model-use scores with less hedging in observational aggregate evidence from one journal; this observation changes no rung or authorisation rule.\n\n",
+  "historical_effect": "none",
+  "rescoring_permitted": false
+}
