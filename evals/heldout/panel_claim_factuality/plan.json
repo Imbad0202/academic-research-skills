@@ -10,7 +10,7 @@
       "bundles": 17,
       "claims": 805
     },
-    "inventory_rule": "extract with --expect-bundles 17 --expect-claims 805; build refuses an inventory whose summary has any problem or whose counts differ"
+    "inventory_rule": "extract with --expect-bundles 17 --expect-claims 805; build refuses an inventory whose summary has any problem, whose summary or distinct claim bundles differ from 17, whose claim count differs, or whose bundle names two fixtures"
   },
   "judges": [
     "codex",
@@ -20,12 +20,13 @@
     "codex": {
       "model_id": "gpt-6-astra",
       "model_family": "openai",
-      "settings": "codex exec, model_reasoning_effort=xhigh, read-only, empty working directory, prompt on stdin"
+      "settings": "codex exec, model_reasoning_effort=xhigh, -c skills.include_instructions=false, read-only, empty working directory, prompt on stdin"
     },
     "gemini": {
-      "model_id": "gemini-4-argon-high",
+      "model_id": "gemini-3.8-flash-high",
       "model_family": "google",
-      "settings": "agy -p, model 'Gemini 4 Argon (High)', empty working directory"
+      "agy_model": "Gemini 3.8 Flash (High)",
+      "settings": "agy -p, model 'Gemini 3.8 Flash (High)', --disable-slash-commands, --output-format stream-json, empty working directory; a reply with any step other than the answer (a tool, a skill, a subagent) is a transport failure"
     }
   },
   "replicates": 2,
@@ -37,13 +38,15 @@
     "generator": {
       "transport": "claude_agy",
       "model_id": "claude-opus-5-5-high",
-      "model_family": "anthropic"
+      "model_family": "anthropic",
+      "agy_model": "Claude Opus 5.5 (High)",
+      "settings": "agy -p with the same flags and the same step rule as the gemini judge"
     },
     "verifier": {
       "transport": "codex",
       "model_id": "gpt-6-astra"
     },
-    "acceptance": "every mechanical check and every one of the seven verifier questions is true; per fixture between min_accepted_per_fixture and per_fixture_requested pairs; no repeated pair id or sentence; build refuses anything else",
+    "acceptance": "build reads the pairs back from the logged generator and verifier outputs (plan transports only); a pair enters when the four mechanical checks, run again at build, and the verifier's one answer to all seven questions are true; a pair with no answer or a repeated answer is rejected; per fixture between min_accepted_per_fixture and per_fixture_requested pairs; no repeated pair id or sentence; build refuses anything else",
     "min_accepted_per_fixture": 15
   },
   "contrast_gate": {
@@ -65,7 +68,7 @@
     ],
     "resolution_direction": "bidirectional",
     "rubric": "rubric.md",
-    "record": "adjudication_decisions.json (verdict and criterion id per claim); score never overwrites it"
+    "record": "adjudication_decisions.json, written once by score and bound to the build manifest hash and to each claim's text hash; one verdict and one criterion id (V1-V3, R1-R5) per claim; score never overwrites it and stops on a file from another build"
   },
   "decision_rule": {
     "build_part_two_when": "both judges pass the contrast gate, and the false-claim rate is at least 0.03 or the share of panels with a false claim is at least 0.30",
@@ -103,14 +106,15 @@
   },
   "report_construction": {
     "measurement_contract": "heldout-measurement/1.1",
-    "per_item_payload": "per valid judge: {item_id, is_false} with is_false true, false, or null (unresolved or missing); contract divergent_items are recomputed from this payload",
+    "per_item_payload": "per valid judge: {item_id, is_false} for every claim with a readable verdict in both replicates, is_false true, false, or \"unresolved\"; a claim missing a readable verdict is left out of that judge's per_item rows and named in attempts.blocked_runs, with partial_published true (contract, Judge failure); contract divergent_items are recomputed from this payload",
     "headline": "adjudicated false claims (agreed_false plus adjudicated items decided false) / 805; estimand_status point_estimate; resolution_direction bidirectional",
     "spread": "raw false-verdict counts per judge per replicate, and their difference, publish beside the headline",
     "coverage": "per judge and replicate, claims with no readable verdict; any gap is named in attempts.blocked_runs and sets partial_published true",
-    "raw_outputs": "every call's output, prompt hash, and the execution manifest built from calls.jsonl"
+    "raw_outputs": "every call's output, prompt hash, and output hash; the execution manifest from the completed calls of the generator, verifier, and judges; call_attempts.json with every logged attempt, failed and interrupted ones included"
   },
   "headline": {
-    "false_claim_rate": "adjudicated false claims / all claims, overall and by seat (seat joined from key.jsonl after scoring)",
+    "false_claim_rate": "adjudicated false claims / all claims, overall and by seat (seat joined after scoring from key.jsonl, which must be the file the build hashed)",
     "panels_with_false_claim": "share of the 17 panels with at least one adjudicated false claim"
-  }
+  },
+  "build_binding": "build copies claims.jsonl, summary.json, accepted_pairs.jsonl, and the pairs call log into the batches directory and records their hashes, the seat key hash, and the hashes of plan.json, rubric.md, PREREGISTRATION.md, prompts/, the three manuscripts, and both scripts; every later step stops on any difference"
 }

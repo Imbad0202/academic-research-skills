@@ -26,8 +26,10 @@ decision).
 A bundle is read when its run record (``runs/<name>.json``) says
 ``score_eligible: true`` and names a ``raw_bundle`` directory that resolves
 inside ``runs/raw/``. No path that resolves under the suite's ``manifests/``
-directory is ever opened, and a symlink that leads out of ``runs/raw/`` is
-refused. For
+directory is ever opened (the suite's own ``manifests/`` is fixed, whatever
+``--runs`` says); a run record, report, or gate log that is a symlink or
+resolves outside its directory is refused, and a second record naming the same
+bundle is listed, not read again. For
 each seat the script reads the highest Phase 2 attempt whose gate log says
 ``PHASE-CONFORMANCE: PASS``; a seat with no passing attempt is listed in the
 summary and contributes no claim.
@@ -79,6 +81,9 @@ except ImportError:  # pragma: no cover - dual-path import
     )
 
 CHECKER = "extract_panel_claims/1"
+# The suite's held-out manifests, fixed: a --runs argument cannot move it.
+MANIFESTS = (Path(__file__).resolve().parent.parent / "evals" / "heldout" / "reviewer_seeded_defects"
+             / "manifests").resolve()
 W_SEATS = ("eic", "methodology", "domain", "perspective")
 DA_SEAT = "da"
 _W_HEADING_RE = re.compile(r"^###\s+(W[1-9]\d*):\s*(.+?)\s*$")
@@ -89,7 +94,9 @@ _PASS = "PHASE-CONFORMANCE: PASS"
 
 
 def passing_attempt(bundle: Path, seat: str) -> Path | None:
-    """The highest Phase 2 attempt of ``seat`` whose gate log passed."""
+    """The highest Phase 2 attempt of ``seat`` whose gate log passed. A gate
+    log that is a symlink, or resolves outside the bundle, does not pass and
+    is not read."""
     best: tuple[int, Path] | None = None
     for path in bundle.glob(f"{seat}.phase2.a*.md"):
         m = _ATTEMPT_RE.search(path.name)
@@ -97,7 +104,7 @@ def passing_attempt(bundle: Path, seat: str) -> Path | None:
             continue
         log = path.with_name(path.name[:-3] + ".gate.log")
         try:
-            passed = _PASS in log.read_text(encoding="utf-8")
+            passed = _safe(log, bundle) and _PASS in log.read_text(encoding="utf-8")
         except OSError:
             passed = False
         if passed and (best is None or int(m.group(1)) > best[0]):
@@ -145,8 +152,9 @@ def da_claims(text: str, path: str) -> list[tuple[str, str]]:
     return claims
 
 
-def _protected_root(runs: Path) -> Path:
-    return (runs.resolve().parent / "manifests").resolve()
+def _protected_roots(runs: Path) -> tuple[Path, Path]:
+    """The suite's manifests directory, and the ``manifests`` beside ``runs``."""
+    return MANIFESTS, (runs.resolve().parent / "manifests").resolve()
 
 
 def _inside(path: Path, root: Path) -> bool:
@@ -158,18 +166,31 @@ def _inside(path: Path, root: Path) -> bool:
 
 
 def guard_runs_dir(runs: Path) -> None:
-    """Refuse a runs directory that is, or holds, the protected manifests."""
+    """Refuse a runs directory that is, or holds, or sits in a manifests directory."""
     resolved = runs.resolve()
-    protected = _protected_root(runs)
-    if _inside(resolved, protected) or _inside(protected, resolved):
-        raise SystemExit(f"refused: {runs} overlaps the held-out manifests directory")
+    for protected in _protected_roots(runs):
+        if _inside(resolved, protected) or _inside(protected, resolved):
+            raise SystemExit(f"refused: {runs} overlaps the held-out manifests directory")
+
+
+def _safe(path: Path, root: Path) -> bool:
+    """True when ``path`` is no symlink, resolves inside ``root``, and is in no
+    manifests directory."""
+    resolved = path.resolve()
+    return (not path.is_symlink() and _inside(resolved, root.resolve())
+            and not any(_inside(resolved, p) for p in (MANIFESTS, (root.resolve().parent / "manifests").resolve())))
 
 
 def eligible_bundles(runs: Path, summary: dict[str, Any] | None = None) -> list[tuple[dict[str, Any], Path]]:
     found = []
     raw_root = (runs / "raw").resolve()
-    protected = _protected_root(runs)
+    protected = _protected_roots(runs)
+    seen: set[Path] = set()
     for record_path in sorted(runs.glob("*.json")):
+        if not _safe(record_path, runs):
+            if summary is not None:
+                summary["refused_bundle_paths"].append(record_path.name)
+            continue
         try:
             record = json.loads(record_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -180,11 +201,16 @@ def eligible_bundles(runs: Path, summary: dict[str, Any] | None = None) -> list[
         if record.get("score_eligible") is not True or not raw:
             continue
         bundle = (runs / raw).resolve()
-        if Path(raw).is_absolute() or not _inside(bundle, raw_root) or _inside(bundle, protected):
+        if Path(raw).is_absolute() or not _inside(bundle, raw_root) or any(_inside(bundle, p) for p in protected):
             if summary is not None:
                 summary["refused_bundle_paths"].append(record_path.name)
             continue
+        if bundle in seen:
+            if summary is not None:
+                summary["duplicate_bundle_records"].append(record_path.name)
+            continue
         if bundle.is_dir():
+            seen.add(bundle)
             found.append((record, bundle))
     return found
 
@@ -195,7 +221,8 @@ def extract(runs: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dic
     summary: dict[str, Any] = {"checker": CHECKER, "bundles": 0, "claims": 0,
                                "by_seat": {s: 0 for s in (*W_SEATS, DA_SEAT)},
                                "seats_without_passing_attempt": [], "unparsed_da_reports": [],
-                               "unreadable_records": [], "refused_bundle_paths": []}
+                               "unreadable_records": [], "refused_bundle_paths": [],
+                               "duplicate_bundle_records": []}
     for record, bundle in eligible_bundles(runs, summary):
         summary["bundles"] += 1
         for seat in (*W_SEATS, DA_SEAT):
@@ -203,7 +230,7 @@ def extract(runs: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dic
             if path is None:
                 summary["seats_without_passing_attempt"].append(f"{bundle.name}/{seat}")
                 continue
-            if path.is_symlink() or not _inside(path.resolve(), bundle):
+            if not _safe(path, bundle):
                 summary["refused_bundle_paths"].append(f"{bundle.name}/{path.name}")
                 continue
             raw = path.read_bytes()
@@ -263,7 +290,8 @@ def main(argv: list[str] | None = None) -> int:
 
 def problems(summary: dict[str, Any], expect_bundles: int | None, expect_claims: int | None) -> list[str]:
     found = [f"{k}: {len(summary[k])}" for k in ("seats_without_passing_attempt", "unparsed_da_reports",
-                                                 "unreadable_records", "refused_bundle_paths") if summary[k]]
+                                                 "unreadable_records", "refused_bundle_paths",
+                                                 "duplicate_bundle_records") if summary[k]]
     if expect_bundles is not None and summary["bundles"] != expect_bundles:
         found.append(f"bundles: {summary['bundles']} != expected {expect_bundles}")
     if expect_claims is not None and summary["claims"] != expect_claims:

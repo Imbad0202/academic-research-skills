@@ -208,3 +208,35 @@ def test_the_manifests_directory_is_refused_as_runs(tmp_path):
     (tmp_path / "manifests").mkdir()
     with pytest.raises(SystemExit):
         epc.extract(tmp_path / "manifests" / ".." / "manifests" / "x" / "..")
+
+
+def test_a_symlinked_gate_log_or_run_record_is_not_read(tmp_path):
+    runs = tmp_path / "runs"
+    bundle = _bundle(runs, "b1")
+    outside = tmp_path / "outside.log"
+    outside.write_text(PASS, encoding="utf-8")
+    (bundle / "eic.phase2.a1.gate.log").unlink()
+    (bundle / "eic.phase2.a1.gate.log").symlink_to(outside)
+    record = tmp_path / "record.json"
+    record.write_text(json.dumps({"score_eligible": True, "raw_bundle": "raw/b1/", "fixture": "ms00_clean"}),
+                      encoding="utf-8")
+    (runs / "b2.json").symlink_to(record)
+    _claims, _key, summary = epc.extract(runs)
+    assert summary["seats_without_passing_attempt"] == ["b1/eic"]
+    assert summary["refused_bundle_paths"] == ["b2.json"]
+
+
+def test_the_suite_manifests_directory_is_refused_whatever_runs_says():
+    with pytest.raises(SystemExit):
+        epc.extract(epc.MANIFESTS / "subdir")
+
+
+def test_a_second_record_for_the_same_bundle_is_listed_not_read(tmp_path, capsys):
+    runs = tmp_path / "runs"
+    _bundle(runs, "b1")
+    (runs / "b1-copy.json").write_text((runs / "b1.json").read_text(encoding="utf-8"), encoding="utf-8")
+    claims, _key, summary = epc.extract(runs)
+    assert summary["bundles"] == 1 and len(claims) == 11
+    assert summary["duplicate_bundle_records"] == ["b1.json"]
+    assert epc.main(["--runs", str(runs), "--out", str(tmp_path / "out")]) == 1
+    capsys.readouterr()
