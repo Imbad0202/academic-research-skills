@@ -1,0 +1,116 @@
+{
+  "suite": "panel_claim_factuality",
+  "plan_version": "1",
+  "issue": "#1002",
+  "claims": {
+    "extractor": "scripts/extract_panel_claims.py",
+    "source": "evals/heldout/reviewer_seeded_defects/runs (score_eligible records with a raw_bundle directory)",
+    "scope": "### W<n> weaknesses of the eic, methodology, domain and perspective seats; DA CRITICAL and MAJOR rows",
+    "expected_counts": {
+      "bundles": 17,
+      "claims": 805
+    },
+    "inventory_rule": "extract with --expect-bundles 17 --expect-claims 805; build refuses an inventory whose summary has any problem or whose counts differ"
+  },
+  "judges": [
+    "codex",
+    "gemini"
+  ],
+  "judge_models": {
+    "codex": {
+      "model_id": "gpt-6-astra",
+      "model_family": "openai",
+      "settings": "codex exec, model_reasoning_effort=xhigh, read-only, empty working directory, prompt on stdin"
+    },
+    "gemini": {
+      "model_id": "gemini-4-argon-high",
+      "model_family": "google",
+      "settings": "agy -p, model 'Gemini 4 Argon (High)', empty working directory"
+    }
+  },
+  "replicates": 2,
+  "prompt_limit_bytes": 28000,
+  "prompt_budget_bytes": 27500,
+  "prompt_budget_rule": "a first attempt is at most prompt_budget_bytes, so a retry with its note stays at most prompt_limit_bytes; agy fails silently above about 30 KB",
+  "contrast_pairs": {
+    "per_fixture_requested": 20,
+    "generator": {
+      "transport": "claude_agy",
+      "model_id": "claude-opus-5-5-high",
+      "model_family": "anthropic"
+    },
+    "verifier": {
+      "transport": "codex",
+      "model_id": "gpt-6-astra"
+    },
+    "acceptance": "every mechanical check and every one of the seven verifier questions is true; per fixture between min_accepted_per_fixture and per_fixture_requested pairs; no repeated pair id or sentence; build refuses anything else",
+    "min_accepted_per_fixture": 15
+  },
+  "contrast_gate": {
+    "min_detection": 0.95,
+    "max_false_flag": 0.05,
+    "rule": "per judge, with a verdict for every contrast item in every replicate (a missing one fails the gate): a false sentence is detected only when both replicates say false; an accurate sentence is flagged when either replicate says false"
+  },
+  "item_flag_rule": "per judge and claim: missing when a replicate has no readable verdict; true when both replicates say false and each false passes the mechanical evidence check; false when no replicate says false; unresolved otherwise. true against not_verifiable does not change the flag",
+  "adjudication": {
+    "who": "maintainer",
+    "items": "every claim in an adjudicated list",
+    "blinded_to": [
+      "subject_model",
+      "judge_identity",
+      "condition"
+    ],
+    "also_hidden": [
+      "seat"
+    ],
+    "resolution_direction": "bidirectional",
+    "rubric": "rubric.md",
+    "record": "adjudication_decisions.json (verdict and criterion id per claim); score never overwrites it"
+  },
+  "decision_rule": {
+    "build_part_two_when": "both judges pass the contrast gate, and the false-claim rate is at least 0.03 or the share of panels with a false claim is at least 0.30",
+    "false_claim_rate_min": 0.03,
+    "panels_with_false_claim_min": 0.3
+  },
+  "stop_rules": [
+    "a judge that fails the contrast gate is void; with one valid judge the run is exploratory; with none it is void",
+    "the claim inventory differs from expected_counts or has an extraction problem: stop before any judge call",
+    "fewer than min_accepted_per_fixture accepted pairs for any fixture, or any other pair problem: stop before any judge call on claims",
+    "a batch whose output cannot be read after its one retry: stop the run",
+    "a transport failure (nonzero exit, empty output, usage limit, authentication): stop the run, never retry",
+    "an interrupted call (a lock without an output), or an input changed since the build: stop",
+    "no replacement model or transport without a new plan version"
+  ],
+  "agreement_lists": {
+    "order": [
+      "missing",
+      "replicate_instability",
+      "agreed_false",
+      "agreed_not_false",
+      "cross_judge_divergence"
+    ],
+    "rule": "each claim falls in the first list that fits, from the flags of the valid judges only (rubric.md, Agreement)",
+    "adjudicated": [
+      "cross_judge_divergence",
+      "replicate_instability",
+      "missing"
+    ]
+  },
+  "validity": {
+    "two_valid_judges": "decision_relevant: the headline and the decision rule apply",
+    "one_valid_judge": "exploratory: per-judge counts publish, no headline rate, the decision rule does not apply",
+    "no_valid_judge": "void: no claim rate publishes"
+  },
+  "report_construction": {
+    "measurement_contract": "heldout-measurement/1.1",
+    "per_item_payload": "per valid judge: {item_id, is_false} with is_false true, false, or null (unresolved or missing); contract divergent_items are recomputed from this payload",
+    "headline": "adjudicated false claims (agreed_false plus adjudicated items decided false) / 805; estimand_status point_estimate; resolution_direction bidirectional",
+    "spread": "raw false-verdict counts per judge per replicate, and their difference, publish beside the headline",
+    "coverage": "per judge and replicate, claims with no readable verdict; any gap is named in attempts.blocked_runs and sets partial_published true",
+    "raw_outputs": "every call's output, prompt hash, and the execution manifest built from calls.jsonl"
+  },
+  "headline": {
+    "false_claim_rate": "adjudicated false claims / all claims, overall and by seat (seat joined from key.jsonl after scoring)",
+    "panels_with_false_claim": "share of the 17 panels with at least one adjudicated false claim"
+  }
+}

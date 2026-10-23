@@ -1,0 +1,817 @@
+#!/usr/bin/env python3
+"""Dispatch and score the panel-claim factuality audit (#1002).
+
+The suite lives in ``evals/heldout/panel_claim_factuality/``; its README gives
+the order of the steps and ``plan.json`` holds the frozen numbers. Subcommands:
+
+  generate      ask the generator model for contrast pairs on one manuscript
+  check-pairs   mechanical checks on the pairs (no model): one sentence each,
+                8-50 whitespace-delimited words, one to four changed tokens,
+                and a verbatim evidence quote
+  verify-pairs  ask the verifier model the seven pair questions, one call per
+                manuscript
+  build         check the claim inventory and the accepted pairs against
+                plan.json, then write the batches, the item key, and a build
+                manifest into a new directory; the two sentences of a pair
+                never share a batch
+  run           send each batch to one judge for one replicate; stop at the
+                first transport failure or unreadable output after one retry
+  score         check coverage, apply the contrast gate, sort every claim into
+                one agreement list, write the adjudication packet and the
+                execution manifest, and, once the maintainer's decisions file
+                is complete, the headline counts
+
+Every model call runs in a new empty directory, with the prompt on stdin
+(codex) or in ``-p`` (agy). A call first reserves its output name with an
+exclusive lock file and logs a ``started`` line; it then writes its output
+once and logs ``completed`` or ``failed``. A call whose output exists is reused
+only when its logged prompt hash equals the prompt about to be sent; a lock
+without an output is an interrupted call and stops the run.
+
+No path under ``reviewer_seeded_defects/manifests/`` is read: every input path
+is resolved and refused when it lies there.
+"""
+from __future__ import annotations
+
+import argparse
+import difflib
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SUITE = REPO_ROOT / "evals" / "heldout" / "panel_claim_factuality"
+SEEDED = REPO_ROOT / "evals" / "heldout" / "reviewer_seeded_defects"
+MANUSCRIPTS = SEEDED / "manuscripts"
+PROTECTED = (SEEDED / "manifests").resolve()
+FIXTURE_FILES = {
+    "ms00_clean": "ms00_clean_control.md",
+    "ms01_quant": "ms01_quant_defective.md",
+    "ms02_qual": "ms02_qual_defective.md",
+}
+VERDICTS = ("true", "false", "not_verifiable")
+SEVERITIES = ("cosmetic", "minor", "major", "fundamental")
+EVIDENCE = ("contradiction", "absent_quotation")
+PAIR_QUESTIONS = ("accurate_supported", "false_contradicted", "false_unsupported", "same_topic",
+                  "plain_description", "no_tell", "evidence_quote_verbatim")
+# agy takes the prompt as an argument and fails silently above about 30 KB.
+# Every prompt sent, a retry included, stays at or under PROMPT_LIMIT; a first
+# attempt stays at or under PROMPT_BUDGET, which leaves room for the retry note.
+PROMPT_LIMIT = 28_000
+PROMPT_BUDGET = 27_500
+TIMEOUT_S = 1500
+RETRY_NOTE = ("\n\nYour previous answer could not be read: {reason}. Answer again, in the "
+              "format given above, with nothing else.\n")
+# Output text that means the transport, not the answer, failed: stop, never retry.
+TRANSPORT_FAILURE = re.compile(r"quota|RESOURCE_EXHAUSTED|rate limit|usage limit|not logged in|"
+                               r"authenticat|unauthori[sz]ed|\b401\b|\b403\b|\b429\b", re.IGNORECASE)
+
+
+class Stop(Exception):
+    """A stop rule fired; the message says which."""
+
+
+# ---------------------------------------------------------------------------
+# Paths, hashes, files.
+# ---------------------------------------------------------------------------
+
+
+def _inside(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def guard(path: Path) -> Path:
+    """Refuse a path that resolves under, or contains, the held-out manifests."""
+    resolved = path.resolve()
+    if _inside(resolved, PROTECTED) or _inside(PROTECTED, resolved):
+        raise Stop(f"refused: {path} overlaps the held-out manifests directory")
+    return path
+
+
+def read_text(path: Path) -> str:
+    return guard(path).read_text(encoding="utf-8")
+
+
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in read_text(path).splitlines() if line.strip()]
+
+
+def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
+    guard(path).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _file_sha(path: Path) -> str:
+    return hashlib.sha256(guard(path).read_bytes()).hexdigest()
+
+
+def load_plan() -> dict[str, Any]:
+    return json.loads(read_text(SUITE / "plan.json"))
+
+
+def manuscript_text(fixture: str) -> str:
+    return read_text(MANUSCRIPTS / FIXTURE_FILES[fixture])
+
+
+def _template(name: str) -> str:
+    return read_text(SUITE / "prompts" / name)
+
+
+def _norm(text: str) -> str:
+    return " ".join(str(text).replace("“", '"').replace("”", '"')
+                    .replace("‘", "'").replace("’", "'").replace('"', "").split()).casefold()
+
+
+# ---------------------------------------------------------------------------
+# Transports and calls.
+# ---------------------------------------------------------------------------
+
+
+def _codex_cmd(prompt: str) -> tuple[list[str], str | None]:
+    return (["codex", "exec", "-m", "gpt-6-astra", "-c", 'model_reasoning_effort="xhigh"',
+             "-c", "skills.include_instructions=false", "-s", "read-only",
+             "--skip-git-repo-check", "-"], prompt)
+
+
+def _agy_cmd(model: str) -> Callable[[str], tuple[list[str], str | None]]:
+    def build(prompt: str) -> tuple[list[str], str | None]:
+        return (["agy", f"--model={model}", "-p", prompt, "--print-timeout", f"{TIMEOUT_S}s"], None)
+    return build
+
+
+TRANSPORTS: dict[str, Callable[[str], tuple[list[str], str | None]]] = {
+    "codex": _codex_cmd,
+    "gemini": _agy_cmd("Gemini 4 Argon (High)"),
+    "claude_agy": _agy_cmd("Claude Opus 5.5 (High)"),
+}
+
+
+def _log(calls_log: Path, entry: dict[str, Any]) -> None:
+    with guard(calls_log).open("a", encoding="utf-8") as log:
+        log.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        log.flush()
+        os.fsync(log.fileno())
+
+
+def _logged(calls_log: Path, call_id: str) -> list[dict[str, Any]]:
+    if not calls_log.exists():
+        return []
+    return [e for e in read_jsonl(calls_log) if e.get("call_id") == call_id]
+
+
+def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, call_id: str,
+               attempt: int = 1, runner=subprocess.run) -> str:
+    """Run one call and return its output text. Reuse a completed call only
+    when its logged prompt hash matches; stop on an interrupted call, an
+    oversized prompt, or a transport failure."""
+    guard(out_file)
+    size = len(prompt.encode("utf-8"))
+    if size > PROMPT_LIMIT:
+        raise Stop(f"{call_id}: prompt is {size} bytes, over the {PROMPT_LIMIT}-byte limit")
+    lock = out_file.with_name(out_file.name + ".lock")
+    if out_file.exists():
+        done = [e for e in _logged(calls_log, call_id) if e.get("status") == "completed"]
+        if not done or done[-1].get("prompt_sha256") != _sha(prompt):
+            raise Stop(f"{call_id}: an output exists but no completed call with this prompt is logged")
+        return read_text(out_file)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        raise Stop(f"{call_id}: an interrupted or concurrent call holds {lock.name}") from None
+    os.close(fd)
+    started = _now()
+    seq = len(read_jsonl(calls_log)) + 1 if calls_log.exists() else 1
+    base = {"call_id": call_id, "sequence_index": seq, "attempt": attempt, "transport": transport,
+            "started_at": started, "prompt_sha256": _sha(prompt)}
+    _log(calls_log, {**base, "status": "started"})
+    cmd, stdin = TRANSPORTS[transport](prompt)
+    try:
+        with tempfile.TemporaryDirectory(prefix="ars1002-") as empty:
+            proc = runner(cmd, input=stdin, capture_output=True, text=True, cwd=empty,
+                          timeout=TIMEOUT_S + 60)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        partial = getattr(exc, "stdout", None) or ""
+        if isinstance(partial, bytes):
+            partial = partial.decode("utf-8", "replace")
+        out_file.with_name(out_file.name + ".partial").write_text(partial, encoding="utf-8")
+        _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "error": type(exc).__name__})
+        raise Stop(f"{call_id}: transport failed ({type(exc).__name__})") from None
+    output, err = proc.stdout or "", proc.stderr or ""
+    out_file.with_name(out_file.name + ".err").write_text(err, encoding="utf-8")
+    failed = proc.returncode != 0 or not output.strip() or bool(TRANSPORT_FAILURE.search(err[-2000:]))
+    if failed:
+        out_file.with_name(out_file.name + ".partial").write_text(output, encoding="utf-8")
+        _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "exit_code": proc.returncode})
+        raise Stop(f"{call_id}: transport failed (exit {proc.returncode}, {len(output)} bytes of output)")
+    tmp = out_file.with_name(out_file.name + ".tmp")
+    tmp.write_text(output, encoding="utf-8")
+    os.replace(tmp, out_file)
+    _log(calls_log, {**base, "status": "completed", "completed_at": _now(), "exit_code": proc.returncode,
+                     "output_sha256": _sha(output)})
+    lock.unlink()
+    return output
+
+
+# ---------------------------------------------------------------------------
+# Reading model output.
+# ---------------------------------------------------------------------------
+
+
+def json_lines(text: str) -> list[dict[str, Any]]:
+    """Every line of ``text`` that is one JSON object; other lines are ignored."""
+    rows = []
+    for line in text.splitlines():
+        line = line.strip().strip("`")
+        if line.startswith("{") and line.endswith("}"):
+            try:
+                value = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(value, dict):
+                rows.append(value)
+    return rows
+
+
+def _row_problem(row: dict[str, Any]) -> str | None:
+    if row.get("verdict") not in VERDICTS:
+        return "verdict"
+    if row.get("severity") not in SEVERITIES:
+        return "severity"
+    if row["verdict"] == "false":
+        if row.get("evidence") not in EVIDENCE:
+            return "evidence"
+        if not str(row.get("quote") or "").strip() or not str(row.get("locator") or "").strip():
+            return "quote or locator"
+    return None
+
+
+def read_verdicts(text: str, item_ids: list[str]) -> tuple[dict[str, dict[str, Any]], str | None]:
+    """Return ({item_id: row}, problem). Every item needs exactly one line that
+    passes the schema; a second line for an item, or a line that fails it, is a
+    problem."""
+    rows: dict[str, dict[str, Any]] = {}
+    problems: list[str] = []
+    wanted = set(item_ids)
+    for row in json_lines(text):
+        cid = row.get("claim_id")
+        if cid not in wanted:
+            continue
+        if cid in rows:
+            problems.append(f"{cid} answered twice")
+            continue
+        bad = _row_problem(row)
+        if bad:
+            problems.append(f"{cid} has an invalid {bad}")
+            continue
+        rows[cid] = row
+    missing = [i for i in item_ids if i not in rows and not any(p.startswith(i + " ") for p in problems)]
+    if missing:
+        problems.append(f"{len(missing)} of {len(item_ids)} items have no verdict line")
+    return rows, ("; ".join(problems[:5]) if problems else None)
+
+
+def evidence_ok(row: dict[str, Any], claim_text: str, manuscript: str) -> bool:
+    """The mechanical check on a ``false`` verdict's evidence (rubric V1)."""
+    quote = _norm(row.get("quote") or "")
+    if not quote:
+        return False
+    if row.get("evidence") == "contradiction":
+        return quote in _norm(manuscript)
+    if row.get("evidence") == "absent_quotation":
+        return quote in _norm(claim_text) and quote not in _norm(manuscript)
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Contrast pairs.
+# ---------------------------------------------------------------------------
+
+
+def changed_tokens(a: str, b: str) -> int:
+    """Tokens changed between two sentences: for each differing run, the longer side."""
+    sm = difflib.SequenceMatcher(a=a.split(), b=b.split(), autojunk=False)
+    return sum(max(i2 - i1, j2 - j1) for tag, i1, i2, j1, j2 in sm.get_opcodes() if tag != "equal")
+
+
+_SENTENCE_BREAK = re.compile(r"[.!?]\s+[A-Z]")
+
+
+def _one_sentence(text: str) -> bool:
+    return text.endswith(".") and not _SENTENCE_BREAK.search(text[:-1])
+
+
+def mechanical_checks(pair: dict[str, Any], manuscript: str) -> dict[str, bool]:
+    acc, fal = str(pair.get("accurate_sentence", "")), str(pair.get("false_sentence", ""))
+    quote = str(pair.get("evidence_quote", ""))
+    return {
+        "one_sentence_each": _one_sentence(acc) and _one_sentence(fal),
+        "word_counts_8_to_50": all(8 <= len(s.split()) <= 50 for s in (acc, fal)),
+        "changed_tokens_1_to_4": 1 <= changed_tokens(acc, fal) <= 4,
+        "evidence_quote_in_manuscript": bool(quote.strip()) and _norm(quote) in _norm(manuscript),
+    }
+
+
+def cmd_generate(args) -> int:
+    prompt = _template("contrast_generate.md").replace("{n}", str(args.n)).replace(
+        "{manuscript}", manuscript_text(args.fixture))
+    out = guard(args.out) / f"{args.fixture}.generate.out"
+    text = call_model(args.transport, prompt, out, args.out / "calls.jsonl", f"generate-{args.fixture}")
+    pairs = [p for p in json_lines(text) if p.get("pair_id")]
+    for p in pairs:
+        p["pair_id"] = f"{args.fixture}-{p['pair_id']}"
+        p["fixture"] = args.fixture
+    write_jsonl(args.out / f"{args.fixture}.pairs.jsonl", pairs)
+    print(json.dumps({"fixture": args.fixture, "pairs": len(pairs)}))
+    return 0 if pairs else 1
+
+
+def cmd_check_pairs(args) -> int:
+    rows = []
+    for pair in read_jsonl(args.pairs):
+        checks = mechanical_checks(pair, manuscript_text(pair["fixture"]))
+        rows.append({**pair, "mechanical": checks, "mechanical_pass": all(checks.values())})
+    write_jsonl(args.out, rows)
+    print(json.dumps({"pairs": len(rows), "mechanical_pass": sum(r["mechanical_pass"] for r in rows)}))
+    return 0
+
+
+def cmd_verify_pairs(args) -> int:
+    """One verifier call per manuscript, over its mechanically valid pairs."""
+    plan = load_plan()
+    rows = read_jsonl(args.pairs)
+    template = _template("contrast_verify.md")
+    accepted = []
+    for fixture, pairs in sorted(_group([p for p in rows if p.get("mechanical_pass")], "fixture").items()):
+        shown = "\n".join(json.dumps({k: p[k] for k in ("pair_id", "accurate_sentence", "false_sentence",
+                                                       "evidence_quote")}, ensure_ascii=False) for p in pairs)
+        prompt = template.replace("{manuscript}", manuscript_text(fixture)).replace("{pairs}", shown)
+        text = call_model(args.transport, prompt, guard(args.out) / f"{fixture}.verify.out",
+                          args.out / "calls.jsonl", f"verify-{fixture}")
+        answers: dict[str, dict[str, Any]] = {}
+        for r in json_lines(text):
+            answers.setdefault(r.get("pair_id"), r)
+        accepted += [{**p, "verify": answers[p["pair_id"]]} for p in pairs
+                     if all(answers.get(p["pair_id"], {}).get(q) is True for q in PAIR_QUESTIONS)]
+    write_jsonl(args.out / "accepted_pairs.jsonl", accepted)
+    problems = pair_problems(accepted, plan)
+    print(json.dumps({"checked": sum(1 for p in rows if p.get("mechanical_pass")), "accepted": len(accepted),
+                      "accepted_by_fixture": dict(sorted(Counter(p["fixture"] for p in accepted).items())),
+                      "problems": problems}))
+    return 1 if problems else 0
+
+
+def pair_problems(pairs: list[dict[str, Any]], plan: dict[str, Any]) -> list[str]:
+    """The stop rule on contrast pairs: per manuscript, between the minimum and
+    the requested number of accepted pairs, each with every check true, no
+    repeated pair id or sentence."""
+    cfg = plan["contrast_pairs"]
+    found = []
+    by_fixture = Counter(p.get("fixture") for p in pairs)
+    for fixture in FIXTURE_FILES:
+        n = by_fixture.get(fixture, 0)
+        if not cfg["min_accepted_per_fixture"] <= n <= cfg["per_fixture_requested"]:
+            found.append(f"{fixture}: {n} accepted pairs, outside "
+                         f"{cfg['min_accepted_per_fixture']}-{cfg['per_fixture_requested']}")
+    ids = Counter(p.get("pair_id") for p in pairs)
+    found += [f"pair id {i} repeated" for i, c in ids.items() if c > 1]
+    sentences = Counter(_norm(p.get(k, "")) for p in pairs for k in ("accurate_sentence", "false_sentence"))
+    found += [f"a sentence is repeated {c} times" for c in sentences.values() if c > 1]
+    for p in pairs:
+        if not p.get("mechanical_pass") or not all(p.get("mechanical", {}).values()):
+            found.append(f"{p.get('pair_id')}: a mechanical check is not true")
+        if not all(p.get("verify", {}).get(q) is True for q in PAIR_QUESTIONS):
+            found.append(f"{p.get('pair_id')}: a verifier answer is not true")
+    return found
+
+
+# ---------------------------------------------------------------------------
+# Batches.
+# ---------------------------------------------------------------------------
+
+
+def _item_line(item_id: str, text: str) -> str:
+    return json.dumps({"claim_id": item_id, "text": text}, ensure_ascii=False)
+
+
+def _group(rows, field):
+    out = defaultdict(list)
+    for r in rows:
+        out[r[field]].append(r)
+    return out
+
+
+def inventory_problems(claims: list[dict[str, Any]], summary: dict[str, Any], plan: dict[str, Any]) -> list[str]:
+    expected = plan["claims"]["expected_counts"]
+    found = list(summary.get("problems", []))
+    if summary.get("bundles") != expected["bundles"]:
+        found.append(f"bundles: {summary.get('bundles')} != {expected['bundles']}")
+    if len(claims) != expected["claims"] or summary.get("claims") != expected["claims"]:
+        found.append(f"claims: {len(claims)} != {expected['claims']}")
+    if len({c["claim_id"] for c in claims}) != len(claims):
+        found.append("claim ids repeat")
+    if any(c.get("fixture") not in FIXTURE_FILES for c in claims):
+        found.append("a claim names an unknown fixture")
+    return found
+
+
+def build_batches(claims: list[dict[str, Any]], pairs: list[dict[str, Any]]) -> tuple[list[dict], list[dict]]:
+    """Return (batches, key). Items get neutral ids in hash order; each batch is
+    one bundle's claims plus contrast sentences of the same fixture, filled
+    until the prompt would pass PROMPT_BUDGET."""
+    template = _template("auditor.md")
+    items: list[dict[str, Any]] = [
+        {"source": f"claim:{c['claim_id']}", "bundle": c["bundle"], "fixture": c["fixture"],
+         "text": c["text"], "kind": "claim", "claim_id": c["claim_id"]} for c in claims]
+    bundles_by_fixture: dict[str, list[str]] = defaultdict(list)
+    for c in claims:
+        if c["bundle"] not in bundles_by_fixture[c["fixture"]]:
+            bundles_by_fixture[c["fixture"]].append(c["bundle"])
+    for fixture, fixture_pairs in _group(pairs, "fixture").items():
+        bundles = sorted(bundles_by_fixture[fixture])
+        if len(bundles) < 2:
+            raise Stop(f"{fixture}: fewer than two bundles, so a pair's sentences would share a batch")
+        for n, pair in enumerate(sorted(fixture_pairs, key=lambda p: p["pair_id"])):
+            for side, offset in (("accurate", 0), ("false", 1)):
+                items.append({"source": f"pair:{pair['pair_id']}:{side}",
+                              "bundle": bundles[(n + offset) % len(bundles)], "fixture": fixture,
+                              "text": pair[f"{side}_sentence"], "kind": f"contrast_{side}",
+                              "pair_id": pair["pair_id"]})
+    items.sort(key=lambda i: _sha(i["source"]))
+    key = []
+    for n, item in enumerate(items, start=1):
+        item["item_id"] = f"i{n:04d}"
+        key.append({k: v for k, v in item.items() if k != "text"})
+    batches: list[dict[str, Any]] = []
+    for bundle, bundle_items in sorted(_group(items, "bundle").items()):
+        fixture = bundle_items[0]["fixture"]
+        base = len(template.replace("{manuscript}", manuscript_text(fixture)).replace(
+            "{claims}", "").encode("utf-8"))
+        current: list[dict[str, Any]] = []
+        size = base
+        for item in bundle_items:
+            extra = len(_item_line(item["item_id"], item["text"]).encode("utf-8")) + 1
+            if base + extra > PROMPT_BUDGET:
+                raise Stop(f"{item['item_id']}: one item does not fit a {PROMPT_BUDGET}-byte prompt")
+            if current and size + extra > PROMPT_BUDGET:
+                batches.append(_batch(bundle, fixture, len(batches), current))
+                current, size = [], base
+            current.append(item)
+            size += extra
+        if current:
+            batches.append(_batch(bundle, fixture, len(batches), current))
+    return batches, key
+
+
+def _batch(bundle: str, fixture: str, n: int, items: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"batch_id": f"b{n + 1:03d}", "bundle": bundle, "fixture": fixture,
+            "items": [{"claim_id": i["item_id"], "text": i["text"]} for i in items]}
+
+
+def batch_prompt(batch: dict[str, Any]) -> str:
+    claims = "\n".join(_item_line(i["claim_id"], i["text"]) for i in batch["items"])
+    return _template("auditor.md").replace("{manuscript}", manuscript_text(batch["fixture"])).replace(
+        "{claims}", claims)
+
+
+def _inputs_digest() -> dict[str, str]:
+    """Hashes of every file whose change would change a prompt or a score."""
+    files = [SUITE / "plan.json", SUITE / "rubric.md", *sorted((SUITE / "prompts").glob("*.md")),
+             *(MANUSCRIPTS / f for f in FIXTURE_FILES.values()), Path(__file__).resolve()]
+    return {str(f.resolve().relative_to(REPO_ROOT)): _file_sha(f) for f in files}
+
+
+def cmd_build(args) -> int:
+    plan = load_plan()
+    claims = read_jsonl(args.claims)
+    summary = json.loads(read_text(args.claims.parent / "summary.json"))
+    pairs = read_jsonl(args.pairs)
+    problems = inventory_problems(claims, summary, plan) + pair_problems(pairs, plan)
+    if problems:
+        print(json.dumps({"problems": problems}))
+        return 1
+    out = guard(args.out)
+    if out.exists() and any(out.iterdir()):
+        raise Stop(f"{out} is not empty; build into a new directory")
+    batches, key = build_batches(claims, pairs)
+    out.mkdir(parents=True, exist_ok=True)
+    for b in batches:
+        (out / f"{b['batch_id']}.json").write_text(json.dumps(b, ensure_ascii=False, indent=1) + "\n",
+                                                   encoding="utf-8")
+    write_jsonl(out / "item_key.jsonl", key)
+    manifest = {"built_at": _now(), "inputs": _inputs_digest(),
+                "claims_sha256": _file_sha(args.claims), "pairs_sha256": _file_sha(args.pairs),
+                "item_key_sha256": _file_sha(out / "item_key.jsonl"),
+                "batches": {b["batch_id"]: _sha(batch_prompt(b)) for b in batches}}
+    (out / "build_manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+    print(json.dumps({"batches": len(batches), "items": len(key),
+                      "contrast_items": sum(1 for k in key if k["kind"] != "claim"),
+                      "largest_prompt_bytes": max(len(batch_prompt(b).encode("utf-8")) for b in batches)}))
+    return 0
+
+
+def load_build(batches_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Load batches and key, refusing any drift from the build manifest."""
+    manifest = json.loads(read_text(batches_dir / "build_manifest.json"))
+    if manifest["inputs"] != _inputs_digest():
+        raise Stop("an input file changed since the build (plan, rubric, prompts, manuscripts, or this script)")
+    if _file_sha(batches_dir / "item_key.jsonl") != manifest["item_key_sha256"]:
+        raise Stop("item_key.jsonl changed since the build")
+    batches = [json.loads(read_text(batches_dir / f"{b}.json")) for b in sorted(manifest["batches"])]
+    for b in batches:
+        if _sha(batch_prompt(b)) != manifest["batches"][b["batch_id"]]:
+            raise Stop(f"{b['batch_id']}: its prompt changed since the build")
+    return batches, read_jsonl(batches_dir / "item_key.jsonl")
+
+
+# ---------------------------------------------------------------------------
+# Run.
+# ---------------------------------------------------------------------------
+
+
+def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, limit: int | None = None,
+              runner=subprocess.run) -> dict[str, Any]:
+    batches, _key = load_build(batches_dir)
+    out_dir = guard(out_root) / judge / f"r{replicate}"
+    log = out_dir / "calls.jsonl"
+    done = 0
+    for batch in batches[: limit or None]:
+        ids = [i["claim_id"] for i in batch["items"]]
+        prompt = batch_prompt(batch)
+        stem = f"{judge}-r{replicate}-{batch['batch_id']}"
+        text = call_model(judge, prompt, out_dir / f"{batch['batch_id']}.a1.out", log, f"{stem}-a1",
+                          runner=runner)
+        _rows, problem = read_verdicts(text, ids)
+        if problem:
+            text = call_model(judge, prompt + RETRY_NOTE.format(reason=problem),
+                              out_dir / f"{batch['batch_id']}.a2.out", log, f"{stem}-a2", attempt=2,
+                              runner=runner)
+            _rows, problem = read_verdicts(text, ids)
+            if problem:
+                raise Stop(f"{stem}: unreadable after one retry ({problem})")
+        done += 1
+    return {"judge": judge, "replicate": replicate, "batches": done}
+
+
+def cmd_run(args) -> int:
+    print(json.dumps(run_judge(args.judge, args.replicate, args.batches, args.out, args.limit)))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Score.
+# ---------------------------------------------------------------------------
+
+
+def load_replicate(out_dir: Path, batches: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """{item_id: verdict row} from the last readable attempt of each batch."""
+    found: dict[str, dict[str, Any]] = {}
+    for batch in batches:
+        ids = [i["claim_id"] for i in batch["items"]]
+        for attempt in ("a2", "a1"):
+            path = out_dir / f"{batch['batch_id']}.{attempt}.out"
+            if path.exists():
+                rows, problem = read_verdicts(read_text(path), ids)
+                if not problem:
+                    found.update(rows)
+                    break
+    return found
+
+
+def judge_flag(rows: list[dict[str, Any] | None], claim_text: str, manuscript: str) -> str:
+    """One judge's flag on one item over its replicates: ``missing``, ``true``
+    (every replicate false with checked evidence), ``false`` (no replicate
+    false), or ``unresolved``."""
+    if any(r is None for r in rows):
+        return "missing"
+    falses = [r["verdict"] == "false" for r in rows]
+    if not any(falses):
+        return "false"
+    if all(falses) and all(evidence_ok(r, claim_text, manuscript) for r in rows):
+        return "true"
+    return "unresolved"
+
+
+def contrast_gate(key: list[dict[str, Any]], replicates: list[dict[str, dict[str, Any]]],
+                  bar: dict[str, float]) -> dict[str, Any]:
+    """A judge passes only with a verdict for every contrast item in every
+    replicate. A false sentence is detected when every replicate says false; an
+    accurate sentence is flagged when any replicate says false."""
+    false_items = [k["item_id"] for k in key if k["kind"] == "contrast_false"]
+    true_items = [k["item_id"] for k in key if k["kind"] == "contrast_accurate"]
+    missing = sorted(i for i in false_items + true_items for rows in replicates if i not in rows)
+    def verdicts(i):
+        return [rows[i]["verdict"] for rows in replicates if i in rows]
+    detected = sum(1 for i in false_items if verdicts(i) and all(v == "false" for v in verdicts(i)))
+    flagged = sum(1 for i in true_items if any(v == "false" for v in verdicts(i)))
+    detection = detected / len(false_items) if false_items else None
+    false_flag = flagged / len(true_items) if true_items else None
+    passed = (not missing and detection is not None and false_flag is not None
+              and detection >= bar["min_detection"] and false_flag <= bar["max_false_flag"])
+    return {"false_sentences": len(false_items), "detected": detected, "detection_rate": detection,
+            "accurate_sentences": len(true_items), "flagged": flagged, "false_flag_rate": false_flag,
+            "missing_contrast_verdicts": len(missing), "pass": passed}
+
+
+def classify(flags: dict[str, str]) -> str:
+    """The one agreement list for a claim, from the valid judges' flags."""
+    values = set(flags.values())
+    if "missing" in values:
+        return "missing"
+    if "unresolved" in values:
+        return "replicate_instability"
+    if values == {"true"}:
+        return "agreed_false"
+    if values == {"false"}:
+        return "agreed_not_false"
+    return "cross_judge_divergence"
+
+
+def score(batches_dir: Path, runs: Path, out: Path, seat_key: Path | None = None) -> dict[str, Any]:
+    plan = load_plan()
+    batches, key = load_build(batches_dir)
+    texts = {i["claim_id"]: (i["text"], b["fixture"]) for b in batches for i in b["items"]}
+    manuscripts = {f: manuscript_text(f) for f in FIXTURE_FILES}
+    judges = plan["judges"]
+    per_judge = {j: [load_replicate(runs / j / f"r{r}", batches) for r in range(1, plan["replicates"] + 1)]
+                 for j in judges}
+    gates = {j: contrast_gate(key, per_judge[j], plan["contrast_gate"]) for j in judges}
+    valid = [j for j in judges if gates[j]["pass"]]
+    claims = [k for k in key if k["kind"] == "claim"]
+    flags = {}
+    for k in claims:
+        text, fixture = texts[k["item_id"]]
+        flags[k["item_id"]] = {j: judge_flag([rows.get(k["item_id"]) for rows in per_judge[j]],
+                                             text, manuscripts[fixture]) for j in judges}
+    lists: dict[str, list[str]] = defaultdict(list)
+    for k in claims:
+        lists[classify({j: flags[k["item_id"]][j] for j in valid}) if valid else "void"].append(k["item_id"])
+    spread = {j: [sum(1 for k in claims if rows.get(k["item_id"], {}).get("verdict") == "false")
+                  for rows in per_judge[j]] for j in judges}
+    status = {2: "decision_relevant", 1: "exploratory_one_valid_judge", 0: "void"}[min(len(valid), 2)]
+    result = {"judges": judges, "valid_judges": valid, "status": status, "contrast_gate": gates,
+              "claims": len(claims), "lists": {name: lists.get(name, []) for name in (
+                  "agreed_false", "agreed_not_false", "cross_judge_divergence", "replicate_instability",
+                  "missing", "void")},
+              "raw_false_by_judge_and_replicate": spread,
+              "coverage_missing": {j: [sum(1 for k in claims if k["item_id"] not in rows) for rows in per_judge[j]]
+                                   for j in judges}}
+    review = lists["cross_judge_divergence"] + lists["replicate_instability"] + lists["missing"]
+    out = guard(out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "score.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+    write_adjudication_packet(out / "adjudication_packet.md", review, texts, per_judge, judges)
+    decisions_path = out / "adjudication_decisions.json"
+    if not decisions_path.exists():
+        decisions_path.write_text(json.dumps({"decisions": {i: {"verdict": None, "criterion": None}
+                                                            for i in review}}, indent=1) + "\n", encoding="utf-8")
+    seats = ({r["claim_id"]: r["seat"] for r in read_jsonl(seat_key)} if seat_key else {})
+    result["headline"] = headline(result, json.loads(read_text(decisions_path)), key, review, seats)
+    (out / "score.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+    write_execution_manifest(out / "execution_manifest.json", runs)
+    return result
+
+
+def headline(result: dict[str, Any], decisions: dict[str, Any], key: list[dict[str, Any]],
+             review: list[str], seats: dict[str, str]) -> dict[str, Any]:
+    """The adjudicated counts, once every reviewed claim has a verdict and a
+    criterion. ``seats`` maps extractor claim ids to seats (key.jsonl); it is
+    read only here, after every verdict exists."""
+    if result["status"] != "decision_relevant":
+        return {"computed": False, "reason": result["status"]}
+    made = decisions.get("decisions", {})
+    pending = [i for i in review if (made.get(i) or {}).get("verdict") not in VERDICTS
+               or not (made.get(i) or {}).get("criterion")]
+    if pending:
+        return {"computed": False, "reason": f"{len(pending)} adjudication decisions pending"}
+    false_items = set(result["lists"]["agreed_false"]) | {i for i in review if made[i]["verdict"] == "false"}
+    claims = [k for k in key if k["kind"] == "claim"]
+    by_seat: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    for k in claims:
+        seat = seats.get(k["claim_id"], "unknown")
+        by_seat[seat][0] += k["item_id"] in false_items
+        by_seat[seat][1] += 1
+    panels = {k["bundle"] for k in claims}
+    panels_false = {k["bundle"] for k in claims if k["item_id"] in false_items}
+    return {"computed": True, "estimand_status": "point_estimate",
+            "false_claims": len(false_items), "claims": len(claims),
+            "false_claim_rate": len(false_items) / len(claims),
+            "by_seat": {s: {"false": f, "claims": n, "rate": f / n} for s, (f, n) in sorted(by_seat.items())},
+            "panels_with_false_claim": len(panels_false), "panels": len(panels),
+            "panels_with_false_claim_share": len(panels_false) / len(panels),
+            "false_item_ids": sorted(false_items)}
+
+
+def write_adjudication_packet(path: Path, items: list[str], texts, per_judge, judges) -> None:
+    """One section per item to review: the claim, then each reading, labelled
+    by a per-item shuffled letter so the packet does not show the judge. The
+    packet is regenerated; decisions live in adjudication_decisions.json."""
+    lines = ["# Adjudication packet (#1002)", "",
+             "Apply rubric V1-V3 and R1-R5. Record each decision in adjudication_decisions.json "
+             "(verdict and criterion id); this packet is rewritten on every score run.", ""]
+    for item_id in items:
+        text, fixture = texts[item_id]
+        lines += [f"## {item_id} ({fixture})", "", "> " + text.replace("\n", "\n> "), ""]
+        readings = [(j, r, rows.get(item_id)) for j in judges for r, rows in enumerate(per_judge[j], 1)]
+        readings.sort(key=lambda t: _sha(f"{item_id}:{t[0]}:{t[1]}"))
+        for letter, (_j, _r, row) in zip("ABCDEFGH", readings):
+            if row is None:
+                lines.append(f"- Reading {letter}: **missing**")
+                continue
+            detail = (f" | {row.get('evidence')} | {row.get('locator')} | \"{row.get('quote')}\""
+                      if row["verdict"] == "false" else "")
+            lines.append(f"- Reading {letter}: **{row['verdict']}**{detail} | {row.get('reason', '')}")
+        lines.append("")
+    guard(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_execution_manifest(path: Path, runs: Path) -> None:
+    """heldout-execution-manifest/1.0 from every completed call under ``runs``."""
+    calls = []
+    for log in sorted(guard(runs).rglob("calls.jsonl")):
+        calls += [e for e in read_jsonl(log) if e.get("status") == "completed"]
+    calls.sort(key=lambda e: (e["started_at"], e["call_id"]))
+    manifest = {"schema_version": "heldout-execution-manifest/1.0", "suite": "panel_claim_factuality",
+                "created_at": _now(), "write_once": True,
+                "calls": [{"call_id": e["call_id"], "sequence_index": n, "started_at": e["started_at"],
+                           "completed_at": e["completed_at"], "prompt_sha256": e["prompt_sha256"],
+                           "output_sha256": e["output_sha256"], "attempt": e["attempt"]}
+                          for n, e in enumerate(calls, start=1)]}
+    if manifest["calls"]:
+        guard(path).write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+
+
+def cmd_score(args) -> int:
+    result = score(args.batches, args.runs, args.out, args.seat_key)
+    print(json.dumps({"status": result["status"], "valid_judges": result["valid_judges"],
+                      "lists": {k: len(v) for k, v in result["lists"].items()},
+                      "headline_computed": result["headline"]["computed"]}))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# CLI.
+# ---------------------------------------------------------------------------
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    g = sub.add_parser("generate")
+    g.add_argument("--fixture", choices=sorted(FIXTURE_FILES), required=True)
+    g.add_argument("--n", type=int, default=20)
+    g.add_argument("--transport", default="claude_agy", choices=sorted(TRANSPORTS))
+    g.add_argument("--out", type=Path, required=True)
+    c = sub.add_parser("check-pairs")
+    c.add_argument("--pairs", type=Path, required=True)
+    c.add_argument("--out", type=Path, required=True)
+    v = sub.add_parser("verify-pairs")
+    v.add_argument("--pairs", type=Path, required=True)
+    v.add_argument("--transport", default="codex", choices=sorted(TRANSPORTS))
+    v.add_argument("--out", type=Path, required=True)
+    b = sub.add_parser("build")
+    b.add_argument("--claims", type=Path, required=True, help="claims.jsonl, with summary.json beside it.")
+    b.add_argument("--pairs", type=Path, required=True)
+    b.add_argument("--out", type=Path, required=True)
+    r = sub.add_parser("run")
+    r.add_argument("--judge", choices=("codex", "gemini"), required=True)
+    r.add_argument("--replicate", type=int, choices=(1, 2), required=True)
+    r.add_argument("--batches", type=Path, required=True)
+    r.add_argument("--out", type=Path, required=True)
+    r.add_argument("--limit", type=int, help="Send only the first N batches (the pilot).")
+    s = sub.add_parser("score")
+    s.add_argument("--batches", type=Path, required=True)
+    s.add_argument("--runs", type=Path, required=True)
+    s.add_argument("--out", type=Path, required=True)
+    s.add_argument("--seat-key", type=Path, help="extract_panel_claims key.jsonl, for rates by seat.")
+    args = parser.parse_args(argv)
+    handlers = {"generate": cmd_generate, "check-pairs": cmd_check_pairs, "verify-pairs": cmd_verify_pairs,
+                "build": cmd_build, "run": cmd_run, "score": cmd_score}
+    try:
+        return handlers[args.cmd](args)
+    except Stop as stop:
+        print(f"STOP: {stop}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())
