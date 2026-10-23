@@ -680,3 +680,13 @@ def test_events_split_on_lf_only_and_unreadable_lines_fail():
     assert d.codex_answer(stream) == ("", "items other than the reply: command_execution")
     assert d.codex_answer(stream + "\nnot json")[1] == "1 unreadable event lines"
     assert d.codex_answer(codex_events("a\u2028b")) == ("a\u2028b", None)
+
+
+def test_a_non_ascii_initial_is_not_a_sentence_end():
+    assert d._one_sentence("The study by É. Durkheim enrolled 120 participants at one university.")
+
+
+def test_jsonl_with_u2028_reads_back(tmp_path):
+    rows = [{"pair_id": "p01\u2028x", "text": "a"}, {"pair_id": "p02", "text": "b"}]
+    d.write_jsonl(tmp_path / "x.jsonl", rows)
+    assert d.read_jsonl(tmp_path / "x.jsonl") == rows

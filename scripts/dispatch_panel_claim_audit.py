@@ -116,7 +116,7 @@ def read_text(path: Path) -> str:
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in read_text(path).splitlines() if line.strip()]
+    return [json.loads(line) for line in read_text(path).split("\n") if line.strip()]
 
 
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -433,12 +433,12 @@ def changed_tokens(a: str, b: str) -> int:
 
 # A sentence end inside the text: . ! or ?, maybe a closing quote or bracket,
 # then space and a capital, a digit, or an opening quote or bracket (a second
-# sentence can start with a digit). A period after a lone letter (an initial
-# such as "A. Smith", or "U.S.", "e.g.") or after "et al" is not counted as an
-# end, so this check never rejects such a sentence; "group A. The" cannot be
+# sentence can start with a digit). A period after a lone letter of any script
+# (an initial such as "A. Smith" or "É. Durkheim", or "U.S.", "e.g.") or after
+# "et al" is not counted as an end, so this check never rejects such a sentence; "group A. The" cannot be
 # told from an initial by its characters, and the verifier's single_sentences
 # question catches it.
-_SENTENCE_BREAK = re.compile(r"(?<!\b[A-Za-z])(?<!\bal)[.!?][\"'”’)\]]*\s+[A-Z0-9\"'“‘(\[]")
+_SENTENCE_BREAK = re.compile(r"(?<!\b[^\W\d_])(?<!\bal)[.!?][\"'”’)\]]*\s+[A-Z0-9\"'“‘(\[]")
 
 
 def _one_sentence(text: str) -> bool:
