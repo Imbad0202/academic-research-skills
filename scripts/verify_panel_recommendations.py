@@ -31,7 +31,8 @@ citation gate (C-V6(a)):
                   from an unindexed one;
   no_answer       the indexes that could settle the item did not answer (for
                   an item with a DOI or arXiv ID, an index queried by it did
-                  not answer and no index matched), or the lookup failed.
+                  not answer, no index matched, and no index queried by it
+                  reported no record), or the lookup failed.
 
 ``found`` shows only that a record exists. It does not show that the work
 supports the recommendation, or that the given authors and year are right.
