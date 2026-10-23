@@ -266,6 +266,8 @@ def completed_output(calls_log: Path, call_id: str, out_file: Path, prompt: str,
         lock = out_file.with_name(out_file.name + ".lock")
         if (entries and entries[-1].get("status") == "started") or (lock.exists() and not entries):
             raise Stop(f"{call_id}: an interrupted call (a started call or a lock without an output)")
+        if any(e.get("status") == "completed" for e in entries):
+            raise Stop(f"{call_id}: a completed call has lost its output; restore {out_file.name}")
         return None
     text = read_text(out_file)
     done = [e for e in _logged(calls_log, call_id) if e.get("status") == "completed"]
@@ -316,6 +318,8 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
     out_file.with_name(out_file.name + ".err").write_text(err, encoding="utf-8")
     out_file.with_name(out_file.name + ".stream").write_text(raw, encoding="utf-8")
     output, problem = ANSWER_PARSERS[transport](raw)
+    # One line-ending form, so the logged hash equals the hash of the text read back.
+    output = output.replace("\r\n", "\n").replace("\r", "\n")
     failure = ((f"exit {proc.returncode}" if proc.returncode != 0 else None) or problem
                or (None if output.strip() else "empty reply"))
     if failure:
@@ -416,9 +420,10 @@ def changed_tokens(a: str, b: str) -> int:
 
 # A sentence end inside the text: . ! or ?, maybe a closing quote or bracket,
 # then space and a capital, a digit, or an opening quote or bracket (a second
-# sentence can start with a digit). A period after a one-letter token (U.S.,
-# e.g.) or after "et al" is an abbreviation, not an end.
-_SENTENCE_BREAK = re.compile(r"(?<!\b[A-Za-z])(?<!\bal)[.!?][\"'”’)\]]*\s+[A-Z0-9\"'“‘(\[]")
+# sentence can start with a digit). The last period of a dotted abbreviation
+# (U.S., e.g.) and the period after "et al" are not ends; a period after a lone
+# letter ("group A. The") is.
+_SENTENCE_BREAK = re.compile(r"(?<!\.[A-Za-z])(?<!\bal)[.!?][\"'”’)\]]*\s+[A-Z0-9\"'“‘(\[]")
 
 
 def _one_sentence(text: str) -> bool:

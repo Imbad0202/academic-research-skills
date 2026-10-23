@@ -647,3 +647,23 @@ def test_a_batch_file_holding_another_batch_stops(tmp_path, small_plan, capsys):
 def test_abbreviations_are_not_sentence_ends():
     assert d._one_sentence("The study enrolled 120 participants from the U.S. population.")
     assert d._one_sentence("Smith et al. Report a mean of 4.2 in the second wave of the survey.")
+
+
+def test_a_crlf_reply_reads_back_with_its_logged_hash(tmp_path):
+    proc = subprocess.CompletedProcess([], 0, stdout=codex_events("line one\r\nline two\r\n"), stderr="")
+    out, log = tmp_path / "x.out", tmp_path / "c.jsonl"
+    first = d.call_model("codex", "P", out, log, "c1", runner=lambda *a, **k: proc)
+    assert first == "line one\nline two\n"
+    assert d.call_model("codex", "P", out, log, "c1", runner=lambda *a, **k: proc) == first
+
+
+def test_a_completed_call_whose_output_is_gone_stops(tmp_path):
+    out, log = tmp_path / "x.out", tmp_path / "c.jsonl"
+    d.call_model("codex", "P", out, log, "c1", runner=_ok)
+    out.unlink()
+    with pytest.raises(d.Stop, match="lost its output"):
+        d.call_model("codex", "P", out, log, "c1", runner=_ok)
+
+
+def test_a_lone_letter_before_a_period_still_ends_a_sentence():
+    assert not d._one_sentence("The authors enrolled 120 participants in group A. The controls received saline.")
