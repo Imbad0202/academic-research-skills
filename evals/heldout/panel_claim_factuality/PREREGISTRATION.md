@@ -17,7 +17,7 @@ version, logged as an amendment; the frozen files are never edited in place.
 
 Each arm is a judge, a generator, or a verifier, not a treatment. Every call runs through a subscription CLI, so no call carries a per-call charge; settled cost is `unknown` and the binding limits are the subscription usage limits and time.
 
-- judge `gpt-6-astra` (OpenAI family): `codex exec`, model_reasoning_effort=xhigh, `skills.include_instructions=false`, read-only, empty working directory, prompt on stdin. Price-table estimate at 10/50 USD per MTok: about 0.14 USD per item at 4,000 in and 2,000 out tokens; a batch is about 7,000 in tokens.
+- judge `gpt-6-astra` (OpenAI family): `codex exec --json`, model_reasoning_effort=xhigh, `skills.include_instructions=false`, read-only, empty working directory, prompt on stdin. The read-only sandbox still lets the model read files, so a reply whose event stream shows any item other than a message or reasoning (a command, a file read, a tool) is a transport failure and stops the run. Price-table estimate at 10/50 USD per MTok: about 0.14 USD per item at 4,000 in and 2,000 out tokens; a batch is about 7,000 in tokens.
 - judge `gemini-3.8-flash-high` (Google family): `agy -p`, model "Gemini 3.8 Flash (High)", `--disable-slash-commands`, `--output-format stream-json`, empty working directory. A reply whose stream shows any step other than the answer (a tool, a skill, a subagent) is a transport failure and stops the run. No price-table row (`EVAL_PRICE_MISSING`); its cost is recorded as `unknown`. This model replaces `gemini-4-argon-high` before the freeze, because the Gemini 4 Argon quota of the agy account was exhausted when the plan was written.
 - generator `claude-opus-5-5-high` (Anthropic family): `agy -p`, model "Claude Opus 5.5 (High)", the same flags and step rule, 20 contrast pairs per manuscript, 3 calls.
 - verifier `gpt-6-astra`: the codex settings above, one call per manuscript over its mechanically valid pairs.
@@ -37,7 +37,7 @@ Each arm is a judge, a generator, or a verifier, not a treatment. Every call run
 - A claim inventory other than 17 bundles and 805 claims, or any extraction problem: stop before any judge call.
 - Fewer than 15 or more than 20 accepted contrast pairs for any manuscript, a repeated pair or sentence, or a pair with any check not true: stop before any judge call on claims.
 - A batch whose output cannot be read after its one retry: stop the run.
-- A transport failure (nonzero exit, empty output, usage limit, authentication failure): stop the run without a retry. No replacement model or transport without a new plan version.
+- A transport failure, decided from the CLI's event stream and never from searching its text: a nonzero exit, a failed turn or error event, no completed turn or successful result, an empty reply, or any step other than the reply (a command, a file read, a tool, a skill, a subagent): stop the run without a retry. No replacement model or transport without a new plan version.
 - An interrupted call, an output that does not match its logged call, a decisions file or seat key from another build, or any input changed since the build: stop.
 - A reply that uses a tool, a skill, or a subagent: stop, as a transport failure.
 - `budget_exhausted` on the spend ledger: stop.

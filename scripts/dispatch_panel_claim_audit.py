@@ -24,9 +24,12 @@ the order of the steps and ``plan.json`` holds the frozen numbers. Subcommands:
 
 Every model call runs in a new empty directory, with the prompt on stdin
 (codex) or in ``-p`` (agy). The generator, verifier, and judge transports are
-the ones ``plan.json`` names. agy runs with slash commands and skills off and
-stream-json output; an answer that contains any step other than the reply (a
-tool, a skill, a subagent) is a transport failure. A call first reserves its
+the ones ``plan.json`` names. Both CLIs print their event stream (codex
+``--json``, agy ``--output-format stream-json``, with slash commands and skills
+off), and the script decides from the events, never from searching the text: a
+call fails on a nonzero exit, a failed turn or error event, a missing completed
+turn, an empty reply, or any step other than the reply (a command, a file
+read, a tool, a skill, a subagent). A call first reserves its
 output name with an exclusive lock file and logs a ``started`` line; it then
 writes its output once and logs ``completed`` or ``failed``. An output is used,
 by a later call or by scoring, only when a completed log line has the same
@@ -78,10 +81,9 @@ RETRY_NOTE = ("\n\nYour previous answer could not be read: {reason}. Answer agai
               "format given above, with nothing else.\n")
 # agy flags: no slash commands or skills, and a stream that shows every step.
 AGY_FLAGS = ("--disable-slash-commands", "--output-format", "stream-json")
+# The steps (agy) and items (codex) a plain reply has; any other one stops the run.
 AGY_ANSWER_STEPS = frozenset({"user_input", "agent_response", "unknown"})
-# Output text that means the transport, not the answer, failed: stop, never retry.
-TRANSPORT_FAILURE = re.compile(r"quota|RESOURCE_EXHAUSTED|rate limit|usage limit|not logged in|"
-                               r"authenticat|unauthori[sz]ed|\b401\b|\b403\b|\b429\b", re.IGNORECASE)
+CODEX_ANSWER_ITEMS = frozenset({"agent_message", "reasoning"})
 
 
 class Stop(Exception):
@@ -158,7 +160,7 @@ def _norm(text: str) -> str:
 def _codex_cmd(prompt: str) -> tuple[list[str], str | None]:
     return (["codex", "exec", "-m", "gpt-6-astra", "-c", 'model_reasoning_effort="xhigh"',
              "-c", "skills.include_instructions=false", "-s", "read-only",
-             "--skip-git-repo-check", "-"], prompt)
+             "--skip-git-repo-check", "--json", "-"], prompt)
 
 
 def _agy_cmd(model: str) -> Callable[[str], tuple[list[str], str | None]]:
@@ -173,7 +175,18 @@ TRANSPORTS: dict[str, Callable[[str], tuple[list[str], str | None]]] = {
     "gemini": _agy_cmd("Gemini 3.8 Flash (High)"),
     "claude_agy": _agy_cmd("Claude Opus 5.5 (High)"),
 }
-AGY_TRANSPORTS = ("gemini", "claude_agy")
+
+
+def _events(stream: str) -> list[dict[str, Any]]:
+    events = []
+    for line in stream.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict):
+            events.append(event)
+    return events
 
 
 def agy_answer(stream: str) -> tuple[str, str | None]:
@@ -181,13 +194,7 @@ def agy_answer(stream: str) -> tuple[str, str | None]:
     result, or any step that is not part of a plain reply, is a problem."""
     steps: set[str] = set()
     result: dict[str, Any] | None = None
-    for line in stream.splitlines():
-        try:
-            event = json.loads(line)
-        except ValueError:
-            continue
-        if not isinstance(event, dict):
-            continue
+    for event in _events(stream):
         if event.get("event") == "step_update":
             steps.add(str((event.get("step_update") or {}).get("step_type")))
         elif event.get("event") == "result":
@@ -200,19 +207,40 @@ def agy_answer(stream: str) -> tuple[str, str | None]:
     return result["response"], None
 
 
-def transport_failure(code: int, output: str, err: str) -> str | None:
-    """Why a finished process is a transport failure, or None. Usage and
-    authentication text counts on stderr, and on stdout only when stdout has no
-    JSON answer line (a reply can mention "401 participants")."""
-    if code != 0:
-        return f"exit {code}"
-    if not output.strip():
-        return "empty output"
-    if TRANSPORT_FAILURE.search(err[-2000:]):
-        return "a usage or authentication message on stderr"
-    if not json_lines(output) and TRANSPORT_FAILURE.search(output):
-        return "a usage or authentication message in place of an answer"
-    return None
+def codex_answer(stream: str) -> tuple[str, str | None]:
+    """(reply text, problem) from ``codex exec --json`` output: the last agent
+    message of a completed turn. A failed turn, an error event, or any item in
+    the turn other than a message or reasoning is a problem. Items before the
+    turn starts (configuration warnings) are not part of the reply."""
+    started = completed = False
+    failed: str | None = None
+    other: set[str] = set()
+    answer: str | None = None
+    for event in _events(stream):
+        kind = event.get("type")
+        if kind == "turn.started":
+            started = True
+        elif kind == "turn.completed":
+            completed = True
+        elif kind in ("turn.failed", "error"):
+            failed = str(kind)
+        elif started and str(kind).startswith("item."):
+            item = event.get("item") or {}
+            if item.get("type") not in CODEX_ANSWER_ITEMS:
+                other.add(str(item.get("type")))
+            elif item.get("type") == "agent_message" and kind == "item.completed":
+                answer = item.get("text")
+    if failed:
+        return "", f"a {failed} event"
+    if other:
+        return "", "items other than the reply: " + ", ".join(sorted(other))
+    if not completed or not isinstance(answer, str):
+        return "", "no completed turn with a reply"
+    return answer, None
+
+
+ANSWER_PARSERS: dict[str, Callable[[str], tuple[str, str | None]]] = {
+    "codex": codex_answer, "gemini": agy_answer, "claude_agy": agy_answer}
 
 
 def _log(calls_log: Path, entry: dict[str, Any]) -> None:
@@ -229,10 +257,15 @@ def _logged(calls_log: Path, call_id: str) -> list[dict[str, Any]]:
 
 
 def completed_output(calls_log: Path, call_id: str, out_file: Path, prompt: str, transport: str) -> str | None:
-    """The output of call ``call_id``, or None when it was never made. An output
-    whose last completed log line has another transport, prompt, or output hash
-    stops: it belongs to another build or was changed."""
+    """The output of call ``call_id``, or None when it was never made or
+    failed (a logged failure). An interrupted call stops, and so does an output
+    whose last completed log line has another transport, prompt, or output
+    hash: it belongs to another build or was changed."""
     if not guard(out_file).exists():
+        entries = _logged(calls_log, call_id)
+        lock = out_file.with_name(out_file.name + ".lock")
+        if (entries and entries[-1].get("status") == "started") or (lock.exists() and not entries):
+            raise Stop(f"{call_id}: an interrupted call (a started call or a lock without an output)")
         return None
     text = read_text(out_file)
     done = [e for e in _logged(calls_log, call_id) if e.get("status") == "completed"]
@@ -281,11 +314,10 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
         raise Stop(f"{call_id}: transport failed ({type(exc).__name__})") from None
     raw, err = proc.stdout or "", proc.stderr or ""
     out_file.with_name(out_file.name + ".err").write_text(err, encoding="utf-8")
-    output, problem = raw, None
-    if transport in AGY_TRANSPORTS:
-        out_file.with_name(out_file.name + ".stream").write_text(raw, encoding="utf-8")
-        output, problem = agy_answer(raw)
-    failure = transport_failure(proc.returncode, raw, err) or problem
+    out_file.with_name(out_file.name + ".stream").write_text(raw, encoding="utf-8")
+    output, problem = ANSWER_PARSERS[transport](raw)
+    failure = ((f"exit {proc.returncode}" if proc.returncode != 0 else None) or problem
+               or (None if output.strip() else "empty reply"))
     if failure:
         out_file.with_name(out_file.name + ".partial").write_text(raw, encoding="utf-8")
         _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "exit_code": proc.returncode,
@@ -383,8 +415,10 @@ def changed_tokens(a: str, b: str) -> int:
 
 
 # A sentence end inside the text: . ! or ?, maybe a closing quote or bracket,
-# then space and any character (a second sentence can start with a digit).
-_SENTENCE_BREAK = re.compile(r"[.!?][\"'”’)\]]*\s+\S")
+# then space and a capital, a digit, or an opening quote or bracket (a second
+# sentence can start with a digit). A period after a one-letter token (U.S.,
+# e.g.) or after "et al" is an abbreviation, not an end.
+_SENTENCE_BREAK = re.compile(r"(?<!\b[A-Za-z])(?<!\bal)[.!?][\"'”’)\]]*\s+[A-Z0-9\"'“‘(\[]")
 
 
 def _one_sentence(text: str) -> bool:
@@ -690,7 +724,12 @@ def load_build(batches_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
         want = manifest["item_key_sha256"] if name == "item_key.jsonl" else manifest["snapshots"][name]
         if _file_sha(batches_dir / name) != want:
             raise Stop(f"{name} changed since the build")
-    batches = [json.loads(read_text(batches_dir / f"{b}.json")) for b in sorted(manifest["batches"])]
+    batches = []
+    for batch_id in sorted(manifest["batches"]):
+        batch = json.loads(read_text(batches_dir / f"{batch_id}.json"))
+        if batch.get("batch_id") != batch_id:
+            raise Stop(f"{batch_id}.json holds batch {batch.get('batch_id')}")
+        batches.append(batch)
     for b in batches:
         if _sha(batch_prompt(b)) != manifest["batches"][b["batch_id"]]:
             raise Stop(f"{b['batch_id']}: its prompt changed since the build")

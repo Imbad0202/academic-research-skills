@@ -20,7 +20,7 @@
     "codex": {
       "model_id": "gpt-6-astra",
       "model_family": "openai",
-      "settings": "codex exec, model_reasoning_effort=xhigh, -c skills.include_instructions=false, read-only, empty working directory, prompt on stdin"
+      "settings": "codex exec --json, model_reasoning_effort=xhigh, -c skills.include_instructions=false, read-only, empty working directory, prompt on stdin; a reply with any item other than a message or reasoning (a command, a file read, a tool) is a transport failure"
     },
     "gemini": {
       "model_id": "gemini-3.8-flash-high",
@@ -80,7 +80,7 @@
     "the claim inventory differs from expected_counts or has an extraction problem: stop before any judge call",
     "fewer than min_accepted_per_fixture accepted pairs for any fixture, or any other pair problem: stop before any judge call on claims",
     "a batch whose output cannot be read after its one retry: stop the run",
-    "a transport failure (nonzero exit, empty output, usage limit, authentication): stop the run, never retry",
+    "a transport failure, decided from the CLI's event stream and never from searching its text: a nonzero exit, a failed turn or error event, no completed turn or successful result, an empty reply, or any step other than the reply (a command, a file read, a tool, a skill, a subagent): stop the run, never retry",
     "an interrupted call (a lock without an output), or an input changed since the build: stop",
     "no replacement model or transport without a new plan version"
   ],

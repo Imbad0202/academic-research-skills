@@ -70,8 +70,19 @@ def stream(text):
     return "\n".join(json.dumps(e) for e in events) + "\n"
 
 
+def codex_events(text, extra_items=()):
+    """codex exec --json output for a reply, with a startup warning item."""
+    events = [{"type": "thread.started"},
+              {"type": "item.completed", "item": {"type": "error", "message": "config warning"}},
+              {"type": "turn.started"}, *({"type": "item.completed", "item": i} for i in extra_items),
+              {"type": "item.completed", "item": {"type": "agent_message", "text": text}},
+              {"type": "turn.completed", "usage": {"input_tokens": 1, "output_tokens": 1}}]
+    return "\n".join(json.dumps(e) for e in events) + "\n"
+
+
 def _reply(cmd, text):
-    return subprocess.CompletedProcess(cmd, 0, stdout=stream(text) if cmd[0] == "agy" else text, stderr="")
+    return subprocess.CompletedProcess(cmd, 0, stdout=stream(text) if cmd[0] == "agy" else codex_events(text),
+                                       stderr="")
 
 
 def _pairs_dir(work, plan, pairs=None, answers=None, verifier=None):
@@ -81,6 +92,8 @@ def _pairs_dir(work, plan, pairs=None, answers=None, verifier=None):
     pdir.mkdir(parents=True, exist_ok=True)
     log = pdir / "calls.jsonl"
     for f in FIXTURES:
+        if not any(p["fixture"] == f for p in pairs):
+            continue
         lines = [json.dumps({**{k: p[k] for k in ("accurate_sentence", "false_sentence", "evidence_quote")},
                              "pair_id": p["pair_id"].split("-", 1)[1]}) for p in pairs if p["fixture"] == f]
         d.call_model(plan["contrast_pairs"]["generator"]["transport"], d.generate_prompt(f, plan),
@@ -318,7 +331,7 @@ def test_a_missing_contrast_verdict_fails_the_gate():
 
 
 def _ok(cmd, input=None, **kw):
-    return subprocess.CompletedProcess(cmd, 0, stdout="answer\n", stderr="model: x\n")
+    return _reply(cmd, "answer\n")
 
 
 def test_a_completed_call_is_reused_only_for_the_same_prompt(tmp_path):
@@ -348,9 +361,12 @@ def test_an_interrupted_call_stops_the_next_one(tmp_path):
 
 @pytest.mark.parametrize("proc", [
     subprocess.CompletedProcess([], 1, stdout="", stderr="boom"),
-    subprocess.CompletedProcess([], 0, stdout="  \n", stderr=""),
-    subprocess.CompletedProcess([], 0, stdout="text", stderr="RESOURCE_EXHAUSTED (code 429)"),
-    subprocess.CompletedProcess([], 0, stdout="Individual quota reached (429)\n", stderr=""),
+    subprocess.CompletedProcess([], 0, stdout=codex_events("  \n"), stderr=""),
+    subprocess.CompletedProcess([], 0, stdout='{"error": "RESOURCE_EXHAUSTED", "status": 429}\n', stderr=""),
+    subprocess.CompletedProcess([], 0, stdout='{"type": "turn.started"}\n{"type": "turn.failed", "error": {}}\n',
+                                stderr=""),
+    subprocess.CompletedProcess([], 0, stdout=codex_events('{"claim_id": "i0001"}', [
+        {"type": "command_execution", "command": "cat /etc/hosts"}]), stderr=""),
 ])
 def test_a_transport_failure_stops_and_is_logged(tmp_path, proc):
     with pytest.raises(d.Stop, match="transport failed"):
@@ -387,9 +403,17 @@ def test_an_agy_reply_that_uses_a_tool_is_a_transport_failure(tmp_path):
     assert d.agy_answer(stream("hello")) == ("hello", None)
 
 
-def test_a_usage_word_inside_a_json_answer_is_not_a_failure():
-    assert d.transport_failure(0, '{"claim_id": "i0001", "reason": "401 participants"}\n', "") is None
-    assert d.transport_failure(0, "401 Unauthorized\n", "") is not None
+def test_usage_words_in_a_reply_or_on_stderr_are_not_failures(tmp_path):
+    reply = '{"claim_id": "i0001", "reason": "quota sampling of 401 participants"}\n'
+    proc = subprocess.CompletedProcess([], 0, stdout=codex_events(reply), stderr="rate limit 401 " + reply)
+    assert d.call_model("codex", "P", tmp_path / "x.out", tmp_path / "c.jsonl", "c1",
+                        runner=lambda *a, **k: proc) == reply
+
+
+def test_an_empty_agy_reply_is_a_transport_failure(tmp_path):
+    proc = subprocess.CompletedProcess([], 0, stdout=stream(""), stderr="")
+    with pytest.raises(d.Stop, match="empty reply"):
+        d.call_model("gemini", "P", tmp_path / "x.out", tmp_path / "c.jsonl", "c1", runner=lambda *a, **k: proc)
 
 
 def test_no_path_under_the_manifests_directory_is_read(tmp_path):
@@ -578,7 +602,7 @@ def test_a_repeated_verifier_answer_rejects_the_pair(tmp_path, small_plan, capsy
 
 def test_a_second_sentence_that_starts_with_a_digit_is_caught():
     assert not d._one_sentence("The study enrolled 120 participants. 80 completed the follow-up assessment.")
-    assert not d._one_sentence('The authors wrote "we stopped." then they resumed the study in May.')
+    assert not d._one_sentence('The authors wrote "we stopped." Then they resumed the study in May.')
     assert d._one_sentence("The authors report an alpha of 0.82 for the scale.")
 
 
@@ -596,3 +620,30 @@ def test_the_plan_names_the_models_the_script_calls():
     assert f"--model={plan['contrast_pairs']['generator']['agy_model']}" in generator
     assert plan["contrast_pairs"]["verifier"]["transport"] == "codex"
     assert plan["judge_models"]["codex"]["model_id"] in d.TRANSPORTS["codex"]("P")[0]
+
+
+def test_an_interrupted_judge_call_stops_scoring(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    _full_run(work, {"codex": honest, "gemini": honest})
+    r1 = work / "runs" / "codex" / "r1"
+    (r1 / "b002.a1.out").unlink()
+    (r1 / "b002.a1.out.lock").write_text("", encoding="utf-8")
+    with (r1 / "calls.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"call_id": "codex-r1-b002-a1", "status": "started", "started_at": "x"}) + "\n")
+    with pytest.raises(d.Stop, match="interrupted"):
+        d.score(work / "batches", work / "runs", work / "score")
+
+
+def test_a_batch_file_holding_another_batch_stops(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    b = work / "batches"
+    (b / "b001.json").write_text((b / "b002.json").read_text(encoding="utf-8"), encoding="utf-8")
+    with pytest.raises(d.Stop, match="b001.json holds batch b002"):
+        d.load_build(b)
+
+
+def test_abbreviations_are_not_sentence_ends():
+    assert d._one_sentence("The study enrolled 120 participants from the U.S. population.")
+    assert d._one_sentence("Smith et al. Report a mean of 4.2 in the second wave of the survey.")
