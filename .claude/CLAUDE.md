@@ -9,8 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.23.1 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.23.2 | Full pipeline orchestrator | (coordinates all above) |
 | `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
+
+## v3.23.2 Key Additions (integrity checks read only the cited version + Stage 2.5 always runs + adapter, announce, and Windows repairs)
+
+- **Phase E checks a claim only against the version of a work that the manuscript cites (#1006).** Stage 2.5 and 4.5 source tracing never substitutes a working paper, preprint, or other version; when the cited version cannot be read, the source gets `UNVERIFIABLE_ACCESS` and the user is asked for its PDF, and each evidence row names the version in `source.display_label`. In one synthetic fixture run six times (three sessions each on Claude Opus 5.5 and Claude Fable 5.1, web tools off), every session followed the rule.
+- **A prior integrity report no longer lets a pipeline run skip Stage 2.5 (#995), and a missing required input blocks the stage transition on every surface (#990).** A prior report that is `VERIFIED`, fresh, and on the current version is attached as context; the #528 content locks are updated. Prompt-level; unmeasured.
+- **The SessionStart announce shows the update reminder to the user (#999).** Startup and clear set `systemMessage`; the model-facing announce lists command and agent names on two lines, about 2.1 KB less per session.
+- **Smaller changes.** The Obsidian adapter accepts unquoted ISO date years and rejects boolean and superscript-digit years (#988 by @harshajv7981, #989); six lints compare repository paths in POSIX form on Windows (#964, #978 by @daniyyell-dev); the Pi wrapper composes with Pi's structured prompt sections (#985 by @daniyyell-dev); the Socratic mentor's example no longer ranks the user's ideas (#992); `CITATION.cff` gives the author's ORCID iD (#1007).
 
 ## v3.23.1 Key Additions (write-scope guard repairs + RFC 4180 CSV reading in `sr-screener` + Gemini 4 Argon as a provisional verifier)
 
@@ -420,7 +427,7 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
-- **Suite version**: 3.23.1 (per CHANGELOG.md)
-- **Last Updated**: 2026-10-16
+- **Suite version**: 3.23.2 (per CHANGELOG.md)
+- **Last Updated**: 2026-10-24
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
