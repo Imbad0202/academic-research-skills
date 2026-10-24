@@ -81,6 +81,11 @@ repository. Raw outputs are written once and never overwritten.
   order. The seat label, the condition, the panel decision, and other
   verdicts are left out. The claim text is the reviewer's own words, so it can
   still show the seat (a DA row has no title); the blinding is of metadata.
+- The codex judge runs with `-s read-only` in an empty directory, and a reply
+  whose turn holds a command, a file read, or another tool item is a transport
+  failure. That check runs after the call, so a read the CLI allowed has
+  already happened. The inputs are this repository's synthetic manuscripts
+  and panel outputs.
 - Every input path is resolved before it is read, and a path under
   `../reviewer_seeded_defects/manifests/` stops the script.
 - The rate says how often panel claims contradict the manuscript under this

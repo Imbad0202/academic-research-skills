@@ -1,6 +1,6 @@
 {
   "suite": "panel_claim_factuality",
-  "plan_version": "8",
+  "plan_version": "9",
   "issue": "#1002",
   "claims": {
     "extractor": "scripts/extract_panel_claims.py",
@@ -209,6 +209,20 @@
       "change": "the one resend also covers finish reason MALFORMED_RESPONSE",
       "reason": "the v7 full run stopped at b078 on MALFORMED_RESPONSE, a provider-side failure with no output",
       "v7_outputs": "77 completed batches of replicate 1, kept as a record; not scored"
+    },
+    {
+      "version": "9",
+      "date": "2026-10-24",
+      "files": [
+        "plan.json",
+        "scripts/dispatch_panel_claim_audit.py",
+        "scripts/test_dispatch_panel_claim_audit.py",
+        "PREREGISTRATION.md",
+        "README.md"
+      ],
+      "change": "transport hardening after a security review: response and stream size ceilings, price-date check in the Gemini helper, symlink-safe side files, file-name batch ids, sanitized API error status, worst-case accounting for failed paid calls and zero reported output, no paid Gemini transport for the pair steps",
+      "reason": "security review of the harness before merge",
+      "v8_outputs": "unchanged; they score under a version 9 build made with --match-manifest"
     }
   ]
 }

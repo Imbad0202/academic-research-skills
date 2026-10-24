@@ -117,6 +117,15 @@ RESEND_FAILURES = frozenset(f"finish reason {r}" for r in RESEND_REASONS)
 # The label a call log records per transport. The Gemini API judge gets its own
 # label, so a logged call of the earlier agy "gemini" transport is never reused.
 LOG_LABELS = {"gemini": "gemini_api"}
+# Size ceilings: the Gemini helper reads at most RESPONSE_MAX_BYTES of a
+# response body, and a transport stream above STREAM_MAX_CHARS is a failure
+# that saves nothing.
+RESPONSE_MAX_BYTES = 8 * 1024 * 1024
+STREAM_MAX_CHARS = 64 * 1024 * 1024
+# Batch ids are file-name stems the build writes (b001, b002, ...).
+BATCH_ID_RE = re.compile(r"b\d{3,4}")
+# An API error status is echoed only in this form (e.g. RESOURCE_EXHAUSTED).
+API_STATUS_RE = re.compile(r"[A-Z][A-Z_]{0,63}")
 
 
 class Stop(Exception):
@@ -154,6 +163,14 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     guard(path).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+
+
+def _write_aux(path: Path, text: str) -> None:
+    """Write a side file of a call (.err, .stream, .partial, .tmp) without
+    following a symlink at its name, and never under the held-out manifests."""
+    fd = os.open(guard(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o644)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(text)
 
 
 def _now() -> str:
@@ -238,6 +255,10 @@ def cmd_gemini_api_call(_args, opener=None) -> int:
     if not (key.isascii() and key.isprintable()) or " " in key:
         print(f"{GEMINI_API_KEY_ENV} holds a character a request header cannot carry", file=sys.stderr)
         return 3
+    if _now()[:10] > GEMINI_PRICE_UNTIL:
+        print(f"the Gemini price table holds through {GEMINI_PRICE_UNTIL}; update it before a paid call",
+              file=sys.stderr)
+        return 3
     opener = opener or urllib.request.build_opener(_NoRedirect)
     try:
         prompt = sys.stdin.buffer.read().decode("utf-8")
@@ -246,7 +267,10 @@ def cmd_gemini_api_call(_args, opener=None) -> int:
             data=json.dumps(gemini_api_request(prompt), ensure_ascii=False).encode("utf-8"),
             headers={"x-goog-api-key": key, "Content-Type": "application/json"})
         with opener.open(request, timeout=TIMEOUT_S) as response:
-            body, status = response.read(), response.status
+            body, status = response.read(RESPONSE_MAX_BYTES + 1), response.status
+        if len(body) > RESPONSE_MAX_BYTES:
+            print(f"response over {RESPONSE_MAX_BYTES} bytes", file=sys.stderr)
+            return 1
         if status == 200:
             sys.stdout.buffer.write(body)
             return 0
@@ -262,7 +286,7 @@ def gemini_usage(body_text: str) -> dict[str, Any]:
     """Token counts and cost of one API response. Output is the total minus
     the prompt, so thinking and any other output count. ``usd`` is None (the
     run then counts the call at its worst case) unless both counts are
-    integers with 0 <= prompt <= total <= USAGE_MAX_TOKENS."""
+    integers with 0 <= prompt < total <= USAGE_MAX_TOKENS."""
     try:
         meta = json.loads(body_text).get("usageMetadata")
     except (ValueError, AttributeError):
@@ -274,6 +298,9 @@ def gemini_usage(body_text: str) -> dict[str, Any]:
             or not 0 <= prompt <= total <= USAGE_MAX_TOKENS:
         return {"usd": None}
     tokens_out = total - prompt
+    if tokens_out == 0:
+        # A call that reached the model spends output tokens; a zero count is not trusted.
+        return {"usd": None}
     return {"tokens_in": prompt, "tokens_out": tokens_out,
             "usd": round(prompt * GEMINI_PRICE_IN + tokens_out * GEMINI_PRICE_OUT, 6)}
 
@@ -409,7 +436,9 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
         return "", "unreadable API response"
     if "error" in body:
         error = body["error"]
-        status = error.get("status") if isinstance(error, dict) else repr(error)
+        status = error.get("status") if isinstance(error, dict) else None
+        if not (isinstance(status, str) and API_STATUS_RE.fullmatch(status)):
+            status = "(unrecognized status)"
         return "", f"API error {status}"
     version = body.get("modelVersion")
     if version != GEMINI_API_MODEL:
@@ -515,13 +544,18 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
         partial = getattr(exc, "stdout", None) or ""
         if isinstance(partial, bytes):
             partial = partial.decode("utf-8", "replace")
-        out_file.with_name(out_file.name + ".partial").write_text(partial, encoding="utf-8")
+        _write_aux(out_file.with_name(out_file.name + ".partial"), partial[:STREAM_MAX_CHARS])
         _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "error": type(exc).__name__,
                          **({"usd": None, "worst_case_usd": worst_case_usd(prompt)} if paid else {})})
         raise Stop(f"{call_id}: transport failed ({type(exc).__name__})") from None
     raw, err = proc.stdout or "", proc.stderr or ""
-    out_file.with_name(out_file.name + ".err").write_text(err, encoding="utf-8")
-    out_file.with_name(out_file.name + ".stream").write_text(raw, encoding="utf-8")
+    if len(raw) > STREAM_MAX_CHARS or len(err) > STREAM_MAX_CHARS:
+        failure = f"stream over {STREAM_MAX_CHARS} characters"
+        _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "exit_code": proc.returncode,
+                         "error": failure, **({"usd": None, "worst_case_usd": worst_case_usd(prompt)} if paid else {})})
+        raise Stop(f"{call_id}: transport failed ({failure})")
+    _write_aux(out_file.with_name(out_file.name + ".err"), err)
+    _write_aux(out_file.with_name(out_file.name + ".stream"), raw)
     try:
         output, problem = ANSWER_PARSERS[transport](raw)
     except Exception as exc:  # noqa: BLE001 - a reply the parser cannot read is a transport failure
@@ -532,12 +566,15 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
     failure = ((f"exit {proc.returncode}" + (f": {problem}" if problem else "") if proc.returncode != 0 else None)
                or problem or (None if output.strip() else "empty reply"))
     if failure:
-        out_file.with_name(out_file.name + ".partial").write_text(raw, encoding="utf-8")
+        _write_aux(out_file.with_name(out_file.name + ".partial"), raw)
+        # A failed paid call counts at its worst case: its reported usage is not trusted.
+        if paid:
+            usage = {**usage, "reported_usd": usage.get("usd"), "usd": None}
         _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "exit_code": proc.returncode,
                          "error": failure, **usage})
         raise Stop(f"{call_id}: transport failed ({failure})")
     tmp = out_file.with_name(out_file.name + ".tmp")
-    tmp.write_text(output, encoding="utf-8")
+    _write_aux(tmp, output)
     os.replace(tmp, out_file)
     _log(calls_log, {**base, "status": "completed", "completed_at": _now(), "exit_code": proc.returncode,
                      "output_sha256": _sha(output), **usage})
@@ -720,10 +757,19 @@ def accepted_pairs(pairs_dir: Path, plan: dict[str, Any]) -> tuple[list[dict[str
     return accepted, problems, rejected
 
 
+def _pair_transport(plan: dict[str, Any], role: str) -> str:
+    """The pair generator and verifier never use the paid Gemini judge, which
+    runs only through ``run`` with a cap."""
+    transport = plan["contrast_pairs"][role]["transport"]
+    if transport == "gemini":
+        raise Stop(f"the {role} cannot use the paid Gemini API; it runs only through run --cap-usd")
+    return transport
+
+
 def cmd_generate(args) -> int:
     plan = load_plan()
     out = guard(args.out)
-    text = call_model(plan["contrast_pairs"]["generator"]["transport"], generate_prompt(args.fixture, plan),
+    text = call_model(_pair_transport(plan, "generator"), generate_prompt(args.fixture, plan),
                       out / f"{args.fixture}.generate.out", _pair_log(out), f"generate-{args.fixture}")
     pairs = sum(1 for p in json_lines(text) if isinstance(p.get("pair_id"), str) and p["pair_id"])
     print(json.dumps({"fixture": args.fixture, "pairs": pairs}))
@@ -742,7 +788,7 @@ def cmd_check_pairs(args) -> int:
 def cmd_verify_pairs(args) -> int:
     """One verifier call per manuscript, over its mechanically valid pairs."""
     plan = load_plan()
-    transport = plan["contrast_pairs"]["verifier"]["transport"]
+    transport = _pair_transport(plan, "verifier")
     valid = _group(mechanically_valid(generated_pairs(args.pairs_dir, plan)), "fixture")
     for fixture in FIXTURE_FILES:
         if valid.get(fixture):
@@ -949,6 +995,8 @@ def load_build(batches_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
             raise Stop(f"{name} changed since the build")
     batches = []
     for batch_id in sorted(manifest["batches"]):
+        if not BATCH_ID_RE.fullmatch(str(batch_id)):
+            raise Stop(f"build manifest names a batch id that is not a file-name stem: {batch_id!r}")
         batch = json.loads(read_text(batches_dir / f"{batch_id}.json"))
         if batch.get("batch_id") != batch_id:
             raise Stop(f"{batch_id}.json holds batch {batch.get('batch_id')}")

@@ -822,8 +822,8 @@ class _Response:
     def __init__(self, body, status=200):
         self.body, self.status = body, status
 
-    def read(self):
-        return self.body
+    def read(self, size=-1):
+        return self.body if size is None or size < 0 else self.body[:size]
 
     def __enter__(self):
         return self
@@ -1181,3 +1181,85 @@ def test_a_malformed_response_with_a_forbidden_part_stops_without_a_resend(tmp_p
     with pytest.raises(d.Stop, match="functionCall"):
         d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
     assert len(calls) == 1
+
+
+# ---------- security review round 1 (#1002) ----------
+
+
+def test_zero_output_usage_counts_at_the_worst_case():
+    for meta in ({"promptTokenCount": 0, "totalTokenCount": 0}, {"promptTokenCount": 7000, "totalTokenCount": 7000}):
+        assert d.gemini_usage(json.dumps({"usageMetadata": meta})) == {"usd": None}
+
+
+def test_a_failed_paid_call_counts_at_its_worst_case_whatever_it_reports(tmp_path):
+    body = json.loads(gemini_body("", finish="MAX_TOKENS", parts=[]))
+    body["usageMetadata"] = {"promptTokenCount": 1, "totalTokenCount": 2}  # under-reported
+
+    def runner(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(body), stderr="")
+    log = tmp_path / "gemini" / "r1" / "calls.jsonl"
+    log.parent.mkdir(parents=True)
+    with pytest.raises(d.Stop):
+        d.call_model("gemini", "P", log.parent / "b.out", log, "c1", runner=runner)
+    failed = [e for e in d.read_jsonl(log) if e["status"] == "failed"][0]
+    assert failed["usd"] is None and failed["reported_usd"] is not None
+    assert d.gemini_spent(tmp_path) == pytest.approx(d.worst_case_usd("P"))
+
+
+def test_the_helper_refuses_an_oversized_body(monkeypatch, capsys):
+    monkeypatch.setattr(d, "RESPONSE_MAX_BYTES", 10)
+    rc, out = _helper(monkeypatch, _Opener(_Response(b"x" * 11)))
+    assert rc == 1 and out == b"" and "over 10 bytes" in capsys.readouterr().err
+
+
+def test_the_helper_checks_the_price_date(monkeypatch, capsys):
+    monkeypatch.setattr(d, "_now", lambda: "2026-12-01T00:00:00+00:00")
+    opener = _Opener(_Response(b"{}"))
+    rc, _out = _helper(monkeypatch, opener)
+    assert rc == 3 and opener.requests == [] and "price table" in capsys.readouterr().err
+
+
+def test_an_oversized_stream_saves_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(d, "STREAM_MAX_CHARS", 5)
+
+    def runner(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 0, stdout="x" * 6, stderr="")
+    with pytest.raises(d.Stop, match="stream over 5"):
+        d.call_model("codex", "P", tmp_path / "a.out", tmp_path / "c.jsonl", "c1", runner=runner)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["a.out.lock", "c.jsonl"]
+
+
+@pytest.mark.parametrize("batch_id,ok", [("b001", True), ("b1040", True), ("../x", False),
+                                         ("/tmp/panel-escape", False), ("b001/../../x", False), ("b01", False)])
+def test_batch_ids_are_file_name_stems(batch_id, ok):
+    assert bool(d.BATCH_ID_RE.fullmatch(batch_id)) is ok
+
+
+def test_side_files_do_not_follow_a_symlink(tmp_path):
+    target = tmp_path / "target.txt"
+    target.write_text("keep", encoding="utf-8")
+    link = tmp_path / "b001.a1.out.stream"
+    link.symlink_to(target)
+    with pytest.raises(OSError):
+        d._write_aux(link, "overwrite")
+    assert target.read_text(encoding="utf-8") == "keep"
+
+
+@pytest.mark.parametrize("status", ["X\n\u001b[2J", "fake STOP: all good", 7, None])
+def test_an_unexpected_api_error_status_is_not_echoed(status):
+    _text, problem = d.gemini_api_answer(json.dumps({"error": {"status": status}}))
+    assert problem == "API error (unrecognized status)"
+
+
+def test_a_known_api_error_status_is_named():
+    assert d.gemini_api_answer(json.dumps({"error": {"status": "RESOURCE_EXHAUSTED"}}))[1] == \
+        "API error RESOURCE_EXHAUSTED"
+
+
+@pytest.mark.parametrize("role", ["generator", "verifier"])
+def test_the_pair_steps_never_use_the_paid_gemini_api(role):
+    plan = {"contrast_pairs": {"generator": {"transport": "codex"}, "verifier": {"transport": "codex"}}}
+    plan["contrast_pairs"][role]["transport"] = "gemini"
+    with pytest.raises(d.Stop, match="paid Gemini API"):
+        d._pair_transport(plan, role)
+
