@@ -7,7 +7,7 @@ any check for it. It is the first part of #1002; the second part, a check
 between the panel and the editorial synthesizer, is planned only when the
 decision rule in `plan.json` says so.
 
-Suite class: `llm_judged` (`../suite_registry.json`). Status: `NOT_RUN`.
+Suite class: `llm_judged` (`../suite_registry.json`). Status: run once (plan version 8, 2026-10-24); the results are in `PREREGISTRATION.md` § Results. No `heldout-measurement/1.1` report row is published: adjudication is deferred, so the headline is not computed.
 
 ## What is measured
 
