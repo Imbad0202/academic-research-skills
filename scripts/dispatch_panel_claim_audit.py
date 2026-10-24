@@ -1000,8 +1000,10 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
                 if not (judge == "gemini" and failed_resendable(log, call_id, prompt)):
                     raise
         resend_id, resend_file = _resend(call_id, out_file)
-        if any(e.get("status") == "failed" for e in _logged(log, resend_id)):
-            raise Stop(f"{resend_id}: the one resend after {_logged(log, call_id)[-1].get('error')} failed")
+        failed = [e for e in _logged(log, resend_id) if e.get("status") == "failed"]
+        if failed:
+            raise Stop(f"{resend_id}: the one resend after {_logged(log, call_id)[-1].get('error')} failed "
+                       f"({failed[-1].get('error')})")
         return paid_call(prompt, resend_file, resend_id, attempt)
 
     # One paid run at a time per runs directory, so two replicates cannot both

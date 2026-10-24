@@ -1117,7 +1117,7 @@ def test_a_max_tokens_reply_without_content_is_resent_too(candidate):
     assert d.gemini_api_answer(stop)[1] == "unreadable reply parts"
 
 
-def test_a_malformed_response_is_resent_once_and_safety_is_not(tmp_path, small_plan, capsys):
+def test_a_malformed_response_is_resent_once_and_safety_is_not_resendable(tmp_path, small_plan, capsys):
     work, _rc = _build(tmp_path)
     capsys.readouterr()
     good, n = FakeJudge(honest), {"calls": 0}
@@ -1150,3 +1150,34 @@ def test_a_second_malformed_response_names_its_reason_and_stops(tmp_path, small_
         d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
     with pytest.raises(d.Stop, match="the one resend after finish reason MALFORMED_RESPONSE failed"):
         d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
+
+
+def test_a_resumed_run_names_both_failure_reasons(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    n = {"calls": 0}
+
+    def runner(cmd, **kw):
+        n["calls"] += 1
+        reason = "MALFORMED_RESPONSE" if n["calls"] == 1 else "MAX_TOKENS"
+        body = json.dumps({"candidates": [{"finishReason": reason}], "modelVersion": "gemini-4-argon"})
+        return subprocess.CompletedProcess(cmd, 0, stdout=body, stderr="")
+    with pytest.raises(d.Stop, match="MAX_TOKENS"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
+    with pytest.raises(d.Stop, match=r"after finish reason MALFORMED_RESPONSE failed \(finish reason MAX_TOKENS\)"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
+    assert n["calls"] == 2
+
+
+def test_a_malformed_response_with_a_forbidden_part_stops_without_a_resend(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    calls = []
+
+    def runner(cmd, **kw):
+        calls.append(cmd)
+        body = gemini_body("", finish="MALFORMED_RESPONSE", parts=[{"functionCall": {"name": "f"}}])
+        return subprocess.CompletedProcess(cmd, 0, stdout=body, stderr="")
+    with pytest.raises(d.Stop, match="functionCall"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
+    assert len(calls) == 1
