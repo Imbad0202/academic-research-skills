@@ -249,7 +249,7 @@
       "model_id": "claude-fable-5-1",
       "model_family": "anthropic"
     },
-    "settings": "claude -p --model <id> --effort high --no-session-persistence --strict-mcp-config --tools \"\" --disallowedTools <the dispatch_e4_panel deny list> --output-format stream-json --verbose, prompt on stdin, an empty CLAUDE_CONFIG_DIR, an allowlisted environment with the operator's OAuth token, and a working directory outside $HOME that is not a git checkout; a tool use, an unreadable event line, or a result that is not a success is a transport failure",
+    "settings": "claude -p --model <id> --effort high --no-session-persistence --strict-mcp-config --tools \"\" --disallowedTools <the dispatch_e4_panel deny list> --output-format stream-json --verbose, prompt on stdin, an empty CLAUDE_CONFIG_DIR, an allowlisted environment with the operator's OAuth token, and a new working directory outside $HOME with no CLAUDE.md, .claude, or .git in it or any folder above it, checked before the call; a tool use, an unreadable event line, or a result that is not a success is a transport failure",
     "batches": "only the batches that hold a contrast sentence, both replicates",
     "gate": "contrast_gate with this plan's bars"
   }

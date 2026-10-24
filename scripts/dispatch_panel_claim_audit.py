@@ -122,8 +122,8 @@ LOG_LABELS = {"gemini": "gemini_api"}
 # Plan v10 (#1002 part two): the two Claude session models judge the contrast
 # batches only, to test the runtime claim check's judge. Each call is a fenced
 # headless `claude -p`: no tools, no MCP, an empty config directory, an
-# allowlisted environment, a working directory outside $HOME that is not a git
-# checkout, and the operator's OAuth token from CLAUDE_TOKEN_FILE, which goes
+# allowlisted environment, a working directory that `_claude_workdir_base`
+# checks, and the operator's OAuth token from CLAUDE_TOKEN_FILE, which goes
 # only into that environment. `--bare` is left out: it accepts only an API key.
 CLAUDE_JUDGES = {"claude_opus": "claude-opus-5-5", "claude_fable": "claude-fable-5-1"}
 CLAUDE_TOKEN_FILE = Path.home() / ".config" / "ars-889" / "oauth_token"
@@ -269,6 +269,21 @@ def _claude_token() -> str:
     if not token:
         raise Stop(f"no Claude OAuth token in {CLAUDE_TOKEN_FILE}")
     return token
+
+
+def _claude_workdir_base() -> Path:
+    """The folder that holds a Claude judge's working directory. Claude Code
+    reads CLAUDE.md and .claude/ settings from the working directory and every
+    folder above it, so no such folder may hold them or a git checkout, and none
+    may be under $HOME (plan v10)."""
+    base = Path(tempfile.gettempdir()).resolve()
+    if base.is_relative_to(Path.home().resolve()):
+        raise Stop(f"the temporary folder {base} is under $HOME; set TMPDIR outside it")
+    for folder in (base, *base.parents):
+        found = [n for n in ("CLAUDE.md", "CLAUDE.local.md", ".claude", ".git") if (folder / n).exists()]
+        if found:
+            raise Stop(f"{folder} holds {', '.join(found)}; set TMPDIR to a folder with none above it")
+    return base
 
 
 def _claude_env(config_dir: str, token: str) -> dict[str, str]:
@@ -704,7 +719,7 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
     reused = completed_output(calls_log, call_id, out_file, prompt, transport)
     if reused is not None:
         return reused
-    token = _claude_token() if transport in CLAUDE_JUDGES else ""
+    token, workdir_base = (_claude_token(), _claude_workdir_base()) if transport in CLAUDE_JUDGES else ("", None)
     out_file.parent.mkdir(parents=True, exist_ok=True)
     try:
         fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -721,11 +736,9 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
     # Only the Gemini helper gets the API key; the CLIs never see it.
     env = dict(os.environ) if paid else {k: v for k, v in os.environ.items() if k != GEMINI_API_KEY_ENV}
     try:
-        with tempfile.TemporaryDirectory(prefix="ars1002-") as empty, \
+        with tempfile.TemporaryDirectory(prefix="ars1002-", dir=workdir_base) as empty, \
                 tempfile.TemporaryDirectory(prefix="ars1002-cfg-") as config_dir:
             if transport in CLAUDE_JUDGES:
-                if Path(empty).resolve().is_relative_to(Path.home().resolve()):
-                    raise OSError("the working directory of a Claude judge must be outside $HOME")
                 env = _claude_env(config_dir, token)
             proc = runner(cmd, input=stdin, capture_output=True, text=True, cwd=empty, env=env,
                           timeout=TIMEOUT_S + 60)

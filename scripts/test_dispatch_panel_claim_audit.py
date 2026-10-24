@@ -1579,10 +1579,28 @@ def test_a_claude_call_without_a_token_stops_before_the_lock(tmp_path, monkeypat
     assert not log.exists() and not list(tmp_path.glob("*.lock"))
 
 
-def test_a_claude_call_in_the_home_directory_is_refused(tmp_path, claude_token, monkeypatch):
-    monkeypatch.setattr(d.Path, "home", classmethod(lambda cls: Path(d.tempfile.gettempdir())))
-    with pytest.raises(d.Stop, match="transport failed"):
-        d.call_model("claude_opus", "PROMPT", tmp_path / "x.out", tmp_path / "calls.jsonl", "c1", runner=_ok)
+@pytest.mark.parametrize("marker", ["CLAUDE.md", ".claude", ".git", None])
+def test_a_claude_call_stops_before_the_lock_when_the_temp_folder_is_not_fenced(tmp_path, claude_token,
+                                                                                monkeypatch, marker):
+    base = tmp_path / "proj" / "tmp"
+    base.mkdir(parents=True)
+    if marker:
+        (tmp_path / "proj" / marker).mkdir()
+        monkeypatch.setattr(d.Path, "home", classmethod(lambda cls: Path("/nonexistent-home")))
+    else:  # under $HOME
+        monkeypatch.setattr(d.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(d.tempfile, "gettempdir", lambda: str(base))
+    out, log = tmp_path / "x.out", tmp_path / "calls.jsonl"
+    with pytest.raises(d.Stop, match="TMPDIR"):
+        d.call_model("claude_opus", "PROMPT", out, log, "c1", runner=_ok)
+    assert not log.exists() and not list(tmp_path.glob("*.lock"))
+
+
+def test_a_claude_call_runs_in_a_new_folder_under_the_checked_base(tmp_path, claude_token):
+    seen = {}
+    d.call_model("claude_opus", "PROMPT", tmp_path / "x.out", tmp_path / "calls.jsonl", "c1",
+                 runner=lambda cmd, cwd=None, **kw: seen.update(cwd=cwd) or _ok(cmd))
+    assert Path(seen["cwd"]).parent == d._claude_workdir_base()
 
 
 def test_contrast_batches_leave_out_batches_of_claims_only():
