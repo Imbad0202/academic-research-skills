@@ -85,7 +85,7 @@ def gemini_body(text, finish="STOP", parts=None, version="gemini-4-argon"):
     parts = [{"text": "thinking", "thought": True}, {"text": text, "thoughtSignature": "sig"}] \
         if parts is None else parts
     return json.dumps({"candidates": [{"content": {"role": "model", "parts": parts}, "finishReason": finish}],
-                       "modelVersion": version, "usageMetadata": {"promptTokenCount": 1}})
+                       "modelVersion": version, "usageMetadata": {"promptTokenCount": 1, "totalTokenCount": 2}})
 
 
 def _reply(cmd, text):
@@ -771,7 +771,7 @@ def test_gemini_cost_is_logged_from_usage_and_thinking_counts_as_output(tmp_path
     body = json.dumps({"candidates": [{"content": {"parts": [{"text": "a"}]}, "finishReason": "STOP"}],
                        "modelVersion": "gemini-4-argon",
                        "usageMetadata": {"promptTokenCount": 1000, "candidatesTokenCount": 100,
-                                         "thoughtsTokenCount": 900}})
+                                         "thoughtsTokenCount": 900, "totalTokenCount": 2000}})
     proc = subprocess.CompletedProcess([], 0, stdout=body, stderr="")
     log = tmp_path / "gemini" / "r1" / "calls.jsonl"
     d.call_model("gemini", "P", log.parent / "x.out", log, "c1", runner=lambda *a, **k: proc)
@@ -852,20 +852,20 @@ def _helper(monkeypatch, opener, key="KEY123", prompt="Prompt é"):
 
 
 def test_the_helper_sends_the_key_only_in_the_header(monkeypatch):
-    opener = _Opener(_Response(b'{"ok": 1, "echo": "KEY123"}'))
+    opener = _Opener(_Response(b'{"ok": 1}'))
     rc, out = _helper(monkeypatch, opener)
     req = opener.requests[0]
-    assert rc == 0 and out == b'{"ok": 1, "echo": "[redacted]"}'
+    assert rc == 0 and out == b'{"ok": 1}'
     assert req.full_url == d.GEMINI_API_URL.format(model="gemini-4-argon") and "KEY123" not in req.full_url
     assert req.get_header("X-goog-api-key") == "KEY123" and b"KEY123" not in req.data
     assert json.loads(req.data)["contents"][0]["parts"][0]["text"] == "Prompt é"
 
 
-def test_the_helper_fails_on_a_non_200_status_an_http_error_and_any_exception(monkeypatch, capsys):
-    assert _helper(monkeypatch, _Opener(_Response(b"{}", status=203)))[0] == 1
-    err = d.urllib.error.HTTPError("u", 429, "x", {}, __import__("io").BytesIO(b'{"e": "KEY123"}'))
-    rc, out = _helper(monkeypatch, _Opener(err))
-    assert rc == 1 and b"KEY123" not in out
+def test_the_helper_prints_no_body_unless_http_200(monkeypatch, capsys):
+    assert _helper(monkeypatch, _Opener(_Response(b'{"e": "KEY123"}', status=203))) == (1, b"")
+    err = d.urllib.error.HTTPError("u", 429, "x", {}, __import__("io").BytesIO(b'{"e": "K\\u0045Y123"}'))
+    assert _helper(monkeypatch, _Opener(err)) == (1, b"")
+    assert capsys.readouterr().err.splitlines()[-1] == "HTTP 429"
     rc, _out = _helper(monkeypatch, _Opener(ValueError("Invalid header value KEY123")))
     assert rc == 1 and "KEY123" not in capsys.readouterr().err
 
@@ -933,17 +933,32 @@ def test_the_price_date_is_checked_before_each_new_paid_call_only(tmp_path, smal
     assert len(judge.calls) == 1
 
 
-@pytest.mark.parametrize("meta", [{}, {"promptTokenCount": "bad"}, {"promptTokenCount": -5},
-                                  {"promptTokenCount": 10, "thoughtsTokenCount": -100},
-                                  {"promptTokenCount": True}])
+@pytest.mark.parametrize("meta", [
+    {}, {"promptTokenCount": 10}, {"promptTokenCount": 10, "candidatesTokenCount": 5},
+    {"promptTokenCount": "bad", "totalTokenCount": 20}, {"promptTokenCount": -5, "totalTokenCount": 20},
+    {"promptTokenCount": 30, "totalTokenCount": 20}, {"promptTokenCount": True, "totalTokenCount": 20},
+    {"promptTokenCount": 10, "totalTokenCount": 10 ** 309},
+])
 def test_usage_that_cannot_be_priced_counts_at_the_worst_case(meta):
-    body = json.dumps({"usageMetadata": meta})
-    assert d.gemini_usage(body) == {"usd": None}
+    assert d.gemini_usage(json.dumps({"usageMetadata": meta})) == {"usd": None}
 
 
-def test_a_json_escaped_key_is_redacted_too():
-    out = d._redact(b'{"error": {"status": "K\\u0045Y123 failed"}}', "KEY123")
-    assert b"KEY123" not in out and json.loads(out)["error"]["status"] == "[redacted] failed"
+def test_output_cost_is_total_minus_prompt():
+    usage = d.gemini_usage(json.dumps({"usageMetadata": {"promptTokenCount": 10, "totalTokenCount": 210}}))
+    assert usage["tokens_out"] == 200 and usage["usd"] == pytest.approx(10 * 2e-6 + 200 * 10e-6)
+
+
+def test_the_price_date_is_checked_inside_a_run(tmp_path, small_plan, capsys, monkeypatch):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    judge = FakeJudge(honest)
+
+    def runner(cmd, **kw):  # the date passes the price table after the first call
+        monkeypatch.setattr(d, "_now", lambda: "2026-12-01T00:00:00+00:00")
+        return judge(cmd, **kw)
+    with pytest.raises(d.Stop, match="price table"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=2)
+    assert len(judge.calls) == 1
 
 
 def test_an_http_error_whose_body_cannot_be_read_still_fails_cleanly(monkeypatch, capsys):

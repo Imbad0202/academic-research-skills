@@ -103,6 +103,8 @@ GEMINI_PRICE_IN, GEMINI_PRICE_OUT = 2.0e-6, 10.0e-6
 GEMINI_PRICE_UNTIL = "2026-11-30"
 # The plan's ceiling on any Gemini cap (PREREGISTRATION, Stop rules).
 GEMINI_CAP_MAX_USD = 100.0
+# Above the model's input plus output limits; a larger count is unreadable usage.
+USAGE_MAX_TOKENS = 10_000_000
 # The label a call log records per transport. The Gemini API judge gets its own
 # label, so a logged call of the earlier agy "gemini" transport is never reused.
 LOG_LABELS = {"gemini": "gemini_api"}
@@ -214,30 +216,12 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def _redact(data: bytes, key: str) -> bytes:
-    """Remove the key from a body, also where JSON escapes spell it: a JSON
-    body is decoded, every string is redacted, and it is encoded again."""
-    try:
-        doc = json.loads(data.decode("utf-8"))
-    except ValueError:
-        return data.replace(key.encode("utf-8"), b"[redacted]")
-
-    def walk(value):
-        if isinstance(value, str):
-            return value.replace(key, "[redacted]")
-        if isinstance(value, list):
-            return [walk(v) for v in value]
-        if isinstance(value, dict):
-            return {walk(k): walk(v) for k, v in value.items()}
-        return value
-    return json.dumps(walk(doc), ensure_ascii=False).encode("utf-8")
-
-
 def cmd_gemini_api_call(_args, opener=None) -> int:
-    """Send stdin as one prompt; print the response body (or the error body),
-    with the key redacted. Exit 0 only on HTTP 200. ``call_model`` runs this as
-    a subprocess. Error messages are fixed text: an exception's own text can
-    hold a header value."""
+    """Send stdin as one prompt and print the response body of an HTTP 200.
+    ``call_model`` runs this as a subprocess. On any other outcome nothing is
+    printed or saved from the response and stderr gets fixed text only (the
+    status code or the exception type), so no error body or exception message,
+    which could echo the key, reaches a file."""
     key = os.environ.get(GEMINI_API_KEY_ENV, "")
     if not key:
         print(f"{GEMINI_API_KEY_ENV} is not set", file=sys.stderr)
@@ -254,15 +238,11 @@ def cmd_gemini_api_call(_args, opener=None) -> int:
             headers={"x-goog-api-key": key, "Content-Type": "application/json"})
         with opener.open(request, timeout=TIMEOUT_S) as response:
             body, status = response.read(), response.status
-        sys.stdout.buffer.write(_redact(body, key))
         if status == 200:
+            sys.stdout.buffer.write(body)
             return 0
         print(f"HTTP {status}", file=sys.stderr)
     except urllib.error.HTTPError as exc:
-        try:
-            sys.stdout.buffer.write(_redact(exc.read(), key))
-        except Exception:  # noqa: BLE001 - an unreadable error body is left out
-            pass
         print(f"HTTP {exc.code}", file=sys.stderr)
     except Exception as exc:  # noqa: BLE001 - any failure is a transport failure
         print(f"request failed ({type(exc).__name__})", file=sys.stderr)
@@ -270,25 +250,23 @@ def cmd_gemini_api_call(_args, opener=None) -> int:
 
 
 def gemini_usage(body_text: str) -> dict[str, Any]:
-    """Token counts and cost of one API response; ``usd`` is None when the body
-    has no usage (the run then counts the call at its worst case)."""
+    """Token counts and cost of one API response. Output is the total minus
+    the prompt, so thinking and any other output count. ``usd`` is None (the
+    run then counts the call at its worst case) unless both counts are
+    integers with 0 <= prompt <= total <= USAGE_MAX_TOKENS."""
     try:
         meta = json.loads(body_text).get("usageMetadata")
     except (ValueError, AttributeError):
         meta = None
-
-    def count(field: str, required: bool) -> int | None:
-        value = meta.get(field, None if required else 0)
-        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
     if not isinstance(meta, dict):
         return {"usd": None}
-    tokens_in, answer, thoughts = (count("promptTokenCount", True), count("candidatesTokenCount", False),
-                                   count("thoughtsTokenCount", False))
-    if tokens_in is None or answer is None or thoughts is None:
+    prompt, total = meta.get("promptTokenCount"), meta.get("totalTokenCount")
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in (prompt, total)) \
+            or not 0 <= prompt <= total <= USAGE_MAX_TOKENS:
         return {"usd": None}
-    tokens_out = answer + thoughts
-    return {"tokens_in": tokens_in, "tokens_out": tokens_out,
-            "usd": round(tokens_in * GEMINI_PRICE_IN + tokens_out * GEMINI_PRICE_OUT, 6)}
+    tokens_out = total - prompt
+    return {"tokens_in": prompt, "tokens_out": tokens_out,
+            "usd": round(prompt * GEMINI_PRICE_IN + tokens_out * GEMINI_PRICE_OUT, 6)}
 
 
 def worst_case_usd(prompt: str) -> float:
