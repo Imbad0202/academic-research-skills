@@ -418,6 +418,8 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
     # so a MAX_TOKENS reply that holds one is never resent (plan v5).
     content = candidate.get("content")
     parts = content.get("parts") if isinstance(content, dict) else None
+    if parts is None and candidate.get("finishReason") == "MAX_TOKENS":
+        parts = []  # an empty MAX_TOKENS reply may leave out its content
     if not isinstance(parts, list) or not all(isinstance(p, dict) for p in parts):
         return "", "unreadable reply parts"
     other = sorted({k for part in parts for k in part if k not in GEMINI_ANSWER_PART_KEYS})

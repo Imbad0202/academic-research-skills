@@ -1106,3 +1106,12 @@ def test_a_resume_stops_on_a_first_output_with_no_completed_call(tmp_path, small
     with pytest.raises(d.Stop, match="no completed call"):
         d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)
     assert judge.n == 1
+
+
+@pytest.mark.parametrize("candidate", [
+    {"finishReason": "MAX_TOKENS"}, {"finishReason": "MAX_TOKENS", "content": {"role": "model"}}])
+def test_a_max_tokens_reply_without_content_is_resent_too(candidate):
+    body = json.dumps({"candidates": [candidate], "modelVersion": "gemini-4-argon"})
+    assert d.gemini_api_answer(body)[1] == d.MAX_TOKENS_FAILURE
+    stop = json.dumps({"candidates": [{"finishReason": "STOP"}], "modelVersion": "gemini-4-argon"})
+    assert d.gemini_api_answer(stop)[1] == "unreadable reply parts"
