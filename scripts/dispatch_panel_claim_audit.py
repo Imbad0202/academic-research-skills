@@ -486,14 +486,14 @@ def claude_answer(stream: str) -> tuple[str, str | None]:
     """(reply text, problem) from `claude -p --output-format stream-json`: the
     text of the surviving assistant messages, in order (a message another one
     supersedes or a refusal fallback retracts is dropped). A tool use, an
-    unreadable line, or a result that is missing, an error, or not a success is
-    a problem."""
+    unreadable line, or anything but exactly one result event that is a success
+    is a problem."""
     events, unreadable = _events(stream)
     if unreadable:
         return "", f"{unreadable} unreadable event lines"
     messages: list[tuple[str | None, str]] = []
     evicted: set[str] = set()
-    result: dict[str, Any] | None = None
+    results: list[dict[str, Any]] = []
     for event in events:
         kind = event.get("type")
         if kind == "assistant":
@@ -506,9 +506,9 @@ def claude_answer(stream: str) -> tuple[str, str | None]:
         elif kind == "system" and event.get("subtype") == "model_refusal_fallback":
             evicted.update(str(u) for u in event.get("retracted_message_uuids") or [])
         elif kind == "result":
-            result = event
-    if not result or result.get("is_error") or result.get("subtype") != "success":
-        return "", "no successful result event"
+            results.append(event)
+    if len(results) != 1 or results[0].get("is_error") or results[0].get("subtype") != "success":
+        return "", "not exactly one successful result event"
     return "".join(text for uuid, text in messages if uuid is None or str(uuid) not in evicted), None
 
 
@@ -1557,7 +1557,8 @@ def write_execution_manifest(out: Path, logs: list[Path]) -> None:
 
 def contrast_score(batches_dir: Path, runs: Path, judges: list[str]) -> dict[str, Any]:
     """Plan v10: the contrast gate alone, for each Claude judge, over its
-    replicates of the contrast batches. Claim verdicts are not read."""
+    replicates of the contrast batches. Each reply is read and checked whole,
+    as in ``score``, but only the contrast items are counted."""
     plan = load_plan()
     batches, key = load_build(batches_dir)
     batches = contrast_batches(batches, key)

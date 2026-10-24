@@ -1529,10 +1529,14 @@ def test_the_claude_transport_is_fenced():
     (claude_events("hi\n"), "hi\n", None),
     (claude_events("", blocks=[{"type": "tool_use", "name": "Read"}]), "", "a tool use"),
     (claude_events("x", result={"type": "result", "subtype": "error_during_execution", "is_error": True}),
-     "", "no successful result event"),
+     "", "not exactly one successful result event"),
     (claude_events("x", result={"type": "result", "subtype": "success", "is_error": True}),
-     "", "no successful result event"),
+     "", "not exactly one successful result event"),
     ("not json\n" + claude_events("x"), "", "1 unreadable event lines"),
+    (claude_events("x", extra=[{"type": "result", "subtype": "error_during_execution", "is_error": True}]),
+     "", "not exactly one successful result event"),
+    (claude_events("x") + json.dumps({"type": "result", "subtype": "success", "is_error": False}) + "\n",
+     "", "not exactly one successful result event"),
 ])
 def test_claude_answer(stream_text, answer, problem):
     assert d.claude_answer(stream_text) == (answer, problem)
