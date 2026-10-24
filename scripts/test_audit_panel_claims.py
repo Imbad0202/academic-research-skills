@@ -67,6 +67,7 @@ def test_a_checked_contradiction_is_shown(tmp_path):
     assert "Reviewer 1 · W1: No reliability reported" in out
     assert "“Cronbach's alpha for the 12-item scale was .87.” (§3)" in out
     assert "1 contradicted" in out and "does not change the decision" in out
+    assert "covered Claude Opus 5.5 and Claude Fable 5.1 only" in out
 
 
 def test_a_false_verdict_whose_quote_is_not_in_the_manuscript_is_unconfirmed(tmp_path):

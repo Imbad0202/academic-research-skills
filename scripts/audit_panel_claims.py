@@ -64,7 +64,8 @@ _TEXT = {
         "unconfirmed": "The judge also marked {items} as false, but its quote did not pass the check, "
                        "so they are not shown as contradicted.",
         "note": "The author decides what to do with each row. This check does not change the decision, "
-                "the consensus counts, or the Revision Roadmap.",
+                "the consensus counts, or the Revision Roadmap. The judge is the session model; the #1002 "
+                "contrast test covered Claude Opus 5.5 and Claude Fable 5.1 only.",
     },
     "zh-TW": {
         "title": "## Attachment: Reviewer Claim Check (advisory, #1002)",
@@ -80,7 +81,8 @@ _TEXT = {
         "row": "- {seat} · {fid}：{title}",
         "quote": "  > 「{quote}」（{locator}）",
         "unconfirmed": "判定者另將 {items} 判為錯誤，但引文未通過比對，因此不列為矛盾。",
-        "note": "每一項由作者決定如何處理。這項檢查不改變審稿決定、共識計數或修訂路線圖。",
+        "note": "每一項由作者決定如何處理。這項檢查不改變審稿決定、共識計數或修訂路線圖。"
+                "判官是 session 模型；#1002 的對照測驗只測過 Claude Opus 5.5 與 Claude Fable 5.1。",
     },
 }
 
