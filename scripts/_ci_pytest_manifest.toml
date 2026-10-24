@@ -743,3 +743,7 @@ path = "scripts/test_excluded_source_entry_schema.py"
 [[pytest]]
 id = "sr-screener-pipeline"
 path = "scripts/test_sr_screener_pipeline.py"
+
+[[pytest]]
+id = "993-draft-writer-missing-key-findings"
+path = "scripts/test_draft_writer_missing_key_findings.py"

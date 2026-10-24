@@ -323,7 +323,7 @@ Quality gate not passed ->
 |------|---------|
 | Outline too brief (missing Content Summary) | Infer section content from Literature Matrix, but quality may be reduced |
 | Argument Blueprint CER chain lacks sufficient evidence | Draft only what the available evidence supports and mark "[evidence needs strengthening]" for the author; do not substitute hedging for the missing evidence |
-| Source annotation missing Key Findings | Use source's Title + Method to infer likely contribution direction |
+| Source annotation missing Key Findings | Cite the source only for annotation fields that are actually present (title as topic, or method as method). Mark `[MATERIAL GAP: key findings of <source>]` for the author. Do not state a finding. Do not infer a contribution, result, or finding from title or method, including as a labeled hypothesis: title and method are not evidence of what the source found. |
 
 ### Paper Type Adjustments
 
