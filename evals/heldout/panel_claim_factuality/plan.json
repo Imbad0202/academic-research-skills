@@ -1,6 +1,6 @@
 {
   "suite": "panel_claim_factuality",
-  "plan_version": "6",
+  "plan_version": "7",
   "issue": "#1002",
   "claims": {
     "extractor": "scripts/extract_panel_claims.py",
@@ -23,10 +23,10 @@
       "settings": "codex exec --json, model_reasoning_effort=xhigh, -c skills.include_instructions=false, read-only, empty working directory, prompt on stdin; a reply with any item other than a message or reasoning (a command, a file read, a tool) is a transport failure"
     },
     "gemini": {
-      "model_id": "gemini-4-argon-high",
+      "model_id": "gemini-4-argon-medium",
       "model_family": "google",
       "api_model": "gemini-4-argon",
-      "settings": "Gemini API generateContent (paid key from GEMINI_API_KEY, header only), model gemini-4-argon, thinkingLevel high, maxOutputTokens 65536, no tools, no system instruction, one user message holding the batch prompt, run by `dispatch_panel_claim_audit.py gemini-api-call` in an empty working directory; an error body, another model version, a finish reason other than STOP, or a part other than text is a transport failure; a call that ends with finish reason MAX_TOKENS is sent once more, unchanged, and a second failure stops the run (plan v5)"
+      "settings": "Gemini API generateContent (paid key from GEMINI_API_KEY, header only), model gemini-4-argon, thinkingLevel medium (plan v7; high in v4-v6), maxOutputTokens 32768, no tools, no system instruction, one user message holding the batch prompt, run by `dispatch_panel_claim_audit.py gemini-api-call` in an empty working directory; an error body, another model version, a finish reason other than STOP, or a part other than text is a transport failure; a call that ends with finish reason MAX_TOKENS is sent once more, unchanged, and a second failure stops the run (plan v5)"
     }
   },
   "replicates": 2,
@@ -142,6 +142,60 @@
       "change": "the Google judge is gemini-4-argon-high (Gemini 4 Argon (High) through agy), the model the plan named before v1",
       "reason": "in the v2 pilot, gemini-3.8-flash-high answered its first batch as a long list instead of JSON Lines, exceeded its output token limit, and agy reported an error; the stop rule ended its run",
       "v2_outputs": "kept as the v2 pilot record; not scored with v3"
+    },
+    {
+      "version": "4",
+      "date": "2026-10-24",
+      "files": [
+        "plan.json",
+        "scripts/dispatch_panel_claim_audit.py",
+        "scripts/test_dispatch_panel_claim_audit.py",
+        "PREREGISTRATION.md",
+        "README.md"
+      ],
+      "change": "the Google judge runs on the paid Gemini API (gemini-api-call helper), with a spend cap, per-call cost, and a run lock; batches rebuilt with --match-manifest against v3; v3 codex outputs reused",
+      "reason": "a paid API key became available; the agy route added a skill list and a memory block to the judge's context and its quota could run out mid-run",
+      "v3_outputs": "codex outputs reused unchanged (prompt, transport, and output hashes match)"
+    },
+    {
+      "version": "5",
+      "date": "2026-10-24",
+      "files": [
+        "plan.json",
+        "scripts/dispatch_panel_claim_audit.py",
+        "scripts/test_dispatch_panel_claim_audit.py",
+        "PREREGISTRATION.md"
+      ],
+      "change": "a Gemini call that ends with MAX_TOKENS is sent once more, unchanged, under call id + -r; a second failure stops the run",
+      "reason": "the v4 full run stopped at batch b005: thinking used the whole output limit and the reply was empty",
+      "v4_outputs": "kept as a record; not scored"
+    },
+    {
+      "version": "6",
+      "date": "2026-10-24",
+      "files": [
+        "plan.json",
+        "scripts/dispatch_panel_claim_audit.py",
+        "scripts/test_dispatch_panel_claim_audit.py",
+        "PREREGISTRATION.md"
+      ],
+      "change": "maxOutputTokens 65,536",
+      "reason": "b005 hit MAX_TOKENS again on its first call and its resend",
+      "v5_outputs": "kept as a record; not scored"
+    },
+    {
+      "version": "7",
+      "date": "2026-10-24",
+      "files": [
+        "plan.json",
+        "scripts/dispatch_panel_claim_audit.py",
+        "scripts/test_dispatch_panel_claim_audit.py",
+        "PREREGISTRATION.md",
+        "README.md"
+      ],
+      "change": "thinkingLevel medium; maxOutputTokens back to 32,768; judge label gemini-4-argon-medium",
+      "reason": "the v6 check of b005 stopped at 32,768 tokens with CONTINUATION: a non-streaming request returns at most 32K; Google's guidance is to lower the thinking level",
+      "v6_outputs": "one unscored check call"
     }
   ]
 }

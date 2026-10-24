@@ -415,7 +415,7 @@ def test_the_gemini_transport_runs_the_api_helper_with_the_prompt_on_stdin():
     body = d.gemini_api_request("P")
     assert body["contents"] == [{"role": "user", "parts": [{"text": "P"}]}]
     assert set(body) == {"contents", "generationConfig"}  # no tools, no system instruction
-    assert body["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "high"}
+    assert body["generationConfig"] == {"thinkingConfig": {"thinkingLevel": "medium"}, "maxOutputTokens": 32768}
 
 
 @pytest.mark.parametrize("body,problem", [

@@ -88,14 +88,14 @@ AGY_FLAGS = ("--disable-slash-commands", "--output-format", "stream-json")
 # The steps (agy) and items (codex) a plain reply has; any other one stops the run.
 AGY_ANSWER_STEPS = frozenset({"user_input", "agent_response", "unknown"})
 CODEX_ANSWER_ITEMS = frozenset({"agent_message", "reasoning"})
-# Gemini API judge (plan v4): no tools, no system instruction, high thinking,
-# and the synchronous output limit the model page gives (65,536, plan v6),
-# which counts thinking tokens. The key comes from
+# Gemini API judge (plan v4): no tools, no system instruction, medium thinking
+# (plan v7), and 32,768 output tokens, which count thinking: the most one
+# non-streaming request returns, so a cut-off reply ends with MAX_TOKENS. The key comes from
 # the environment and goes only into the request header.
 GEMINI_API_MODEL = "gemini-4-argon"
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 GEMINI_API_KEY_ENV = "GEMINI_API_KEY"
-GEMINI_API_CONFIG = {"thinkingConfig": {"thinkingLevel": "high"}, "maxOutputTokens": 65536}
+GEMINI_API_CONFIG = {"thinkingConfig": {"thinkingLevel": "medium"}, "maxOutputTokens": 32768}
 # The part fields a plain reply has; any other one (a function call, code) stops the run.
 GEMINI_ANSWER_PART_KEYS = frozenset({"text", "thought", "thoughtSignature"})
 # USD per token, in and out (thinking counts as out), from Google's pricing page;
