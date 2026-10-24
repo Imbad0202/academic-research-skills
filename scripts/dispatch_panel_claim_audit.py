@@ -173,14 +173,15 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     _write_aux(path, "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
 
 
-def _write_aux(path: Path, text: str) -> None:
+def _write_aux(path: Path, data: str | bytes) -> None:
     """Write an output file (a call's side files, a build, a score) without
-    following a symlink at its name, and never under the held-out manifests."""
+    following a symlink at its name, and never under the held-out manifests.
+    Text is written as UTF-8; bytes are written unchanged."""
     if not hasattr(os, "O_NOFOLLOW") and os.path.islink(guard(path)):
         raise Stop(f"refused: {path.name} is a symlink")
     fd = os.open(guard(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o644)
-    with os.fdopen(fd, "w", encoding="utf-8") as handle:
-        handle.write(text)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(data.encode("utf-8") if isinstance(data, str) else data)
 
 
 def _printable(text: str) -> str:
@@ -572,10 +573,17 @@ def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, s
         over = timed_out = False
         proc = None
         try:
-            with open(paths["stdin"], "rb") as fin, open(paths["stdout"], "wb") as fout, \
-                    open(paths["stderr"], "wb") as ferr:
-                proc = subprocess.Popen(cmd, stdin=fin, stdout=fout, stderr=ferr, cwd=cwd, env=env,
-                                        start_new_session=True)
+            # Ctrl-C waits until proc is set, so the finally block always sees the
+            # process it must kill; the child unblocks SIGINT before it runs.
+            mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
+            try:
+                with open(paths["stdin"], "rb") as fin, open(paths["stdout"], "wb") as fout, \
+                        open(paths["stderr"], "wb") as ferr:
+                    proc = subprocess.Popen(cmd, stdin=fin, stdout=fout, stderr=ferr, cwd=cwd, env=env,
+                                            start_new_session=True,
+                                            preexec_fn=lambda: signal.pthread_sigmask(signal.SIG_SETMASK, mask))
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
             while proc.poll() is None:
                 if any(paths[n].stat().st_size > limit for n in ("stdout", "stderr")):
                     over = True
@@ -1070,7 +1078,7 @@ def cmd_build(args) -> int:
     sources = {"claims.jsonl": args.claims, "summary.json": claims_dir / "summary.json",
                "pair_calls.jsonl": _pair_log(args.pairs_dir)}
     for name, src in sources.items():
-        (out / name).write_bytes(guard(src).read_bytes())
+        _write_aux(out / name, guard(src).read_bytes())
     write_jsonl(out / "accepted_pairs.jsonl", pairs)
     manifest = {"built_at": _now(), "inputs": _inputs_digest(),
                 "snapshots": {name: _file_sha(out / name) for name in SNAPSHOTS},

@@ -1449,3 +1449,20 @@ def test_output_files_do_not_follow_a_symlink(tmp_path):
     with pytest.raises(OSError):
         d._log(log, {"a": 1})
     assert target.read_text(encoding="utf-8") == "keep"
+
+
+def test_the_transport_starts_with_sigint_unblocked(tmp_path):
+    code = "import signal; print(signal.SIGINT in signal.pthread_sigmask(signal.SIG_BLOCK, set()))"
+    proc = d.bounded_run([sys.executable, "-c", code], input=None, cwd=str(tmp_path), env=dict(os.environ),
+                         timeout=30)
+    assert proc.stdout.strip() == "False"
+    import signal
+    assert signal.SIGINT not in signal.pthread_sigmask(signal.SIG_BLOCK, set())
+
+
+def test_output_bytes_are_written_unchanged_and_not_through_a_symlink(tmp_path):
+    d._write_aux(tmp_path / "a.bin", b"\x00\xffraw")
+    assert (tmp_path / "a.bin").read_bytes() == b"\x00\xffraw"
+    (tmp_path / "b.bin").symlink_to(tmp_path / "a.bin")
+    with pytest.raises(OSError):
+        d._write_aux(tmp_path / "b.bin", b"x")
