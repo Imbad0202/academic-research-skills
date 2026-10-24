@@ -73,3 +73,14 @@ The 17 bundles reviewed the current manuscript files: `ms01_quant_defective.md` 
 - **Decision rule.** The 12 agreed-false claims fall in 6 of the 17 panels (0.35). Agreed-false claims count without adjudication, and adjudication covers only the other 92 claims, so it can add false claims but cannot remove these. Under every adjudication outcome, panels_with_false_claim is therefore at least 0.35, above the 0.30 bar, and both judges pass the contrast gate: the decision rule is met, and the second part of #1002 is planned.
 - **Adjudication deferred.** On 2026-10-24 the maintainer deferred the 92 adjudication decisions, because they cannot change the decision. The headline false_claim_rate is not computed; it lies between 12/805 (0.015) and 104/805 (0.129). Per-seat rates are not computed. If adjudication resumes, two facts apply: the maintainer knew the decision was already settled, and item `i0003` was discussed with the assistant that ran the study before any decision was recorded, so its decision is not blind to that discussion.
 - **Limits.** The 12 agreed-false claims rest on the two judges' agreement and the mechanical evidence check; no person verified them. Adjudication has one maintainer, so no inter-rater agreement exists.
+
+## Results (version 10 contrast test, 2026-10-25)
+
+Both Claude judges read the 61 batches that hold a contrast sentence (577 items, of which 102 are contrast sentences), in two replicates each, after a probe through the same fence showed no instruction from the maintainer's own settings. Every call completed; one `claude-opus-5-5` batch in replicate 2 needed its one format retry.
+
+| judge | false sentences detected (both replicates) | accurate sentences flagged (either replicate) | missing verdicts | gate |
+|---|---|---|---|---|
+| `claude-opus-5-5` | 51 / 51 | 0 / 51 | 0 | pass |
+| `claude-fable-5-1` | 51 / 51 | 0 / 51 | 0 | pass |
+
+The claim verdicts in these outputs are not scored. Limit: `claude-opus-5-5` wrote the contrast pairs, so this test cannot separate judging skill from familiarity with the generator's own sentences; `gpt-6-astra` passed the same sentences in version 8. A pass shows that each model finds a contradiction that the manuscript states in a one-sentence claim, with this prompt; it is not a measured accuracy on the reviewer claims.
