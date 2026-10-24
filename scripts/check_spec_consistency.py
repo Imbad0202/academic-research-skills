@@ -223,6 +223,7 @@ def check_pipeline_docs() -> None:
     expect_contains("shared/handoff_schemas.md", "**Passport does not grant Stage 2.5 skip**")
     expect_contains("shared/handoff_schemas.md", "runs before the paper reaches Stage 3 (REVIEW), regardless of passport status")
     expect_contains("shared/handoff_schemas.md", "The report informs the rerun; it does not replace it")
+    expect_contains("shared/handoff_schemas.md", "a user request to skip it does not change this")
     expect_absent("shared/handoff_schemas.md", "allows skipping Stage 2.5")
     expect_contains(
         "academic-pipeline/references/mode_advisor.md",
