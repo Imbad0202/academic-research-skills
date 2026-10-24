@@ -931,7 +931,7 @@ The Cite-Time Provenance Finalizer, its strict terminal policies, and, under `AR
 
 ## Mid-Entry Material Passport Check
 
-When a user enters the pipeline mid-way (e.g., bringing an existing paper), the orchestrator MUST check for a Material Passport before running Stage 2.5, to decide whether a prior Integrity Report is attached as context. Stage 2.5 runs either way.
+When a user enters the pipeline mid-way (e.g., bringing an existing paper), the orchestrator MUST check for a Material Passport before running the integrity stage that applies (Stage 2.5 for a paper draft on its way to Stage 3; Stage 4.5 for a revised draft), to decide whether a prior Integrity Report is attached as context. That stage runs either way.
 
 ### Decision Tree
 
@@ -958,7 +958,8 @@ Mid-Entry Material Passport Check:
    YES -> Require re-verification
          "The paper has been modified since the last integrity check
           (version [old] -> [new]). Re-verification is required."
-   NO  -> Require Stage 2.5 verification:
+   NO  -> Require the integrity stage again, with the prior report as context
+         (paper draft -> Stage 2.5; revised draft -> Stage 4.5). For a paper draft:
          "Your paper passed integrity check on [date] (version [label]),
           but Stage 2.5 remains mandatory for this pipeline run.
           Re-run Stage 2.5 and attach the prior report as context."

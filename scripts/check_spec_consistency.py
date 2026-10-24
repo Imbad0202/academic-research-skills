@@ -224,6 +224,11 @@ def check_pipeline_docs() -> None:
     expect_contains("shared/handoff_schemas.md", "runs before the paper reaches Stage 3 (REVIEW), regardless of passport status")
     expect_contains("shared/handoff_schemas.md", "The report informs the rerun; it does not replace it")
     expect_absent("shared/handoff_schemas.md", "allows skipping Stage 2.5")
+    expect_contains(
+        "academic-pipeline/references/mode_advisor.md",
+        "| Stage 3 (REVIEW) | Paper draft (a prior integrity report is optional context) | Stages 1-2 | "
+        "Stage 2.5 runs first on the provided paper; a prior report informs it but does not replace it |",
+    )
     expect_absent("academic-pipeline/references/mode_advisor.md", "Verified paper + integrity report")
     expect_absent("academic-pipeline/references/mode_advisor.md", "User must provide integrity evidence")
     expect_absent("academic-pipeline/SKILL.md", "Only exception: User can provide a previous integrity")
