@@ -53,7 +53,6 @@ import signal
 import subprocess
 import sys
 import tempfile
-import threading
 import time
 import urllib.error
 import urllib.request
@@ -552,75 +551,51 @@ class StreamOverflow(Exception):
 
 def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, str], timeout: float,
                 limit: int = STREAM_MAX_CHARS, **_ignored) -> subprocess.CompletedProcess:
-    """``subprocess.run(capture_output=True, text=True)`` that reads stdout and
-    stderr as they arrive and kills the process once either passes ``limit``
-    bytes (StreamOverflow), so a runaway transport cannot fill memory. One
-    deadline covers writing stdin, the process, and reading its streams: past
-    it the process group is killed and the call times out, even when the
-    process does not read its input or a child of it keeps the streams open."""
-    posix = os.name == "posix"
-    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            cwd=cwd, env=env, start_new_session=posix)
-    deadline = time.monotonic() + timeout
-    chunks: dict[str, list[bytes]] = {"out": [], "err": []}
-    over = threading.Event()
+    """``subprocess.run(capture_output=True, text=True)`` without pipes. The
+    process reads stdin from a file and writes stdout and stderr to files in a
+    private directory, so nothing it does can block this process. It runs in
+    its own process group, and the group is killed when it ends, at the
+    deadline, when either file passes ``limit`` bytes (StreamOverflow; the
+    files are checked every 50 ms, so a file can pass ``limit`` by what the
+    process writes in that time), and on any exception here, Ctrl-C included.
+    POSIX only: the kill reaches the transport's children through the group.
+    No file-size rlimit: the CLIs write their own state files, which are
+    larger than ``limit``."""
+    if os.name != "posix":
+        raise Stop("the claim-audit transports run on POSIX systems only")
 
-    def kill() -> None:
+    with tempfile.TemporaryDirectory(prefix="ars1002-io-") as io:
+        paths = {name: Path(io) / name for name in ("stdin", "stdout", "stderr")}
+        paths["stdin"].write_bytes((input or "").encode("utf-8"))
+        with open(paths["stdin"], "rb") as fin, open(paths["stdout"], "wb") as fout, \
+                open(paths["stderr"], "wb") as ferr:
+            proc = subprocess.Popen(cmd, stdin=fin, stdout=fout, stderr=ferr, cwd=cwd, env=env,
+                                    start_new_session=True)
+        deadline = time.monotonic() + timeout
+        over = timed_out = False
         try:
-            if posix:
+            while proc.poll() is None:
+                if any(paths[n].stat().st_size > limit for n in ("stdout", "stderr")):
+                    over = True
+                    break
+                if time.monotonic() >= deadline:
+                    timed_out = True
+                    break
+                time.sleep(0.05)
+        finally:
+            try:
                 os.killpg(proc.pid, signal.SIGKILL)
-            else:
-                proc.kill()
-        except OSError:
-            pass
-
-    def pump(name: str, pipe) -> None:
-        size = 0
-        for chunk in iter(lambda: pipe.read(65536), b""):
-            size += len(chunk)
-            if size > limit:
-                over.set()
-                kill()
-                return
-            chunks[name].append(chunk)
-
-    def feed() -> None:
-        try:
-            if input is not None:
-                proc.stdin.write(input.encode("utf-8"))
-            proc.stdin.close()
-        except OSError:
-            pass
-
-    threads = [threading.Thread(target=pump, args=(n, p), daemon=True)
-               for n, p in (("out", proc.stdout), ("err", proc.stderr))]
-    threads.append(threading.Thread(target=feed, daemon=True))
-    for thread in threads:
-        thread.start()
-
-    def left() -> float:
-        return max(0.0, deadline - time.monotonic())
-    try:
-        proc.wait(timeout=left())
-    except subprocess.TimeoutExpired:
-        pass
-    for thread in threads[:2]:
-        thread.join(left())
-    done = proc.poll() is not None and not any(t.is_alive() for t in threads[:2])
-    if not done:
-        kill()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            pass
-        for thread in threads[:2]:
-            thread.join(5)  # threads still blocked after this are daemons and are left behind
-    if over.is_set():
-        raise StreamOverflow
-    if not done:
-        raise subprocess.TimeoutExpired(cmd, timeout, output=b"".join(chunks["out"]))
-    return subprocess.CompletedProcess(cmd, proc.returncode, b"".join(chunks["out"]).decode("utf-8", "replace"),
-                                       b"".join(chunks["err"]).decode("utf-8", "replace"))
+            except OSError:
+                pass
+            proc.wait()
+        sizes = [paths[n].stat().st_size for n in ("stdout", "stderr")]
+        if over or any(size > limit for size in sizes):
+            raise StreamOverflow
+        if timed_out:
+            raise subprocess.TimeoutExpired(cmd, timeout, output=paths["stdout"].read_bytes())
+        return subprocess.CompletedProcess(cmd, proc.returncode,
+                                           paths["stdout"].read_bytes().decode("utf-8", "replace"),
+                                           paths["stderr"].read_bytes().decode("utf-8", "replace"))
 
 
 def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, call_id: str,

@@ -1371,9 +1371,60 @@ def test_bounded_run_times_out_when_the_process_never_reads_its_input(tmp_path):
     assert time.monotonic() - started < 15
 
 
-def test_bounded_run_times_out_when_a_child_keeps_the_streams_open(tmp_path):
-    code = ("import subprocess, sys; subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])")
-    started = time.monotonic()
-    with pytest.raises(subprocess.TimeoutExpired):
-        d.bounded_run([sys.executable, "-c", code], input=None, cwd=str(tmp_path), env=dict(os.environ), timeout=2)
-    assert time.monotonic() - started < 15
+# ---------- transport runner, second approach (#1002) ----------
+
+
+def _gone(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    return False
+
+
+def _wait_gone(pid: int) -> bool:
+    for _ in range(100):
+        if _gone(pid):
+            return True
+        time.sleep(0.05)
+    return False
+
+
+SPAWN = ("import subprocess, sys; p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); "
+         "open(sys.argv[1], 'w').write(str(p.pid))")
+
+
+def test_bounded_run_kills_a_child_left_behind_after_a_clean_exit(tmp_path):
+    pid_file = tmp_path / "pid"
+    proc = d.bounded_run([sys.executable, "-c", SPAWN, str(pid_file)], input=None, cwd=str(tmp_path),
+                         env=dict(os.environ), timeout=30)
+    assert proc.returncode == 0
+    assert _wait_gone(int(pid_file.read_text()))
+
+
+def test_bounded_run_kills_the_group_on_ctrl_c(tmp_path):
+    import signal
+    import threading
+    pid_file = tmp_path / "pid"
+    code = SPAWN + "; import time; time.sleep(60)"
+    timer = threading.Timer(1.5, lambda: os.kill(os.getpid(), signal.SIGINT))
+    timer.start()
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            d.bounded_run([sys.executable, "-c", code, str(pid_file)], input=None, cwd=str(tmp_path),
+                          env=dict(os.environ), timeout=30)
+    finally:
+        timer.cancel()
+    assert _wait_gone(int(pid_file.read_text()))
+
+
+def test_bounded_run_feeds_a_large_input_from_a_file(tmp_path):
+    proc = d.bounded_run([sys.executable, "-c", "import sys; print(len(sys.stdin.read()))"],
+                         input="x" * 4_000_000, cwd=str(tmp_path), env=dict(os.environ), timeout=30)
+    assert proc.stdout.strip() == "4000000"
+
+
+def test_bounded_run_refuses_a_non_posix_system(tmp_path, monkeypatch):
+    monkeypatch.setattr(d.os, "name", "nt")
+    with pytest.raises(d.Stop, match="POSIX"):
+        d.bounded_run(["true"], input=None, cwd=str(tmp_path), env={}, timeout=1)

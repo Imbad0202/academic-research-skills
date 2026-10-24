@@ -86,6 +86,10 @@ repository. Raw outputs are written once and never overwritten.
   failure. That check runs after the call, so a read the CLI allowed has
   already happened. The inputs are this repository's synthetic manuscripts
   and panel outputs.
+- The transports run on POSIX systems (macOS, Linux) only. Each call runs in
+  its own process group, which is killed when the call ends, so a child that
+  a CLI leaves behind does not outlive the call; a child that starts its own
+  session does.
 - The spend cap counts a completed Gemini call at the usage the API reports,
   unless that usage is below one token per 16 bytes of prompt or reply; then
   the call counts at its worst case. A provider that under-reports above that
