@@ -186,6 +186,36 @@ def test_year_unparseable_is_rejected(tmp_path, load_yaml):
     assert rejection["rejected"][0]["source"] == "bad_year.md"
 
 
+@pytest.mark.parametrize(
+    "year_line",
+    ["year: true", "year: '²⁰²⁴'"],
+    ids=["boolean", "superscript_digits"],
+)
+def test_year_non_year_value_rejected_and_run_continues(tmp_path, load_yaml, year_line):
+    """#989: a boolean year and a non-ASCII digit string are rejected with
+    year_unparseable; the other notes in the vault are still written."""
+    vault = tmp_path / "v"
+    vault.mkdir()
+    (vault / "bad_year.md").write_text(
+        f"---\ncitekey: bad2024\ntitle: T\nauthors:\n  - family: Smith\n{year_line}\n---\n",
+        encoding="utf-8",
+    )
+    (vault / "good.md").write_text(
+        "---\ncitekey: good2024\ntitle: G\nauthors:\n  - family: Lee\nyear: 2024\n---\n",
+        encoding="utf-8",
+    )
+    p = tmp_path / "p.yaml"
+    r = tmp_path / "r.yaml"
+    res = _run("--input", str(vault), "--passport", str(p), "--rejection-log", str(r))
+    assert res.returncode == 0, res.stderr
+    passport = load_yaml(p)
+    assert [e["citation_key"] for e in passport["literature_corpus"]] == ["good2024"]
+    rejection = load_yaml(r)
+    assert len(rejection["rejected"]) == 1
+    assert rejection["rejected"][0]["reason"] == "year_unparseable"
+    assert rejection["rejected"][0]["source"] == "bad_year.md"
+
+
 def test_authors_string_parsed_via_semicolon(tmp_path, load_yaml):
     """Convention A: authors as a bare string 'Smith, J; Lee, K' must be parsed into CSL list."""
     vault = tmp_path / "v"
