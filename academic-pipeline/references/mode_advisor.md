@@ -115,7 +115,7 @@ For users entering the pipeline mid-stream, this table clarifies what materials 
 | Stage 1 (RESEARCH) | None | Nothing | Full pipeline |
 | Stage 2 (WRITE) | RQ Brief + Bibliography | Stage 1 | Full pipeline from Stage 2 |
 | Stage 2.5 (INTEGRITY) | Paper draft | Stages 1-2 | Integrity check runs on provided draft |
-| Stage 3 (REVIEW) | Verified paper + integrity report | Stages 1-2.5 | User must provide integrity evidence |
+| Stage 3 (REVIEW) | Paper draft (a prior integrity report is optional context) | Stages 1-2 | Stage 2.5 runs first on the provided paper; a prior report informs it but does not replace it |
 | Stage 4 (REVISE) | Paper + review comments | Stages 1-3 | Pipeline runs Stage 4 -> 3' -> 4' -> 4.5 -> 5 |
 | Stage 5 (FINALIZE) | Paper + integrity pass report | Stages 1-4.5 | Must show Stage 4.5 passed |
 

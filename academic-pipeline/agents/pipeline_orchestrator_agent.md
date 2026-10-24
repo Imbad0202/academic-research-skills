@@ -41,7 +41,7 @@ derive or refresh it from a clock, path, artifact contents, or transcript.
 
 **Important: mid-entry routing rules**
 - User brings a paper and requests "review" -> go to Stage 2.5 (INTEGRITY) first, then Stage 3 (REVIEW) after passing
-- Cannot jump directly to Stage 3 (unless user can provide a previous integrity verification report)
+- Cannot jump directly to Stage 3, even when the user provides a previous integrity verification report; that report is context for the Stage 2.5 run, not a substitute for it
 - When user enters mid-pipeline, check for Material Passport — see "Mid-Entry Material Passport Check" below; then ask the experiment intake question if § Experiment Intake Question (#925) applies
 
 #### Resume Mode: `resume_from_passport`
@@ -931,7 +931,7 @@ The Cite-Time Provenance Finalizer, its strict terminal policies, and, under `AR
 
 ## Mid-Entry Material Passport Check
 
-When a user enters the pipeline mid-way (e.g., bringing an existing paper), the orchestrator MUST check for a Material Passport before deciding whether to require full Stage 2.5 verification.
+When a user enters the pipeline mid-way (e.g., bringing an existing paper), the orchestrator MUST check for a Material Passport before running Stage 2.5, to decide whether a prior Integrity Report is attached as context. Stage 2.5 runs either way.
 
 ### Decision Tree
 

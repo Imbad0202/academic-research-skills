@@ -219,6 +219,14 @@ def check_pipeline_docs() -> None:
         "academic-pipeline/agents/pipeline_orchestrator_agent.md",
         "Stage 4.5 can NEVER be skipped",
     )
+    # #995: a prior integrity report is context for Stage 2.5, never a skip.
+    expect_contains("shared/handoff_schemas.md", "**Passport does not grant Stage 2.5 skip**")
+    expect_absent("shared/handoff_schemas.md", "allows skipping Stage 2.5")
+    expect_absent("academic-pipeline/SKILL.md", "Only exception: User can provide a previous integrity")
+    expect_absent(
+        "academic-pipeline/agents/pipeline_orchestrator_agent.md",
+        "unless user can provide a previous integrity verification report",
+    )
 
 
 # A version token is a dot-separated run of ≥3 numeric components. The repo's own grammar

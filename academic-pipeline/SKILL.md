@@ -473,7 +473,7 @@ Users can enter from any stage. The orchestrator will:
 
 **Important: mid-entry cannot skip Stage 2.5**
 - If the user brings a paper and enters directly, go through Stage 2.5 (INTEGRITY) first before Stage 3 (REVIEW)
-- Only exception: User can provide a previous integrity verification report and content has not been modified
+- A previous integrity verification report does not replace Stage 2.5. When the content has not been modified since that report, Stage 2.5 still runs and the report is attached as context (see the Mid-Entry Material Passport Check in `agents/pipeline_orchestrator_agent.md`)
 
 ---
 
