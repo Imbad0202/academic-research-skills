@@ -216,6 +216,27 @@ def test_year_non_year_value_rejected_and_run_continues(tmp_path, load_yaml, yea
     assert rejection["rejected"][0]["source"] == "bad_year.md"
 
 
+@pytest.mark.parametrize(
+    "year_text",
+    ["٢٠٢٤", "２０２４"],
+    ids=["arabic_indic", "fullwidth"],
+)
+def test_year_other_decimal_script_still_accepted(tmp_path, load_yaml, year_text):
+    """#989 keeps accepting decimal digits that int() reads in other scripts."""
+    vault = tmp_path / "v"
+    vault.mkdir()
+    (vault / "note.md").write_text(
+        f"---\ncitekey: k2024\ntitle: T\nauthors:\n  - family: Smith\nyear: '{year_text}'\n---\n",
+        encoding="utf-8",
+    )
+    p = tmp_path / "p.yaml"
+    r = tmp_path / "r.yaml"
+    res = _run("--input", str(vault), "--passport", str(p), "--rejection-log", str(r))
+    assert res.returncode == 0, res.stderr
+    assert load_yaml(p)["literature_corpus"][0]["year"] == 2024
+    assert load_yaml(r)["rejected"] == []
+
+
 def test_authors_string_parsed_via_semicolon(tmp_path, load_yaml):
     """Convention A: authors as a bare string 'Smith, J; Lee, K' must be parsed into CSL list."""
     vault = tmp_path / "v"
