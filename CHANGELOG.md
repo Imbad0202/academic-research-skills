@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- **The integrity-check rules agree on three points (#1011).** Entering at Stage 5 with a revised paper now runs Stage 4.5 first, and a prior integrity report is context for it, as rule 12 of `shared/handoff_schemas.md` requires; the mode advisor had said the user could skip Stages 1-4.5 by showing a pass report. A prior report counts as fresh only when it is less than 24 hours old, within one session too, as rule 10 says; rule 11 and the orchestrator's decision tree had also accepted any report from the current session. The Stage 4 entry row no longer lists Stage 4′ as always run: after Stage 3′, only a Major decision leads to Stage 4′. The changes are prompt-level wording and unmeasured.
+- **The integrity-check rules agree on three points (#1011).** Entering at Stage 5 with a revised paper now runs Stage 4.5 first, and a prior integrity report is context for it, as rule 12 of `shared/handoff_schemas.md` requires; the mode advisor had said the user could skip Stages 1-4.5 by showing a pass report. A prior report counts as fresh only when it is less than 24 hours old, within one session too; rule 11 and the orchestrator's decision tree had also accepted any report from the current session, and rule 10 now calls a report stale at 24 hours, the same boundary as the decision tree. The Stage 4 entry row no longer lists Stage 4′ as always run: after Stage 3′, only a Major decision leads to Stage 4′. The changes are prompt-level wording and unmeasured.
 
 ## [3.23.2] - 2026-10-24 — Integrity checks read only the cited version, Stage 2.5 always runs, and adapter, announce, and Windows repairs
 
