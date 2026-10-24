@@ -221,7 +221,11 @@ def check_pipeline_docs() -> None:
     )
     # #995: a prior integrity report is context for Stage 2.5, never a skip.
     expect_contains("shared/handoff_schemas.md", "**Passport does not grant Stage 2.5 skip**")
+    expect_contains("shared/handoff_schemas.md", "runs before the paper reaches Stage 3 (REVIEW), regardless of passport status")
+    expect_contains("shared/handoff_schemas.md", "The report informs the rerun; it does not replace it")
     expect_absent("shared/handoff_schemas.md", "allows skipping Stage 2.5")
+    expect_absent("academic-pipeline/references/mode_advisor.md", "Verified paper + integrity report")
+    expect_absent("academic-pipeline/references/mode_advisor.md", "User must provide integrity evidence")
     expect_absent("academic-pipeline/SKILL.md", "Only exception: User can provide a previous integrity")
     expect_absent(
         "academic-pipeline/agents/pipeline_orchestrator_agent.md",

@@ -966,7 +966,7 @@ Mid-Entry Material Passport Check:
 
 ### Rules
 
-- **Stage 2.5 can NEVER be skipped** via Material Passport. Prior reports can inform the rerun, but Stage 2.5 still executes in every pipeline run
+- **Stage 2.5 can NEVER be skipped** via Material Passport. Prior reports can inform the rerun, but Stage 2.5 still executes before Stage 3 in every pipeline run
 - **Stage 4.5 can NEVER be skipped** via Material Passport, regardless of passport status. Final integrity check always requires full Mode 2 verification
 - **Passport freshness threshold**: 24 hours. Sessions that span multiple days should trigger re-verification
 - **Content hash comparison**: If `content_hash` is available in the passport, use it for reliable change detection. If not available, fall back to `version_label` comparison
