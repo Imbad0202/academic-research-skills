@@ -80,9 +80,22 @@ def codex_events(text, extra_items=()):
     return "\n".join(json.dumps(e) for e in events) + "\n"
 
 
+def gemini_body(text, finish="STOP", parts=None, version="gemini-4-argon"):
+    """A generateContent response body for a reply, with a thought part."""
+    parts = [{"text": "thinking", "thought": True}, {"text": text, "thoughtSignature": "sig"}] \
+        if parts is None else parts
+    return json.dumps({"candidates": [{"content": {"role": "model", "parts": parts}, "finishReason": finish}],
+                       "modelVersion": version, "usageMetadata": {"promptTokenCount": 1}})
+
+
 def _reply(cmd, text):
-    return subprocess.CompletedProcess(cmd, 0, stdout=stream(text) if cmd[0] == "agy" else codex_events(text),
-                                       stderr="")
+    if cmd[0] == "agy":
+        out = stream(text)
+    elif "gemini-api-call" in cmd:
+        out = gemini_body(text)
+    else:
+        out = codex_events(text)
+    return subprocess.CompletedProcess(cmd, 0, stdout=out, stderr="")
 
 
 def _pairs_dir(work, plan, pairs=None, answers=None, verifier=None):
@@ -390,16 +403,54 @@ def test_an_oversized_prompt_is_never_sent(tmp_path):
 
 
 def test_the_agy_transport_passes_the_prompt_as_an_argument():
-    cmd, stdin = d.TRANSPORTS["gemini"]("P")
-    assert cmd[:2] == ["agy", "--model=Gemini 4 Argon (High)"] and stdin is None
+    cmd, stdin = d.TRANSPORTS["claude_agy"]("P")
+    assert cmd[:2] == ["agy", "--model=Claude Opus 5.5 (High)"] and stdin is None
     assert cmd[cmd.index("-p") + 1] == "P" and {"--disable-slash-commands", "stream-json"} <= set(cmd)
+
+
+def test_the_gemini_transport_runs_the_api_helper_with_the_prompt_on_stdin():
+    cmd, stdin = d.TRANSPORTS["gemini"]("P")
+    assert cmd[1:] == ["-I", str(Path(d.__file__).resolve()), "gemini-api-call"] and stdin == "P"
+    body = d.gemini_api_request("P")
+    assert body["contents"] == [{"role": "user", "parts": [{"text": "P"}]}]
+    assert set(body) == {"contents", "generationConfig"}  # no tools, no system instruction
+    assert body["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "high"}
+
+
+@pytest.mark.parametrize("body,problem", [
+    (gemini_body("x", finish="MAX_TOKENS"), "finish reason MAX_TOKENS"),
+    (gemini_body("x", finish="SAFETY"), "finish reason SAFETY"),
+    (gemini_body("x", parts=[{"functionCall": {"name": "f"}}]), "parts other than the reply: functionCall"),
+    (gemini_body("x", version="gemini-3.8-flash"), "model version"),
+    ('{"error": {"code": 429, "status": "RESOURCE_EXHAUSTED"}}', "API error RESOURCE_EXHAUSTED"),
+    ('{"candidates": [], "modelVersion": "gemini-4-argon"}', "0 candidates"),
+    ("not json", "unreadable API response"),
+])
+def test_a_gemini_reply_that_is_not_a_plain_answer_is_a_transport_failure(tmp_path, body, problem):
+    assert d.gemini_api_answer(body)[1].startswith(problem)
+    proc = subprocess.CompletedProcess([], 0, stdout=body, stderr="")
+    with pytest.raises(d.Stop, match="transport failed"):
+        d.call_model("gemini", "P", tmp_path / "x.out", tmp_path / "calls.jsonl", "c1", runner=lambda *a, **k: proc)
+
+
+def test_a_gemini_reply_leaves_out_thought_parts():
+    assert d.gemini_api_answer(gemini_body("answer")) == ("answer", None)
+    assert d.gemini_api_answer(gemini_body("a", version="gemini-4-argon-001")) == ("a", None)
+
+
+def test_the_gemini_helper_needs_the_key_and_never_calls_without_it(monkeypatch, capsys):
+    monkeypatch.delenv(d.GEMINI_API_KEY_ENV, raising=False)
+    monkeypatch.setattr(d.urllib.request, "urlopen", lambda *a, **k: pytest.fail("called without a key"))
+    assert d.main(["gemini-api-call"]) == 3
+    assert d.GEMINI_API_KEY_ENV in capsys.readouterr().err
 
 
 def test_an_agy_reply_that_uses_a_tool_is_a_transport_failure(tmp_path):
     tool = stream("x").replace('"agent_response", "text_delta": "x"', '"run_command"')
     proc = subprocess.CompletedProcess([], 0, stdout=tool, stderr="")
     with pytest.raises(d.Stop, match="steps other than the reply: run_command"):
-        d.call_model("gemini", "P", tmp_path / "x.out", tmp_path / "calls.jsonl", "c1", runner=lambda *a, **k: proc)
+        d.call_model("claude_agy", "P", tmp_path / "x.out", tmp_path / "calls.jsonl", "c1",
+                     runner=lambda *a, **k: proc)
     assert d.agy_answer(stream("hello")) == ("hello", None)
 
 
@@ -413,7 +464,7 @@ def test_usage_words_in_a_reply_or_on_stderr_are_not_failures(tmp_path):
 def test_an_empty_agy_reply_is_a_transport_failure(tmp_path):
     proc = subprocess.CompletedProcess([], 0, stdout=stream(""), stderr="")
     with pytest.raises(d.Stop, match="empty reply"):
-        d.call_model("gemini", "P", tmp_path / "x.out", tmp_path / "c.jsonl", "c1", runner=lambda *a, **k: proc)
+        d.call_model("claude_agy", "P", tmp_path / "x.out", tmp_path / "c.jsonl", "c1", runner=lambda *a, **k: proc)
 
 
 def test_no_path_under_the_manifests_directory_is_read(tmp_path):
@@ -614,8 +665,8 @@ def test_pairs_verified_through_another_transport_stop_the_build(tmp_path, small
 
 def test_the_plan_names_the_models_the_script_calls():
     plan = d.load_plan()
-    gemini = d.TRANSPORTS["gemini"]("P")[0]
-    assert f"--model={plan['judge_models']['gemini']['agy_model']}" in gemini
+    assert plan["judge_models"]["gemini"]["api_model"] == d.GEMINI_API_MODEL
+    assert "gemini-api-call" in d.TRANSPORTS["gemini"]("P")[0]
     generator = d.TRANSPORTS[plan["contrast_pairs"]["generator"]["transport"]]("P")[0]
     assert f"--model={plan['contrast_pairs']['generator']['agy_model']}" in generator
     assert plan["contrast_pairs"]["verifier"]["transport"] == "codex"

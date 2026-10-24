@@ -1,6 +1,6 @@
 {
   "suite": "panel_claim_factuality",
-  "plan_version": "3",
+  "plan_version": "4",
   "issue": "#1002",
   "claims": {
     "extractor": "scripts/extract_panel_claims.py",
@@ -25,8 +25,8 @@
     "gemini": {
       "model_id": "gemini-4-argon-high",
       "model_family": "google",
-      "agy_model": "Gemini 4 Argon (High)",
-      "settings": "agy -p, model 'Gemini 4 Argon (High)', --disable-slash-commands, --output-format stream-json, empty working directory; a reply with any step other than the answer (a tool, a skill, a subagent) is a transport failure"
+      "api_model": "gemini-4-argon",
+      "settings": "Gemini API generateContent (paid key from GEMINI_API_KEY, header only), model gemini-4-argon, thinkingLevel high, maxOutputTokens 32768, no tools, no system instruction, one user message holding the batch prompt, run by `dispatch_panel_claim_audit.py gemini-api-call` in an empty working directory; an error body, another model version, a finish reason other than STOP, or a part other than text is a transport failure"
     }
   },
   "replicates": 2,

@@ -23,13 +23,15 @@ the order of the steps and ``plan.json`` holds the frozen numbers. Subcommands:
                 is complete, the headline counts
 
 Every model call runs in a new empty directory, with the prompt on stdin
-(codex) or in ``-p`` (agy). The generator, verifier, and judge transports are
-the ones ``plan.json`` names. Both CLIs print their event stream (codex
-``--json``, agy ``--output-format stream-json``, with slash commands and skills
-off), and the script decides from the events, never from searching the text: a
-call fails on a nonzero exit, a failed turn or error event, a missing completed
-turn, an empty reply, or any step other than the reply (a command, a file
-read, a tool, a skill, a subagent). A call first reserves its
+(codex, and the Gemini API helper ``gemini-api-call``) or in ``-p`` (agy). The
+generator, verifier, and judge transports are the ones ``plan.json`` names. The
+CLIs print their event stream (codex ``--json``, agy ``--output-format
+stream-json``, with slash commands and skills off) and the helper prints the API
+response body; the script decides from those fields, never from searching the
+text: a call fails on a nonzero exit, a failed turn or error event, a missing
+completed turn or a finish reason other than STOP, an empty reply, or any step
+other than the reply (a command, a file read, a tool, a skill, a subagent, a
+function call). A call first reserves its
 output name with an exclusive lock file and logs a ``started`` line; it then
 writes its output once and logs ``completed`` or ``failed``. An output is used,
 by a later call or by scoring, only when a completed log line has the same
@@ -50,6 +52,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -84,6 +88,15 @@ AGY_FLAGS = ("--disable-slash-commands", "--output-format", "stream-json")
 # The steps (agy) and items (codex) a plain reply has; any other one stops the run.
 AGY_ANSWER_STEPS = frozenset({"user_input", "agent_response", "unknown"})
 CODEX_ANSWER_ITEMS = frozenset({"agent_message", "reasoning"})
+# Gemini API judge (plan v4): no tools, no system instruction, high thinking,
+# and the model's output limit, which counts thinking tokens. The key comes from
+# the environment and goes only into the request header.
+GEMINI_API_MODEL = "gemini-4-argon"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_API_KEY_ENV = "GEMINI_API_KEY"
+GEMINI_API_CONFIG = {"thinkingConfig": {"thinkingLevel": "high"}, "maxOutputTokens": 32768}
+# The part fields a plain reply has; any other one (a function call, code) stops the run.
+GEMINI_ANSWER_PART_KEYS = frozenset({"text", "thought", "thoughtSignature"})
 
 
 class Stop(Exception):
@@ -170,11 +183,43 @@ def _agy_cmd(model: str) -> Callable[[str], tuple[list[str], str | None]]:
     return build
 
 
+def _gemini_api_cmd(prompt: str) -> tuple[list[str], str | None]:
+    return ([sys.executable, "-I", str(Path(__file__).resolve()), "gemini-api-call"], prompt)
+
+
 TRANSPORTS: dict[str, Callable[[str], tuple[list[str], str | None]]] = {
     "codex": _codex_cmd,
-    "gemini": _agy_cmd("Gemini 4 Argon (High)"),
+    "gemini": _gemini_api_cmd,
     "claude_agy": _agy_cmd("Claude Opus 5.5 (High)"),
 }
+
+
+def gemini_api_request(prompt: str) -> dict[str, Any]:
+    return {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": GEMINI_API_CONFIG}
+
+
+def cmd_gemini_api_call(_args) -> int:
+    """Send stdin as one prompt; print the response body (or the error body).
+    Exit 0 only on HTTP 200. ``call_model`` runs this as a subprocess."""
+    key = os.environ.get(GEMINI_API_KEY_ENV)
+    if not key:
+        print(f"{GEMINI_API_KEY_ENV} is not set", file=sys.stderr)
+        return 3
+    prompt = sys.stdin.buffer.read().decode("utf-8")
+    request = urllib.request.Request(
+        GEMINI_API_URL.format(model=GEMINI_API_MODEL), method="POST",
+        data=json.dumps(gemini_api_request(prompt), ensure_ascii=False).encode("utf-8"),
+        headers={"x-goog-api-key": key, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
+            sys.stdout.buffer.write(response.read())
+        return 0
+    except urllib.error.HTTPError as exc:
+        sys.stdout.buffer.write(exc.read())
+        print(f"HTTP {exc.code}", file=sys.stderr)
+    except (urllib.error.URLError, OSError) as exc:
+        print(type(exc).__name__, file=sys.stderr)
+    return 1
 
 
 def _events(stream: str) -> tuple[list[dict[str, Any]], int]:
@@ -252,8 +297,37 @@ def codex_answer(stream: str) -> tuple[str, str | None]:
     return answer, None
 
 
+def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
+    """(reply text, problem) from a generateContent response body. An error
+    body, another model version, a candidate count other than one, a finish
+    reason other than STOP, or a part that is not text is a problem. Thought
+    parts are not part of the reply."""
+    try:
+        body = json.loads(body_text)
+    except ValueError:
+        return "", "unreadable API response"
+    if not isinstance(body, dict):
+        return "", "unreadable API response"
+    if "error" in body:
+        return "", f"API error {(body.get('error') or {}).get('status')}"
+    version = str(body.get("modelVersion", ""))
+    if version != GEMINI_API_MODEL and not version.startswith(GEMINI_API_MODEL + "-"):
+        return "", f"model version {version!r}, not {GEMINI_API_MODEL}"
+    candidates = body.get("candidates") or []
+    if len(candidates) != 1:
+        return "", f"{len(candidates)} candidates"
+    reason = candidates[0].get("finishReason")
+    if reason != "STOP":
+        return "", f"finish reason {reason}"
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    other = sorted({k for part in parts for k in part if k not in GEMINI_ANSWER_PART_KEYS})
+    if other:
+        return "", "parts other than the reply: " + ", ".join(other)
+    return "".join(p["text"] for p in parts if isinstance(p.get("text"), str) and not p.get("thought")), None
+
+
 ANSWER_PARSERS: dict[str, Callable[[str], tuple[str, str | None]]] = {
-    "codex": codex_answer, "gemini": agy_answer, "claude_agy": agy_answer}
+    "codex": codex_answer, "gemini": gemini_api_answer, "claude_agy": agy_answer}
 
 
 def _log(calls_log: Path, entry: dict[str, Any]) -> None:
@@ -1062,9 +1136,10 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--runs", type=Path, required=True)
     s.add_argument("--out", type=Path, required=True)
     s.add_argument("--seat-key", type=Path, help="extract_panel_claims key.jsonl, for rates by seat.")
+    sub.add_parser("gemini-api-call", help="Internal: the gemini judge transport (prompt on stdin).")
     args = parser.parse_args(argv)
     handlers = {"generate": cmd_generate, "check-pairs": cmd_check_pairs, "verify-pairs": cmd_verify_pairs,
-                "build": cmd_build, "run": cmd_run, "score": cmd_score}
+                "build": cmd_build, "run": cmd_run, "score": cmd_score, "gemini-api-call": cmd_gemini_api_call}
     try:
         return handlers[args.cmd](args)
     except Stop as stop:

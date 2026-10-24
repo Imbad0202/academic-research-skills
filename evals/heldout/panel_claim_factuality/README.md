@@ -18,7 +18,7 @@ Suite class: `llm_judged` (`../suite_registry.json`). Status: `NOT_RUN`.
 - **Verdicts**: `true`, `false`, or `not_verifiable` per `rubric.md`. Only a
   claim that the manuscript text positively contradicts is `false`.
 - **Judges**: two model families (`gpt-6-astra` through codex,
-  `gemini-4-argon-high` through agy), each reading every batch twice.
+  `gemini-4-argon-high` through the Gemini API), each reading every batch twice.
 - **Contrast gate**: before a judge's claim verdicts count, it must find at
   least 95% of the false contrast sentences and call at most 5% of the
   accurate ones false (`PREREGISTRATION.md`, Decoys).
@@ -51,7 +51,7 @@ repository. Raw outputs are written once and never overwritten.
    its inputs into the batches directory and writes `build_manifest.json`;
    every later step stops if an input changed since:
    `python3 scripts/dispatch_panel_claim_audit.py build --claims $W/claims/claims.jsonl --pairs-dir $W/pairs --out $W/batches`
-4. Probe each agy model once from an empty directory, asking it to list
+4. Probe each agy model that judges once from an empty directory (none from plan version 4), asking it to list
    every instruction, memory, skill, or file it received besides the
    message, and keep the answer with the raw outputs. A memory block with any
    entry stops the run (`PREREGISTRATION.md`, Arms).
