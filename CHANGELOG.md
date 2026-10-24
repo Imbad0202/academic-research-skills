@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **`CITATION.cff` gives the author's ORCID iD (#1007).** Zenodo reads the file when it archives a release, so later versions under the concept DOI link their creator to https://orcid.org/0009-0008-9523-0103. Versions already on Zenodo do not change.
+
 ### Fixed
 
 - **The SessionStart announce shows the user what is meant for the user (#999).** `scripts/announce-ars-loaded.sh` sent everything through `additionalContext`, which reaches only the model, so the #544 update reminder never reached the user. Startup and clear now also set `systemMessage`: a one-line loaded notice, preceded by the update reminder when one is available. The model-facing startup announce replaces the 16-row command table, the agent table, and the token-budget line with one line of command names and one line of agent names (about 2.1 KB less per session); the command-invariants lint still checks every `/ars-*` token and the count. The skill-routing paragraph and the routing core are unchanged. Three tests in `scripts/test_ars_update_check.py` pin the new field.
