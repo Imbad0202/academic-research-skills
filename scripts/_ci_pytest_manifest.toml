@@ -733,6 +733,10 @@ id = "1001-panel-suggested-references"
 path = "scripts/test_verify_panel_recommendations.py"
 
 [[pytest]]
+id = "1002-panel-claim-check"
+path = "scripts/test_audit_panel_claims.py"
+
+[[pytest]]
 id = "927-standing-constraint-entry-schema"
 path = "scripts/test_standing_constraint_entry_schema.py"
 

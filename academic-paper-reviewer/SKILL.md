@@ -239,6 +239,12 @@ The dispatching session adds the suggested-reference check to the Editorial Deci
 
 No call that writes this round's decision, roadmap, or letter sees the report. Later readers of the letter see it but take nothing from it: it is script output, not a reviewer finding, so no weakness, consensus item, revision, or roadmap entry comes from it, and it asks for no reply. A suggestion the report cannot find stays in the reviewer's report and in the roadmap as the reviewer wrote it; the author reads the attachment before acting on it. A re-review reads it as `references/re_review_mode_protocol.md` input 7 says.
 
+### Reviewer claim check attachment (#1002)
+
+The dispatching session adds the reviewer claim check to the Editorial Decision Letter after the suggested-reference check attachment, and before the acronym check attachment, which stays the letter's last write. It saves the five Phase 2 reports, unchanged, to files and runs `python3 scripts/audit_panel_claims.py prompt --manuscript <manuscript file> --report eic=<file> --report methodology=<file> --report domain=<file> --report perspective=<file> --report da=<file> --out-dir <work dir>`, with one `--report` for each seat that ran. It sends the written `prompt.md`, unchanged, to one subagent of the session model with no tools, saves the reply to a file, runs `python3 scripts/audit_panel_claims.py render --manuscript <manuscript file> --out-dir <work dir> --reply <reply file> --lang <en|zh-TW>` in the user's language, and appends the printed report, unchanged, under `## Attachment: Reviewer Claim Check (advisory, #1002)`. The prompt hides which seat wrote each finding. The report shows a finding as contradicted only when the judge's quote passes the script's check against the manuscript. When `ARS_PANEL_CLAIM_CHECK=0`, the section is one line saying the reviewer claim check is turned off; with no manuscript file, or when the subagent or the script cannot complete, the section is one line saying the reviewer claim check did not run.
+
+No call that writes this round's decision, roadmap, or letter sees the report. Later readers of the letter see it but take nothing from it: it is an advisory check, not a reviewer finding, so no weakness, consensus item, revision, or roadmap entry comes from it, and it asks for no reply. The author decides what to do with a contradicted finding.
+
 ### Review-target criteria binding (#684)
 
 When the caller supplies the author-confirmed #683 `ReviewTargetContext`, this
