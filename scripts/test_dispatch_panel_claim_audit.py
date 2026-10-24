@@ -968,3 +968,71 @@ def test_an_http_error_whose_body_cannot_be_read_still_fails_cleanly(monkeypatch
     err = d.urllib.error.HTTPError("u", 429, "x", {}, Broken())
     rc, out = _helper(monkeypatch, _Opener(err))
     assert rc == 1 and out == b"" and "KEY123" not in capsys.readouterr().err
+
+
+# ---------- plan v5: one resend after the output limit ----------
+
+
+class MaxTokensFirst:
+    """A Gemini judge whose listed calls spend the whole output limit."""
+
+    def __init__(self, fail_calls):
+        self.inner, self.fail_calls, self.n = FakeJudge(honest), set(fail_calls), 0
+
+    def __call__(self, cmd, **kw):
+        self.n += 1
+        if self.n in self.fail_calls:
+            body = json.loads(gemini_body("", finish="MAX_TOKENS", parts=[]))
+            body["usageMetadata"] = {"promptTokenCount": 1, "totalTokenCount": 32769}  # the limit, spent
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(body), stderr="")
+        return self.inner(cmd, **kw)
+
+
+def test_a_max_tokens_call_is_sent_once_more_and_scored_from_the_resend(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    judge = MaxTokensFirst({1})
+    d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)
+    assert judge.n == 2
+    log = work / "runs" / "gemini" / "r1" / "calls.jsonl"
+    assert [(e["call_id"], e["status"]) for e in d.read_jsonl(log) if e["status"] != "started"] == [
+        ("gemini-r1-b001-a1", "failed"), ("gemini-r1-b001-a1-r", "completed")]
+    batches, _key = d.load_build(work / "batches")
+    assert d.load_replicate(work / "runs", "gemini", 1, batches[:1])
+
+
+def test_a_second_max_tokens_stops_and_is_never_sent_a_third_time(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    judge = MaxTokensFirst({1, 2})
+    with pytest.raises(d.Stop, match="transport failed"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)
+    with pytest.raises(d.Stop, match="the one resend"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)
+    assert judge.n == 2
+
+
+def test_other_failures_get_no_resend(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    calls = []
+
+    def safety(cmd, **kw):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout=gemini_body("x", finish="SAFETY"), stderr="")
+    with pytest.raises(d.Stop, match="SAFETY"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=safety, cap_usd=50, limit=1)
+    assert len(calls) == 1
+
+
+def test_a_resumed_run_goes_to_the_resend_not_a_fresh_first_attempt(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    one_call = d.worst_case_usd(d.batch_prompt(d.load_build(work / "batches")[0][0]))
+    judge = MaxTokensFirst({1})
+    with pytest.raises(d.Stop, match="budget_exhausted"):  # the failed call's cost leaves no room
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=one_call * 1.2, limit=1)
+    d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)
+    log = work / "runs" / "gemini" / "r1" / "calls.jsonl"
+    ids = [e["call_id"] for e in d.read_jsonl(log) if e["status"] == "started"]
+    assert ids == ["gemini-r1-b001-a1", "gemini-r1-b001-a1-r"]

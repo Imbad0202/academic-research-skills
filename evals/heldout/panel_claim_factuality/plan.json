@@ -1,6 +1,6 @@
 {
   "suite": "panel_claim_factuality",
-  "plan_version": "4",
+  "plan_version": "5",
   "issue": "#1002",
   "claims": {
     "extractor": "scripts/extract_panel_claims.py",
@@ -26,7 +26,7 @@
       "model_id": "gemini-4-argon-high",
       "model_family": "google",
       "api_model": "gemini-4-argon",
-      "settings": "Gemini API generateContent (paid key from GEMINI_API_KEY, header only), model gemini-4-argon, thinkingLevel high, maxOutputTokens 32768, no tools, no system instruction, one user message holding the batch prompt, run by `dispatch_panel_claim_audit.py gemini-api-call` in an empty working directory; an error body, another model version, a finish reason other than STOP, or a part other than text is a transport failure"
+      "settings": "Gemini API generateContent (paid key from GEMINI_API_KEY, header only), model gemini-4-argon, thinkingLevel high, maxOutputTokens 32768, no tools, no system instruction, one user message holding the batch prompt, run by `dispatch_panel_claim_audit.py gemini-api-call` in an empty working directory; an error body, another model version, a finish reason other than STOP, or a part other than text is a transport failure; a call that ends with finish reason MAX_TOKENS is sent once more, unchanged, and a second failure stops the run (plan v5)"
     }
   },
   "replicates": 2,

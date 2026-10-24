@@ -105,6 +105,9 @@ GEMINI_PRICE_UNTIL = "2026-11-30"
 GEMINI_CAP_MAX_USD = 100.0
 # Above the model's input plus output limits; a larger count is unreadable usage.
 USAGE_MAX_TOKENS = 10_000_000
+# Plan v5: a Gemini call that spends its whole output limit (thinking included)
+# and returns no answer is sent once more, unchanged, under the call id + "-r".
+MAX_TOKENS_FAILURE = "finish reason MAX_TOKENS"
 # The label a call log records per transport. The Gemini API judge gets its own
 # label, so a logged call of the earlier agy "gemini" transport is never reused.
 LOG_LABELS = {"gemini": "gemini_api"}
@@ -267,6 +270,24 @@ def gemini_usage(body_text: str) -> dict[str, Any]:
     tokens_out = total - prompt
     return {"tokens_in": prompt, "tokens_out": tokens_out,
             "usd": round(prompt * GEMINI_PRICE_IN + tokens_out * GEMINI_PRICE_OUT, 6)}
+
+
+def _resend(call_id: str, out_file: Path) -> tuple[str, Path]:
+    return f"{call_id}-r", out_file.with_name(out_file.name.replace(".out", ".r.out"))
+
+
+def failed_on_max_tokens(calls_log: Path, call_id: str) -> bool:
+    entries = _logged(calls_log, call_id)
+    return bool(entries) and entries[-1].get("status") == "failed" and entries[-1].get("error") == MAX_TOKENS_FAILURE
+
+
+def attempt_output(calls_log: Path, call_id: str, out_file: Path, prompt: str, transport: str) -> str | None:
+    """``completed_output`` for one attempt, or for its plan-v5 resend when the
+    Gemini attempt failed on its output limit."""
+    text = completed_output(calls_log, call_id, out_file, prompt, transport)
+    if text is None and transport == "gemini" and failed_on_max_tokens(calls_log, call_id):
+        text = completed_output(calls_log, *_resend(call_id, out_file), prompt, transport)
+    return text
 
 
 def worst_case_usd(prompt: str) -> float:
@@ -939,7 +960,7 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
     out_dir = guard(out_root) / judge / f"r{replicate}"
     log = out_dir / "calls.jsonl"
 
-    def call(prompt: str, out_file: Path, call_id: str, attempt: int = 1) -> str:
+    def paid_call(prompt: str, out_file: Path, call_id: str, attempt: int) -> str:
         if judge == "gemini" and completed_output(log, call_id, out_file, prompt, judge) is None:
             if _now()[:10] > GEMINI_PRICE_UNTIL:
                 raise Stop(f"the Gemini price table holds through {GEMINI_PRICE_UNTIL}; update it before a paid call")
@@ -948,6 +969,20 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
                 raise Stop(f"budget_exhausted: {spent:.4f} USD logged, the next call can cost up to "
                            f"{worst_case_usd(prompt):.4f}, cap {cap_usd:.2f}")
         return call_model(judge, prompt, out_file, log, call_id, attempt=attempt, runner=runner)
+
+    def call(prompt: str, out_file: Path, call_id: str, attempt: int = 1) -> str:
+        """One attempt; a Gemini attempt that failed on its output limit is
+        sent once more (plan v5). A resend that failed stops the run."""
+        if not (judge == "gemini" and failed_on_max_tokens(log, call_id)):
+            try:
+                return paid_call(prompt, out_file, call_id, attempt)
+            except Stop:
+                if not (judge == "gemini" and failed_on_max_tokens(log, call_id)):
+                    raise
+        resend_id, resend_file = _resend(call_id, out_file)
+        if any(e.get("status") == "failed" for e in _logged(log, resend_id)):
+            raise Stop(f"{resend_id}: the one resend after {MAX_TOKENS_FAILURE} failed")
+        return paid_call(prompt, resend_file, resend_id, attempt)
 
     # One paid run at a time per runs directory, so two replicates cannot both
     # pass the cap check on the same remaining budget.
@@ -998,7 +1033,7 @@ def cmd_run(args) -> int:
 def load_replicate(runs: Path, judge: str, replicate: int, batches: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """{item_id: verdict row} for one judge and replicate, from the attempt
     ``run_judge`` would use: the first, or the retry when the first is
-    unreadable. Each output must match its completed log line for this
+    unreadable, each through its plan-v5 resend when it has one. Each output must match its completed log line for this
     build's prompt and this judge's transport (``completed_output``)."""
     out_dir = runs / judge / f"r{replicate}"
     log = out_dir / "calls.jsonl"
@@ -1007,13 +1042,13 @@ def load_replicate(runs: Path, judge: str, replicate: int, batches: list[dict[st
         ids = [i["claim_id"] for i in batch["items"]]
         prompt = batch_prompt(batch)
         stem = f"{judge}-r{replicate}-{batch['batch_id']}"
-        text = completed_output(log, f"{stem}-a1", out_dir / f"{batch['batch_id']}.a1.out", prompt, judge)
+        text = attempt_output(log, f"{stem}-a1", out_dir / f"{batch['batch_id']}.a1.out", prompt, judge)
         if text is None:
             continue
         rows, problem = read_verdicts(text, ids)
         if problem:
-            text = completed_output(log, f"{stem}-a2", out_dir / f"{batch['batch_id']}.a2.out",
-                                    prompt + RETRY_NOTE.format(reason=problem), judge)
+            text = attempt_output(log, f"{stem}-a2", out_dir / f"{batch['batch_id']}.a2.out",
+                                  prompt + RETRY_NOTE.format(reason=problem), judge)
             if text is None:
                 continue
             rows, problem = read_verdicts(text, ids)
