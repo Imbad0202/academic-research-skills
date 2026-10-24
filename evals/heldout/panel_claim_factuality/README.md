@@ -86,6 +86,11 @@ repository. Raw outputs are written once and never overwritten.
   failure. That check runs after the call, so a read the CLI allowed has
   already happened. The inputs are this repository's synthetic manuscripts
   and panel outputs.
+- The spend cap counts a completed Gemini call at the usage the API reports,
+  unless that usage is below one token per 16 bytes of prompt or reply; then
+  the call counts at its worst case. A provider that under-reports above that
+  floor can still let a run spend past the cap. Set a budget on the Google
+  account as well.
 - Every input path is resolved before it is read, and a path under
   `../reviewer_seeded_defects/manifests/` stops the script.
 - The rate says how often panel claims contradict the manuscript under this
