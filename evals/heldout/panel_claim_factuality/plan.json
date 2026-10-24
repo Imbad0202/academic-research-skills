@@ -220,8 +220,8 @@
         "PREREGISTRATION.md",
         "README.md"
       ],
-      "change": "transport hardening after a security review: response and stream size ceilings, price-date check in the Gemini helper, symlink-safe side files, file-name batch ids, sanitized API error status, worst-case accounting for failed paid calls and zero reported output, no paid Gemini transport for the pair steps",
-      "reason": "security review of the harness before merge",
+      "change": "transport hardening after a security review: response and stream size ceilings, price-date check in the Gemini helper, symlink-safe side files, file-name batch ids, sanitized API error status, worst-case accounting for failed paid calls and for reported usage below a bytes-per-token floor, streamed CLI reads stopped at the ceiling, HTTP 200 error bodies neither forwarded nor saved, sanitized finish reasons and part keys, escaped stop messages, no paid Gemini transport for the pair steps",
+      "reason": "security review of the harness before merge (two rounds)",
       "v8_outputs": "unchanged; they score under a version 9 build made with --match-manifest"
     }
   ]

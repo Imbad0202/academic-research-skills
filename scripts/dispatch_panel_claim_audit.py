@@ -52,6 +52,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
@@ -124,8 +125,14 @@ RESPONSE_MAX_BYTES = 8 * 1024 * 1024
 STREAM_MAX_CHARS = 64 * 1024 * 1024
 # Batch ids are file-name stems the build writes (b001, b002, ...).
 BATCH_ID_RE = re.compile(r"b\d{3,4}")
-# An API error status is echoed only in this form (e.g. RESOURCE_EXHAUSTED).
+# An API error status or finish reason is echoed only in this form (e.g.
+# RESOURCE_EXHAUSTED); a reply part key only in KEY_RE form.
 API_STATUS_RE = re.compile(r"[A-Z][A-Z_]{0,63}")
+KEY_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,63}")
+# Reported usage is trusted only above these floors: at most this many bytes of
+# prompt per input token and of reply per output token. Real v8 calls ran at
+# 4.4-4.8 prompt bytes and at most 4.3 reply bytes per token.
+USAGE_MAX_BYTES_PER_TOKEN = 16
 
 
 class Stop(Exception):
@@ -168,9 +175,16 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 def _write_aux(path: Path, text: str) -> None:
     """Write a side file of a call (.err, .stream, .partial, .tmp) without
     following a symlink at its name, and never under the held-out manifests."""
+    if not hasattr(os, "O_NOFOLLOW") and os.path.islink(guard(path)):
+        raise Stop(f"refused: {path.name} is a symlink")
     fd = os.open(guard(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o644)
     with os.fdopen(fd, "w", encoding="utf-8") as handle:
         handle.write(text)
+
+
+def _printable(text: str) -> str:
+    """``text`` with every non-printable character escaped, for the terminal."""
+    return "".join(ch if ch.isprintable() else ch.encode("unicode_escape").decode("ascii") for ch in text)
 
 
 def _now() -> str:
@@ -272,6 +286,10 @@ def cmd_gemini_api_call(_args, opener=None) -> int:
             print(f"response over {RESPONSE_MAX_BYTES} bytes", file=sys.stderr)
             return 1
         if status == 200:
+            api_error = _api_error(body)
+            if api_error:
+                print(api_error, file=sys.stderr)
+                return 1
             sys.stdout.buffer.write(body)
             return 0
         print(f"HTTP {status}", file=sys.stderr)
@@ -282,11 +300,27 @@ def cmd_gemini_api_call(_args, opener=None) -> int:
     return 1
 
 
-def gemini_usage(body_text: str) -> dict[str, Any]:
+def _api_error(body: bytes) -> str | None:
+    """``API error <status>`` when an HTTP 200 body is an API error object,
+    else None. The helper prints only this text, never the body."""
+    try:
+        parsed = json.loads(body)
+    except ValueError:
+        return None
+    if not (isinstance(parsed, dict) and "error" in parsed):
+        return None
+    error = parsed["error"]
+    status = error.get("status") if isinstance(error, dict) else None
+    return "API error " + (status if isinstance(status, str) and API_STATUS_RE.fullmatch(status)
+                           else "(unrecognized status)")
+
+
+def gemini_usage(body_text: str, prompt_bytes: int, reply_bytes: int) -> dict[str, Any]:
     """Token counts and cost of one API response. Output is the total minus
     the prompt, so thinking and any other output count. ``usd`` is None (the
     run then counts the call at its worst case) unless both counts are
-    integers with 0 <= prompt < total <= USAGE_MAX_TOKENS."""
+    integers with 0 <= prompt < total <= USAGE_MAX_TOKENS and neither count is
+    below its floor (USAGE_MAX_BYTES_PER_TOKEN)."""
     try:
         meta = json.loads(body_text).get("usageMetadata")
     except (ValueError, AttributeError):
@@ -298,8 +332,9 @@ def gemini_usage(body_text: str) -> dict[str, Any]:
             or not 0 <= prompt <= total <= USAGE_MAX_TOKENS:
         return {"usd": None}
     tokens_out = total - prompt
-    if tokens_out == 0:
-        # A call that reached the model spends output tokens; a zero count is not trusted.
+    if (tokens_out == 0 or prompt * USAGE_MAX_BYTES_PER_TOKEN < prompt_bytes
+            or tokens_out * USAGE_MAX_BYTES_PER_TOKEN < reply_bytes):
+        # A count too small for the text sent or received is not trusted.
         return {"usd": None}
     return {"tokens_in": prompt, "tokens_out": tokens_out,
             "usd": round(prompt * GEMINI_PRICE_IN + tokens_out * GEMINI_PRICE_OUT, 6)}
@@ -343,8 +378,11 @@ def gemini_spent(out_root: Path) -> float:
         for e in entries:
             if e.get("status") == "started" and (e["call_id"], e["sequence_index"]) not in ends:
                 total += e.get("worst_case_usd") or 0.0
+            elif e.get("status") == "completed" and e.get("usd") is not None:
+                total += e["usd"]
             elif e.get("status") in ("completed", "failed"):
-                total += e["usd"] if e.get("usd") is not None else (e.get("worst_case_usd") or 0.0)
+                # A failed call counts at its worst case whatever usage it logged.
+                total += e.get("worst_case_usd") or 0.0
     return total
 
 
@@ -435,11 +473,7 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
     if not isinstance(body, dict):
         return "", "unreadable API response"
     if "error" in body:
-        error = body["error"]
-        status = error.get("status") if isinstance(error, dict) else None
-        if not (isinstance(status, str) and API_STATUS_RE.fullmatch(status)):
-            status = "(unrecognized status)"
-        return "", f"API error {status}"
+        return "", _api_error(body_text.encode("utf-8"))
     version = body.get("modelVersion")
     if version != GEMINI_API_MODEL:
         return "", f"model version {version!r}, not {GEMINI_API_MODEL}"
@@ -459,12 +493,14 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
         return "", "unreadable reply parts"
     other = sorted({k for part in parts for k in part if k not in GEMINI_ANSWER_PART_KEYS})
     if other:
-        return "", "parts other than the reply: " + ", ".join(other)
+        return "", "parts other than the reply: " + ", ".join(
+            k if KEY_RE.fullmatch(k) else "(unrecognized key)" for k in other)
     if any(not isinstance(p.get("text"), str) for p in parts):
         return "", "a reply part without text"
     reason = candidate.get("finishReason")
     if reason != "STOP":
-        return "", f"finish reason {reason}"
+        return "", "finish reason " + (reason if isinstance(reason, str) and API_STATUS_RE.fullmatch(reason)
+                                       else "(unrecognized)")
     return "".join(p["text"] for p in parts if not p.get("thought")), None
 
 
@@ -508,8 +544,58 @@ def completed_output(calls_log: Path, call_id: str, out_file: Path, prompt: str,
     return text
 
 
+class StreamOverflow(Exception):
+    """A transport wrote more than STREAM_MAX_CHARS to stdout or stderr."""
+
+
+def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, str], timeout: float,
+                limit: int = STREAM_MAX_CHARS, **_ignored) -> subprocess.CompletedProcess:
+    """``subprocess.run(capture_output=True, text=True)`` that reads stdout and
+    stderr as they arrive and kills the process once either passes ``limit``
+    bytes (StreamOverflow), so a runaway transport cannot fill memory."""
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            cwd=cwd, env=env)
+    chunks: dict[str, list[bytes]] = {"out": [], "err": []}
+    over = threading.Event()
+
+    def pump(name: str, pipe) -> None:
+        size = 0
+        for chunk in iter(lambda: pipe.read(65536), b""):
+            size += len(chunk)
+            if size > limit:
+                over.set()
+                proc.kill()
+                return
+            chunks[name].append(chunk)
+
+    threads = [threading.Thread(target=pump, args=(n, p), daemon=True)
+               for n, p in (("out", proc.stdout), ("err", proc.stderr))]
+    for thread in threads:
+        thread.start()
+    try:
+        if input is not None:
+            proc.stdin.write(input.encode("utf-8"))
+        proc.stdin.close()
+    except BrokenPipeError:
+        pass
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        for thread in threads:
+            thread.join()
+        raise subprocess.TimeoutExpired(cmd, timeout, output=b"".join(chunks["out"])) from None
+    for thread in threads:
+        thread.join()
+    if over.is_set():
+        raise StreamOverflow
+    return subprocess.CompletedProcess(cmd, proc.returncode, b"".join(chunks["out"]).decode("utf-8", "replace"),
+                                       b"".join(chunks["err"]).decode("utf-8", "replace"))
+
+
 def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, call_id: str,
-               attempt: int = 1, runner=subprocess.run) -> str:
+               attempt: int = 1, runner=bounded_run) -> str:
     """Run one call and return its output text. Reuse a completed call only
     when its log line matches (``completed_output``); stop on an interrupted
     call, an oversized prompt, or a transport failure."""
@@ -540,6 +626,8 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
         with tempfile.TemporaryDirectory(prefix="ars1002-") as empty:
             proc = runner(cmd, input=stdin, capture_output=True, text=True, cwd=empty, env=env,
                           timeout=TIMEOUT_S + 60)
+    except StreamOverflow:
+        proc = None
     except (subprocess.TimeoutExpired, OSError) as exc:
         partial = getattr(exc, "stdout", None) or ""
         if isinstance(partial, bytes):
@@ -548,11 +636,12 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
         _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "error": type(exc).__name__,
                          **({"usd": None, "worst_case_usd": worst_case_usd(prompt)} if paid else {})})
         raise Stop(f"{call_id}: transport failed ({type(exc).__name__})") from None
-    raw, err = proc.stdout or "", proc.stderr or ""
-    if len(raw) > STREAM_MAX_CHARS or len(err) > STREAM_MAX_CHARS:
+    raw, err = (proc.stdout or "", proc.stderr or "") if proc else ("", "")
+    if proc is None or len(raw) > STREAM_MAX_CHARS or len(err) > STREAM_MAX_CHARS:
         failure = f"stream over {STREAM_MAX_CHARS} characters"
-        _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "exit_code": proc.returncode,
-                         "error": failure, **({"usd": None, "worst_case_usd": worst_case_usd(prompt)} if paid else {})})
+        _log(calls_log, {**base, "status": "failed", "completed_at": _now(),
+                         "exit_code": proc.returncode if proc else None, "error": failure,
+                         **({"usd": None, "worst_case_usd": worst_case_usd(prompt)} if paid else {})})
         raise Stop(f"{call_id}: transport failed ({failure})")
     _write_aux(out_file.with_name(out_file.name + ".err"), err)
     _write_aux(out_file.with_name(out_file.name + ".stream"), raw)
@@ -562,7 +651,8 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
         output, problem = "", f"unreadable reply ({type(exc).__name__})"
     # One line-ending form, so the logged hash equals the hash of the text read back.
     output = output.replace("\r\n", "\n").replace("\r", "\n")
-    usage = {**gemini_usage(raw), "worst_case_usd": worst_case_usd(prompt)} if paid else {}
+    usage = ({**gemini_usage(raw, len(prompt.encode("utf-8")), len(output.encode("utf-8"))),
+              "worst_case_usd": worst_case_usd(prompt)} if paid else {})
     failure = ((f"exit {proc.returncode}" + (f": {problem}" if problem else "") if proc.returncode != 0 else None)
                or problem or (None if output.strip() else "empty reply"))
     if failure:
@@ -1013,7 +1103,7 @@ def load_build(batches_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
 
 
 def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, limit: int | None = None,
-              runner=subprocess.run, cap_usd: float | None = None) -> dict[str, Any]:
+              runner=bounded_run, cap_usd: float | None = None) -> dict[str, Any]:
     """Send each batch to ``judge``. The Gemini judge needs ``cap_usd``: a new
     call starts only when the logged Gemini spend under ``out_root`` plus the
     call's worst case fits under it; otherwise the run stops (budget_exhausted)."""
@@ -1378,7 +1468,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return handlers[args.cmd](args)
     except Stop as stop:
-        print(f"STOP: {stop}", file=sys.stderr)
+        print(f"STOP: {_printable(str(stop))}", file=sys.stderr)
         return 2
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import re
 import subprocess
 import sys
@@ -940,11 +941,11 @@ def test_the_price_date_is_checked_before_each_new_paid_call_only(tmp_path, smal
     {"promptTokenCount": 10, "totalTokenCount": 10 ** 309},
 ])
 def test_usage_that_cannot_be_priced_counts_at_the_worst_case(meta):
-    assert d.gemini_usage(json.dumps({"usageMetadata": meta})) == {"usd": None}
+    assert d.gemini_usage(json.dumps({"usageMetadata": meta}), 0, 0) == {"usd": None}
 
 
 def test_output_cost_is_total_minus_prompt():
-    usage = d.gemini_usage(json.dumps({"usageMetadata": {"promptTokenCount": 10, "totalTokenCount": 210}}))
+    usage = d.gemini_usage(json.dumps({"usageMetadata": {"promptTokenCount": 10, "totalTokenCount": 210}}), 40, 800)
     assert usage["tokens_out"] == 200 and usage["usd"] == pytest.approx(10 * 2e-6 + 200 * 10e-6)
 
 
@@ -1188,7 +1189,7 @@ def test_a_malformed_response_with_a_forbidden_part_stops_without_a_resend(tmp_p
 
 def test_zero_output_usage_counts_at_the_worst_case():
     for meta in ({"promptTokenCount": 0, "totalTokenCount": 0}, {"promptTokenCount": 7000, "totalTokenCount": 7000}):
-        assert d.gemini_usage(json.dumps({"usageMetadata": meta})) == {"usd": None}
+        assert d.gemini_usage(json.dumps({"usageMetadata": meta}), 0, 0) == {"usd": None}
 
 
 def test_a_failed_paid_call_counts_at_its_worst_case_whatever_it_reports(tmp_path):
@@ -1263,3 +1264,96 @@ def test_the_pair_steps_never_use_the_paid_gemini_api(role):
     with pytest.raises(d.Stop, match="paid Gemini API"):
         d._pair_transport(plan, role)
 
+
+
+# ---------- security review round 2 (#1002) ----------
+
+
+@pytest.mark.parametrize("prompt_bytes,reply_bytes,trusted", [
+    (5000, 400, True), (16 * 1000, 400, True), (16 * 1000 + 1, 400, False), (5000, 16 * 200 + 1, False)])
+def test_reported_usage_below_its_floor_counts_at_the_worst_case(prompt_bytes, reply_bytes, trusted):
+    body = json.dumps({"usageMetadata": {"promptTokenCount": 1000, "totalTokenCount": 1200}})
+    assert (d.gemini_usage(body, prompt_bytes, reply_bytes)["usd"] is not None) is trusted
+
+
+def test_a_successful_call_that_under_reports_counts_at_its_worst_case(tmp_path):
+    body = json.loads(gemini_body("a reply long enough to need more than one output token"))
+    body["usageMetadata"] = {"promptTokenCount": 1, "totalTokenCount": 2}
+    prompt = "P" * 5000
+    log = tmp_path / "gemini" / "r1" / "calls.jsonl"
+    log.parent.mkdir(parents=True)
+    d.call_model("gemini", prompt, log.parent / "b.out", log,
+                 "c1", runner=lambda cmd, **kw: subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(body), stderr=""))
+    assert d.gemini_spent(tmp_path) == pytest.approx(d.worst_case_usd(prompt))
+
+
+def test_a_logged_failure_counts_at_its_worst_case_even_with_a_usd(tmp_path):
+    log = tmp_path / "gemini" / "r1" / "calls.jsonl"
+    log.parent.mkdir(parents=True)
+    log.write_text(json.dumps({"call_id": "c1", "sequence_index": 1, "status": "failed",
+                               "usd": 0.0001, "worst_case_usd": 0.5}) + "\n", encoding="utf-8")
+    assert d.gemini_spent(tmp_path) == pytest.approx(0.5)
+
+
+def test_bounded_run_returns_the_streams(tmp_path):
+    proc = d.bounded_run([sys.executable, "-c", "import sys; print(sys.stdin.read().upper()); "
+                          "print('e', file=sys.stderr)"], input="hi", cwd=str(tmp_path), env=dict(os.environ),
+                         timeout=30)
+    assert (proc.returncode, proc.stdout, proc.stderr) == (0, "HI\n", "e\n")
+
+
+@pytest.mark.parametrize("stream", ["stdout", "stderr"])
+def test_bounded_run_stops_a_runaway_stream(tmp_path, stream):
+    code = f"import sys\nwhile True: sys.{stream}.write('x' * 65536); sys.{stream}.flush()"
+    with pytest.raises(d.StreamOverflow):
+        d.bounded_run([sys.executable, "-c", code], input=None, cwd=str(tmp_path), env=dict(os.environ),
+                      timeout=30, limit=1_000_000)
+
+
+def test_bounded_run_times_out(tmp_path):
+    with pytest.raises(subprocess.TimeoutExpired):
+        d.bounded_run([sys.executable, "-c", "import time; time.sleep(30)"], input=None, cwd=str(tmp_path),
+                      env=dict(os.environ), timeout=1)
+
+
+def test_an_overflowing_stream_saves_nothing(tmp_path):
+    def runner(cmd, **kw):
+        raise d.StreamOverflow
+    with pytest.raises(d.Stop, match="stream over"):
+        d.call_model("codex", "P", tmp_path / "a.out", tmp_path / "c.jsonl", "c1", runner=runner)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["a.out.lock", "c.jsonl"]
+
+
+def test_the_helper_does_not_forward_an_http_200_error_body(monkeypatch, capsys):
+    body = json.dumps({"error": {"status": "INVALID_ARGUMENT", "message": "key KEY123 echoed"}}).encode()
+    rc, out = _helper(monkeypatch, _Opener(_Response(body)))
+    err = capsys.readouterr().err
+    assert rc == 1 and out == b"" and "API error INVALID_ARGUMENT" in err and "KEY123" not in err
+
+
+def test_finish_reasons_and_part_keys_are_not_echoed_raw():
+    text, problem = d.gemini_api_answer(gemini_body("x", finish="X\n\u001b[2J"))
+    assert problem == "finish reason (unrecognized)"
+    text, problem = d.gemini_api_answer(gemini_body("x", parts=[{"text": "x", "k\u001b[2J": 1}]))
+    assert problem == "parts other than the reply: (unrecognized key)"
+    assert d.gemini_api_answer(gemini_body("x", finish="MAX_TOKENS"))[1] in d.RESEND_FAILURES
+
+
+def test_stop_messages_reach_the_terminal_escaped(monkeypatch, capsys):
+    def boom(_args):
+        raise d.Stop("bad\n\u001b[2Jfake line")
+    monkeypatch.setattr(d, "cmd_score", boom)
+    assert d.main(["score", "--batches", "b", "--runs", "r", "--out", "o"]) == 2
+    err = capsys.readouterr().err
+    assert "\u001b" not in err and err.count("\n") == 1 and "\\x1b" in err
+
+
+def test_side_files_refuse_a_symlink_without_o_nofollow(tmp_path, monkeypatch):
+    target = tmp_path / "target.txt"
+    target.write_text("keep", encoding="utf-8")
+    link = tmp_path / "b001.a1.out.err"
+    link.symlink_to(target)
+    monkeypatch.delattr(d.os, "O_NOFOLLOW")
+    with pytest.raises(d.Stop, match="symlink"):
+        d._write_aux(link, "overwrite")
+    assert target.read_text(encoding="utf-8") == "keep"
