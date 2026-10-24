@@ -111,6 +111,21 @@ def test_retired_paywall_only_rule_cannot_return(tmp_path: Path, rel: str) -> No
     )
 
 
+@pytest.mark.parametrize("rel", tuple(guard.RETIRED_ACCESS_RULES))
+def test_reordered_multi_source_verdict_order_is_rejected(
+    tmp_path: Path, rel: str
+) -> None:
+    root = _tree(tmp_path)
+    _replace_all(
+        root,
+        rel,
+        "MAJOR_DISTORTION, UNVERIFIABLE, MINOR_DISTORTION, UNVERIFIABLE_ACCESS, VERIFIED",
+        "MAJOR_DISTORTION, UNVERIFIABLE, UNVERIFIABLE_ACCESS, MINOR_DISTORTION, VERIFIED",
+    )
+    errors = guard.run_checks(root)
+    assert any(rel in error and "missing #1006 cited-version rule" in error for error in errors)
+
+
 def test_schema_state_synonym_is_rejected(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     path = root / guard.SCHEMA_REL
