@@ -1088,3 +1088,21 @@ def test_a_format_retry_that_hits_max_tokens_is_resent_and_scored(tmp_path, smal
     assert set(d.load_replicate(work / "runs", "gemini", 1, batches[:1])) == set(ids)
     d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
     assert n["calls"] == 3  # a resumed run adds no call
+
+
+def test_a_partial_answer_cut_by_max_tokens_is_resent_too():
+    body = gemini_body("half an answer", finish="MAX_TOKENS", parts=[{"text": "half an answer"}])
+    assert d.gemini_api_answer(body)[1] == d.MAX_TOKENS_FAILURE
+
+
+def test_a_resume_stops_on_a_first_output_with_no_completed_call(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    one_call = d.worst_case_usd(d.batch_prompt(d.load_build(work / "batches")[0][0]))
+    judge = MaxTokensFirst({1})
+    with pytest.raises(d.Stop, match="budget_exhausted"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=one_call * 1.2, limit=1)
+    (work / "runs" / "gemini" / "r1" / "b001.a1.out").write_text("copied in\n", encoding="utf-8")
+    with pytest.raises(d.Stop, match="no completed call"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)
+    assert judge.n == 1

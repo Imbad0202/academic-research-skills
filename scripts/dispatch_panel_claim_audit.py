@@ -105,8 +105,9 @@ GEMINI_PRICE_UNTIL = "2026-11-30"
 GEMINI_CAP_MAX_USD = 100.0
 # Above the model's input plus output limits; a larger count is unreadable usage.
 USAGE_MAX_TOKENS = 10_000_000
-# Plan v5: a Gemini call that spends its whole output limit (thinking included)
-# and returns no answer is sent once more, unchanged, under the call id + "-r".
+# Plan v5: a Gemini call that ends with finish reason MAX_TOKENS (its whole
+# output limit spent, thinking included, with or without partial text) is sent
+# once more, unchanged, under the call id + "-r".
 MAX_TOKENS_FAILURE = "finish reason MAX_TOKENS"
 # The label a call log records per transport. The Gemini API judge gets its own
 # label, so a logged call of the earlier agy "gemini" transport is never reused.
@@ -979,6 +980,11 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
     def call(prompt: str, out_file: Path, call_id: str, attempt: int = 1) -> str:
         """One attempt; a Gemini attempt that failed on its output limit is
         sent once more (plan v5). A resend that failed stops the run."""
+        # The first attempt's own output is checked first, as scoring does: an
+        # output with no matching completed call stops here, before any resend.
+        done = completed_output(log, call_id, out_file, prompt, judge)
+        if done is not None:
+            return done
         if not (judge == "gemini" and failed_on_max_tokens(log, call_id, prompt)):
             try:
                 return paid_call(prompt, out_file, call_id, attempt)
