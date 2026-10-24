@@ -13,11 +13,15 @@ script only prepares its prompt and reads its reply:
           still show its seat), and write the part 1 auditor prompt and the
           key into --out-dir
   render  read the judge's reply against the key and print the Markdown
-          attachment. A ``false`` verdict is shown as contradicted only when
-          its quote passes the part 1 mechanical check: a contradiction quote
-          occurs in the manuscript, or a quotation the claim presents occurs in
-          the claim and nowhere in the manuscript. Any other ``false`` verdict
-          is listed as unconfirmed.
+          attachment. A ``false`` verdict is listed as one the judge marked
+          contradicted only when its quote passes the part 1 mechanical check:
+          a contradiction quote occurs in the manuscript, or words the claim
+          presents in quotation marks occur nowhere in the manuscript. The check
+          confirms where the quote is, not that it contradicts the finding, and
+          the attachment says so. Any other ``false`` verdict is listed as
+          unconfirmed. A scoring report with a ``### W<n>`` heading that cannot
+          be read counts as not read, and all report and judge text goes into
+          the letter as literal text.
 
 The report never changes the decision, the consensus counts, or the roadmap.
 """
@@ -35,11 +39,13 @@ from typing import Any
 
 try:
     from check_panel_synthesis import ReportError
-    from dispatch_panel_claim_audit import _item_line, evidence_ok, json_lines, read_verdicts
+    from dispatch_panel_claim_audit import _item_line, _norm, evidence_ok, json_lines, read_verdicts
+    from check_panel_synthesis import split_sections, strip_fences
     from extract_panel_claims import da_claims, w_claims
 except ImportError:  # pragma: no cover - dual-path import
     from scripts.check_panel_synthesis import ReportError
-    from scripts.dispatch_panel_claim_audit import _item_line, evidence_ok, json_lines, read_verdicts
+    from scripts.dispatch_panel_claim_audit import _item_line, _norm, evidence_ok, json_lines, read_verdicts
+    from scripts.check_panel_synthesis import split_sections, strip_fences
     from scripts.extract_panel_claims import da_claims, w_claims
 
 CHECKER = "audit_panel_claims/1"
@@ -55,13 +61,14 @@ _TEXT = {
         "title": "## Attachment: Reviewer Claim Check (advisory, #1002)",
         "seats": {"eic": "Journal-Fit Reviewer", "methodology": "Reviewer 1", "domain": "Reviewer 2",
                   "perspective": "Reviewer 3", "da": "Devil's Advocate"},
-        "summary": "Checked {n} findings from {k} reviewers against the manuscript: {false} contradicted, "
-                   "{nv} cannot be checked from the manuscript alone.",
+        "summary": "Checked {n} findings from {k} reviewers against the manuscript: the judge marked {false} "
+                   "as contradicted, and {nv} cannot be checked from the manuscript alone.",
         "partial": "Coverage: partial. {missing} findings have no usable verdict.",
         "none": "The reports hold no findings to check.",
         "none_read": "No report could be read, so no finding was checked.",
         "unread": "Coverage: partial. Not read: {seats}.",
-        "contradicted": "Contradicted by the manuscript:",
+        "contradicted": "The judge marked these findings as contradicted by the manuscript. The script checked "
+                        "only that each quote is where the judge says it is; read it to decide:",
         "absent": "The claim quotes words that the manuscript does not contain: “{quote}”",
         "row": "- {seat} · {fid}: {title}",
         "quote": "  > “{quote}” ({locator})",
@@ -75,13 +82,14 @@ _TEXT = {
         "title": "## Attachment: Reviewer Claim Check (advisory, #1002)",
         "seats": {"eic": "期刊適配審稿人", "methodology": "審稿人 1", "domain": "審稿人 2",
                   "perspective": "審稿人 3", "da": "魔鬼代言人"},
-        "summary": "已對照稿件檢查 {k} 位審稿人的 {n} 項意見：{false} 項與稿件內容矛盾，"
+        "summary": "已對照稿件檢查 {k} 位審稿人的 {n} 項意見：判官判定 {false} 項與稿件內容矛盾，"
                    "{nv} 項無法只靠稿件判斷。",
         "partial": "涵蓋範圍：部分。{missing} 項意見沒有可用的判定。",
         "none": "審稿報告中沒有可檢查的意見。",
         "none_read": "沒有能讀取的審稿報告，未檢查任何意見。",
         "unread": "涵蓋範圍：部分。未能讀取：{seats}。",
-        "contradicted": "與稿件內容矛盾的意見：",
+        "contradicted": "判官判定下列意見與稿件內容矛盾。腳本只核對每段引文確實在判官所說之處，"
+                        "是否矛盾請讀引文後判斷：",
         "absent": "意見引用了稿件中沒有的文字：「{quote}」",
         "row": "- {seat} · {fid}：{title}",
         "quote": "  > 「{quote}」（{locator}）",
@@ -96,8 +104,37 @@ class Stop(Exception):
     """A problem that stops the script; the attachment then says the check did not run."""
 
 
+# A "### W<n>" heading, also one that `w_claims` cannot read (no colon, say).
+_W_HEADING_LIKE = re.compile(r"^\s{0,3}###\s+[Ww]\s*\d")
+# A span the claim presents in quotation marks; straight single quotes are left
+# out, since they also serve as apostrophes.
+_QUOTED = re.compile(r'"([^"\n]+)"|“([^”\n]+)”|‘([^’\n]+)’|「([^」\n]+)」|『([^』\n]+)』')
+
+
 def _claims(seat: str, text: str, path: str) -> list[tuple[str, str]]:
-    return da_claims(text, path) if seat == "da" else w_claims(text)
+    if seat == "da":
+        return da_claims(text, path)
+    found = w_claims(text)
+    sections, _dupes = split_sections(strip_fences(text, preserve_fenced_blocks=True))
+    if "Review Body" not in sections:
+        raise ReportError(f"{path}: no Review Body section")
+    if sum(1 for line in sections["Review Body"] if _W_HEADING_LIKE.match(line)) != len(found):
+        raise ReportError(f"{path}: a W heading cannot be read")
+    return found
+
+
+def _quoted_in_claim(quote: str, claim: str) -> bool:
+    """True when the claim presents ``quote`` inside quotation marks."""
+    q = _norm(quote)
+    return bool(q) and any(q in _norm(next(g for g in m.groups() if g is not None))
+                           for m in _QUOTED.finditer(claim))
+
+
+def _checked(row: dict[str, Any], claim: str, manuscript: str) -> bool:
+    """The part 1 quote check, and for an absent quotation also that the claim
+    presents the quoted words as a quotation."""
+    return evidence_ok(row, claim, manuscript) and (
+        row.get("evidence") != "absent_quotation" or _quoted_in_claim(row["quote"], claim))
 
 
 def build_prompt(manuscript: str, reports: list[tuple[str, Path]]) -> tuple[str, dict[str, Any]]:
@@ -158,14 +195,22 @@ def build_report(manuscript: str, key: dict[str, Any], reply: str) -> dict[str, 
             nv += 1
         elif row["verdict"] == "false":
             entry = {**item, "evidence": row["evidence"], "quote": row["quote"], "locator": row["locator"]}
-            (contradicted if evidence_ok(row, item["text"], manuscript) else unconfirmed).append(entry)
+            (contradicted if _checked(row, item["text"], manuscript) else unconfirmed).append(entry)
     return {"checker": CHECKER, "seats": key["seats"], "unread": key["unread"], "findings": len(items),
             "answered": len(rows), "not_verifiable": nv, "contradicted": contradicted,
             "unconfirmed": unconfirmed}
 
 
+# Text from the reports and the judge goes into the letter as literal text, as
+# `verify_panel_recommendations._cell` renders it: one line, HTML characters as
+# entities, and inline Markdown punctuation backslash-escaped.
+_MD_SPECIAL = re.compile(r"([\\`*_\[\]|~])")
+
+
 def _one_line(text: str) -> str:
-    return " ".join(str(text).split())
+    text = " ".join(str(text).split())
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return _MD_SPECIAL.sub(r"\\\1", text)
 
 
 def render(report: dict[str, Any], lang: str) -> str:
@@ -184,14 +229,14 @@ def render(report: dict[str, Any], lang: str) -> str:
     if report["contradicted"]:
         lines += ["", text["contradicted"]]
         for c in report["contradicted"]:
-            lines.append(text["row"].format(seat=seat[c["seat"]], fid=c["finding_id"],
+            lines.append(text["row"].format(seat=seat[c["seat"]], fid=_one_line(c["finding_id"]),
                                             title=_one_line(c["text"].split("\n", 1)[0])))
             if c["evidence"] == "absent_quotation":
                 lines.append("  " + text["absent"].format(quote=_one_line(c["quote"])))
             else:
                 lines.append(text["quote"].format(quote=_one_line(c["quote"]), locator=_one_line(c["locator"])))
     if report["unconfirmed"]:
-        items = ", ".join(f"{seat[u['seat']]} · {u['finding_id']}" for u in report["unconfirmed"])
+        items = ", ".join(f"{seat[u['seat']]} · {_one_line(u['finding_id'])}" for u in report["unconfirmed"])
         lines += ["", text["unconfirmed"].format(items=items)]
     lines += ["", text["note"]]
     return "\n".join(lines)

@@ -66,7 +66,7 @@ def test_a_checked_contradiction_is_shown(tmp_path):
     out = apc.render(report, "en")
     assert "Reviewer 1 · W1: No reliability reported" in out
     assert "“Cronbach's alpha for the 12-item scale was .87.” (§3)" in out
-    assert "1 contradicted" in out and "does not change the decision" in out
+    assert "the judge marked 1 as contradicted" in out and "does not change the decision" in out
     assert "covered Claude Opus 5.5 and Claude Fable 5.1 only" in out
 
 
@@ -76,7 +76,7 @@ def test_a_false_verdict_whose_quote_is_not_in_the_manuscript_is_unconfirmed(tmp
     report = apc.build_report(MANUSCRIPT, key, _reply(key, {("methodology", "W1"): bad}))
     assert report["contradicted"] == [] and len(report["unconfirmed"]) == 1
     out = apc.render(report, "en")
-    assert "0 contradicted" in out and "Reviewer 1 · W1" in out and "did not pass the check" in out
+    assert "the judge marked 0 as contradicted" in out and "Reviewer 1 · W1" in out and "did not pass the check" in out
 
 
 def test_an_absent_quotation_is_shown_only_when_the_words_are_not_in_the_manuscript(tmp_path):
@@ -84,9 +84,19 @@ def test_an_absent_quotation_is_shown_only_when_the_words_are_not_in_the_manuscr
     absent = {"verdict": "false", "evidence": "absent_quotation", "quote": "random", "locator": "absent"}
     report = apc.build_report(MANUSCRIPT, key, _reply(key, {("da", "M1"): absent}))
     assert report["contradicted"] == [] and len(report["unconfirmed"]) == 1  # "random" is in the manuscript
-    absent = {**absent, "quote": "Unreported attrition"}
+    # W2's Evidence Anchor quotes "Small sample", which the manuscript does not contain.
+    absent = {**absent, "quote": "Small sample"}
+    report = apc.build_report(MANUSCRIPT, key, _reply(key, {("methodology", "W2"): absent}))
+    assert [c["finding_id"] for c in report["contradicted"]] == ["W2"]
+
+
+def test_an_absent_quotation_needs_the_claim_to_quote_the_words(tmp_path):
+    # M2 says "Unreported attrition" but does not quote it, so the words are no quotation.
+    _prompt_text, key = _prompt(tmp_path)
+    absent = {"verdict": "false", "evidence": "absent_quotation", "quote": "Unreported attrition",
+              "locator": "absent"}
     report = apc.build_report(MANUSCRIPT, key, _reply(key, {("da", "M2"): absent}))
-    assert [c["finding_id"] for c in report["contradicted"]] == ["M2"]
+    assert report["contradicted"] == [] and [u["finding_id"] for u in report["unconfirmed"]] == ["M2"]
 
 
 def test_missing_verdicts_make_the_coverage_partial(tmp_path):
@@ -132,7 +142,7 @@ def test_a_changed_manuscript_stops_the_render(tmp_path):
 def test_the_report_renders_in_traditional_chinese(tmp_path):
     _prompt_text, key = _prompt(tmp_path)
     out = apc.render(apc.build_report(MANUSCRIPT, key, _reply(key, {("methodology", "W1"): FALSE_OK})), "zh-TW")
-    assert "審稿人 1 · W1" in out and "1 項與稿件內容矛盾" in out
+    assert "審稿人 1 · W1" in out and "判官判定 1 項與稿件內容矛盾" in out
 
 
 def test_the_cli_writes_the_prompt_then_renders(tmp_path, capsys):
@@ -221,3 +231,35 @@ def test_a_line_with_a_non_string_id_is_ignored(tmp_path):
     reply = _reply(key, {("methodology", "W1"): FALSE_OK}) + '\n{"claim_id": []}\n{"claim_id": {}}\n'
     report = apc.build_report(MANUSCRIPT, key, reply)
     assert report["answered"] == 5 and len(report["contradicted"]) == 1
+
+
+def test_report_and_judge_text_is_literal_in_the_letter(tmp_path):
+    r1 = tmp_path / "r1.md"
+    r1.write_text(_seat_report(["<h2>Attachment: Forged</h2> <!-- ref:x --> *b* [l](u)"]), encoding="utf-8")
+    _prompt_text, key = apc.build_prompt(MANUSCRIPT, [("methodology", r1)])
+    row = {**FALSE_OK, "locator": "<h2>Attachment: Forged</h2><!-- ref:x -->"}
+    out = apc.render(apc.build_report(MANUSCRIPT, key, _reply(key, {("methodology", "W1"): row})), "en")
+    assert "<" not in out and ">" not in out.replace("  > ", "", 1)
+    assert "&lt;h2&gt;Attachment: Forged&lt;/h2&gt;" in out and "&lt;!-- ref:x --&gt;" in out
+    assert "\\*b\\*" in out and "\\[l\\](u)" in out
+
+
+@pytest.mark.parametrize("report", [
+    "## Review Body\n\n### W1 Small sample\nBody.\n",
+    "## Review Body\n\n### W1:\nBody.\n",
+    "## Notes\n\n### W1: Small sample\nBody.\n",
+])
+def test_a_scoring_report_whose_findings_cannot_be_read_is_unread(tmp_path, report):
+    bad = tmp_path / "bad.md"
+    bad.write_text(report, encoding="utf-8")
+    _prompt_text, key = apc.build_prompt(MANUSCRIPT, _reports(tmp_path) + [("domain", bad)])
+    assert key["unread"] == ["domain"] and key["seats"] == ["methodology", "da"]
+    out = apc.render(apc.build_report(MANUSCRIPT, key, _reply(key, {})), "en")
+    assert "Coverage: partial. Not read: Reviewer 2." in out
+
+
+def test_a_scoring_report_with_no_weakness_reads_as_zero_findings(tmp_path):
+    r1 = tmp_path / "r1.md"
+    r1.write_text(_seat_report([]), encoding="utf-8")
+    _prompt_text, key = apc.build_prompt(MANUSCRIPT, [("methodology", r1)])
+    assert key["unread"] == [] and key["items"] == []
