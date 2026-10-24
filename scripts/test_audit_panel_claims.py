@@ -45,7 +45,7 @@ FALSE_OK = {"verdict": "false", "evidence": "contradiction",
             "quote": "Cronbach's alpha for the 12-item scale was .87.", "locator": "§3"}
 
 
-def test_the_prompt_holds_every_finding_and_hides_the_seat(tmp_path):
+def test_the_prompt_holds_every_finding_without_the_seat_label(tmp_path):
     prompt, key = _prompt(tmp_path)
     assert len(key["items"]) == 5  # two W findings, one CRITICAL row, two MAJOR rows
     assert [i["claim_id"] for i in key["items"]] == ["c001", "c002", "c003", "c004", "c005"]
@@ -214,3 +214,10 @@ def test_an_unwritable_out_dir_stops_with_exit_2(tmp_path, capsys):
     assert apc.main(["prompt", "--manuscript", str(tmp_path / "ms.md"), "--out-dir", str(tmp_path / "file" / "o"),
                      "--report", f"{seat}={path}"]) == 2
     assert capsys.readouterr().err.startswith("STOP: cannot write to")
+
+
+def test_a_line_with_a_non_string_id_is_ignored(tmp_path):
+    _prompt_text, key = _prompt(tmp_path)
+    reply = _reply(key, {("methodology", "W1"): FALSE_OK}) + '\n{"claim_id": []}\n{"claim_id": {}}\n'
+    report = apc.build_report(MANUSCRIPT, key, reply)
+    assert report["answered"] == 5 and len(report["contradicted"]) == 1

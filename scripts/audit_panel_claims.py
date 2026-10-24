@@ -147,7 +147,7 @@ def build_report(manuscript: str, key: dict[str, Any], reply: str) -> dict[str, 
     ids = [i["claim_id"] for i in items]
     rows, _problem = read_verdicts(reply, ids) if items else ({}, None)
     # An id answered more than once has no usable verdict, whichever line came first.
-    seen = Counter(r.get("claim_id") for r in json_lines(reply))
+    seen = Counter(r["claim_id"] for r in json_lines(reply) if isinstance(r.get("claim_id"), str))
     rows = {cid: row for cid, row in rows.items() if seen[cid] == 1}
     contradicted, unconfirmed, nv = [], [], 0
     for item in items:
