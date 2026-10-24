@@ -108,8 +108,12 @@ GEMINI_CAP_MAX_USD = 100.0
 USAGE_MAX_TOKENS = 10_000_000
 # Plan v5: a Gemini call that ends with finish reason MAX_TOKENS (its whole
 # output limit spent, thinking included, with or without partial text) is sent
-# once more, unchanged, under the call id + "-r".
+# once more, unchanged, under the call id + "-r". Plan v8 adds
+# MALFORMED_RESPONSE, a provider-side generation failure. Safety and other
+# finish reasons still stop the run.
 MAX_TOKENS_FAILURE = "finish reason MAX_TOKENS"
+RESEND_REASONS = frozenset({"MAX_TOKENS", "MALFORMED_RESPONSE"})
+RESEND_FAILURES = frozenset(f"finish reason {r}" for r in RESEND_REASONS)
 # The label a call log records per transport. The Gemini API judge gets its own
 # label, so a logged call of the earlier agy "gemini" transport is never reused.
 LOG_LABELS = {"gemini": "gemini_api"}
@@ -278,20 +282,21 @@ def _resend(call_id: str, out_file: Path) -> tuple[str, Path]:
     return f"{call_id}-r", out_file.with_name(out_file.name.replace(".out", ".r.out"))
 
 
-def failed_on_max_tokens(calls_log: Path, call_id: str, prompt: str) -> bool:
+def failed_resendable(calls_log: Path, call_id: str, prompt: str) -> bool:
     """The last logged attempt of ``call_id`` is a Gemini API call with this
-    prompt that failed on its output limit; only then is a resend the same call."""
+    prompt that failed with a resendable finish reason (RESEND_REASONS); only
+    then is a resend the same call."""
     entries = _logged(calls_log, call_id)
-    return (bool(entries) and entries[-1].get("status") == "failed" and entries[-1].get("error") == MAX_TOKENS_FAILURE
+    return (bool(entries) and entries[-1].get("status") == "failed" and entries[-1].get("error") in RESEND_FAILURES
             and entries[-1].get("transport") == LOG_LABELS["gemini"]
             and entries[-1].get("prompt_sha256") == _sha(prompt))
 
 
 def attempt_output(calls_log: Path, call_id: str, out_file: Path, prompt: str, transport: str) -> str | None:
-    """``completed_output`` for one attempt, or for its plan-v5 resend when the
-    Gemini attempt failed on its output limit."""
+    """``completed_output`` for one attempt, or for its resend when the Gemini
+    attempt failed with a resendable finish reason (plans v5, v8)."""
     text = completed_output(calls_log, call_id, out_file, prompt, transport)
-    if text is None and transport == "gemini" and failed_on_max_tokens(calls_log, call_id, prompt):
+    if text is None and transport == "gemini" and failed_resendable(calls_log, call_id, prompt):
         text = completed_output(calls_log, *_resend(call_id, out_file), prompt, transport)
     return text
 
@@ -419,8 +424,8 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
     # so a MAX_TOKENS reply that holds one is never resent (plan v5).
     content = candidate.get("content")
     parts = content.get("parts") if isinstance(content, dict) else None
-    if parts is None and candidate.get("finishReason") == "MAX_TOKENS":
-        parts = []  # an empty MAX_TOKENS reply may leave out its content
+    if parts is None and candidate.get("finishReason") in RESEND_REASONS:
+        parts = []  # an empty resendable reply may leave out its content
     if not isinstance(parts, list) or not all(isinstance(p, dict) for p in parts):
         return "", "unreadable reply parts"
     other = sorted({k for part in parts for k in part if k not in GEMINI_ANSWER_PART_KEYS})
@@ -981,22 +986,22 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
         return call_model(judge, prompt, out_file, log, call_id, attempt=attempt, runner=runner)
 
     def call(prompt: str, out_file: Path, call_id: str, attempt: int = 1) -> str:
-        """One attempt; a Gemini attempt that failed on its output limit is
-        sent once more (plan v5). A resend that failed stops the run."""
+        """One attempt; a Gemini attempt that failed with a resendable finish
+        reason is sent once more (plans v5, v8). A resend that failed stops the run."""
         # The first attempt's own output is checked first, as scoring does: an
         # output with no matching completed call stops here, before any resend.
         done = completed_output(log, call_id, out_file, prompt, judge)
         if done is not None:
             return done
-        if not (judge == "gemini" and failed_on_max_tokens(log, call_id, prompt)):
+        if not (judge == "gemini" and failed_resendable(log, call_id, prompt)):
             try:
                 return paid_call(prompt, out_file, call_id, attempt)
             except Stop:
-                if not (judge == "gemini" and failed_on_max_tokens(log, call_id, prompt)):
+                if not (judge == "gemini" and failed_resendable(log, call_id, prompt)):
                     raise
         resend_id, resend_file = _resend(call_id, out_file)
         if any(e.get("status") == "failed" for e in _logged(log, resend_id)):
-            raise Stop(f"{resend_id}: the one resend after {MAX_TOKENS_FAILURE} failed")
+            raise Stop(f"{resend_id}: the one resend after {_logged(log, call_id)[-1].get('error')} failed")
         return paid_call(prompt, resend_file, resend_id, attempt)
 
     # One paid run at a time per runs directory, so two replicates cannot both

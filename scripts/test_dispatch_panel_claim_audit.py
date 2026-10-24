@@ -1056,10 +1056,10 @@ def test_a_max_tokens_failure_with_another_prompt_is_not_resent(tmp_path):
     log = tmp_path / "calls.jsonl"
     d._log(log, {"call_id": "c1", "sequence_index": 1, "status": "failed", "transport": "gemini_api",
                  "prompt_sha256": d._sha("OLD"), "error": d.MAX_TOKENS_FAILURE})
-    assert d.failed_on_max_tokens(log, "c1", "OLD") and not d.failed_on_max_tokens(log, "c1", "NEW")
+    assert d.failed_resendable(log, "c1", "OLD") and not d.failed_resendable(log, "c1", "NEW")
     d._log(log, {"call_id": "c2", "sequence_index": 2, "status": "failed", "transport": "gemini",
                  "prompt_sha256": d._sha("OLD"), "error": d.MAX_TOKENS_FAILURE})
-    assert not d.failed_on_max_tokens(log, "c2", "OLD")  # an agy-era record
+    assert not d.failed_resendable(log, "c2", "OLD")  # an agy-era record
 
 
 def test_a_format_retry_that_hits_max_tokens_is_resent_and_scored(tmp_path, small_plan, capsys):
@@ -1115,3 +1115,38 @@ def test_a_max_tokens_reply_without_content_is_resent_too(candidate):
     assert d.gemini_api_answer(body)[1] == d.MAX_TOKENS_FAILURE
     stop = json.dumps({"candidates": [{"finishReason": "STOP"}], "modelVersion": "gemini-4-argon"})
     assert d.gemini_api_answer(stop)[1] == "unreadable reply parts"
+
+
+def test_a_malformed_response_is_resent_once_and_safety_is_not(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    good, n = FakeJudge(honest), {"calls": 0}
+
+    def runner(cmd, **kw):
+        n["calls"] += 1
+        if n["calls"] == 1:
+            body = json.dumps({"candidates": [{"finishReason": "MALFORMED_RESPONSE", "index": 0,
+                                               "content": {"parts": [{"text": "", "thoughtSignature": "s"}]}}],
+                               "modelVersion": "gemini-4-argon",
+                               "usageMetadata": {"promptTokenCount": 10, "totalTokenCount": 10}})
+            return subprocess.CompletedProcess(cmd, 0, stdout=body, stderr="")
+        return good(cmd, **kw)
+    d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
+    log = work / "runs" / "gemini" / "r1" / "calls.jsonl"
+    assert [e["call_id"] for e in d.read_jsonl(log) if e["status"] == "completed"] == ["gemini-r1-b001-a1-r"]
+    assert d.gemini_api_answer(json.dumps({"candidates": [{"finishReason": "MALFORMED_RESPONSE"}],
+                                           "modelVersion": "gemini-4-argon"}))[1] == "finish reason MALFORMED_RESPONSE"
+    assert "finish reason SAFETY" not in d.RESEND_FAILURES
+
+
+def test_a_second_malformed_response_names_its_reason_and_stops(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+
+    def runner(cmd, **kw):
+        body = json.dumps({"candidates": [{"finishReason": "MALFORMED_RESPONSE"}], "modelVersion": "gemini-4-argon"})
+        return subprocess.CompletedProcess(cmd, 0, stdout=body, stderr="")
+    with pytest.raises(d.Stop):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
+    with pytest.raises(d.Stop, match="the one resend after finish reason MALFORMED_RESPONSE failed"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)

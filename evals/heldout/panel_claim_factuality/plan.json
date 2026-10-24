@@ -1,6 +1,6 @@
 {
   "suite": "panel_claim_factuality",
-  "plan_version": "7",
+  "plan_version": "8",
   "issue": "#1002",
   "claims": {
     "extractor": "scripts/extract_panel_claims.py",
@@ -26,7 +26,7 @@
       "model_id": "gemini-4-argon-medium",
       "model_family": "google",
       "api_model": "gemini-4-argon",
-      "settings": "Gemini API generateContent (paid key from GEMINI_API_KEY, header only), model gemini-4-argon, thinkingLevel medium (plan v7; high in v4-v6), maxOutputTokens 32768, no tools, no system instruction, one user message holding the batch prompt, run by `dispatch_panel_claim_audit.py gemini-api-call` in an empty working directory; an error body, another model version, a finish reason other than STOP, or a part other than text is a transport failure; a call that ends with finish reason MAX_TOKENS is sent once more, unchanged, and a second failure stops the run (plan v5)"
+      "settings": "Gemini API generateContent (paid key from GEMINI_API_KEY, header only), model gemini-4-argon, thinkingLevel medium (plan v7; high in v4-v6), maxOutputTokens 32768, no tools, no system instruction, one user message holding the batch prompt, run by `dispatch_panel_claim_audit.py gemini-api-call` in an empty working directory; an error body, another model version, a finish reason other than STOP, or a part other than text is a transport failure; a call that ends with finish reason MAX_TOKENS (plan v5) or MALFORMED_RESPONSE (plan v8) is sent once more, unchanged, and a second failure stops the run"
     }
   },
   "replicates": 2,
@@ -80,7 +80,7 @@
     "the claim inventory differs from expected_counts or has an extraction problem: stop before any judge call",
     "fewer than min_accepted_per_fixture accepted pairs for any fixture, or any other pair problem: stop before any judge call on claims",
     "a batch whose output cannot be read after its one retry: stop the run",
-    "a transport failure, decided from the CLI's event stream or the API response fields and never from searching its text: a nonzero exit, a failed turn or error event, no completed turn or successful result, a finish reason other than STOP, an empty reply, or any step other than the reply (a command, a file read, a tool, a skill, a subagent, a function call): stop the run, never retry, except the Gemini judge's one resend after MAX_TOKENS (v5)",
+    "a transport failure, decided from the CLI's event stream or the API response fields and never from searching its text: a nonzero exit, a failed turn or error event, no completed turn or successful result, a finish reason other than STOP, an empty reply, or any step other than the reply (a command, a file read, a tool, a skill, a subagent, a function call): stop the run, never retry, except the Gemini judge's one resend after MAX_TOKENS (v5) or MALFORMED_RESPONSE (v8)",
     "an interrupted call (a lock without an output), or an input changed since the build: stop",
     "no replacement model or transport without a new plan version"
   ],
@@ -196,6 +196,19 @@
       "change": "thinkingLevel medium; maxOutputTokens back to 32,768; judge label gemini-4-argon-medium",
       "reason": "the v6 check of b005 stopped at 32,768 tokens with CONTINUATION: a non-streaming request returns at most 32K; Google's guidance is to lower the thinking level",
       "v6_outputs": "one unscored check call"
+    },
+    {
+      "version": "8",
+      "date": "2026-10-24",
+      "files": [
+        "plan.json",
+        "scripts/dispatch_panel_claim_audit.py",
+        "scripts/test_dispatch_panel_claim_audit.py",
+        "PREREGISTRATION.md"
+      ],
+      "change": "the one resend also covers finish reason MALFORMED_RESPONSE",
+      "reason": "the v7 full run stopped at b078 on MALFORMED_RESPONSE, a provider-side failure with no output",
+      "v7_outputs": "77 completed batches of replicate 1, kept as a record; not scored"
     }
   ]
 }
