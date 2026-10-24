@@ -101,6 +101,8 @@ GEMINI_ANSWER_PART_KEYS = frozenset({"text", "thought", "thoughtSignature"})
 # the rates hold through GEMINI_PRICE_UNTIL and double after it.
 GEMINI_PRICE_IN, GEMINI_PRICE_OUT = 2.0e-6, 10.0e-6
 GEMINI_PRICE_UNTIL = "2026-11-30"
+# The plan's ceiling on any Gemini cap (PREREGISTRATION, Stop rules).
+GEMINI_CAP_MAX_USD = 100.0
 # The label a call log records per transport. The Gemini API judge gets its own
 # label, so a logged call of the earlier agy "gemini" transport is never reused.
 LOG_LABELS = {"gemini": "gemini_api"}
@@ -213,7 +215,22 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _redact(data: bytes, key: str) -> bytes:
-    return data.replace(key.encode("utf-8"), b"[redacted]")
+    """Remove the key from a body, also where JSON escapes spell it: a JSON
+    body is decoded, every string is redacted, and it is encoded again."""
+    try:
+        doc = json.loads(data.decode("utf-8"))
+    except ValueError:
+        return data.replace(key.encode("utf-8"), b"[redacted]")
+
+    def walk(value):
+        if isinstance(value, str):
+            return value.replace(key, "[redacted]")
+        if isinstance(value, list):
+            return [walk(v) for v in value]
+        if isinstance(value, dict):
+            return {walk(k): walk(v) for k, v in value.items()}
+        return value
+    return json.dumps(walk(doc), ensure_ascii=False).encode("utf-8")
 
 
 def cmd_gemini_api_call(_args, opener=None) -> int:
@@ -242,7 +259,10 @@ def cmd_gemini_api_call(_args, opener=None) -> int:
             return 0
         print(f"HTTP {status}", file=sys.stderr)
     except urllib.error.HTTPError as exc:
-        sys.stdout.buffer.write(_redact(exc.read(), key))
+        try:
+            sys.stdout.buffer.write(_redact(exc.read(), key))
+        except Exception:  # noqa: BLE001 - an unreadable error body is left out
+            pass
         print(f"HTTP {exc.code}", file=sys.stderr)
     except Exception as exc:  # noqa: BLE001 - any failure is a transport failure
         print(f"request failed ({type(exc).__name__})", file=sys.stderr)
@@ -256,10 +276,17 @@ def gemini_usage(body_text: str) -> dict[str, Any]:
         meta = json.loads(body_text).get("usageMetadata")
     except (ValueError, AttributeError):
         meta = None
+
+    def count(field: str, required: bool) -> int | None:
+        value = meta.get(field, None if required else 0)
+        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
     if not isinstance(meta, dict):
         return {"usd": None}
-    tokens_in = int(meta.get("promptTokenCount") or 0)
-    tokens_out = int(meta.get("candidatesTokenCount") or 0) + int(meta.get("thoughtsTokenCount") or 0)
+    tokens_in, answer, thoughts = (count("promptTokenCount", True), count("candidatesTokenCount", False),
+                                   count("thoughtsTokenCount", False))
+    if tokens_in is None or answer is None or thoughts is None:
+        return {"usd": None}
+    tokens_out = answer + thoughts
     return {"tokens_in": tokens_in, "tokens_out": tokens_out,
             "usd": round(tokens_in * GEMINI_PRICE_IN + tokens_out * GEMINI_PRICE_OUT, 6)}
 
@@ -928,23 +955,40 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
     """Send each batch to ``judge``. The Gemini judge needs ``cap_usd``: a new
     call starts only when the logged Gemini spend under ``out_root`` plus the
     call's worst case fits under it; otherwise the run stops (budget_exhausted)."""
-    if judge == "gemini":
-        if cap_usd is None:
-            raise Stop("the gemini judge is paid: give --cap-usd")
-        if _now()[:10] > GEMINI_PRICE_UNTIL:
-            raise Stop(f"the Gemini price table holds through {GEMINI_PRICE_UNTIL}; update it before a paid call")
+    if judge == "gemini" and not (cap_usd is not None and 0 < cap_usd <= GEMINI_CAP_MAX_USD):
+        raise Stop(f"the gemini judge is paid: give --cap-usd above 0 and at most {GEMINI_CAP_MAX_USD:.0f}")
     batches, _key = load_build(batches_dir)
     out_dir = guard(out_root) / judge / f"r{replicate}"
     log = out_dir / "calls.jsonl"
 
     def call(prompt: str, out_file: Path, call_id: str, attempt: int = 1) -> str:
         if judge == "gemini" and completed_output(log, call_id, out_file, prompt, judge) is None:
+            if _now()[:10] > GEMINI_PRICE_UNTIL:
+                raise Stop(f"the Gemini price table holds through {GEMINI_PRICE_UNTIL}; update it before a paid call")
             spent = gemini_spent(guard(out_root))
             if spent + worst_case_usd(prompt) > cap_usd:
                 raise Stop(f"budget_exhausted: {spent:.4f} USD logged, the next call can cost up to "
                            f"{worst_case_usd(prompt):.4f}, cap {cap_usd:.2f}")
         return call_model(judge, prompt, out_file, log, call_id, attempt=attempt, runner=runner)
 
+    # One paid run at a time per runs directory, so two replicates cannot both
+    # pass the cap check on the same remaining budget.
+    run_lock = guard(out_root) / judge / "run.lock"
+    if judge == "gemini":
+        run_lock.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.close(os.open(run_lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        except FileExistsError:
+            raise Stop(f"another gemini run holds {run_lock} (remove it if no run is active)") from None
+    try:
+        return _run_batches(judge, replicate, batches, limit, out_dir, call)
+    finally:
+        if judge == "gemini":
+            run_lock.unlink()
+
+
+def _run_batches(judge: str, replicate: int, batches: list[dict[str, Any]], limit: int | None, out_dir: Path,
+                 call: Callable[..., str]) -> dict[str, Any]:
     done = 0
     for batch in batches[: limit or None]:
         ids = [i["claim_id"] for i in batch["items"]]

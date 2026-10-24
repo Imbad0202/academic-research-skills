@@ -892,3 +892,64 @@ def test_build_can_require_the_batches_of_an_earlier_build(tmp_path, small_plan,
     (tmp_path / "m.json").write_text(json.dumps(changed), encoding="utf-8")
     third, rc = _build(tmp_path / "third", match_manifest=tmp_path / "m.json")
     assert rc == 1 and "differ" in capsys.readouterr().out and not (third / "batches").exists()
+
+
+# ---------- plan v4, round 2 ----------
+
+
+@pytest.mark.parametrize("cap", [None, 0, -1, float("nan"), float("inf"), 100.01])
+def test_a_cap_outside_the_plan_never_reaches_a_call(tmp_path, small_plan, capsys, cap):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    judge = FakeJudge(honest)
+    with pytest.raises(d.Stop, match="--cap-usd"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=cap)
+    assert judge.calls == []
+
+
+def test_a_second_paid_run_on_the_same_runs_directory_stops(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    (work / "runs" / "gemini").mkdir(parents=True)
+    (work / "runs" / "gemini" / "run.lock").write_text("", encoding="utf-8")
+    judge = FakeJudge(honest)
+    with pytest.raises(d.Stop, match="another gemini run"):
+        d.run_judge("gemini", 2, work / "batches", work / "runs", runner=judge, cap_usd=50)
+    assert judge.calls == []
+    (work / "runs" / "gemini" / "run.lock").unlink()
+    d.run_judge("gemini", 2, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)
+    assert not (work / "runs" / "gemini" / "run.lock").exists()  # released after the run
+
+
+def test_the_price_date_is_checked_before_each_new_paid_call_only(tmp_path, small_plan, capsys, monkeypatch):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    judge = FakeJudge(honest)
+    d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)
+    monkeypatch.setattr(d, "_now", lambda: "2026-12-01T00:00:00+00:00")
+    d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=1)  # reuse only
+    with pytest.raises(d.Stop, match="price table"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50, limit=2)
+    assert len(judge.calls) == 1
+
+
+@pytest.mark.parametrize("meta", [{}, {"promptTokenCount": "bad"}, {"promptTokenCount": -5},
+                                  {"promptTokenCount": 10, "thoughtsTokenCount": -100},
+                                  {"promptTokenCount": True}])
+def test_usage_that_cannot_be_priced_counts_at_the_worst_case(meta):
+    body = json.dumps({"usageMetadata": meta})
+    assert d.gemini_usage(body) == {"usd": None}
+
+
+def test_a_json_escaped_key_is_redacted_too():
+    out = d._redact(b'{"error": {"status": "K\\u0045Y123 failed"}}', "KEY123")
+    assert b"KEY123" not in out and json.loads(out)["error"]["status"] == "[redacted] failed"
+
+
+def test_an_http_error_whose_body_cannot_be_read_still_fails_cleanly(monkeypatch, capsys):
+    class Broken(__import__("io").BytesIO):
+        def read(self, *a):
+            raise ValueError("chunk KEY123")
+    err = d.urllib.error.HTTPError("u", 429, "x", {}, Broken())
+    rc, out = _helper(monkeypatch, _Opener(err))
+    assert rc == 1 and out == b"" and "KEY123" not in capsys.readouterr().err
