@@ -88,7 +88,7 @@ repository. Raw outputs are written once and never overwritten.
   only: the three synthetic manuscripts and the 805 claims that the reviewer
   panel wrote about them, and the build refuses any other inventory. Do not
   point the harness at a manuscript or claims from outside this repository.
-- The transports run on POSIX systems (macOS, Linux) only. Each call runs in
+- The transports run on POSIX systems only (tested on macOS). Each call runs in
   its own process group, which is killed when the call ends, so a child that
   a CLI leaves behind does not outlive the call; a child that starts its own
   session does.
