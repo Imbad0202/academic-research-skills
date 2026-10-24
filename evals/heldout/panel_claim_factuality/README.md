@@ -84,8 +84,10 @@ repository. Raw outputs are written once and never overwritten.
 - The codex judge runs with `-s read-only` in an empty directory, and a reply
   whose turn holds a command, a file read, or another tool item is a transport
   failure. That check runs after the call, so a read the CLI allowed has
-  already happened. The inputs are this repository's synthetic manuscripts
-  and panel outputs.
+  already happened. The suite's threat model covers this repository's inputs
+  only: the three synthetic manuscripts and the 805 claims that the reviewer
+  panel wrote about them, and the build refuses any other inventory. Do not
+  point the harness at a manuscript or claims from outside this repository.
 - The transports run on POSIX systems (macOS, Linux) only. Each call runs in
   its own process group, which is killed when the call ends, so a child that
   a CLI leaves behind does not outlive the call; a child that starts its own
