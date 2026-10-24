@@ -11,6 +11,7 @@ type: software
 authors:
   - family-names: Wu
     given-names: Cheng-I
+    orcid: https://orcid.org/0009-0008-9523-0103
 repository-code: https://github.com/Imbad0202/academic-research-skills
 url: https://github.com/Imbad0202/academic-research-skills
 abstract: >-
