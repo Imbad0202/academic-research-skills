@@ -90,8 +90,19 @@ def gemini_body(text, finish="STOP", parts=None, version="gemini-4-argon"):
                        "modelVersion": version, "usageMetadata": {"promptTokenCount": 1, "totalTokenCount": 2}})
 
 
+def claude_events(text, blocks=None, extra=(), result=None):
+    """claude -p stream-json output for a reply."""
+    blocks = [{"type": "text", "text": text}] if blocks is None else blocks
+    events = [{"type": "system", "subtype": "init"}, *extra,
+              {"type": "assistant", "uuid": "u1", "message": {"content": blocks}},
+              result or {"type": "result", "subtype": "success", "is_error": False}]
+    return "\n".join(json.dumps(e) for e in events) + "\n"
+
+
 def _reply(cmd, text):
-    if cmd[0] == "agy":
+    if cmd[0] == "claude":
+        out = claude_events(text)
+    elif cmd[0] == "agy":
         out = stream(text)
     elif "gemini-api-call" in cmd:
         out = gemini_body(text)
@@ -1492,3 +1503,134 @@ def test_a_ctrl_c_to_the_main_thread_kills_the_group_first(tmp_path):
         timer.cancel()
     assert _wait_gone(int(pid_file.read_text()))
     assert signal.SIGINT not in signal.pthread_sigmask(signal.SIG_BLOCK, set())
+
+
+# ---------- plan v10: the Claude contrast-only judges ----------
+
+
+@pytest.fixture
+def claude_token(tmp_path, monkeypatch):
+    token = tmp_path / "oauth_token"
+    token.write_text("tok-123\n", encoding="utf-8")
+    monkeypatch.setattr(d, "CLAUDE_TOKEN_FILE", token)
+    return token
+
+
+def test_the_claude_transport_is_fenced():
+    for judge, model in d.CLAUDE_JUDGES.items():
+        cmd, stdin = d.TRANSPORTS[judge]("PROMPT")
+        assert cmd[:4] == ["claude", "-p", "--model", model] and stdin == "PROMPT"
+        assert "--bare" not in cmd and "PROMPT" not in cmd
+        assert cmd[cmd.index("--tools") + 1] == "" and "--strict-mcp-config" in cmd
+        assert cmd[cmd.index("--output-format") + 1] == "stream-json"
+
+
+@pytest.mark.parametrize("stream_text,answer,problem", [
+    (claude_events("hi\n"), "hi\n", None),
+    (claude_events("", blocks=[{"type": "tool_use", "name": "Read"}]), "", "a tool use"),
+    (claude_events("x", result={"type": "result", "subtype": "error_during_execution", "is_error": True}),
+     "", "no successful result event"),
+    (claude_events("x", result={"type": "result", "subtype": "success", "is_error": True}),
+     "", "no successful result event"),
+    ("not json\n" + claude_events("x"), "", "1 unreadable event lines"),
+])
+def test_claude_answer(stream_text, answer, problem):
+    assert d.claude_answer(stream_text) == (answer, problem)
+
+
+def test_claude_answer_drops_superseded_and_retracted_messages():
+    events = [{"type": "assistant", "uuid": "a", "message": {"content": [{"type": "text", "text": "old "}]}},
+              {"type": "assistant", "uuid": "b", "supersedes": ["a"],
+               "message": {"content": [{"type": "text", "text": "new "}]}},
+              {"type": "assistant", "uuid": "c", "message": {"content": [{"type": "text", "text": "refused"}]}},
+              {"type": "system", "subtype": "model_refusal_fallback", "retracted_message_uuids": ["c"]},
+              {"type": "assistant", "uuid": "e", "message": {"content": [{"type": "text", "text": "end"}]}},
+              {"type": "result", "subtype": "success", "is_error": False}]
+    assert d.claude_answer("\n".join(json.dumps(e) for e in events)) == ("new end", None)
+
+
+def test_a_claude_call_gets_only_the_allowlisted_environment(tmp_path, claude_token, monkeypatch):
+    monkeypatch.setenv("CLAUDECODE", "1")
+    monkeypatch.setenv(d.GEMINI_API_KEY_ENV, "secret")
+    monkeypatch.setenv("LANG", "C")
+    seen = {}
+
+    def runner(cmd, input=None, env=None, cwd=None, **kw):
+        seen.update(env=env, cwd=cwd, config=Path(env["CLAUDE_CONFIG_DIR"]))
+        assert not any(seen["config"].iterdir())  # an empty configuration directory
+        return _reply(cmd, "answer\n")
+
+    out, log = tmp_path / "x.out", tmp_path / "calls.jsonl"
+    assert d.call_model("claude_opus", "PROMPT", out, log, "c1", runner=runner) == "answer\n"
+    env = seen["env"]
+    assert set(env) <= set(d.CLAUDE_ENV_KEEP) | {"CLAUDE_CONFIG_DIR", "CLAUDE_CODE_OAUTH_TOKEN"}
+    assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "tok-123" and env["LANG"] == "C"
+    assert "CLAUDECODE" not in env and d.GEMINI_API_KEY_ENV not in env
+    assert not seen["config"].exists() and not Path(seen["cwd"]).exists()
+    assert "tok-123" not in log.read_text(encoding="utf-8")
+    assert not any("tok-123" in f.read_text(encoding="utf-8") for f in tmp_path.glob("x.out*"))
+
+
+def test_a_claude_call_without_a_token_stops_before_the_lock(tmp_path, monkeypatch):
+    monkeypatch.setattr(d, "CLAUDE_TOKEN_FILE", tmp_path / "missing")
+    out, log = tmp_path / "x.out", tmp_path / "calls.jsonl"
+    with pytest.raises(d.Stop, match="no Claude OAuth token"):
+        d.call_model("claude_fable", "PROMPT", out, log, "c1", runner=_ok)
+    assert not log.exists() and not list(tmp_path.glob("*.lock"))
+
+
+def test_a_claude_call_in_the_home_directory_is_refused(tmp_path, claude_token, monkeypatch):
+    monkeypatch.setattr(d.Path, "home", classmethod(lambda cls: Path(d.tempfile.gettempdir())))
+    with pytest.raises(d.Stop, match="transport failed"):
+        d.call_model("claude_opus", "PROMPT", tmp_path / "x.out", tmp_path / "calls.jsonl", "c1", runner=_ok)
+
+
+def test_contrast_batches_leave_out_batches_of_claims_only():
+    key = [{"item_id": "i0001", "kind": "claim"}, {"item_id": "i0002", "kind": "contrast_false"},
+           {"item_id": "i0003", "kind": "claim"}, {"item_id": "i0004", "kind": "contrast_accurate"}]
+    batches = [{"batch_id": "b001", "items": [{"claim_id": "i0001"}, {"claim_id": "i0002"}]},
+               {"batch_id": "b002", "items": [{"claim_id": "i0003"}]},
+               {"batch_id": "b003", "items": [{"claim_id": "i0004"}]}]
+    assert [b["batch_id"] for b in d.contrast_batches(batches, key)] == ["b001", "b003"]
+
+
+def test_contrast_only_is_for_the_claude_judges_and_they_need_it(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    with pytest.raises(d.Stop, match="contrast-only"):
+        d.run_judge("claude_opus", 1, work / "batches", work / "runs", runner=FakeJudge(honest))
+    with pytest.raises(d.Stop, match="contrast-only"):
+        d.run_judge("codex", 1, work / "batches", work / "runs", runner=FakeJudge(honest), contrast_only=True)
+
+
+def test_the_claude_judges_read_only_the_contrast_batches_and_are_gated(tmp_path, small_plan, claude_token,
+                                                                        capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    batches, key = d.load_build(work / "batches")
+    wanted = d.contrast_batches(batches, key)
+    assert 0 < len(wanted) <= len(batches)
+    contrast = {k["item_id"] for k in key if k["kind"] != "claim"}
+    assert all(any(i["claim_id"] in contrast for i in b["items"]) for b in wanted)
+
+    def blind(text):
+        return {"verdict": "true"}
+
+    for judge, policy in (("claude_opus", honest), ("claude_fable", blind)):
+        for rep in (1, 2):
+            fake = FakeJudge(policy)
+            d.run_judge(judge, rep, work / "batches", work / "runs", runner=fake, contrast_only=True)
+            assert len(fake.calls) == len(wanted)
+    gates = d.contrast_score(work / "batches", work / "runs", ["claude_opus", "claude_fable"])
+    assert gates["claude_opus"]["pass"] and gates["claude_opus"]["missing_contrast_verdicts"] == 0
+    assert not gates["claude_fable"]["pass"] and gates["claude_fable"]["detected"] == 0
+    assert d.main(["contrast-score", "--batches", str(work / "batches"), "--runs", str(work / "runs"),
+                   "--judge", "claude_opus"]) == 0
+    assert json.loads(capsys.readouterr().out)["claude_opus"]["pass"]
+
+
+def test_the_plan_names_the_claude_contrast_judges():
+    plan = d.load_plan()
+    named = plan["contrast_only_judges"]
+    assert {j: named[j]["model_id"] for j in d.CLAUDE_JUDGES} == d.CLAUDE_JUDGES
+    assert plan["amendments"][-1]["version"] == plan["plan_version"] == "10"

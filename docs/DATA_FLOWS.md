@@ -28,8 +28,9 @@ boundaries around that scope:
   call — `scripts/run_review_criteria_constructive_value.py` through
   the Codex CLI, `scripts/check_ranking_lift.py` through `gh api`,
   `scripts/dispatch_panel_claim_audit.py` (#1002) through the Codex CLI, the
-  agy CLI, and the Gemini API with the operator's own `GEMINI_API_KEY`, which
-  goes only into the request header). They send
+  agy CLI, the Gemini API with the operator's own `GEMINI_API_KEY`, which
+  goes only into the request header, and the Claude CLI with the operator's
+  own subscription token, which goes only into that call's environment). They send
   content through locally authenticated CLIs when a maintainer invokes them, are
   never triggered by any user-facing feature, and are deliberately excluded from
   the touchpoint tables below.

@@ -119,6 +119,19 @@ RESEND_FAILURES = frozenset(f"finish reason {r}" for r in RESEND_REASONS)
 # The label a call log records per transport. The Gemini API judge gets its own
 # label, so a logged call of the earlier agy "gemini" transport is never reused.
 LOG_LABELS = {"gemini": "gemini_api"}
+# Plan v10 (#1002 part two): the two Claude session models judge the contrast
+# batches only, to test the runtime claim check's judge. Each call is a fenced
+# headless `claude -p`: no tools, no MCP, an empty config directory, an
+# allowlisted environment, a working directory outside $HOME that is not a git
+# checkout, and the operator's OAuth token from CLAUDE_TOKEN_FILE, which goes
+# only into that environment. `--bare` is left out: it accepts only an API key.
+CLAUDE_JUDGES = {"claude_opus": "claude-opus-5-5", "claude_fable": "claude-fable-5-1"}
+CLAUDE_TOKEN_FILE = Path.home() / ".config" / "ars-889" / "oauth_token"
+CLAUDE_ENV_KEEP = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "TERM", "USER", "SHELL",
+                   "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy",
+                   "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "SSL_CERT_DIR")
+CLAUDE_TOOL_DENY = ("Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,"
+                    "NotebookEdit,Task,Agent,Skill,TodoWrite,SlashCommand")
 # Size ceilings: the Gemini helper reads at most RESPONSE_MAX_BYTES of a
 # response body, and a transport stream above STREAM_MAX_CHARS is a failure
 # that saves nothing.
@@ -240,10 +253,36 @@ def _gemini_api_cmd(prompt: str) -> tuple[list[str], str | None]:
     return ([sys.executable, "-I", str(Path(__file__).resolve()), "gemini-api-call"], prompt)
 
 
+def _claude_cmd(model: str) -> Callable[[str], tuple[list[str], str | None]]:
+    def build(prompt: str) -> tuple[list[str], str | None]:
+        return (["claude", "-p", "--model", model, "--effort", "high", "--no-session-persistence",
+                 "--strict-mcp-config", "--tools", "", "--disallowedTools", CLAUDE_TOOL_DENY,
+                 "--output-format", "stream-json", "--verbose"], prompt)
+    return build
+
+
+def _claude_token() -> str:
+    try:
+        token = CLAUDE_TOKEN_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        token = ""
+    if not token:
+        raise Stop(f"no Claude OAuth token in {CLAUDE_TOKEN_FILE}")
+    return token
+
+
+def _claude_env(config_dir: str, token: str) -> dict[str, str]:
+    """The allowlisted environment of one fenced `claude -p` call."""
+    env = {k: v for k, v in os.environ.items() if k in CLAUDE_ENV_KEEP}
+    env.update(CLAUDE_CONFIG_DIR=config_dir, CLAUDE_CODE_OAUTH_TOKEN=token)
+    return env
+
+
 TRANSPORTS: dict[str, Callable[[str], tuple[list[str], str | None]]] = {
     "codex": _codex_cmd,
     "gemini": _gemini_api_cmd,
     "claude_agy": _agy_cmd("Claude Opus 5.5 (High)"),
+    **{judge: _claude_cmd(model) for judge, model in CLAUDE_JUDGES.items()},
 }
 
 
@@ -428,6 +467,36 @@ def agy_answer(stream: str) -> tuple[str, str | None]:
     return result["response"], None
 
 
+def claude_answer(stream: str) -> tuple[str, str | None]:
+    """(reply text, problem) from `claude -p --output-format stream-json`: the
+    text of the surviving assistant messages, in order (a message another one
+    supersedes or a refusal fallback retracts is dropped). A tool use, an
+    unreadable line, or a result that is missing, an error, or not a success is
+    a problem."""
+    events, unreadable = _events(stream)
+    if unreadable:
+        return "", f"{unreadable} unreadable event lines"
+    messages: list[tuple[str | None, str]] = []
+    evicted: set[str] = set()
+    result: dict[str, Any] | None = None
+    for event in events:
+        kind = event.get("type")
+        if kind == "assistant":
+            evicted.update(str(u) for u in event.get("supersedes") or [])
+            blocks = [b for b in (event.get("message") or {}).get("content") or [] if isinstance(b, dict)]
+            if any(b.get("type") == "tool_use" for b in blocks):
+                return "", "a tool use"
+            messages.append((event.get("uuid"), "".join(b.get("text") or "" for b in blocks
+                                                        if b.get("type") == "text")))
+        elif kind == "system" and event.get("subtype") == "model_refusal_fallback":
+            evicted.update(str(u) for u in event.get("retracted_message_uuids") or [])
+        elif kind == "result":
+            result = event
+    if not result or result.get("is_error") or result.get("subtype") != "success":
+        return "", "no successful result event"
+    return "".join(text for uuid, text in messages if uuid is None or str(uuid) not in evicted), None
+
+
 def codex_answer(stream: str) -> tuple[str, str | None]:
     """(reply text, problem) from ``codex exec --json`` output: the last agent
     message of a completed turn. A failed turn, an error event, or any item in
@@ -507,7 +576,8 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
 
 
 ANSWER_PARSERS: dict[str, Callable[[str], tuple[str, str | None]]] = {
-    "codex": codex_answer, "gemini": gemini_api_answer, "claude_agy": agy_answer}
+    "codex": codex_answer, "gemini": gemini_api_answer, "claude_agy": agy_answer,
+    **{judge: claude_answer for judge in CLAUDE_JUDGES}}
 
 
 def _log(calls_log: Path, entry: dict[str, Any]) -> None:
@@ -634,6 +704,7 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
     reused = completed_output(calls_log, call_id, out_file, prompt, transport)
     if reused is not None:
         return reused
+    token = _claude_token() if transport in CLAUDE_JUDGES else ""
     out_file.parent.mkdir(parents=True, exist_ok=True)
     try:
         fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -650,7 +721,12 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
     # Only the Gemini helper gets the API key; the CLIs never see it.
     env = dict(os.environ) if paid else {k: v for k, v in os.environ.items() if k != GEMINI_API_KEY_ENV}
     try:
-        with tempfile.TemporaryDirectory(prefix="ars1002-") as empty:
+        with tempfile.TemporaryDirectory(prefix="ars1002-") as empty, \
+                tempfile.TemporaryDirectory(prefix="ars1002-cfg-") as config_dir:
+            if transport in CLAUDE_JUDGES:
+                if Path(empty).resolve().is_relative_to(Path.home().resolve()):
+                    raise OSError("the working directory of a Claude judge must be outside $HOME")
+                env = _claude_env(config_dir, token)
             proc = runner(cmd, input=stdin, capture_output=True, text=True, cwd=empty, env=env,
                           timeout=TIMEOUT_S + 60)
     except StreamOverflow:
@@ -1137,16 +1213,27 @@ def _positive_int(value: str) -> int:
     return number
 
 
+def contrast_batches(batches: list[dict[str, Any]], key: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The batches that hold at least one contrast sentence (plan v10)."""
+    contrast = {k["item_id"] for k in key if k["kind"] != "claim"}
+    return [b for b in batches if any(i["claim_id"] in contrast for i in b["items"])]
+
+
 def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, limit: int | None = None,
-              runner=bounded_run, cap_usd: float | None = None) -> dict[str, Any]:
+              runner=bounded_run, cap_usd: float | None = None, contrast_only: bool = False) -> dict[str, Any]:
     """Send each batch to ``judge``. The Gemini judge needs ``cap_usd``: a new
     call starts only when the logged Gemini spend under ``out_root`` plus the
-    call's worst case fits under it; otherwise the run stops (budget_exhausted)."""
+    call's worst case fits under it; otherwise the run stops (budget_exhausted).
+    A Claude judge (plan v10) runs the contrast batches only."""
+    if (judge in CLAUDE_JUDGES) != contrast_only:
+        raise Stop("--contrast-only is for the Claude judges, and they need it (plan v10)")
     if judge == "gemini" and not (cap_usd is not None and 0 < cap_usd <= GEMINI_CAP_MAX_USD):
         raise Stop(f"the gemini judge is paid: give --cap-usd above 0 and at most {GEMINI_CAP_MAX_USD:.0f}")
     if limit is not None and limit < 1:
         raise Stop(f"--limit must be at least 1, not {limit}")
-    batches, _key = load_build(batches_dir)
+    batches, key = load_build(batches_dir)
+    if contrast_only:
+        batches = contrast_batches(batches, key)
     out_dir = guard(out_root) / judge / f"r{replicate}"
     log = out_dir / "calls.jsonl"
 
@@ -1218,7 +1305,7 @@ def _run_batches(judge: str, replicate: int, batches: list[dict[str, Any]], limi
 
 def cmd_run(args) -> int:
     print(json.dumps(run_judge(args.judge, args.replicate, args.batches, args.out, args.limit,
-                               cap_usd=args.cap_usd)))
+                               cap_usd=args.cap_usd, contrast_only=args.contrast_only)))
     return 0
 
 
@@ -1455,6 +1542,21 @@ def write_execution_manifest(out: Path, logs: list[Path]) -> None:
     _write_aux(out / "call_attempts.json", json.dumps({"attempts": entries}, indent=1) + "\n")
 
 
+def contrast_score(batches_dir: Path, runs: Path, judges: list[str]) -> dict[str, Any]:
+    """Plan v10: the contrast gate alone, for each Claude judge, over its
+    replicates of the contrast batches. Claim verdicts are not read."""
+    plan = load_plan()
+    batches, key = load_build(batches_dir)
+    batches = contrast_batches(batches, key)
+    return {j: contrast_gate(key, [load_replicate(runs, j, r, batches) for r in range(1, plan["replicates"] + 1)],
+                             plan["contrast_gate"]) for j in judges}
+
+
+def cmd_contrast_score(args) -> int:
+    print(json.dumps(contrast_score(args.batches, args.runs, args.judge), indent=1))
+    return 0
+
+
 def cmd_score(args) -> int:
     result = score(args.batches, args.runs, args.out, args.seat_key)
     print(json.dumps({"status": result["status"], "valid_judges": result["valid_judges"],
@@ -1486,22 +1588,29 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--match-manifest", type=Path, help="An earlier build_manifest.json whose batch prompt "
                    "hashes this build must equal (plan v4 rebuild); otherwise nothing is written.")
     r = sub.add_parser("run")
-    r.add_argument("--judge", choices=("codex", "gemini"), required=True)
+    r.add_argument("--judge", choices=("codex", "gemini", *CLAUDE_JUDGES), required=True)
     r.add_argument("--replicate", type=int, choices=(1, 2), required=True)
     r.add_argument("--batches", type=Path, required=True)
     r.add_argument("--out", type=Path, required=True)
     r.add_argument("--limit", type=_positive_int, help="Send only the first N batches (the pilot); N >= 1.")
     r.add_argument("--cap-usd", type=float, help="Spend cap for the paid gemini judge, over every Gemini "
                    "call logged under --out (the pilot included).")
+    r.add_argument("--contrast-only", action="store_true",
+                   help="Send only the batches that hold contrast sentences (plan v10; Claude judges).")
     s = sub.add_parser("score")
     s.add_argument("--batches", type=Path, required=True)
     s.add_argument("--runs", type=Path, required=True)
     s.add_argument("--out", type=Path, required=True)
     s.add_argument("--seat-key", type=Path, help="extract_panel_claims key.jsonl, for rates by seat.")
+    cs = sub.add_parser("contrast-score", help="Plan v10: the contrast gate for each Claude judge.")
+    cs.add_argument("--batches", type=Path, required=True)
+    cs.add_argument("--runs", type=Path, required=True)
+    cs.add_argument("--judge", choices=sorted(CLAUDE_JUDGES), action="append", required=True)
     sub.add_parser("gemini-api-call", help="Internal: the gemini judge transport (prompt on stdin).")
     args = parser.parse_args(argv)
     handlers = {"generate": cmd_generate, "check-pairs": cmd_check_pairs, "verify-pairs": cmd_verify_pairs,
-                "build": cmd_build, "run": cmd_run, "score": cmd_score, "gemini-api-call": cmd_gemini_api_call}
+                "build": cmd_build, "run": cmd_run, "score": cmd_score, "contrast-score": cmd_contrast_score,
+                "gemini-api-call": cmd_gemini_api_call}
     try:
         return handlers[args.cmd](args)
     except Stop as stop:
