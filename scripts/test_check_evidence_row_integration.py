@@ -126,6 +126,21 @@ def test_reordered_multi_source_verdict_order_is_rejected(
     assert any(rel in error and "missing #1006 cited-version rule" in error for error in errors)
 
 
+@pytest.mark.parametrize("rel", tuple(guard.RETIRED_ACCESS_RULES))
+def test_access_failure_cannot_become_a_blocking_verdict(
+    tmp_path: Path, rel: str
+) -> None:
+    root = _tree(tmp_path)
+    _replace_all(
+        root,
+        rel,
+        "record UNVERIFIABLE_ACCESS for that source",
+        "record UNVERIFIABLE for that source",
+    )
+    errors = guard.run_checks(root)
+    assert any(rel in error and "missing #1006 cited-version rule" in error for error in errors)
+
+
 def test_schema_state_synonym_is_rejected(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     path = root / guard.SCHEMA_REL

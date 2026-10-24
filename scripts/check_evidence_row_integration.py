@@ -111,6 +111,8 @@ CITED_VERSION_RULES = {
     "academic-pipeline/references/claim_verification_protocol.md": (
         "Cited version only (#1006)",
         "Never substitute another version of the work",
+        "If the cited version's full text cannot be read, record UNVERIFIABLE_ACCESS for that source",
+        "do not choose one: record UNVERIFIABLE_ACCESS for that source",
         "never a support verdict",
         "ask the user for the PDF of the cited version",
         "open-access page that cannot be read",
@@ -128,6 +130,8 @@ CITED_VERSION_RULES = {
     "academic-pipeline/agents/integrity_verification_agent.md": (
         "Compare the claim only with the cited version",
         "Never substitute another version of the work",
+        "If the cited version's full text cannot be read, record UNVERIFIABLE_ACCESS for that source",
+        "do not choose one: record UNVERIFIABLE_ACCESS for that source",
         "never a support verdict",
         "ask the user for the PDF of the cited version",
         "open-access page that cannot be read",
