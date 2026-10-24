@@ -40,7 +40,7 @@
       "model_id": "claude-opus-5-5-high",
       "model_family": "anthropic",
       "agy_model": "Claude Opus 5.5 (High)",
-      "settings": "agy -p with the same flags and the same step rule as the gemini judge"
+      "settings": "agy -p, --disable-slash-commands, --output-format stream-json, empty working directory; a reply with any step other than the answer (a tool, a skill, a subagent) is a transport failure (the Google judge used the same agy settings through v3)"
     },
     "verifier": {
       "transport": "codex",
@@ -80,7 +80,7 @@
     "the claim inventory differs from expected_counts or has an extraction problem: stop before any judge call",
     "fewer than min_accepted_per_fixture accepted pairs for any fixture, or any other pair problem: stop before any judge call on claims",
     "a batch whose output cannot be read after its one retry: stop the run",
-    "a transport failure, decided from the CLI's event stream and never from searching its text: a nonzero exit, a failed turn or error event, no completed turn or successful result, an empty reply, or any step other than the reply (a command, a file read, a tool, a skill, a subagent): stop the run, never retry",
+    "a transport failure, decided from the CLI's event stream or the API response fields and never from searching its text: a nonzero exit, a failed turn or error event, no completed turn or successful result, a finish reason other than STOP, an empty reply, or any step other than the reply (a command, a file read, a tool, a skill, a subagent, a function call): stop the run, never retry, except the Gemini judge's one resend after MAX_TOKENS (v5)",
     "an interrupted call (a lock without an output), or an input changed since the build: stop",
     "no replacement model or transport without a new plan version"
   ],
