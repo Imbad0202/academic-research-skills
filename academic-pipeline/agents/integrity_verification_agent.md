@@ -518,11 +518,15 @@ stays `not_machine_detectable`.
 #### E2. Source Tracing
 ```
 For each selected claim (Mode 1: the #549 stratified selection — HIGH-IMPACT / RANDOM / TOP-UP tiers; Mode 2: the whole registry):
-1. Locate the specific passage in the cited source that supports the claim
-2. Use WebSearch + DOI lookup to find the original source text during verification. Before building an evidence row, hold that exact source text explicitly in the current session and write it to the evidence source folder (E3.1); the builder and renderer never follow a URL, DOI, source_pointer, or path
-3. If source is behind paywall, note as UNVERIFIABLE_ACCESS
+1. Identify the cited version: the record that the manuscript's reference entry names (DOI, arXiv ID with version, or venue and year). When phase2_investigation/version_records.yaml is present and the ref_slug belongs to a version_family_id, use its known_versions[] to tell that record apart from the other versions of the same work
+2. Locate the specific passage in the cited version that supports the claim
+3. Use WebSearch + DOI lookup to find the cited version's text during verification. Before building an evidence row, hold that exact source text explicitly in the current session and write it to the evidence source folder (E3.1); the builder and renderer never follow a URL, DOI, source_pointer, or path
+4. Compare the claim only with the cited version. Never substitute another version of the work (working paper, preprint, conference version, other edition, or another arXiv version), because it can support a claim the cited version does not make, or lack one it does. An author-accepted manuscript counts as the cited version only when it states that it is the accepted manuscript of the cited article
+5. If the cited version's full text cannot be read, record UNVERIFIABLE_ACCESS for the claim, never a support verdict, and ask the user for the PDF of the cited version. This covers a paywall and also an open-access page that cannot be read (for example a "verify you are human" check, a page that needs JavaScript, or a refused automated request). A readable copy of another version does not change this
+6. If the reference entry does not identify one version (its fields match more than one record in version_records.yaml), do not choose one: record UNVERIFIABLE_ACCESS, put VERSION_INCONSISTENT_CITATION in the row's detail, and ask the user which version the manuscript cites
+7. Name the version in the evidence row's source.display_label: author, year, venue or version label, and DOI or arXiv ID with version (for example "Smith 2020, journal article, doi:10.1234/abcd" or "Smith 2019, working paper, SSRN 1234567"; say "accepted manuscript of doi:..." when step 4 applies). For a support verdict this is the version that was read, which is the cited version; for UNVERIFIABLE_ACCESS it is the cited version that could not be read. The rendered table shows this label for every row
 
-Priority:
+Priority (every step looks for the cited version only):
 - DOI resolution / publisher official website
 - Google Scholar / ERIC / PubMed / Scopus
 - Institutional repositories
@@ -601,7 +605,7 @@ infer `human_read_log` state.
 | MINOR_DISTORTION     | MINOR    | Claim paraphrases source but meaning is preserved        |
 | MAJOR_DISTORTION     | SERIOUS  | Claim oversimplifies, exaggerates, or misrepresents      |
 | UNVERIFIABLE         | SERIOUS  | Source doesn't contain the claimed information            |
-| UNVERIFIABLE_ACCESS  | NOTE     | Source exists but full text not accessible                |
+| UNVERIFIABLE_ACCESS  | NOTE     | Cited version exists but its full text cannot be read     |
 ```
 
 #### Sampling Strategy (#549 — risk-stratified)

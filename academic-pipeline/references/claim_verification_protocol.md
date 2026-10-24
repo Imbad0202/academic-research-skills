@@ -55,9 +55,12 @@ span. Semantic or uncited qualitative claims can remain undetected, so no
 consumer may turn a clean report into “all substantive claims extracted.”
 
 ## E2: Source Tracing
-- For each SELECTED claim (Mode 1: the #549 risk-stratified selection — tiers `HIGH-IMPACT` / `RANDOM` / `TOP-UP`; Mode 2: every claim in the registry), locate the specific passage in the cited source that supports it
-- Use WebSearch + DOI lookup to find the original source during the producer's verification work. Any retrieved text must become explicit session-held source material, written to the evidence source folder (#933), before evidence-row construction; the evidence-row builder and report renderer never follow a URL, DOI, `source_pointer`, or path to fill a gap
-- If source is behind paywall, note as UNVERIFIABLE_ACCESS
+- For each SELECTED claim (Mode 1: the #549 risk-stratified selection — tiers `HIGH-IMPACT` / `RANDOM` / `TOP-UP`; Mode 2: every claim in the registry), first identify the **cited version**: the record that the manuscript's reference entry names (DOI, arXiv ID with version, or venue and year). When `phase2_investigation/version_records.yaml` is present and the `ref_slug` belongs to a `version_family_id`, use its `known_versions[]` to tell that record apart from the other versions of the same work. Then locate the specific passage in the cited version that supports the claim
+- Use WebSearch + DOI lookup to find the cited version's text during the producer's verification work. Any retrieved text must become explicit session-held source material, written to the evidence source folder (#933), before evidence-row construction; the evidence-row builder and report renderer never follow a URL, DOI, `source_pointer`, or path to fill a gap
+- **Cited version only (#1006).** Compare the claim only with the cited version. Never substitute another version of the work (working paper, preprint, conference version, other edition, or another arXiv version). Another version can support a claim the cited version does not make, or lack one it does, so a substitute produces both false flags and false passes. An author-accepted manuscript counts as the cited version only when it states that it is the accepted manuscript of the cited article
+- **Cited version not readable.** If the cited version's full text cannot be read, record UNVERIFIABLE_ACCESS for the claim, never a support verdict, and ask the user for the PDF of the cited version. This covers a paywall and also an open-access page that cannot be read, for example a "verify you are human" check, a page that needs JavaScript, or a refused automated request. A readable copy of another version does not change this
+- **Cited version not identifiable.** If the reference entry does not identify one version (its fields match more than one record in `version_records.yaml`), do not choose one: record UNVERIFIABLE_ACCESS, put `VERSION_INCONSISTENT_CITATION` in the row's `detail`, and ask the user which version the manuscript cites
+- **Version named in the report.** Name the version in the evidence row's `source.display_label`: author, year, venue or version label, and DOI or arXiv ID with version (for example `Smith 2020, journal article, doi:10.1234/abcd` or `Smith 2019, working paper, SSRN 1234567`; say `accepted manuscript of doi:...` for an accepted manuscript). For a support verdict this is the version that was read, which is the cited version; for UNVERIFIABLE_ACCESS it is the cited version that could not be read. The renderer prints this label in every row's source column, so each verified claim names the version it was checked against
 
 ## E3: Cross-Referencing
 - Compare claim text vs source text
@@ -223,7 +226,7 @@ After E1 has emitted the Claim Registry at a Stage 2.5 or Stage 4.5 integrity ch
 | MINOR_DISTORTION | Claim paraphrases source but meaning is preserved | MINOR | Paper: "about 15%"; Source: "15.2%" |
 | MAJOR_DISTORTION | Claim oversimplifies, exaggerates, or misrepresents source | SERIOUS | Paper: "declined sharply"; Source: "declined by 2.1%" |
 | UNVERIFIABLE | Source doesn't contain the claimed information | SERIOUS | Paper cites Smith (2020) for a claim, but Smith (2020) doesn't discuss this topic |
-| UNVERIFIABLE_ACCESS | Source exists but full text not accessible for verification | NOTE (never blocks) | Paywalled journal article |
+| UNVERIFIABLE_ACCESS | The cited version exists but its full text cannot be read for verification, or the reference entry does not identify one version (E2) | NOTE (never blocks) | Paywalled journal article; open-access article page behind a bot check, where only a working-paper version is readable |
 
 ## Sampling Strategy
 - Mode 1 (pre-review) — risk-stratified (#549, mirroring the #518 reference-verification tiers):

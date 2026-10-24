@@ -352,7 +352,7 @@ Verification result: [PASS / PASS WITH NOTES / FAIL]
 - Citation context check: [X/X] passed
 - Data verification: [X/X] passed
 - Originality check: [PASS/ISSUES]
-- Claim verification: [X/X] verified [PASS/ISSUES]; full text not accessible (UNVERIFIABLE_ACCESS, a note, not an issue): [none / N claims, listed below; offer to re-verify against full text the user supplies, once per claim]
+- Claim verification: [X/X] verified [PASS/ISSUES]; cited version not readable or not identified (UNVERIFIABLE_ACCESS, a note, not an issue): [none / N claims, listed below with the cited version each one needs; ask for the PDF of that version (for `VERSION_INCONSISTENT_CITATION`, ask which version the manuscript cites) and offer to re-verify against full text the user supplies, once per claim]
 - Ordinary advisory rows (#547/#548/#541/#570, non-gating): [none / N rows, listed below]
 - E6 claim-strength drift rows (checkpoint-closing): [none / N rows; disposition sidecar absent/valid]
 

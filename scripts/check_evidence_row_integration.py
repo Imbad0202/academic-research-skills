@@ -104,6 +104,48 @@ REQUIRED_POINTERS = {
     ),
 }
 
+# #1006: Phase E compares a claim only with the cited version of a work, turns an
+# unreadable cited version into an access note, and names the version in the
+# row's display_label (no schema field; the renderer already prints the label).
+CITED_VERSION_RULES = {
+    "academic-pipeline/references/claim_verification_protocol.md": (
+        "Cited version only (#1006)",
+        "Never substitute another version of the work",
+        "never a support verdict",
+        "ask the user for the PDF of the cited version",
+        "open-access page that cannot be read",
+        "`VERSION_INCONSISTENT_CITATION`",
+        "`phase2_investigation/version_records.yaml`",
+        "`source.display_label`",
+    ),
+    "academic-pipeline/agents/integrity_verification_agent.md": (
+        "Compare the claim only with the cited version",
+        "Never substitute another version of the work",
+        "never a support verdict",
+        "ask the user for the PDF of the cited version",
+        "open-access page that cannot be read",
+        "VERSION_INCONSISTENT_CITATION",
+        "phase2_investigation/version_records.yaml",
+        "source.display_label",
+    ),
+    "academic-pipeline/agents/pipeline_orchestrator_agent.md": (
+        "cited version not readable or not identified (UNVERIFIABLE_ACCESS",
+        "ask for the PDF of that version",
+        "`VERSION_INCONSISTENT_CITATION`",
+    ),
+}
+
+# The pre-#1006 rule named only a paywall, which let an unreadable open-access
+# page fall through to another version of the work.
+RETIRED_ACCESS_RULES = {
+    "academic-pipeline/references/claim_verification_protocol.md": (
+        "If source is behind paywall, note as UNVERIFIABLE_ACCESS",
+    ),
+    "academic-pipeline/agents/integrity_verification_agent.md": (
+        "If source is behind paywall, note as UNVERIFIABLE_ACCESS",
+    ),
+}
+
 OUT_OF_SCOPE = (
     "shared/contracts/passport/claim_audit_result.schema.json",
     "scripts/claim_audit_pipeline.py",
@@ -354,6 +396,20 @@ def run_checks(root: Path = REPO_ROOT) -> list[str]:
         for token in required:
             if token not in text:
                 errors.append(f"{rel}: missing #656 pointer/contract token {token!r}")
+
+    for rel, required in CITED_VERSION_RULES.items():
+        path = root / rel
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{rel}: cannot read: {exc}")
+            continue
+        for token in required:
+            if token not in text:
+                errors.append(f"{rel}: missing #1006 cited-version rule {token!r}")
+        for token in RETIRED_ACCESS_RULES.get(rel, ()):
+            if token in text:
+                errors.append(f"{rel}: retired paywall-only access rule returned {token!r}")
 
     adoption_tokens = (SCHEMA_REL, RUNTIME_REL, "evidence-row/1.0")
     for rel in OUT_OF_SCOPE:

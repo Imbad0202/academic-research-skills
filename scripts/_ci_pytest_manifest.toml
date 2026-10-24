@@ -645,6 +645,10 @@ id = "656-evidence-row-integration"
 path = "scripts/test_check_evidence_row_integration.py"
 
 [[pytest]]
+id = "1006-phase-e-cited-version"
+path = "scripts/test_phase_e_cited_version.py"
+
+[[pytest]]
 id = "630-codex-subscription-transport"
 path = "scripts/test_cross_model_codex_transport.py"
 
