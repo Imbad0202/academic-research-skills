@@ -97,6 +97,13 @@ GEMINI_API_KEY_ENV = "GEMINI_API_KEY"
 GEMINI_API_CONFIG = {"thinkingConfig": {"thinkingLevel": "high"}, "maxOutputTokens": 32768}
 # The part fields a plain reply has; any other one (a function call, code) stops the run.
 GEMINI_ANSWER_PART_KEYS = frozenset({"text", "thought", "thoughtSignature"})
+# USD per token, in and out (thinking counts as out), from Google's pricing page;
+# the rates hold through GEMINI_PRICE_UNTIL and double after it.
+GEMINI_PRICE_IN, GEMINI_PRICE_OUT = 2.0e-6, 10.0e-6
+GEMINI_PRICE_UNTIL = "2026-11-30"
+# The label a call log records per transport. The Gemini API judge gets its own
+# label, so a logged call of the earlier agy "gemini" transport is never reused.
+LOG_LABELS = {"gemini": "gemini_api"}
 
 
 class Stop(Exception):
@@ -198,28 +205,83 @@ def gemini_api_request(prompt: str) -> dict[str, Any]:
     return {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": GEMINI_API_CONFIG}
 
 
-def cmd_gemini_api_call(_args) -> int:
-    """Send stdin as one prompt; print the response body (or the error body).
-    Exit 0 only on HTTP 200. ``call_model`` runs this as a subprocess."""
-    key = os.environ.get(GEMINI_API_KEY_ENV)
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A redirect becomes an HTTPError, so the key never goes to another URL."""
+
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+def _redact(data: bytes, key: str) -> bytes:
+    return data.replace(key.encode("utf-8"), b"[redacted]")
+
+
+def cmd_gemini_api_call(_args, opener=None) -> int:
+    """Send stdin as one prompt; print the response body (or the error body),
+    with the key redacted. Exit 0 only on HTTP 200. ``call_model`` runs this as
+    a subprocess. Error messages are fixed text: an exception's own text can
+    hold a header value."""
+    key = os.environ.get(GEMINI_API_KEY_ENV, "")
     if not key:
         print(f"{GEMINI_API_KEY_ENV} is not set", file=sys.stderr)
         return 3
-    prompt = sys.stdin.buffer.read().decode("utf-8")
-    request = urllib.request.Request(
-        GEMINI_API_URL.format(model=GEMINI_API_MODEL), method="POST",
-        data=json.dumps(gemini_api_request(prompt), ensure_ascii=False).encode("utf-8"),
-        headers={"x-goog-api-key": key, "Content-Type": "application/json"})
+    if not (key.isascii() and key.isprintable()) or " " in key:
+        print(f"{GEMINI_API_KEY_ENV} holds a character a request header cannot carry", file=sys.stderr)
+        return 3
+    opener = opener or urllib.request.build_opener(_NoRedirect)
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
-            sys.stdout.buffer.write(response.read())
-        return 0
+        prompt = sys.stdin.buffer.read().decode("utf-8")
+        request = urllib.request.Request(
+            GEMINI_API_URL.format(model=GEMINI_API_MODEL), method="POST",
+            data=json.dumps(gemini_api_request(prompt), ensure_ascii=False).encode("utf-8"),
+            headers={"x-goog-api-key": key, "Content-Type": "application/json"})
+        with opener.open(request, timeout=TIMEOUT_S) as response:
+            body, status = response.read(), response.status
+        sys.stdout.buffer.write(_redact(body, key))
+        if status == 200:
+            return 0
+        print(f"HTTP {status}", file=sys.stderr)
     except urllib.error.HTTPError as exc:
-        sys.stdout.buffer.write(exc.read())
+        sys.stdout.buffer.write(_redact(exc.read(), key))
         print(f"HTTP {exc.code}", file=sys.stderr)
-    except (urllib.error.URLError, OSError) as exc:
-        print(type(exc).__name__, file=sys.stderr)
+    except Exception as exc:  # noqa: BLE001 - any failure is a transport failure
+        print(f"request failed ({type(exc).__name__})", file=sys.stderr)
     return 1
+
+
+def gemini_usage(body_text: str) -> dict[str, Any]:
+    """Token counts and cost of one API response; ``usd`` is None when the body
+    has no usage (the run then counts the call at its worst case)."""
+    try:
+        meta = json.loads(body_text).get("usageMetadata")
+    except (ValueError, AttributeError):
+        meta = None
+    if not isinstance(meta, dict):
+        return {"usd": None}
+    tokens_in = int(meta.get("promptTokenCount") or 0)
+    tokens_out = int(meta.get("candidatesTokenCount") or 0) + int(meta.get("thoughtsTokenCount") or 0)
+    return {"tokens_in": tokens_in, "tokens_out": tokens_out,
+            "usd": round(tokens_in * GEMINI_PRICE_IN + tokens_out * GEMINI_PRICE_OUT, 6)}
+
+
+def worst_case_usd(prompt: str) -> float:
+    """An upper bound on one call: a token per prompt byte, and the full output limit."""
+    return len(prompt.encode("utf-8")) * GEMINI_PRICE_IN + GEMINI_API_CONFIG["maxOutputTokens"] * GEMINI_PRICE_OUT
+
+
+def gemini_spent(out_root: Path) -> float:
+    """Every Gemini call logged under ``out_root``: its cost, or its worst case
+    when the call has no usage (an interrupted or failed call)."""
+    total = 0.0
+    for log in sorted((out_root / "gemini").glob("r*/calls.jsonl")):
+        entries = read_jsonl(log)
+        ends = {(e["call_id"], e["sequence_index"]) for e in entries if e.get("status") != "started"}
+        for e in entries:
+            if e.get("status") == "started" and (e["call_id"], e["sequence_index"]) not in ends:
+                total += e.get("worst_case_usd") or 0.0
+            elif e.get("status") in ("completed", "failed"):
+                total += e["usd"] if e.get("usd") is not None else (e.get("worst_case_usd") or 0.0)
+    return total
 
 
 def _events(stream: str) -> tuple[list[dict[str, Any]], int]:
@@ -309,21 +371,31 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
     if not isinstance(body, dict):
         return "", "unreadable API response"
     if "error" in body:
-        return "", f"API error {(body.get('error') or {}).get('status')}"
-    version = str(body.get("modelVersion", ""))
-    if version != GEMINI_API_MODEL and not version.startswith(GEMINI_API_MODEL + "-"):
+        error = body["error"]
+        status = error.get("status") if isinstance(error, dict) else repr(error)
+        return "", f"API error {status}"
+    version = body.get("modelVersion")
+    if version != GEMINI_API_MODEL:
         return "", f"model version {version!r}, not {GEMINI_API_MODEL}"
-    candidates = body.get("candidates") or []
-    if len(candidates) != 1:
-        return "", f"{len(candidates)} candidates"
-    reason = candidates[0].get("finishReason")
+    candidates = body.get("candidates")
+    if not isinstance(candidates, list) or len(candidates) != 1:
+        return "", f"{len(candidates) if isinstance(candidates, list) else 'no'} candidates"
+    candidate = candidates[0]
+    if not isinstance(candidate, dict):
+        return "", "unreadable candidate"
+    reason = candidate.get("finishReason")
     if reason != "STOP":
         return "", f"finish reason {reason}"
-    parts = (candidates[0].get("content") or {}).get("parts") or []
+    content = candidate.get("content")
+    parts = content.get("parts") if isinstance(content, dict) else None
+    if not isinstance(parts, list) or not all(isinstance(p, dict) for p in parts):
+        return "", "unreadable reply parts"
     other = sorted({k for part in parts for k in part if k not in GEMINI_ANSWER_PART_KEYS})
     if other:
         return "", "parts other than the reply: " + ", ".join(other)
-    return "".join(p["text"] for p in parts if isinstance(p.get("text"), str) and not p.get("thought")), None
+    if any(not isinstance(p.get("text"), str) for p in parts):
+        return "", "a reply part without text"
+    return "".join(p["text"] for p in parts if not p.get("thought")), None
 
 
 ANSWER_PARSERS: dict[str, Callable[[str], tuple[str, str | None]]] = {
@@ -358,7 +430,8 @@ def completed_output(calls_log: Path, call_id: str, out_file: Path, prompt: str,
         return None
     text = read_text(out_file)
     done = [e for e in _logged(calls_log, call_id) if e.get("status") == "completed"]
-    if (not done or done[-1].get("prompt_sha256") != _sha(prompt) or done[-1].get("transport") != transport
+    if (not done or done[-1].get("prompt_sha256") != _sha(prompt)
+            or done[-1].get("transport") != LOG_LABELS.get(transport, transport)
             or done[-1].get("output_sha256") != _sha(text)):
         raise Stop(f"{call_id}: an output exists but no completed call with this prompt, transport, "
                    "and output is logged")
@@ -386,39 +459,47 @@ def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, cal
     os.close(fd)
     started = _now()
     seq = len(read_jsonl(calls_log)) + 1 if calls_log.exists() else 1
-    base = {"call_id": call_id, "sequence_index": seq, "attempt": attempt, "transport": transport,
-            "started_at": started, "prompt_sha256": _sha(prompt)}
-    _log(calls_log, {**base, "status": "started"})
+    base = {"call_id": call_id, "sequence_index": seq, "attempt": attempt,
+            "transport": LOG_LABELS.get(transport, transport), "started_at": started, "prompt_sha256": _sha(prompt)}
+    paid = transport == "gemini"
+    _log(calls_log, {**base, "status": "started", **({"worst_case_usd": worst_case_usd(prompt)} if paid else {})})
     cmd, stdin = TRANSPORTS[transport](prompt)
+    # Only the Gemini helper gets the API key; the CLIs never see it.
+    env = dict(os.environ) if paid else {k: v for k, v in os.environ.items() if k != GEMINI_API_KEY_ENV}
     try:
         with tempfile.TemporaryDirectory(prefix="ars1002-") as empty:
-            proc = runner(cmd, input=stdin, capture_output=True, text=True, cwd=empty,
+            proc = runner(cmd, input=stdin, capture_output=True, text=True, cwd=empty, env=env,
                           timeout=TIMEOUT_S + 60)
     except (subprocess.TimeoutExpired, OSError) as exc:
         partial = getattr(exc, "stdout", None) or ""
         if isinstance(partial, bytes):
             partial = partial.decode("utf-8", "replace")
         out_file.with_name(out_file.name + ".partial").write_text(partial, encoding="utf-8")
-        _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "error": type(exc).__name__})
+        _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "error": type(exc).__name__,
+                         **({"usd": None, "worst_case_usd": worst_case_usd(prompt)} if paid else {})})
         raise Stop(f"{call_id}: transport failed ({type(exc).__name__})") from None
     raw, err = proc.stdout or "", proc.stderr or ""
     out_file.with_name(out_file.name + ".err").write_text(err, encoding="utf-8")
     out_file.with_name(out_file.name + ".stream").write_text(raw, encoding="utf-8")
-    output, problem = ANSWER_PARSERS[transport](raw)
+    try:
+        output, problem = ANSWER_PARSERS[transport](raw)
+    except Exception as exc:  # noqa: BLE001 - a reply the parser cannot read is a transport failure
+        output, problem = "", f"unreadable reply ({type(exc).__name__})"
     # One line-ending form, so the logged hash equals the hash of the text read back.
     output = output.replace("\r\n", "\n").replace("\r", "\n")
-    failure = ((f"exit {proc.returncode}" if proc.returncode != 0 else None) or problem
-               or (None if output.strip() else "empty reply"))
+    usage = {**gemini_usage(raw), "worst_case_usd": worst_case_usd(prompt)} if paid else {}
+    failure = ((f"exit {proc.returncode}" + (f": {problem}" if problem else "") if proc.returncode != 0 else None)
+               or problem or (None if output.strip() else "empty reply"))
     if failure:
         out_file.with_name(out_file.name + ".partial").write_text(raw, encoding="utf-8")
         _log(calls_log, {**base, "status": "failed", "completed_at": _now(), "exit_code": proc.returncode,
-                         "error": failure})
+                         "error": failure, **usage})
         raise Stop(f"{call_id}: transport failed ({failure})")
     tmp = out_file.with_name(out_file.name + ".tmp")
     tmp.write_text(output, encoding="utf-8")
     os.replace(tmp, out_file)
     _log(calls_log, {**base, "status": "completed", "completed_at": _now(), "exit_code": proc.returncode,
-                     "output_sha256": _sha(output)})
+                     "output_sha256": _sha(output), **usage})
     lock.unlink()
     return output
 
@@ -786,6 +867,13 @@ def cmd_build(args) -> int:
     if out.exists() and any(out.iterdir()):
         raise Stop(f"{out} is not empty; build into a new directory")
     batches, key = build_batches(claims, pairs)
+    if args.match_manifest:
+        want = json.loads(read_text(args.match_manifest))["batches"]
+        got = {b["batch_id"]: _sha(batch_prompt(b)) for b in batches}
+        if got != want:
+            differ = sorted(k for k in set(want) | set(got) if want.get(k) != got.get(k))
+            print(json.dumps({"problems": [f"batch prompts differ from {args.match_manifest}: {differ[:10]}"]}))
+            return 1
     out.mkdir(parents=True, exist_ok=True)
     for b in batches:
         (out / f"{b['batch_id']}.json").write_text(json.dumps(b, ensure_ascii=False, indent=1) + "\n",
@@ -836,22 +924,37 @@ def load_build(batches_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
 
 
 def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, limit: int | None = None,
-              runner=subprocess.run) -> dict[str, Any]:
+              runner=subprocess.run, cap_usd: float | None = None) -> dict[str, Any]:
+    """Send each batch to ``judge``. The Gemini judge needs ``cap_usd``: a new
+    call starts only when the logged Gemini spend under ``out_root`` plus the
+    call's worst case fits under it; otherwise the run stops (budget_exhausted)."""
+    if judge == "gemini":
+        if cap_usd is None:
+            raise Stop("the gemini judge is paid: give --cap-usd")
+        if _now()[:10] > GEMINI_PRICE_UNTIL:
+            raise Stop(f"the Gemini price table holds through {GEMINI_PRICE_UNTIL}; update it before a paid call")
     batches, _key = load_build(batches_dir)
     out_dir = guard(out_root) / judge / f"r{replicate}"
     log = out_dir / "calls.jsonl"
+
+    def call(prompt: str, out_file: Path, call_id: str, attempt: int = 1) -> str:
+        if judge == "gemini" and completed_output(log, call_id, out_file, prompt, judge) is None:
+            spent = gemini_spent(guard(out_root))
+            if spent + worst_case_usd(prompt) > cap_usd:
+                raise Stop(f"budget_exhausted: {spent:.4f} USD logged, the next call can cost up to "
+                           f"{worst_case_usd(prompt):.4f}, cap {cap_usd:.2f}")
+        return call_model(judge, prompt, out_file, log, call_id, attempt=attempt, runner=runner)
+
     done = 0
     for batch in batches[: limit or None]:
         ids = [i["claim_id"] for i in batch["items"]]
         prompt = batch_prompt(batch)
         stem = f"{judge}-r{replicate}-{batch['batch_id']}"
-        text = call_model(judge, prompt, out_dir / f"{batch['batch_id']}.a1.out", log, f"{stem}-a1",
-                          runner=runner)
+        text = call(prompt, out_dir / f"{batch['batch_id']}.a1.out", f"{stem}-a1")
         _rows, problem = read_verdicts(text, ids)
         if problem:
-            text = call_model(judge, prompt + RETRY_NOTE.format(reason=problem),
-                              out_dir / f"{batch['batch_id']}.a2.out", log, f"{stem}-a2", attempt=2,
-                              runner=runner)
+            text = call(prompt + RETRY_NOTE.format(reason=problem),
+                        out_dir / f"{batch['batch_id']}.a2.out", f"{stem}-a2", attempt=2)
             _rows, problem = read_verdicts(text, ids)
             if problem:
                 raise Stop(f"{stem}: unreadable after one retry ({problem})")
@@ -860,7 +963,8 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
 
 
 def cmd_run(args) -> int:
-    print(json.dumps(run_judge(args.judge, args.replicate, args.batches, args.out, args.limit)))
+    print(json.dumps(run_judge(args.judge, args.replicate, args.batches, args.out, args.limit,
+                               cap_usd=args.cap_usd)))
     return 0
 
 
@@ -1125,12 +1229,16 @@ def main(argv: list[str] | None = None) -> int:
                    help="claims.jsonl, with summary.json and key.jsonl beside it.")
     b.add_argument("--pairs-dir", type=Path, required=True)
     b.add_argument("--out", type=Path, required=True)
+    b.add_argument("--match-manifest", type=Path, help="An earlier build_manifest.json whose batch prompt "
+                   "hashes this build must equal (plan v4 rebuild); otherwise nothing is written.")
     r = sub.add_parser("run")
     r.add_argument("--judge", choices=("codex", "gemini"), required=True)
     r.add_argument("--replicate", type=int, choices=(1, 2), required=True)
     r.add_argument("--batches", type=Path, required=True)
     r.add_argument("--out", type=Path, required=True)
     r.add_argument("--limit", type=int, help="Send only the first N batches (the pilot).")
+    r.add_argument("--cap-usd", type=float, help="Spend cap for the paid gemini judge, over every Gemini "
+                   "call logged under --out (the pilot included).")
     s = sub.add_parser("score")
     s.add_argument("--batches", type=Path, required=True)
     s.add_argument("--runs", type=Path, required=True)

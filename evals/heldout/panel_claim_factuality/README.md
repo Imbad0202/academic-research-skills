@@ -57,6 +57,9 @@ repository. Raw outputs are written once and never overwritten.
    entry stops the run (`PREREGISTRATION.md`, Arms).
 5. Pilot: three batches per judge, replicate 1, with
    `run --judge <codex|gemini> --replicate 1 --batches $W/batches --out $W/runs --limit 3`.
+   The Gemini judge is paid: set `GEMINI_API_KEY` and give `--cap-usd`; the cap
+   covers every Gemini call logged under `--out`. A rebuild after a plan change
+   that keeps the prompts takes `--match-manifest <earlier build_manifest.json>`.
    A run stops at the first transport failure, or at an output still
    unreadable after one retry. Report time and usage; the maintainer approves
    the full run.

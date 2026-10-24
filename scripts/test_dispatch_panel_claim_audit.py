@@ -122,7 +122,7 @@ def _pairs_dir(work, plan, pairs=None, answers=None, verifier=None):
     return pdir
 
 
-def _build(tmp_path, claims=None, pairs=None, plan=None, **pair_kw):
+def _build(tmp_path, claims=None, pairs=None, plan=None, match_manifest=None, **pair_kw):
     work = tmp_path / "work"
     (work / "claims").mkdir(parents=True)
     claims = _claims() if claims is None else claims
@@ -134,7 +134,8 @@ def _build(tmp_path, claims=None, pairs=None, plan=None, **pair_kw):
     (work / "claims" / "summary.json").write_text(json.dumps({"bundles": bundles, "claims": len(claims),
                                                               "problems": []}), encoding="utf-8")
     pdir = _pairs_dir(work, plan or d.load_plan(), pairs, **pair_kw)
-    args = type("A", (), {"claims": work / "claims" / "claims.jsonl", "pairs_dir": pdir, "out": work / "batches"})
+    args = type("A", (), {"claims": work / "claims" / "claims.jsonl", "pairs_dir": pdir, "out": work / "batches",
+                          "match_manifest": match_manifest})
     return work, d.cmd_build(args)
 
 
@@ -435,7 +436,6 @@ def test_a_gemini_reply_that_is_not_a_plain_answer_is_a_transport_failure(tmp_pa
 
 def test_a_gemini_reply_leaves_out_thought_parts():
     assert d.gemini_api_answer(gemini_body("answer")) == ("answer", None)
-    assert d.gemini_api_answer(gemini_body("a", version="gemini-4-argon-001")) == ("a", None)
 
 
 def test_the_gemini_helper_needs_the_key_and_never_calls_without_it(monkeypatch, capsys):
@@ -491,14 +491,14 @@ def test_run_stops_at_a_usage_limit(tmp_path, small_plan, capsys):
     capsys.readouterr()
     judge = FakeJudge(honest, fail_after=1)
     with pytest.raises(d.Stop, match="transport failed"):
-        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge)
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=50)
     assert len(judge.calls) == 2
 
 
 def _full_run(work, policies):
     for judge, policy in policies.items():
         for rep in (1, 2):
-            d.run_judge(judge, rep, work / "batches", work / "runs", runner=FakeJudge(policy))
+            d.run_judge(judge, rep, work / "batches", work / "runs", runner=FakeJudge(policy), cap_usd=50)
 
 
 def test_score_end_to_end_keeps_the_maintainer_decisions(tmp_path, small_plan, capsys):
@@ -741,3 +741,154 @@ def test_jsonl_with_u2028_reads_back(tmp_path):
     rows = [{"pair_id": "p01\u2028x", "text": "a"}, {"pair_id": "p02", "text": "b"}]
     d.write_jsonl(tmp_path / "x.jsonl", rows)
     assert d.read_jsonl(tmp_path / "x.jsonl") == rows
+
+
+# ---------- plan v4: the paid Gemini API judge ----------
+
+
+def test_the_paid_judge_needs_a_cap_and_stops_before_a_call_over_it(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    judge = FakeJudge(honest)
+    with pytest.raises(d.Stop, match="--cap-usd"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge)
+    with pytest.raises(d.Stop, match="budget_exhausted"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=judge, cap_usd=0.01)
+    assert judge.calls == []  # stopped before any call
+    one_call = d.worst_case_usd(d.batch_prompt(d.load_build(work / "batches")[0][0]))
+
+    def unpriced(cmd, **kw):  # a reply without usage: the run counts it at its worst case
+        reply = judge(cmd, **kw)
+        body = json.loads(reply.stdout)
+        del body["usageMetadata"]
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(body), stderr="")
+    with pytest.raises(d.Stop, match="budget_exhausted"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=unpriced, cap_usd=one_call * 1.5)
+    assert len(judge.calls) == 1
+
+
+def test_gemini_cost_is_logged_from_usage_and_thinking_counts_as_output(tmp_path):
+    body = json.dumps({"candidates": [{"content": {"parts": [{"text": "a"}]}, "finishReason": "STOP"}],
+                       "modelVersion": "gemini-4-argon",
+                       "usageMetadata": {"promptTokenCount": 1000, "candidatesTokenCount": 100,
+                                         "thoughtsTokenCount": 900}})
+    proc = subprocess.CompletedProcess([], 0, stdout=body, stderr="")
+    log = tmp_path / "gemini" / "r1" / "calls.jsonl"
+    d.call_model("gemini", "P", log.parent / "x.out", log, "c1", runner=lambda *a, **k: proc)
+    done = d.read_jsonl(log)[-1]
+    assert done["transport"] == "gemini_api" and done["tokens_out"] == 1000
+    assert done["usd"] == pytest.approx(1000 * 2e-6 + 1000 * 10e-6)
+    assert d.gemini_spent(tmp_path) == pytest.approx(done["usd"])
+
+
+def test_a_logged_agy_gemini_call_is_not_reused_by_the_api_judge(tmp_path):
+    out, log = tmp_path / "x.out", tmp_path / "calls.jsonl"
+    out.write_text("answer\n", encoding="utf-8")
+    d._log(log, {"call_id": "c1", "sequence_index": 1, "status": "completed", "transport": "gemini",
+                 "prompt_sha256": d._sha("P"), "output_sha256": d._sha("answer\n")})
+    with pytest.raises(d.Stop, match="no completed call"):
+        d.completed_output(log, "c1", out, "P", "gemini")
+    d._log(log, {"call_id": "c2", "sequence_index": 2, "status": "completed", "transport": "codex",
+                 "prompt_sha256": d._sha("P"), "output_sha256": d._sha("answer\n")})
+    assert d.completed_output(log, "c2", out, "P", "codex") == "answer\n"
+
+
+def test_only_the_gemini_helper_gets_the_key(tmp_path, monkeypatch):
+    monkeypatch.setenv(d.GEMINI_API_KEY_ENV, "k")
+    seen = {}
+
+    def runner(cmd, **kw):
+        seen[cmd[0]] = kw["env"]
+        return _reply(cmd, "answer\n")
+    d.call_model("codex", "P", tmp_path / "a.out", tmp_path / "c.jsonl", "c1", runner=runner)
+    d.call_model("gemini", "P", tmp_path / "b.out", tmp_path / "c.jsonl", "c2", runner=runner)
+    assert d.GEMINI_API_KEY_ENV not in seen["codex"] and seen[sys.executable][d.GEMINI_API_KEY_ENV] == "k"
+
+
+@pytest.mark.parametrize("body,problem", [
+    (json.dumps({"error": "bad gateway"}), "API error"),
+    (json.dumps({"candidates": "x", "modelVersion": "gemini-4-argon"}), "no candidates"),
+    (json.dumps({"candidates": ["x"], "modelVersion": "gemini-4-argon"}), "unreadable candidate"),
+    (gemini_body("x", parts=[{"text": "a"}, {"text": 123}]), "a reply part without text"),
+    (gemini_body("x", parts=[{"text": "a"}, {"thoughtSignature": "s"}]), "a reply part without text"),
+    (gemini_body("x", parts="nope"), "unreadable reply parts"),
+    (gemini_body("x", version="gemini-4-argon-001"), "model version"),
+])
+def test_malformed_gemini_bodies_are_problems_not_crashes(body, problem):
+    assert d.gemini_api_answer(body)[1].startswith(problem)
+
+
+class _Response:
+    def __init__(self, body, status=200):
+        self.body, self.status = body, status
+
+    def read(self):
+        return self.body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _Opener:
+    def __init__(self, result):
+        self.result, self.requests = result, []
+
+    def open(self, request, timeout):
+        self.requests.append(request)
+        if isinstance(self.result, Exception):
+            raise self.result
+        return self.result
+
+
+def _helper(monkeypatch, opener, key="KEY123", prompt="Prompt é"):
+    monkeypatch.setenv(d.GEMINI_API_KEY_ENV, key)
+    out = type("B", (), {"buffer": __import__("io").BytesIO()})()
+    monkeypatch.setattr(d.sys, "stdin", type("S", (), {"buffer": __import__("io").BytesIO(prompt.encode())})())
+    monkeypatch.setattr(d.sys, "stdout", out)
+    return d.cmd_gemini_api_call(None, opener=opener), out.buffer.getvalue()
+
+
+def test_the_helper_sends_the_key_only_in_the_header(monkeypatch):
+    opener = _Opener(_Response(b'{"ok": 1, "echo": "KEY123"}'))
+    rc, out = _helper(monkeypatch, opener)
+    req = opener.requests[0]
+    assert rc == 0 and out == b'{"ok": 1, "echo": "[redacted]"}'
+    assert req.full_url == d.GEMINI_API_URL.format(model="gemini-4-argon") and "KEY123" not in req.full_url
+    assert req.get_header("X-goog-api-key") == "KEY123" and b"KEY123" not in req.data
+    assert json.loads(req.data)["contents"][0]["parts"][0]["text"] == "Prompt é"
+
+
+def test_the_helper_fails_on_a_non_200_status_an_http_error_and_any_exception(monkeypatch, capsys):
+    assert _helper(monkeypatch, _Opener(_Response(b"{}", status=203)))[0] == 1
+    err = d.urllib.error.HTTPError("u", 429, "x", {}, __import__("io").BytesIO(b'{"e": "KEY123"}'))
+    rc, out = _helper(monkeypatch, _Opener(err))
+    assert rc == 1 and b"KEY123" not in out
+    rc, _out = _helper(monkeypatch, _Opener(ValueError("Invalid header value KEY123")))
+    assert rc == 1 and "KEY123" not in capsys.readouterr().err
+
+
+def test_the_helper_refuses_a_key_a_header_cannot_carry(monkeypatch, capsys):
+    opener = _Opener(_Response(b"{}"))
+    assert _helper(monkeypatch, opener, key="KEY123\n")[0] == 3 and opener.requests == []
+    assert "KEY123" not in capsys.readouterr().err
+
+
+def test_the_helper_does_not_follow_redirects():
+    handler = d._NoRedirect()
+    assert handler.redirect_request(None, None, 302, "Found", {}, "https://elsewhere.example/") is None
+
+
+def test_build_can_require_the_batches_of_an_earlier_build(tmp_path, small_plan, capsys):
+    work, rc = _build(tmp_path)
+    assert rc == 0
+    manifest = work / "batches" / "build_manifest.json"
+    again, rc = _build(tmp_path / "again", match_manifest=manifest)
+    assert rc == 0
+    changed = json.loads(manifest.read_text(encoding="utf-8"))
+    changed["batches"][sorted(changed["batches"])[0]] = "0" * 64
+    (tmp_path / "m.json").write_text(json.dumps(changed), encoding="utf-8")
+    third, rc = _build(tmp_path / "third", match_manifest=tmp_path / "m.json")
+    assert rc == 1 and "differ" in capsys.readouterr().out and not (third / "batches").exists()
