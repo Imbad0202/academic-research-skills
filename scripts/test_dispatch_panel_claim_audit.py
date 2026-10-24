@@ -1466,3 +1466,29 @@ def test_output_bytes_are_written_unchanged_and_not_through_a_symlink(tmp_path):
     (tmp_path / "b.bin").symlink_to(tmp_path / "a.bin")
     with pytest.raises(OSError):
         d._write_aux(tmp_path / "b.bin", b"x")
+
+
+@pytest.mark.parametrize("limit", ["0", "-1"])
+def test_a_limit_below_one_is_refused(limit, capsys):
+    with pytest.raises(SystemExit):
+        d.main(["run", "--judge", "codex", "--replicate", "1", "--batches", "b", "--out", "o", "--limit", limit])
+    with pytest.raises(d.Stop, match="at least 1"):
+        d.run_judge("codex", 1, Path("b"), Path("o"), limit=int(limit))
+
+
+def test_a_ctrl_c_to_the_main_thread_kills_the_group_first(tmp_path):
+    import signal
+    import threading
+    pid_file = tmp_path / "pid"
+    code = SPAWN + "; import time; time.sleep(60)"
+    main = threading.main_thread().ident
+    timer = threading.Timer(1.5, lambda: signal.pthread_kill(main, signal.SIGINT))
+    timer.start()
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            d.bounded_run([sys.executable, "-c", code, str(pid_file)], input=None, cwd=str(tmp_path),
+                          env=dict(os.environ), timeout=30)
+    finally:
+        timer.cancel()
+    assert _wait_gone(int(pid_file.read_text()))
+    assert signal.SIGINT not in signal.pthread_sigmask(signal.SIG_BLOCK, set())

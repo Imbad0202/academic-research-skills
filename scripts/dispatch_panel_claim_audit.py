@@ -571,20 +571,23 @@ def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, s
         paths["stdin"].write_bytes((input or "").encode("utf-8"))
         deadline = time.monotonic() + timeout
         over = timed_out = False
-        proc = None
+        proc = mask = None
+        interrupted = False
+        # SIGINT stays blocked for the whole call, so Ctrl-C never cuts the start
+        # or the cleanup short: the loop sees a pending Ctrl-C and stops, and the
+        # interrupt is raised after the group is killed. The child unblocks
+        # SIGINT before it runs.
         try:
-            # Ctrl-C waits until proc is set, so the finally block always sees the
-            # process it must kill; the child unblocks SIGINT before it runs.
             mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
-            try:
-                with open(paths["stdin"], "rb") as fin, open(paths["stdout"], "wb") as fout, \
-                        open(paths["stderr"], "wb") as ferr:
-                    proc = subprocess.Popen(cmd, stdin=fin, stdout=fout, stderr=ferr, cwd=cwd, env=env,
-                                            start_new_session=True,
-                                            preexec_fn=lambda: signal.pthread_sigmask(signal.SIG_SETMASK, mask))
-            finally:
-                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+            with open(paths["stdin"], "rb") as fin, open(paths["stdout"], "wb") as fout, \
+                    open(paths["stderr"], "wb") as ferr:
+                proc = subprocess.Popen(cmd, stdin=fin, stdout=fout, stderr=ferr, cwd=cwd, env=env,
+                                        start_new_session=True,
+                                        preexec_fn=lambda: signal.pthread_sigmask(signal.SIG_SETMASK, mask))
             while proc.poll() is None:
+                if signal.SIGINT in signal.sigpending():
+                    interrupted = True
+                    break
                 if any(paths[n].stat().st_size > limit for n in ("stdout", "stderr")):
                     over = True
                     break
@@ -599,6 +602,12 @@ def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, s
                 except OSError:
                     pass
                 proc.wait()
+            if mask is not None:
+                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+            else:  # interrupted before the mask was saved; this CLI never blocks SIGINT otherwise
+                signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGINT})
+        if interrupted:
+            raise KeyboardInterrupt
 
         def head(name: str) -> bytes:  # at most limit + 1 bytes, whatever a stray writer adds later
             with open(paths[name], "rb") as handle:
@@ -1121,6 +1130,13 @@ def load_build(batches_dir: Path) -> tuple[list[dict[str, Any]], list[dict[str, 
 # ---------------------------------------------------------------------------
 
 
+def _positive_int(value: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError(f"expected a whole number of at least 1, got {value}")
+    return number
+
+
 def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, limit: int | None = None,
               runner=bounded_run, cap_usd: float | None = None) -> dict[str, Any]:
     """Send each batch to ``judge``. The Gemini judge needs ``cap_usd``: a new
@@ -1128,6 +1144,8 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
     call's worst case fits under it; otherwise the run stops (budget_exhausted)."""
     if judge == "gemini" and not (cap_usd is not None and 0 < cap_usd <= GEMINI_CAP_MAX_USD):
         raise Stop(f"the gemini judge is paid: give --cap-usd above 0 and at most {GEMINI_CAP_MAX_USD:.0f}")
+    if limit is not None and limit < 1:
+        raise Stop(f"--limit must be at least 1, not {limit}")
     batches, _key = load_build(batches_dir)
     out_dir = guard(out_root) / judge / f"r{replicate}"
     log = out_dir / "calls.jsonl"
@@ -1182,7 +1200,7 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
 def _run_batches(judge: str, replicate: int, batches: list[dict[str, Any]], limit: int | None, out_dir: Path,
                  call: Callable[..., str]) -> dict[str, Any]:
     done = 0
-    for batch in batches[: limit or None]:
+    for batch in (batches if limit is None else batches[:limit]):
         ids = [i["claim_id"] for i in batch["items"]]
         prompt = batch_prompt(batch)
         stem = f"{judge}-r{replicate}-{batch['batch_id']}"
@@ -1472,7 +1490,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--replicate", type=int, choices=(1, 2), required=True)
     r.add_argument("--batches", type=Path, required=True)
     r.add_argument("--out", type=Path, required=True)
-    r.add_argument("--limit", type=int, help="Send only the first N batches (the pilot).")
+    r.add_argument("--limit", type=_positive_int, help="Send only the first N batches (the pilot); N >= 1.")
     r.add_argument("--cap-usd", type=float, help="Spend cap for the paid gemini judge, over every Gemini "
                    "call logged under --out (the pilot included).")
     s = sub.add_parser("score")
