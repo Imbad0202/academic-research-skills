@@ -49,10 +49,12 @@ import hashlib
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
@@ -552,11 +554,25 @@ def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, s
                 limit: int = STREAM_MAX_CHARS, **_ignored) -> subprocess.CompletedProcess:
     """``subprocess.run(capture_output=True, text=True)`` that reads stdout and
     stderr as they arrive and kills the process once either passes ``limit``
-    bytes (StreamOverflow), so a runaway transport cannot fill memory."""
+    bytes (StreamOverflow), so a runaway transport cannot fill memory. One
+    deadline covers writing stdin, the process, and reading its streams: past
+    it the process group is killed and the call times out, even when the
+    process does not read its input or a child of it keeps the streams open."""
+    posix = os.name == "posix"
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            cwd=cwd, env=env)
+                            cwd=cwd, env=env, start_new_session=posix)
+    deadline = time.monotonic() + timeout
     chunks: dict[str, list[bytes]] = {"out": [], "err": []}
     over = threading.Event()
+
+    def kill() -> None:
+        try:
+            if posix:
+                os.killpg(proc.pid, signal.SIGKILL)
+            else:
+                proc.kill()
+        except OSError:
+            pass
 
     def pump(name: str, pipe) -> None:
         size = 0
@@ -564,32 +580,45 @@ def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, s
             size += len(chunk)
             if size > limit:
                 over.set()
-                proc.kill()
+                kill()
                 return
             chunks[name].append(chunk)
 
+    def feed() -> None:
+        try:
+            if input is not None:
+                proc.stdin.write(input.encode("utf-8"))
+            proc.stdin.close()
+        except OSError:
+            pass
+
     threads = [threading.Thread(target=pump, args=(n, p), daemon=True)
                for n, p in (("out", proc.stdout), ("err", proc.stderr))]
+    threads.append(threading.Thread(target=feed, daemon=True))
     for thread in threads:
         thread.start()
+
+    def left() -> float:
+        return max(0.0, deadline - time.monotonic())
     try:
-        if input is not None:
-            proc.stdin.write(input.encode("utf-8"))
-        proc.stdin.close()
-    except BrokenPipeError:
-        pass
-    try:
-        proc.wait(timeout=timeout)
+        proc.wait(timeout=left())
     except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-        for thread in threads:
-            thread.join()
-        raise subprocess.TimeoutExpired(cmd, timeout, output=b"".join(chunks["out"])) from None
-    for thread in threads:
-        thread.join()
+        pass
+    for thread in threads[:2]:
+        thread.join(left())
+    done = proc.poll() is not None and not any(t.is_alive() for t in threads[:2])
+    if not done:
+        kill()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        for thread in threads[:2]:
+            thread.join(5)  # threads still blocked after this are daemons and are left behind
     if over.is_set():
         raise StreamOverflow
+    if not done:
+        raise subprocess.TimeoutExpired(cmd, timeout, output=b"".join(chunks["out"]))
     return subprocess.CompletedProcess(cmd, proc.returncode, b"".join(chunks["out"]).decode("utf-8", "replace"),
                                        b"".join(chunks["err"]).decode("utf-8", "replace"))
 

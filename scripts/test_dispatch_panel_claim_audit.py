@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -1357,3 +1358,22 @@ def test_side_files_refuse_a_symlink_without_o_nofollow(tmp_path, monkeypatch):
     with pytest.raises(d.Stop, match="symlink"):
         d._write_aux(link, "overwrite")
     assert target.read_text(encoding="utf-8") == "keep"
+
+
+# ---------- security review round 3 (#1002) ----------
+
+
+def test_bounded_run_times_out_when_the_process_never_reads_its_input(tmp_path):
+    started = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        d.bounded_run([sys.executable, "-c", "import time; time.sleep(30)"], input="x" * 4_000_000,
+                      cwd=str(tmp_path), env=dict(os.environ), timeout=1)
+    assert time.monotonic() - started < 15
+
+
+def test_bounded_run_times_out_when_a_child_keeps_the_streams_open(tmp_path):
+    code = ("import subprocess, sys; subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])")
+    started = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        d.bounded_run([sys.executable, "-c", code], input=None, cwd=str(tmp_path), env=dict(os.environ), timeout=2)
+    assert time.monotonic() - started < 15
