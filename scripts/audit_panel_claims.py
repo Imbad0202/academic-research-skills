@@ -17,10 +17,11 @@ script only prepares its prompt and reads its reply:
           contradicted only when its quote passes the part 1 mechanical check:
           a contradiction quote occurs in the manuscript, or words the claim
           presents in quotation marks occur nowhere in the manuscript. The check
-          confirms where the quote is, not that it contradicts the finding, and
-          the attachment says so. Any other ``false`` verdict is listed as
-          unconfirmed. A scoring report with a ``### W<n>`` heading that cannot
-          be read counts as not read, and all report and judge text goes into
+          reads only the quote's words, not its locator or whether it
+          contradicts the finding, and the attachment says so. Any other
+          ``false`` verdict is listed as unconfirmed. A scoring report with a
+          ``### W<n>`` heading that cannot be read, or a Severity line outside
+          every read finding, counts as not read, and all report and judge text goes into
           the letter as literal text.
 
 The report never changes the decision, the consensus counts, or the roadmap.
@@ -68,7 +69,9 @@ _TEXT = {
         "none_read": "No report could be read, so no finding was checked.",
         "unread": "Coverage: partial. Not read: {seats}.",
         "contradicted": "The judge marked these findings as contradicted by the manuscript. The script checked "
-                        "only that each quote is where the judge says it is; read it to decide:",
+                        "only the words of each quote: that they occur in the manuscript, or, for words the "
+                        "finding quotes, that they do not. The judge gave the locations, and the script did not "
+                        "check them. Read each quote to decide:",
         "absent": "The claim quotes words that the manuscript does not contain: “{quote}”",
         "row": "- {seat} · {fid}: {title}",
         "quote": "  > “{quote}” ({locator})",
@@ -88,7 +91,8 @@ _TEXT = {
         "none": "審稿報告中沒有可檢查的意見。",
         "none_read": "沒有能讀取的審稿報告，未檢查任何意見。",
         "unread": "涵蓋範圍：部分。未能讀取：{seats}。",
-        "contradicted": "判官判定下列意見與稿件內容矛盾。腳本只核對每段引文確實在判官所說之處，"
+        "contradicted": "判官判定下列意見與稿件內容矛盾。腳本只核對引文的文字：引文出現在稿件中，"
+                        "或意見引用的文字確實不在稿件中。章節或表格位置由判官提供，腳本未核對。"
                         "是否矛盾請讀引文後判斷：",
         "absent": "意見引用了稿件中沒有的文字：「{quote}」",
         "row": "- {seat} · {fid}：{title}",
@@ -104,8 +108,13 @@ class Stop(Exception):
     """A problem that stops the script; the attachment then says the check did not run."""
 
 
-# A "### W<n>" heading, also one that `w_claims` cannot read (no colon, say).
-_W_HEADING_LIKE = re.compile(r"^\s{0,3}###\s+[Ww]\s*\d")
+# A "### W<n>" heading, also one that `w_claims` cannot read (no colon, or the
+# W number in bold, say).
+_W_HEADING_LIKE = re.compile(r"^\s{0,3}###\s+[*_`\s]*[Ww]\s*\d")
+# Each finding with a Severity has its own W subsection (sprint_contract_protocol.md
+# § Anchor gate), so a Severity line outside every read finding shows one that
+# was not read.
+_SEVERITY_LINE = re.compile(r"^\s*(?:[-*+]\s+)?[*_]*Severity[*_]*\s*:", re.IGNORECASE)
 # A span the claim presents in quotation marks; straight single quotes are left
 # out, since they also serve as apostrophes.
 _QUOTED = re.compile(r'"([^"\n]+)"|“([^”\n]+)”|‘([^’\n]+)’|「([^」\n]+)」|『([^』\n]+)』')
@@ -118,8 +127,12 @@ def _claims(seat: str, text: str, path: str) -> list[tuple[str, str]]:
     sections, _dupes = split_sections(strip_fences(text, preserve_fenced_blocks=True))
     if "Review Body" not in sections:
         raise ReportError(f"{path}: no Review Body section")
-    if sum(1 for line in sections["Review Body"] if _W_HEADING_LIKE.match(line)) != len(found):
+    body = sections["Review Body"]
+    if sum(1 for line in body if _W_HEADING_LIKE.match(line)) != len(found):
         raise ReportError(f"{path}: a W heading cannot be read")
+    severities = sum(1 for _fid, claim in found for line in claim.splitlines() if _SEVERITY_LINE.match(line))
+    if sum(1 for line in body if _SEVERITY_LINE.match(line)) != severities:
+        raise ReportError(f"{path}: a finding with a Severity is outside every W heading")
     return found
 
 

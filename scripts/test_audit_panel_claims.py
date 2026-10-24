@@ -248,6 +248,8 @@ def test_report_and_judge_text_is_literal_in_the_letter(tmp_path):
     "## Review Body\n\n### W1 Small sample\nBody.\n",
     "## Review Body\n\n### W1:\nBody.\n",
     "## Notes\n\n### W1: Small sample\nBody.\n",
+    "## Review Body\n\n### **W1**: Small sample\n**Severity**: Major\n",
+    "## Review Body\n\n### W1: Read\n**Severity**: Minor\n\n### Weakness 2: Not read\n**Severity**: Major\n",
 ])
 def test_a_scoring_report_whose_findings_cannot_be_read_is_unread(tmp_path, report):
     bad = tmp_path / "bad.md"
@@ -256,6 +258,14 @@ def test_a_scoring_report_whose_findings_cannot_be_read_is_unread(tmp_path, repo
     assert key["unread"] == ["domain"] and key["seats"] == ["methodology", "da"]
     out = apc.render(apc.build_report(MANUSCRIPT, key, _reply(key, {})), "en")
     assert "Coverage: partial. Not read: Reviewer 2." in out
+
+
+def test_a_scoring_report_with_severities_under_w_headings_is_read(tmp_path):
+    r1 = tmp_path / "r1.md"
+    r1.write_text("## Review Body\n\n### W1: A\n**Severity**: Minor\n\n### W2: B\n- **Severity**: Major\n",
+                  encoding="utf-8")
+    _prompt_text, key = apc.build_prompt(MANUSCRIPT, [("methodology", r1)])
+    assert key["unread"] == [] and sorted(i["finding_id"] for i in key["items"]) == ["W1", "W2"]
 
 
 def test_a_scoring_report_with_no_weakness_reads_as_zero_findings(tmp_path):
