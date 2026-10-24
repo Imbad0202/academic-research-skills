@@ -1428,3 +1428,24 @@ def test_bounded_run_refuses_a_non_posix_system(tmp_path, monkeypatch):
     monkeypatch.setattr(d.os, "name", "nt")
     with pytest.raises(d.Stop, match="POSIX"):
         d.bounded_run(["true"], input=None, cwd=str(tmp_path), env={}, timeout=1)
+
+
+def test_an_over_long_pair_skips_the_token_diff(monkeypatch):
+    monkeypatch.setattr(d, "changed_tokens", lambda a, b: pytest.fail("diff ran on an over-long pair"))
+    checks = d.mechanical_checks({"accurate_sentence": "word " * 20000, "false_sentence": "word " * 20001,
+                                  "evidence_quote": "x"}, "x")
+    assert checks["word_counts_8_to_50"] is False and checks["changed_tokens_1_to_4"] is False
+
+
+def test_output_files_do_not_follow_a_symlink(tmp_path):
+    target = tmp_path / "target.json"
+    target.write_text("keep", encoding="utf-8")
+    (tmp_path / "out").mkdir()
+    (tmp_path / "out" / "rows.jsonl").symlink_to(target)
+    with pytest.raises(OSError):
+        d.write_jsonl(tmp_path / "out" / "rows.jsonl", [{"a": 1}])
+    log = tmp_path / "out" / "calls.jsonl"
+    log.symlink_to(target)
+    with pytest.raises(OSError):
+        d._log(log, {"a": 1})
+    assert target.read_text(encoding="utf-8") == "keep"

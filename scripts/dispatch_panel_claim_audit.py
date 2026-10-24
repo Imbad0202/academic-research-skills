@@ -170,11 +170,11 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
-    guard(path).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+    _write_aux(path, "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
 
 
 def _write_aux(path: Path, text: str) -> None:
-    """Write a side file of a call (.err, .stream, .partial, .tmp) without
+    """Write an output file (a call's side files, a build, a score) without
     following a symlink at its name, and never under the held-out manifests."""
     if not hasattr(os, "O_NOFOLLOW") and os.path.islink(guard(path)):
         raise Stop(f"refused: {path.name} is a symlink")
@@ -510,7 +510,8 @@ ANSWER_PARSERS: dict[str, Callable[[str], tuple[str, str | None]]] = {
 
 
 def _log(calls_log: Path, entry: dict[str, Any]) -> None:
-    with guard(calls_log).open("a", encoding="utf-8") as log:
+    fd = os.open(guard(calls_log), os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0), 0o644)
+    with os.fdopen(fd, "a", encoding="utf-8") as log:
         log.write(json.dumps(entry, ensure_ascii=False) + "\n")
         log.flush()
         os.fsync(log.fileno())
@@ -567,13 +568,14 @@ def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, s
     with tempfile.TemporaryDirectory(prefix="ars1002-io-") as io:
         paths = {name: Path(io) / name for name in ("stdin", "stdout", "stderr")}
         paths["stdin"].write_bytes((input or "").encode("utf-8"))
-        with open(paths["stdin"], "rb") as fin, open(paths["stdout"], "wb") as fout, \
-                open(paths["stderr"], "wb") as ferr:
-            proc = subprocess.Popen(cmd, stdin=fin, stdout=fout, stderr=ferr, cwd=cwd, env=env,
-                                    start_new_session=True)
         deadline = time.monotonic() + timeout
         over = timed_out = False
+        proc = None
         try:
+            with open(paths["stdin"], "rb") as fin, open(paths["stdout"], "wb") as fout, \
+                    open(paths["stderr"], "wb") as ferr:
+                proc = subprocess.Popen(cmd, stdin=fin, stdout=fout, stderr=ferr, cwd=cwd, env=env,
+                                        start_new_session=True)
             while proc.poll() is None:
                 if any(paths[n].stat().st_size > limit for n in ("stdout", "stderr")):
                     over = True
@@ -583,19 +585,23 @@ def bounded_run(cmd: list[str], *, input: str | None, cwd: str, env: dict[str, s
                     break
                 time.sleep(0.05)
         finally:
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except OSError:
-                pass
-            proc.wait()
-        sizes = [paths[n].stat().st_size for n in ("stdout", "stderr")]
-        if over or any(size > limit for size in sizes):
+            if proc is not None:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except OSError:
+                    pass
+                proc.wait()
+
+        def head(name: str) -> bytes:  # at most limit + 1 bytes, whatever a stray writer adds later
+            with open(paths[name], "rb") as handle:
+                return handle.read(limit + 1)
+        out, err = head("stdout"), head("stderr")
+        if over or len(out) > limit or len(err) > limit:
             raise StreamOverflow
         if timed_out:
-            raise subprocess.TimeoutExpired(cmd, timeout, output=paths["stdout"].read_bytes())
-        return subprocess.CompletedProcess(cmd, proc.returncode,
-                                           paths["stdout"].read_bytes().decode("utf-8", "replace"),
-                                           paths["stderr"].read_bytes().decode("utf-8", "replace"))
+            raise subprocess.TimeoutExpired(cmd, timeout, output=out)
+        return subprocess.CompletedProcess(cmd, proc.returncode, out.decode("utf-8", "replace"),
+                                           err.decode("utf-8", "replace"))
 
 
 def call_model(transport: str, prompt: str, out_file: Path, calls_log: Path, call_id: str,
@@ -778,7 +784,9 @@ def mechanical_checks(pair: dict[str, Any], manuscript: str) -> dict[str, bool]:
     return {
         "one_sentence_each": _one_sentence(acc) and _one_sentence(fal),
         "word_counts_8_to_50": all(8 <= len(s.split()) <= 50 for s in (acc, fal)),
-        "changed_tokens_1_to_4": 1 <= changed_tokens(acc, fal) <= 4,
+        # Counted only when the word counts pass, so an over-long sentence costs no diff.
+        "changed_tokens_1_to_4": (all(8 <= len(s.split()) <= 50 for s in (acc, fal))
+                                  and 1 <= changed_tokens(acc, fal) <= 4),
         "evidence_quote_in_manuscript": bool(quote.strip()) and _norm(quote) in _norm(manuscript),
     }
 
@@ -1057,8 +1065,7 @@ def cmd_build(args) -> int:
             return 1
     out.mkdir(parents=True, exist_ok=True)
     for b in batches:
-        (out / f"{b['batch_id']}.json").write_text(json.dumps(b, ensure_ascii=False, indent=1) + "\n",
-                                                   encoding="utf-8")
+        _write_aux(out / f"{b['batch_id']}.json", json.dumps(b, ensure_ascii=False, indent=1) + "\n")
     write_jsonl(out / "item_key.jsonl", key)
     sources = {"claims.jsonl": args.claims, "summary.json": claims_dir / "summary.json",
                "pair_calls.jsonl": _pair_log(args.pairs_dir)}
@@ -1070,7 +1077,7 @@ def cmd_build(args) -> int:
                 "seat_key_sha256": _file_sha(claims_dir / "key.jsonl"),
                 "item_key_sha256": _file_sha(out / "item_key.jsonl"),
                 "batches": {b["batch_id"]: _sha(batch_prompt(b)) for b in batches}}
-    (out / "build_manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+    _write_aux(out / "build_manifest.json", json.dumps(manifest, indent=1) + "\n")
     print(json.dumps({"batches": len(batches), "items": len(key),
                       "contrast_items": sum(1 for k in key if k["kind"] != "claim"),
                       "largest_prompt_bytes": max(len(batch_prompt(b).encode("utf-8")) for b in batches)}))
@@ -1303,12 +1310,12 @@ def score(batches_dir: Path, runs: Path, out: Path, seat_key: Path | None = None
     review = lists["cross_judge_divergence"] + lists["replicate_instability"] + lists["missing"]
     out = guard(out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "score.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+    _write_aux(out / "score.json", json.dumps(result, indent=1) + "\n")
     write_adjudication_packet(out / "adjudication_packet.md", review, texts, per_judge, judges)
     decisions = load_decisions(out / "adjudication_decisions.json", batches_dir, review, texts)
     seats = load_seats(seat_key, batches_dir, key) if seat_key else None
     result["headline"] = headline(result, decisions, key, review, seats)
-    (out / "score.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+    _write_aux(out / "score.json", json.dumps(result, indent=1) + "\n")
     write_execution_manifest(out, [batches_dir / "pair_calls.jsonl", *sorted(guard(runs).rglob("calls.jsonl"))])
     return result
 
@@ -1319,9 +1326,9 @@ def load_decisions(path: Path, batches_dir: Path, review: list[str], texts) -> d
     entry whose claim text differs, stops."""
     build = _file_sha(batches_dir / "build_manifest.json")
     if not guard(path).exists():
-        path.write_text(json.dumps({"build_manifest_sha256": build, "decisions": {
+        _write_aux(path, json.dumps({"build_manifest_sha256": build, "decisions": {
             i: {"text_sha256": _sha(texts[i][0]), "verdict": None, "criterion": None} for i in review}},
-            indent=1) + "\n", encoding="utf-8")
+            indent=1) + "\n")
     decisions = json.loads(read_text(path))
     if decisions.get("build_manifest_sha256") != build:
         raise Stop(f"{path.name} belongs to another build")
@@ -1396,7 +1403,7 @@ def write_adjudication_packet(path: Path, items: list[str], texts, per_judge, ju
                       if row["verdict"] == "false" else "")
             lines.append(f"- Reading {letter}: **{row['verdict']}**{detail} | {row.get('reason', '')}")
         lines.append("")
-    guard(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _write_aux(path, "\n".join(lines) + "\n")
 
 
 def write_execution_manifest(out: Path, logs: list[Path]) -> None:
@@ -1418,8 +1425,8 @@ def write_execution_manifest(out: Path, logs: list[Path]) -> None:
                            "output_sha256": e["output_sha256"], "attempt": e["attempt"]}
                           for n, e in enumerate(completed, start=1)]}
     if manifest["calls"]:
-        (guard(out) / "execution_manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
-    (out / "call_attempts.json").write_text(json.dumps({"attempts": entries}, indent=1) + "\n", encoding="utf-8")
+        _write_aux(guard(out) / "execution_manifest.json", json.dumps(manifest, indent=1) + "\n")
+    _write_aux(out / "call_attempts.json", json.dumps({"attempts": entries}, indent=1) + "\n")
 
 
 def cmd_score(args) -> int:
