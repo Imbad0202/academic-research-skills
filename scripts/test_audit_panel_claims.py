@@ -161,3 +161,56 @@ def test_the_cli_refuses_an_unknown_seat_and_a_repeated_seat(tmp_path, capsys):
     assert apc.main(["prompt", "--manuscript", str(tmp_path / "ms.md"), "--out-dir", str(tmp_path / "o"),
                      "--report", f"methodology={r1}", "--report", f"methodology={r1}"]) == 2
     assert "given twice" in capsys.readouterr().err
+
+
+def test_an_id_answered_twice_has_no_usable_verdict(tmp_path):
+    _prompt_text, key = _prompt(tmp_path)
+    reply = _reply(key, {("methodology", "W1"): FALSE_OK})
+    first = next(line for line in reply.split("\n") if '"false"' in line)
+    again = first.replace('"false"', '"true"')
+    for text in (reply + "\n" + again, again + "\n" + reply):
+        report = apc.build_report(MANUSCRIPT, key, text)
+        assert report["contradicted"] == [] and report["answered"] == 4
+        assert "1 findings have no usable verdict" in apc.render(report, "en")
+
+
+def test_an_unread_seat_makes_the_coverage_partial_and_none_read_is_not_none(tmp_path):
+    bad = tmp_path / "da.md"
+    bad.write_text("## Review Body\n\nno tables\n", encoding="utf-8")
+    good = tmp_path / "r1.md"
+    good.write_text(_seat_report(["Small sample"]), encoding="utf-8")
+    _prompt_text, key = apc.build_prompt(MANUSCRIPT, [("methodology", good), ("da", bad)])
+    out = apc.render(apc.build_report(MANUSCRIPT, key, _reply(key, {})), "en")
+    assert "Coverage: partial. Not read: Devil's Advocate." in out
+    _prompt_text, key = apc.build_prompt(MANUSCRIPT, [("da", bad)])
+    out = apc.render(apc.build_report(MANUSCRIPT, key, ""), "en")
+    assert "No report could be read" in out and "no findings to check" not in out
+
+
+def test_a_placeholder_in_the_manuscript_stays_as_text(tmp_path):
+    manuscript = MANUSCRIPT + "\nThe template uses {claims} and {manuscript} as fields.\n"
+    prompt, key = apc.build_prompt(manuscript, _reports(tmp_path))
+    assert manuscript in prompt
+    assert prompt.count(apc._item_line(key["items"][0]["claim_id"], key["items"][0]["text"])) == 1
+
+
+@pytest.mark.parametrize("key", [[], {"checker": apc.CHECKER}, {"checker": apc.CHECKER, "seats": [], "unread": [],
+                                                                "manuscript_sha256": "x", "items": [{}]}])
+def test_a_malformed_key_stops_with_exit_2(tmp_path, capsys, key):
+    (tmp_path / "ms.md").write_text(MANUSCRIPT, encoding="utf-8")
+    out_dir = tmp_path / "check"
+    out_dir.mkdir()
+    (out_dir / "key.json").write_text(json.dumps(key), encoding="utf-8")
+    (tmp_path / "reply.txt").write_text("", encoding="utf-8")
+    assert apc.main(["render", "--manuscript", str(tmp_path / "ms.md"), "--out-dir", str(out_dir),
+                     "--reply", str(tmp_path / "reply.txt")]) == 2
+    assert capsys.readouterr().err.startswith("STOP: the key was not written by this script")
+
+
+def test_an_unwritable_out_dir_stops_with_exit_2(tmp_path, capsys):
+    (tmp_path / "ms.md").write_text(MANUSCRIPT, encoding="utf-8")
+    (tmp_path / "file").write_text("x", encoding="utf-8")
+    seat, path = _reports(tmp_path)[0]
+    assert apc.main(["prompt", "--manuscript", str(tmp_path / "ms.md"), "--out-dir", str(tmp_path / "file" / "o"),
+                     "--report", f"{seat}={path}"]) == 2
+    assert capsys.readouterr().err.startswith("STOP: cannot write to")

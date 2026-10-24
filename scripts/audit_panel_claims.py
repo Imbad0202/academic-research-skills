@@ -9,8 +9,9 @@ script only prepares its prompt and reads its reply:
   prompt  read the saved Phase 2 reports, take every ``### W<n>`` finding of the
           four scoring seats and every CRITICAL and MAJOR row of the Devil's
           Advocate (the part 1 extraction), give each a neutral id in hash
-          order so the judge cannot see the seat, and write the part 1 auditor
-          prompt and the key into --out-dir
+          order so the prompt carries no seat label (a finding's own words can
+          still show its seat), and write the part 1 auditor prompt and the
+          key into --out-dir
   render  read the judge's reply against the key and print the Markdown
           attachment. A ``false`` verdict is shown as contradicted only when
           its quote passes the part 1 mechanical check: a contradiction quote
@@ -26,17 +27,19 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 try:
     from check_panel_synthesis import ReportError
-    from dispatch_panel_claim_audit import _item_line, evidence_ok, read_verdicts
+    from dispatch_panel_claim_audit import _item_line, evidence_ok, json_lines, read_verdicts
     from extract_panel_claims import da_claims, w_claims
 except ImportError:  # pragma: no cover - dual-path import
     from scripts.check_panel_synthesis import ReportError
-    from scripts.dispatch_panel_claim_audit import _item_line, evidence_ok, read_verdicts
+    from scripts.dispatch_panel_claim_audit import _item_line, evidence_ok, json_lines, read_verdicts
     from scripts.extract_panel_claims import da_claims, w_claims
 
 CHECKER = "audit_panel_claims/1"
@@ -56,7 +59,8 @@ _TEXT = {
                    "{nv} cannot be checked from the manuscript alone.",
         "partial": "Coverage: partial. {missing} findings have no usable verdict.",
         "none": "The reports hold no findings to check.",
-        "unread": "Not read: {seats}.",
+        "none_read": "No report could be read, so no finding was checked.",
+        "unread": "Coverage: partial. Not read: {seats}.",
         "contradicted": "Contradicted by the manuscript:",
         "absent": "The claim quotes words that the manuscript does not contain: “{quote}”",
         "row": "- {seat} · {fid}: {title}",
@@ -75,7 +79,8 @@ _TEXT = {
                    "{nv} 項無法只靠稿件判斷。",
         "partial": "涵蓋範圍：部分。{missing} 項意見沒有可用的判定。",
         "none": "審稿報告中沒有可檢查的意見。",
-        "unread": "未能讀取：{seats}。",
+        "none_read": "沒有能讀取的審稿報告，未檢查任何意見。",
+        "unread": "涵蓋範圍：部分。未能讀取：{seats}。",
         "contradicted": "與稿件內容矛盾的意見：",
         "absent": "意見引用了稿件中沒有的文字：「{quote}」",
         "row": "- {seat} · {fid}：{title}",
@@ -110,19 +115,40 @@ def build_prompt(manuscript: str, reports: list[tuple[str, Path]]) -> tuple[str,
     items = [{"claim_id": f"c{n:03d}", "seat": seat, "finding_id": fid, "text": claim}
              for n, (seat, fid, claim) in enumerate(findings, start=1)]
     claims = "\n".join(_item_line(i["claim_id"], i["text"]) for i in items)
-    prompt = PROMPT.read_text(encoding="utf-8").replace("{manuscript}", manuscript).replace("{claims}", claims)
+    try:
+        template = PROMPT.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise Stop(f"cannot read the auditor prompt ({type(exc).__name__})") from None
+    # One pass, so a placeholder written in the manuscript or a claim stays as text.
+    fill = {"manuscript": manuscript, "claims": claims}
+    prompt = re.sub(r"\{(manuscript|claims)\}", lambda m: fill[m.group(1)], template)
     key = {"checker": CHECKER, "seats": [s for s, _p in reports if s not in unread], "unread": unread,
            "manuscript_sha256": hashlib.sha256(manuscript.encode("utf-8")).hexdigest(), "items": items}
     return prompt, key
 
 
+def _key_ok(key: Any) -> bool:
+    if not isinstance(key, dict) or key.get("checker") != CHECKER:
+        return False
+    lists = all(isinstance(key.get(f), list) for f in ("seats", "unread", "items"))
+    return (lists and isinstance(key.get("manuscript_sha256"), str)
+            and all(s in SEATS for s in key["seats"] + key["unread"])
+            and all(isinstance(i, dict) and i.get("seat") in SEATS
+                    and all(isinstance(i.get(f), str) for f in ("claim_id", "finding_id", "text"))
+                    for i in key["items"]))
+
+
 def build_report(manuscript: str, key: dict[str, Any], reply: str) -> dict[str, Any]:
-    if key.get("checker") != CHECKER:
+    if not _key_ok(key):
         raise Stop("the key was not written by this script")
     if key["manuscript_sha256"] != hashlib.sha256(manuscript.encode("utf-8")).hexdigest():
         raise Stop("the manuscript is not the one the prompt was built from")
     items = key["items"]
-    rows, _problem = read_verdicts(reply, [i["claim_id"] for i in items]) if items else ({}, None)
+    ids = [i["claim_id"] for i in items]
+    rows, _problem = read_verdicts(reply, ids) if items else ({}, None)
+    # An id answered more than once has no usable verdict, whichever line came first.
+    seen = Counter(r.get("claim_id") for r in json_lines(reply))
+    rows = {cid: row for cid, row in rows.items() if seen[cid] == 1}
     contradicted, unconfirmed, nv = [], [], 0
     for item in items:
         row = rows.get(item["claim_id"])
@@ -149,7 +175,7 @@ def render(report: dict[str, Any], lang: str) -> str:
     if report["unread"]:
         lines.append(text["unread"].format(seats=", ".join(seat[s] for s in report["unread"])))
     if not report["findings"]:
-        lines.append(text["none"])
+        lines.append(text["none_read"] if not report["seats"] else text["none"])
         return "\n".join(lines)
     lines.append(text["summary"].format(n=report["findings"], k=len(report["seats"]),
                                         false=len(report["contradicted"]), nv=report["not_verifiable"]))
@@ -211,10 +237,13 @@ def main(argv: list[str] | None = None) -> int:
             if len(set(seats)) != len(seats):
                 raise Stop("a seat is given twice")
             prompt, key = build_prompt(manuscript, args.report)
-            args.out_dir.mkdir(parents=True, exist_ok=True)
-            (args.out_dir / PROMPT_FILE).write_text(prompt, encoding="utf-8")
-            (args.out_dir / KEY_FILE).write_text(json.dumps(key, ensure_ascii=False, indent=2) + "\n",
-                                                 encoding="utf-8")
+            try:
+                args.out_dir.mkdir(parents=True, exist_ok=True)
+                (args.out_dir / PROMPT_FILE).write_text(prompt, encoding="utf-8")
+                (args.out_dir / KEY_FILE).write_text(json.dumps(key, ensure_ascii=False, indent=2) + "\n",
+                                                     encoding="utf-8")
+            except OSError as exc:
+                raise Stop(f"cannot write to {args.out_dir} ({type(exc).__name__})") from None
             print(f"{len(key['items'])} findings; prompt in {args.out_dir / PROMPT_FILE}")
             return 0
         try:

@@ -534,14 +534,16 @@
       ],
       "pinned_by": [
         "scripts/test_audit_panel_claims.py::test_a_changed_manuscript_stops_the_render",
-        "scripts/test_audit_panel_claims.py::test_the_cli_refuses_an_unknown_seat_and_a_repeated_seat"
+        "scripts/test_audit_panel_claims.py::test_the_cli_refuses_an_unknown_seat_and_a_repeated_seat",
+        "scripts/test_audit_panel_claims.py::test_a_malformed_key_stops_with_exit_2",
+        "scripts/test_audit_panel_claims.py::test_an_unwritable_out_dir_stops_with_exit_2"
       ]
     },
     {
       "mechanism": "panel_claim_check_partial",
-      "failure_class": "The reviewer claim check reads the panel only in part: a seat's report cannot be read, or the judge's reply gives no usable verdict for some findings",
+      "failure_class": "The reviewer claim check reads the panel only in part: a seat's report cannot be read, or the judge's reply gives no usable verdict for some findings (none, an invalid one, or more than one)",
       "degraded_state": "partial: the script exits 0, and the report names each unread seat and counts the findings with no usable verdict; those findings are neither contradicted nor cleared",
-      "diagnostic_marker": "Markdown report line 'Not read: <seats>.' and line 'Coverage: partial. <n> findings have no usable verdict.' ('未能讀取：' and '涵蓋範圍：部分。' in zh-TW)",
+      "diagnostic_marker": "Markdown report line 'Coverage: partial. Not read: <seats>.' or 'Coverage: partial. <n> findings have no usable verdict.' ('涵蓋範圍：部分。' in zh-TW); with no report read, 'No report could be read, so no finding was checked.'",
       "downstream_consumer": "The reader of the Editorial Decision Letter that carries the report as an advisory attachment, and the user, who is shown it",
       "terminal_policy_effect": "none: the reviewer claim check is advisory; a partial report is not a clean result and blocks nothing",
       "authority": [
@@ -552,7 +554,9 @@
       ],
       "pinned_by": [
         "scripts/test_audit_panel_claims.py::test_missing_verdicts_make_the_coverage_partial",
-        "scripts/test_audit_panel_claims.py::test_an_unreadable_report_is_listed"
+        "scripts/test_audit_panel_claims.py::test_an_unreadable_report_is_listed",
+        "scripts/test_audit_panel_claims.py::test_an_id_answered_twice_has_no_usable_verdict",
+        "scripts/test_audit_panel_claims.py::test_an_unread_seat_makes_the_coverage_partial_and_none_read_is_not_none"
       ]
     }
   ]
