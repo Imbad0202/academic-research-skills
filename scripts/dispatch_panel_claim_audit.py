@@ -276,16 +276,20 @@ def _resend(call_id: str, out_file: Path) -> tuple[str, Path]:
     return f"{call_id}-r", out_file.with_name(out_file.name.replace(".out", ".r.out"))
 
 
-def failed_on_max_tokens(calls_log: Path, call_id: str) -> bool:
+def failed_on_max_tokens(calls_log: Path, call_id: str, prompt: str) -> bool:
+    """The last logged attempt of ``call_id`` is a Gemini API call with this
+    prompt that failed on its output limit; only then is a resend the same call."""
     entries = _logged(calls_log, call_id)
-    return bool(entries) and entries[-1].get("status") == "failed" and entries[-1].get("error") == MAX_TOKENS_FAILURE
+    return (bool(entries) and entries[-1].get("status") == "failed" and entries[-1].get("error") == MAX_TOKENS_FAILURE
+            and entries[-1].get("transport") == LOG_LABELS["gemini"]
+            and entries[-1].get("prompt_sha256") == _sha(prompt))
 
 
 def attempt_output(calls_log: Path, call_id: str, out_file: Path, prompt: str, transport: str) -> str | None:
     """``completed_output`` for one attempt, or for its plan-v5 resend when the
     Gemini attempt failed on its output limit."""
     text = completed_output(calls_log, call_id, out_file, prompt, transport)
-    if text is None and transport == "gemini" and failed_on_max_tokens(calls_log, call_id):
+    if text is None and transport == "gemini" and failed_on_max_tokens(calls_log, call_id, prompt):
         text = completed_output(calls_log, *_resend(call_id, out_file), prompt, transport)
     return text
 
@@ -409,9 +413,8 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
     candidate = candidates[0]
     if not isinstance(candidate, dict):
         return "", "unreadable candidate"
-    reason = candidate.get("finishReason")
-    if reason != "STOP":
-        return "", f"finish reason {reason}"
+    # Parts first: a forbidden part stops the run whatever the finish reason,
+    # so a MAX_TOKENS reply that holds one is never resent (plan v5).
     content = candidate.get("content")
     parts = content.get("parts") if isinstance(content, dict) else None
     if not isinstance(parts, list) or not all(isinstance(p, dict) for p in parts):
@@ -421,6 +424,9 @@ def gemini_api_answer(body_text: str) -> tuple[str, str | None]:
         return "", "parts other than the reply: " + ", ".join(other)
     if any(not isinstance(p.get("text"), str) for p in parts):
         return "", "a reply part without text"
+    reason = candidate.get("finishReason")
+    if reason != "STOP":
+        return "", f"finish reason {reason}"
     return "".join(p["text"] for p in parts if not p.get("thought")), None
 
 
@@ -973,11 +979,11 @@ def run_judge(judge: str, replicate: int, batches_dir: Path, out_root: Path, lim
     def call(prompt: str, out_file: Path, call_id: str, attempt: int = 1) -> str:
         """One attempt; a Gemini attempt that failed on its output limit is
         sent once more (plan v5). A resend that failed stops the run."""
-        if not (judge == "gemini" and failed_on_max_tokens(log, call_id)):
+        if not (judge == "gemini" and failed_on_max_tokens(log, call_id, prompt)):
             try:
                 return paid_call(prompt, out_file, call_id, attempt)
             except Stop:
-                if not (judge == "gemini" and failed_on_max_tokens(log, call_id)):
+                if not (judge == "gemini" and failed_on_max_tokens(log, call_id, prompt)):
                     raise
         resend_id, resend_file = _resend(call_id, out_file)
         if any(e.get("status") == "failed" for e in _logged(log, resend_id)):

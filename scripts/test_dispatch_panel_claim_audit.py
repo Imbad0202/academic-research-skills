@@ -1036,3 +1036,55 @@ def test_a_resumed_run_goes_to_the_resend_not_a_fresh_first_attempt(tmp_path, sm
     log = work / "runs" / "gemini" / "r1" / "calls.jsonl"
     ids = [e["call_id"] for e in d.read_jsonl(log) if e["status"] == "started"]
     assert ids == ["gemini-r1-b001-a1", "gemini-r1-b001-a1-r"]
+
+
+def test_a_max_tokens_reply_with_a_forbidden_part_stops_without_a_resend(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    calls = []
+
+    def tool(cmd, **kw):
+        calls.append(cmd)
+        body = gemini_body("", finish="MAX_TOKENS", parts=[{"text": ""}, {"functionCall": {"name": "f"}}])
+        return subprocess.CompletedProcess(cmd, 0, stdout=body, stderr="")
+    with pytest.raises(d.Stop, match="functionCall"):
+        d.run_judge("gemini", 1, work / "batches", work / "runs", runner=tool, cap_usd=50, limit=1)
+    assert len(calls) == 1
+
+
+def test_a_max_tokens_failure_with_another_prompt_is_not_resent(tmp_path):
+    log = tmp_path / "calls.jsonl"
+    d._log(log, {"call_id": "c1", "sequence_index": 1, "status": "failed", "transport": "gemini_api",
+                 "prompt_sha256": d._sha("OLD"), "error": d.MAX_TOKENS_FAILURE})
+    assert d.failed_on_max_tokens(log, "c1", "OLD") and not d.failed_on_max_tokens(log, "c1", "NEW")
+    d._log(log, {"call_id": "c2", "sequence_index": 2, "status": "failed", "transport": "gemini",
+                 "prompt_sha256": d._sha("OLD"), "error": d.MAX_TOKENS_FAILURE})
+    assert not d.failed_on_max_tokens(log, "c2", "OLD")  # an agy-era record
+
+
+def test_a_format_retry_that_hits_max_tokens_is_resent_and_scored(tmp_path, small_plan, capsys):
+    work, _rc = _build(tmp_path)
+    capsys.readouterr()
+    good = FakeJudge(honest)
+    n = {"calls": 0}
+    prompts = []
+
+    def runner(cmd, input=None, **kw):
+        n["calls"] += 1
+        prompts.append(input)
+        if n["calls"] == 1:  # a1: unreadable
+            return _reply(cmd, "not json\n")
+        if n["calls"] == 2:  # a2: the output limit
+            body = json.loads(gemini_body("", finish="MAX_TOKENS", parts=[{"text": ""}]))
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(body), stderr="")
+        return good(cmd, input=input, **kw)
+    d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
+    assert n["calls"] == 3 and prompts[1] == prompts[2] and prompts[1] != prompts[0]
+    log = work / "runs" / "gemini" / "r1" / "calls.jsonl"
+    assert [e["call_id"] for e in d.read_jsonl(log) if e["status"] == "completed"] == [
+        "gemini-r1-b001-a1", "gemini-r1-b001-a2-r"]
+    batches, _key = d.load_build(work / "batches")
+    ids = [i["claim_id"] for i in batches[0]["items"]]
+    assert set(d.load_replicate(work / "runs", "gemini", 1, batches[:1])) == set(ids)
+    d.run_judge("gemini", 1, work / "batches", work / "runs", runner=runner, cap_usd=50, limit=1)
+    assert n["calls"] == 3  # a resumed run adds no call
