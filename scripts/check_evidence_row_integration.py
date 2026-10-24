@@ -116,7 +116,11 @@ CITED_VERSION_RULES = {
         "open-access page that cannot be read",
         "`VERSION_INCONSISTENT_CITATION`",
         "`phase2_investigation/version_records.yaml`",
+        "use its `known_versions[]` to tell that record apart",
+        "whether or not `version_records.yaml` exists",
+        "An access note on one source never hides a distortion found in another",
         "`source.display_label`",
+        "`version not identified`",
     ),
     "academic-pipeline/agents/integrity_verification_agent.md": (
         "Compare the claim only with the cited version",
@@ -126,7 +130,11 @@ CITED_VERSION_RULES = {
         "open-access page that cannot be read",
         "VERSION_INCONSISTENT_CITATION",
         "phase2_investigation/version_records.yaml",
+        "use its known_versions[] to tell that record apart",
+        "whether or not version_records.yaml exists",
+        "An access note on one source never hides a distortion found in another",
         "source.display_label",
+        '"version not identified"',
     ),
     "academic-pipeline/agents/pipeline_orchestrator_agent.md": (
         "cited version not readable or not identified (UNVERIFIABLE_ACCESS",
