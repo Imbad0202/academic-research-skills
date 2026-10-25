@@ -250,6 +250,9 @@ def test_report_and_judge_text_is_literal_in_the_letter(tmp_path):
     "## Notes\n\n### W1: Small sample\nBody.\n",
     "## Review Body\n\n### **W1**: Small sample\n**Severity**: Major\n",
     "## Review Body\n\n### W1: Read\n**Severity**: Minor\n\n### Weakness 2: Not read\n**Severity**: Major\n",
+    "## Review Body\n\n### W1: Severity: Minor\nFirst.\n\n### Weakness 2: Not read\n**Severity**: Major\n",
+    "## Review Body\n\n### W1: Read\nFirst.\n\n### Weakness 2: Not read\n**Severity:** Major\n",
+    "## Review Body\n\n### W1: Read\nFirst.\n  ### W2: Indented\n**Severity**: Major\n",
 ])
 def test_a_scoring_report_whose_findings_cannot_be_read_is_unread(tmp_path, report):
     bad = tmp_path / "bad.md"

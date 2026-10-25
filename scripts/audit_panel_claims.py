@@ -42,12 +42,12 @@ try:
     from check_panel_synthesis import ReportError
     from dispatch_panel_claim_audit import _item_line, _norm, evidence_ok, json_lines, read_verdicts
     from check_panel_synthesis import split_sections, strip_fences
-    from extract_panel_claims import da_claims, w_claims
+    from extract_panel_claims import _SECTION_END_RE, _W_HEADING_RE, da_claims, w_claims
 except ImportError:  # pragma: no cover - dual-path import
     from scripts.check_panel_synthesis import ReportError
     from scripts.dispatch_panel_claim_audit import _item_line, _norm, evidence_ok, json_lines, read_verdicts
     from scripts.check_panel_synthesis import split_sections, strip_fences
-    from scripts.extract_panel_claims import da_claims, w_claims
+    from scripts.extract_panel_claims import _SECTION_END_RE, _W_HEADING_RE, da_claims, w_claims
 
 CHECKER = "audit_panel_claims/1"
 # The prompt that passed the part 1 contrast test, used unchanged.
@@ -123,17 +123,20 @@ _QUOTED = re.compile(r'"([^"\n]+)"|“([^”\n]+)”|‘([^’\n]+)’|「([^」
 def _claims(seat: str, text: str, path: str) -> list[tuple[str, str]]:
     if seat == "da":
         return da_claims(text, path)
-    found = w_claims(text)
     sections, _dupes = split_sections(strip_fences(text, preserve_fenced_blocks=True))
     if "Review Body" not in sections:
         raise ReportError(f"{path}: no Review Body section")
-    body = sections["Review Body"]
-    if sum(1 for line in body if _W_HEADING_LIKE.match(line)) != len(found):
-        raise ReportError(f"{path}: a W heading cannot be read")
-    severities = sum(1 for _fid, claim in found for line in claim.splitlines() if _SEVERITY_LINE.match(line))
-    if sum(1 for line in body if _SEVERITY_LINE.match(line)) != severities:
-        raise ReportError(f"{path}: a finding with a Severity is outside every W heading")
-    return found
+    # Walk the body as `w_claims` does. A heading line is a title, so only the
+    # lines under a heading count as its finding's text.
+    inside = False
+    for line in sections["Review Body"]:
+        if _W_HEADING_LIKE.match(line) and not _W_HEADING_RE.match(line):
+            raise ReportError(f"{path}: a W heading cannot be read")
+        if _SECTION_END_RE.match(line):
+            inside = bool(_W_HEADING_RE.match(line))
+        elif not inside and _SEVERITY_LINE.match(line):
+            raise ReportError(f"{path}: a finding with a Severity is outside every W heading")
+    return w_claims(text)
 
 
 def _quoted_in_claim(quote: str, claim: str) -> bool:
