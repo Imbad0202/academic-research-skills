@@ -386,6 +386,21 @@ class LauncherPyDashThreeArgTest(unittest.TestCase):
             self.assertEqual(code, 0, f"err={err!r}")
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
 
+    def test_a_probe_with_extra_separators_is_skipped(self):
+        """#1015: a probe line with a "|" beyond the two separators (a wrapper that prints
+        "diagnostic|" after each run, say) is skipped, so the next candidate runs the guard."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _write_exec(os.path.join(bin_dir, "py"), (
+                "#!/bin/sh\n"
+                f'if [ "$1" = "-3" ]; then shift; "{REAL_PY}" "$@"; status=$?; printf "diagnostic|"; exit $status; fi\n'
+                "exit 1\n"
+            ))
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+
     def test_a_json_module_in_the_working_directory_is_not_imported(self):
         """#1015: the JSON check runs with -I, so a json.py in the hook's working directory
         cannot replace the standard module and turn a deny into a pass-through."""

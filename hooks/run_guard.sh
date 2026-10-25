@@ -187,28 +187,32 @@ run_bounded() {
 
 # Echo "<candidate>|<interpreter path>" for the first candidate ("cmd args") that verifies
 # as REAL Python, or nothing. A candidate qualifies ONLY if the probe exits 0 AND prints
-# exactly "<marker>|<path>|" on one line (P1-a: a stub that prints the marker but exits
-# non-zero must be rejected; a candidate that prints more is skipped, as before). The path is sys.executable on Windows only, with "/" for "\"
-# so Git Bash reads it, and empty when stdout cannot encode it; elsewhere it is empty, so the
-# candidate runs as before. Candidates in order; `py -3` first (the Windows launcher).
+# exactly "<marker>|<path>|" on one line, with no "|" in the path (P1-a: a stub that prints
+# the marker but exits non-zero must be rejected; a candidate that prints more is skipped, as
+# before). The path is sys.executable on Windows only, with "/" for "\" so Git Bash reads
+# it, and only when it is ASCII, since Python's stdout encoding and Git Bash can read other
+# bytes differently. Otherwise it is empty, and the candidate runs as before. Candidates in
+# order; `py -3` first (the Windows launcher).
 find_real_python() {
     for cand in "py -3" "python3" "python"; do
         # shellcheck disable=SC2086  # intentional word-split: "py -3" -> py with arg -3
         set -- $cand
         cmd=$1
         command -v "$cmd" >/dev/null 2>&1 || continue
-        probe_out=$(run_bounded "$@" -c "import sys; p = (sys.executable or '').replace(chr(92), '/') if sys.platform == 'win32' else ''; e = sys.stdout.encoding or 'ascii'; p = p if p.encode(e, 'replace').decode(e) == p else ''; sys.stdout.write('$MARKER|' + p + '|')" </dev/null 2>/dev/null)
+        probe_out=$(run_bounded "$@" -c "import sys; p = (sys.executable or '').replace(chr(92), '/') if sys.platform == 'win32' else ''; p = p if all(ord(c) < 128 for c in p) else ''; sys.stdout.write('$MARKER|' + p + '|')" </dev/null 2>/dev/null)
         probe_status=$?
-        if [ "$probe_status" -eq 0 ]; then
-            case $probe_out in
-                *"$NL"*) ;;
-                "$MARKER|"*"|")
-                    probe_out=${probe_out#"$MARKER|"}
-                    printf '%s|%s' "$cand" "${probe_out%|}"
-                    return 0
-                    ;;
-            esac
-        fi
+        [ "$probe_status" -eq 0 ] || continue
+        case $probe_out in
+            "$MARKER|"*"|") ;;
+            *) continue ;;
+        esac
+        probe_out=${probe_out#"$MARKER|"}
+        probe_out=${probe_out%|}
+        case $probe_out in
+            *"|"* | *"$NL"*) continue ;;
+        esac
+        printf '%s|%s' "$cand" "$probe_out"
+        return 0
     done
     return 1
 }
