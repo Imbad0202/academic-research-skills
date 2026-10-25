@@ -62,7 +62,7 @@ _TEXT = {
         "title": "## Attachment: Reviewer Claim Check (advisory, #1002)",
         "seats": {"eic": "Journal-Fit Reviewer", "methodology": "Reviewer 1", "domain": "Reviewer 2",
                   "perspective": "Reviewer 3", "da": "Devil's Advocate"},
-        "summary": "Checked {n} findings from {k} reviewers against the manuscript: the judge marked {false} "
+        "summary": "The judge answered {a} of {n} findings from {k} reviewers: it marked {false} "
                    "as contradicted, and {nv} cannot be checked from the manuscript alone.",
         "partial": "Coverage: partial. {missing} findings have no usable verdict.",
         "none": "The reports hold no findings to check.",
@@ -78,14 +78,15 @@ _TEXT = {
         "unconfirmed": "The judge also marked {items} as false, but its quote did not pass the check, "
                        "so they are not shown as contradicted.",
         "note": "The author decides what to do with each row. This check does not change the decision, "
-                "the consensus counts, or the Revision Roadmap. The judge is the session model; the #1002 "
-                "contrast test covered Claude Opus 5.5 and Claude Fable 5.1 only.",
+                "the consensus counts, or the Revision Roadmap. The judge is the session model; as this judge, the #1002 "
+                "contrast test passed Claude Opus 5.5 and Claude Fable 5.1 (gpt-6-astra and Gemini 4 Argon "
+                "passed it in part one, through other transports); other models are untested.",
     },
     "zh-TW": {
         "title": "## Attachment: Reviewer Claim Check (advisory, #1002)",
         "seats": {"eic": "期刊適配審稿人", "methodology": "審稿人 1", "domain": "審稿人 2",
                   "perspective": "審稿人 3", "da": "魔鬼代言人"},
-        "summary": "已對照稿件檢查 {k} 位審稿人的 {n} 項意見：判官判定 {false} 項與稿件內容矛盾，"
+        "summary": "{k} 位審稿人共 {n} 項意見，判官回答了 {a} 項：判官判定 {false} 項與稿件內容矛盾，"
                    "{nv} 項無法只靠稿件判斷。",
         "partial": "涵蓋範圍：部分。{missing} 項意見沒有可用的判定。",
         "none": "審稿報告中沒有可檢查的意見。",
@@ -99,7 +100,8 @@ _TEXT = {
         "quote": "  > 「{quote}」（{locator}）",
         "unconfirmed": "判定者另將 {items} 判為錯誤，但引文未通過比對，因此不列為矛盾。",
         "note": "每一項由作者決定如何處理。這項檢查不改變審稿決定、共識計數或修訂路線圖。"
-                "判官是 session 模型；#1002 的對照測驗只測過 Claude Opus 5.5 與 Claude Fable 5.1。",
+                "判官是 session 模型；作為這個判官，#1002 的對照測驗通過了 Claude Opus 5.5 與 Claude Fable 5.1"
+                "（gpt-6-astra 與 Gemini 4 Argon 在第一部分經由其他傳輸方式通過）；其他模型未經測試。",
     },
 }
 
@@ -142,8 +144,9 @@ def _claims(seat: str, text: str, path: str) -> list[tuple[str, str]]:
 def _quoted_in_claim(quote: str, claim: str) -> bool:
     """True when the claim presents ``quote`` inside quotation marks."""
     q = _norm(quote)
+    # A quotation can wrap onto the next line, so the claim is read as one line.
     return bool(q) and any(q in _norm(next(g for g in m.groups() if g is not None))
-                           for m in _QUOTED.finditer(claim))
+                           for m in _QUOTED.finditer(" ".join(claim.split())))
 
 
 def _checked(row: dict[str, Any], claim: str, manuscript: str) -> bool:
@@ -238,7 +241,7 @@ def render(report: dict[str, Any], lang: str) -> str:
     if not report["findings"]:
         lines.append(text["none_read"] if not report["seats"] else text["none"])
         return "\n".join(lines)
-    lines.append(text["summary"].format(n=report["findings"], k=len(report["seats"]),
+    lines.append(text["summary"].format(a=report["answered"], n=report["findings"], k=len(report["seats"]),
                                         false=len(report["contradicted"]), nv=report["not_verifiable"]))
     if report["answered"] < report["findings"]:
         lines.append(text["partial"].format(missing=report["findings"] - report["answered"]))

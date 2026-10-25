@@ -66,8 +66,9 @@ def test_a_checked_contradiction_is_shown(tmp_path):
     out = apc.render(report, "en")
     assert "Reviewer 1 · W1: No reliability reported" in out
     assert "“Cronbach's alpha for the 12-item scale was .87.” (§3)" in out
-    assert "the judge marked 1 as contradicted" in out and "does not change the decision" in out
-    assert "covered Claude Opus 5.5 and Claude Fable 5.1 only" in out
+    assert "it marked 1 as contradicted" in out and "does not change the decision" in out
+    assert "passed Claude Opus 5.5 and Claude Fable 5.1 (gpt-6-astra and Gemini 4 Argon" in out
+    assert "The judge answered 5 of 5 findings" in out
 
 
 def test_a_false_verdict_whose_quote_is_not_in_the_manuscript_is_unconfirmed(tmp_path):
@@ -76,7 +77,7 @@ def test_a_false_verdict_whose_quote_is_not_in_the_manuscript_is_unconfirmed(tmp
     report = apc.build_report(MANUSCRIPT, key, _reply(key, {("methodology", "W1"): bad}))
     assert report["contradicted"] == [] and len(report["unconfirmed"]) == 1
     out = apc.render(report, "en")
-    assert "the judge marked 0 as contradicted" in out and "Reviewer 1 · W1" in out and "did not pass the check" in out
+    assert "it marked 0 as contradicted" in out and "Reviewer 1 · W1" in out and "did not pass the check" in out
 
 
 def test_an_absent_quotation_is_shown_only_when_the_words_are_not_in_the_manuscript(tmp_path):
@@ -104,7 +105,9 @@ def test_missing_verdicts_make_the_coverage_partial(tmp_path):
     reply = "\n".join(_reply(key, {}).split("\n")[:3])
     report = apc.build_report(MANUSCRIPT, key, reply)
     assert report["answered"] == 3
-    assert "Coverage: partial. 2 findings have no usable verdict." in apc.render(report, "en")
+    out = apc.render(report, "en")
+    assert "Coverage: partial. 2 findings have no usable verdict." in out
+    assert f"The judge answered {report['findings'] - 2} of {report['findings']} findings" in out
 
 
 def test_not_verifiable_is_counted_and_not_listed(tmp_path):
@@ -276,3 +279,9 @@ def test_a_scoring_report_with_no_weakness_reads_as_zero_findings(tmp_path):
     r1.write_text(_seat_report([]), encoding="utf-8")
     _prompt_text, key = apc.build_prompt(MANUSCRIPT, [("methodology", r1)])
     assert key["unread"] == [] and key["items"] == []
+
+
+def test_a_quotation_that_wraps_onto_the_next_line_is_quoted():
+    claim = "Small sample\n**Evidence Anchor**: §3 “We used convenience\nsampling.”"
+    assert apc._quoted_in_claim("We used convenience sampling.", claim)
+    assert not apc._quoted_in_claim("Small sample", claim)
