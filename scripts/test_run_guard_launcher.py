@@ -341,24 +341,36 @@ class LauncherPyDashThreeArgTest(unittest.TestCase):
                 f'if [ "$1" = "-3" ]; then shift; echo noise; exec "{REAL_PY}" "$@"; fi\n'
                 "exit 1\n"
             ))
-            _fake_real_python(os.path.join(bin_dir, "python3"))
+            calls_log = os.path.join(bin_dir, "py3_calls.log")
+            _write_exec(os.path.join(bin_dir, "python3"),
+                        f'#!/bin/sh\necho call >> "{calls_log}"\nexec "{REAL_PY}" "$@"\n')
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0, f"err={err!r}")
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            with open(calls_log) as fh:
+                self.assertEqual(len(fh.read().splitlines()), 1, "python3 must run the guard")
 
     def test_output_after_the_decision_skips_the_candidate(self):
         """#1015: a candidate that exits 0 but prints after the decision (a wrapper that prints
         after Python ends) is skipped and the next candidate runs the guard."""
+        for tail in ("|diagnostic|", "{}", "\\n{}"):
+            with self.subTest(tail=tail):
+                self._after_decision(tail)
+
+    def _after_decision(self, tail):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
             _write_exec(os.path.join(bin_dir, "py"), (
                 "#!/bin/sh\n"
-                f'if [ "$1" = "-3" ]; then shift; "{REAL_PY}" "$@"; printf "|diagnostic|"; exit 0; fi\n'
+                f'if [ "$1" = "-3" ]; then shift; "{REAL_PY}" "$@"; printf "$TAIL"; exit 0; fi\n'
                 "exit 1\n"
             ))
-            _fake_real_python(os.path.join(bin_dir, "python3"))
+            calls_log = os.path.join(bin_dir, "py3_calls.log")
+            _write_exec(os.path.join(bin_dir, "python3"),
+                        f'#!/bin/sh\necho call >> "{calls_log}"\nexec "{REAL_PY}" "$@"\n')
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            code, out, err = _run_launcher(bin_dir, payload,
+                                           extra_env={"CLAUDE_PROJECT_DIR": ws, "TAIL": tail})
             self.assertEqual(code, 0, f"err={err!r}")
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
 
@@ -519,6 +531,68 @@ class LauncherGuardBrokeTest(unittest.TestCase):
         self.assertEqual(code, 0, f"err={err!r}")
         self.assertEqual(json.loads(out), deny)
         self.assertTrue(out.isascii())
+
+    def test_guard_that_ignores_sigterm_is_cut_off_on_both_bound_paths(self):
+        body = "import signal, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\ntime.sleep(60)\n"
+        for watchdog in ("", "1"):
+            with self.subTest(watchdog=watchdog), tempfile.TemporaryDirectory() as bin_dir, \
+                    tempfile.TemporaryDirectory() as base:
+                _fake_real_python(os.path.join(bin_dir, "python3"))
+                launcher_copy = _make_plugin_layout(base, body)
+                env = {"ARS_PROBE_BOUND": _HANG_PROBE_BOUND}
+                if watchdog:
+                    env["ARS_GUARD_FORCE_WATCHDOG"] = "1"
+                start = time.monotonic()
+                code, out, err = _run_launcher(
+                    bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
+                    launcher=launcher_copy, extra_env=env)
+                self.assertLess(time.monotonic() - start, 30)
+                self.assertEqual(code, 0)
+                self.assertEqual(json.loads(out), PASS_THROUGH)
+
+    def test_exit_codes_map_as_python_maps_them(self):
+        """#1015: the guard runs in the runner's process, so its SystemExit code maps to the
+        status Python would give it: 0.0 is a failure, and on POSIX 256 is status 0."""
+        deny = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                       "permissionDecisionReason": "x"}}
+        cases = [("0.0", PASS_THROUGH), ("'stop'", PASS_THROUGH), ("None", deny)]
+        if os.name != "nt":
+            cases.append(("256", deny))
+        for code_text, expected in cases:
+            with self.subTest(code=code_text):
+                body = "import json, sys\nprint(json.dumps(%r))\nsys.exit(%s)\n" % (deny, code_text)
+                code, out, err = self._run_with_guard_output(body)
+                self.assertEqual(code, 0)
+                self.assertEqual(json.loads(out), expected)
+
+    def test_healthy_guard_stderr_is_relayed(self):
+        body = ("import json, sys\nsys.stderr.write('advisory without newline')\n"
+                "print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse'}}))\n")
+        code, out, err = self._run_with_guard_output(body)
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out), PASS_THROUGH)
+        self.assertIn("advisory without newline", err)
+
+    def test_guard_reads_stdin_as_utf8(self):
+        """#1015: -I drops PYTHONUTF8 and PYTHONIOENCODING, so the runner sets UTF-8 on stdin
+        itself; Claude Code sends UTF-8 JSON."""
+        body = ("import json, sys\npayload = json.load(sys.stdin)\n"
+                "print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', "
+                "'permissionDecisionReason': sys.stdin.encoding + ':' + payload['tool_input']['command']}}))\n")
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as base:
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            launcher_copy = _make_plugin_layout(base, body)
+            path = bin_dir + os.pathsep + _SYS_PATH
+            proc = subprocess.run(
+                [_SH, launcher_copy],
+                input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "丁\"x"}},
+                                 ensure_ascii=False).encode("utf-8"),
+                env={"PATH": path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND,
+                     "LC_ALL": "en_US.ISO8859-1", "LANG": "en_US.ISO8859-1"},
+                capture_output=True, timeout=_LAUNCHER_TIMEOUT)
+            self.assertEqual(proc.returncode, 0)
+            reason = json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertEqual(reason, "utf-8:丁\"x")
 
     def test_guard_script_missing(self):
         # A plugin layout with the launcher but NO scripts/ars_write_scope_guard.py: the

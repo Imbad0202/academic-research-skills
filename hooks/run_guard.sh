@@ -58,6 +58,7 @@ PAYLOAD=$(cat)
 # so a broken-but-hanging interpreter can't wedge the hot path (spec §3.3): prefer `timeout`
 # when present, else a portable process-group watchdog.
 MARKER=ARS_PY_OK
+END_MARKER=ARS_PY_END
 NL='
 '
 # Per-candidate (and guard) wall-clock bound, seconds. A small ops knob; validated to be a
@@ -193,14 +194,21 @@ run_bounded() {
 # same process with its stdout captured (fd 1 points at the null device meanwhile, so a write
 # that goes around sys.stdout is lost, not mixed into the output), and writes the guard's
 # decision only if the guard exited 0 and printed a JSON object with "hookSpecificOutput".
-# It re-encodes that object as ASCII JSON on one line, then ends with os._exit so no exit
-# handler can print after it. -I keeps PYTHON* variables, the user site, and the working
+# It re-encodes that object as ASCII JSON on one line followed by an end line, flushes
+# stderr, then ends with os._exit so no exit handler can print after it. The guard reads
+# stdin as UTF-8, the encoding Claude Code sends; -I would otherwise drop a PYTHONUTF8 or
+# PYTHONIOENCODING setting and leave the locale encoding. A SystemExit code maps to the
+# exit status Python would give it. -I keeps PYTHON* variables, the user site, and the working
 # directory out of the process. Python 3.4 syntax only: older versions, and Python 2, which
 # has no -I, fail before the marker and the next candidate runs.
 # shellcheck disable=SC2016  # Python source, not shell: nothing in it is expanded
 GUARD_RUNNER='import io, json, os, runpy, sys
-os.write(1, b"ARS_PY_OK\n")
+def emit(data):
+    while data:
+        data = data[os.write(1, data):]
+emit(b"ARS_PY_OK\n")
 guard = sys.argv[1]
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
 captured = io.BytesIO()
 out = io.TextIOWrapper(captured, encoding="utf-8", write_through=True)
 saved_fd = os.dup(1)
@@ -208,18 +216,27 @@ null_fd = os.open(os.devnull, os.O_WRONLY)
 os.dup2(null_fd, 1)
 real_stdout = sys.stdout
 sys.stdout = out
-code = 0
+status = 0
 try:
     sys.argv = [guard]
     runpy.run_path(guard, run_name="__main__")
 except SystemExit as exc:
-    code = exc.code
+    if exc.code is None:
+        status = 0
+    elif isinstance(exc.code, int):
+        status = exc.code if os.name == "nt" else exc.code & 255
+    else:
+        status = 1
 except BaseException:
-    code = 1
+    status = 1
 finally:
     sys.stdout = real_stdout
     os.dup2(saved_fd, 1)
-if code not in (None, 0):
+try:
+    sys.stderr.flush()
+except Exception:
+    pass
+if status != 0:
     os._exit(1)
 try:
     out.flush()
@@ -228,7 +245,7 @@ except Exception:
     os._exit(1)
 if not (isinstance(decision, dict) and "hookSpecificOutput" in decision):
     os._exit(1)
-os.write(1, json.dumps(decision, ensure_ascii=True).encode("ascii"))
+emit(json.dumps(decision, ensure_ascii=True).encode("ascii") + b"\nARS_PY_END")
 os._exit(0)
 '
 
@@ -243,7 +260,7 @@ GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 
 # Candidates in order; `py -3` first (the Windows launcher). For each one:
 #   * no marker line first (stub, missing interpreter, hang before start) -> next candidate;
-#   * marker, exit 0, and one line of JSON object after it -> forward that decision;
+#   * marker, exit 0, one line of JSON object, and the end line -> forward that decision;
 #   * marker, exit 0, and anything else after it -> the runner always ends with os._exit, so
 #     the extra text came from the candidate itself (a wrapper that prints after Python, say);
 #     the next candidate runs, as a probe that printed more than the marker was skipped before;
@@ -260,9 +277,13 @@ for cand in "py -3" "python3" "python"; do
         "$MARKER" | "$MARKER$NL"*) ;;
         *) continue ;;
     esac
-    DECISION=${GUARD_OUT#"$MARKER"}
-    DECISION=${DECISION#"$NL"}
     [ "$GUARD_STATUS" -eq 0 ] || break
+    case $GUARD_OUT in
+        "$MARKER$NL"*"$NL$END_MARKER") ;;
+        *) continue ;;
+    esac
+    DECISION=${GUARD_OUT#"$MARKER$NL"}
+    DECISION=${DECISION%"$NL$END_MARKER"}
     case $DECISION in
         *"$NL"*) ;;
         "{"*"}")
