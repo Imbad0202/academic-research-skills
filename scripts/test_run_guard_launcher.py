@@ -373,6 +373,8 @@ class LauncherPyDashThreeArgTest(unittest.TestCase):
                                            extra_env={"CLAUDE_PROJECT_DIR": ws, "TAIL": tail})
             self.assertEqual(code, 0, f"err={err!r}")
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            with open(calls_log) as fh:
+                self.assertEqual(len(fh.read().splitlines()), 1, "python3 must run the guard")
 
     def test_modules_from_the_working_directory_and_pythonpath_are_not_imported(self):
         """#1015: the runner uses -I, so a json.py or runpy.py in the hook's working directory
@@ -484,11 +486,20 @@ class LauncherGuardBrokeTest(unittest.TestCase):
 
     def test_guard_ends_the_process_without_a_decision(self):
         """#1015: the guard runs in the runner's process, so os._exit ends both; the marker is
-        out, the decision is not -> pass-through."""
-        code, out, err = self._run_with_broken_guard("import os\nos._exit(0)\n")
-        self.assertEqual(code, 0)
-        self.assertEqual(json.loads(out), PASS_THROUGH)
-        self.assertEqual(err.strip(), "")
+        out, the decision is not -> pass-through, and no other candidate runs the guard."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as base:
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            calls_log = os.path.join(bin_dir, "python_calls.log")
+            _write_exec(os.path.join(bin_dir, "python"),
+                        f'#!/bin/sh\necho call >> "{calls_log}"\nexec "{REAL_PY}" "$@"\n')
+            launcher_copy = _make_plugin_layout(base, "import os\nos._exit(0)\n")
+            code, out, err = _run_launcher(
+                bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
+                launcher=launcher_copy)
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(out), PASS_THROUGH)
+            self.assertEqual(err.strip(), "")
+            self.assertFalse(os.path.exists(calls_log), "the next candidate must not run the guard")
 
     def test_guard_that_hangs_is_cut_off(self):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as base:
@@ -555,7 +566,7 @@ class LauncherGuardBrokeTest(unittest.TestCase):
         status Python would give it: 0.0 is a failure, and on POSIX 256 is status 0."""
         deny = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                        "permissionDecisionReason": "x"}}
-        cases = [("0.0", PASS_THROUGH), ("'stop'", PASS_THROUGH), ("None", deny)]
+        cases = [("0.0", PASS_THROUGH), ("'stop'", PASS_THROUGH), ("None", deny), ("1 << 100", PASS_THROUGH)]
         if os.name != "nt":
             cases.append(("256", deny))
         for code_text, expected in cases:

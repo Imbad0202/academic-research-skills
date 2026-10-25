@@ -198,7 +198,7 @@ run_bounded() {
 # stderr, then ends with os._exit so no exit handler can print after it. The guard reads
 # stdin as UTF-8, the encoding Claude Code sends; -I would otherwise drop a PYTHONUTF8 or
 # PYTHONIOENCODING setting and leave the locale encoding. A SystemExit code maps to the
-# exit status Python would give it. -I keeps PYTHON* variables, the user site, and the working
+# exit status Python would give it; an integer outside the C int range counts as a failure. -I keeps PYTHON* variables, the user site, and the working
 # directory out of the process. Python 3.4 syntax only: older versions, and Python 2, which
 # has no -I, fail before the marker and the next candidate runs.
 # shellcheck disable=SC2016  # Python source, not shell: nothing in it is expanded
@@ -223,7 +223,7 @@ try:
 except SystemExit as exc:
     if exc.code is None:
         status = 0
-    elif isinstance(exc.code, int):
+    elif isinstance(exc.code, int) and -2 ** 31 <= exc.code < 2 ** 31:
         status = exc.code if os.name == "nt" else exc.code & 255
     else:
         status = 1
@@ -264,7 +264,8 @@ GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 #   * marker, exit 0, and anything else after it -> the runner always ends with os._exit, so
 #     the extra text came from the candidate itself (a wrapper that prints after Python, say);
 #     the next candidate runs, as a probe that printed more than the marker was skipped before;
-#   * marker and a non-zero exit or a timeout -> the guard is BROKEN; per the maintainer
+#   * marker and a non-zero exit, a timeout, or nothing after it (the guard ended the process
+#     itself) -> the guard is BROKEN; per the maintainer
 #     decision (§3.2.1) degrade to pass-through + exit 0, never block, and do not run the
 #     guard again under another candidate.
 for cand in "py -3" "python3" "python"; do
@@ -278,6 +279,7 @@ for cand in "py -3" "python3" "python"; do
         *) continue ;;
     esac
     [ "$GUARD_STATUS" -eq 0 ] || break
+    [ "$GUARD_OUT" = "$MARKER" ] && break
     case $GUARD_OUT in
         "$MARKER$NL"*"$NL$END_MARKER") ;;
         *) continue ;;
