@@ -1,5 +1,5 @@
 #!/bin/sh
-# version: 1.0.2
+# version: 1.0.3
 #
 # ARS write-scope guard LAUNCHER — PreToolUse hook (#454 Windows portability fix).
 #
@@ -183,35 +183,55 @@ run_bounded() {
     return "$_st"
 }
 
-# Echo the first candidate ("cmd args") that verifies as REAL Python, or nothing.
-# A candidate qualifies ONLY if the probe exits 0 AND prints exactly the marker on stdout
-# (P1-a: a stub that prints the marker but exits non-zero must be rejected). Candidates in
-# order; `py -3` first (the Windows launcher).
+# Echo "<candidate>|<interpreter path>" for the first candidate ("cmd args") that verifies
+# as REAL Python, or nothing. A candidate qualifies ONLY if the probe exits 0 AND its stdout
+# starts with the marker and "|" (P1-a: a stub that prints the marker but exits non-zero must
+# be rejected). After the "|" the probe prints sys.executable, with "/" for "\" so Git Bash
+# reads a Windows path; it can be empty. Candidates in order; `py -3` first (the Windows
+# launcher).
 find_real_python() {
     for cand in "py -3" "python3" "python"; do
         # shellcheck disable=SC2086  # intentional word-split: "py -3" -> py with arg -3
         set -- $cand
         cmd=$1
         command -v "$cmd" >/dev/null 2>&1 || continue
-        probe_out=$(run_bounded "$@" -c "import sys; sys.stdout.write('$MARKER')" </dev/null 2>/dev/null)
+        probe_out=$(run_bounded "$@" -c "import sys; sys.stdout.write('$MARKER|' + (sys.executable or '').replace(chr(92), '/'))" </dev/null 2>/dev/null)
         probe_status=$?
-        if [ "$probe_status" -eq 0 ] && [ "$probe_out" = "$MARKER" ]; then
-            printf '%s' "$cand"
-            return 0
+        if [ "$probe_status" -eq 0 ]; then
+            case $probe_out in
+                "$MARKER|"*)
+                    printf '%s|%s' "$cand" "${probe_out#"$MARKER|"}"
+                    return 0
+                    ;;
+            esac
         fi
     done
     return 1
 }
 
-REAL_PY=$(find_real_python) || emit_passthrough_and_exit
+FOUND_PY=$(find_real_python) || emit_passthrough_and_exit
+REAL_PY=${FOUND_PY%%|*}
 [ -n "$REAL_PY" ] || emit_passthrough_and_exit
+
+# #1015: the guard run and the JSON check below use the interpreter's own path, not the
+# candidate. On Windows the `py` candidate is an App Execution Alias, and each launch through
+# an alias makes AppXSvc run an update check that leaks memory (python/pymanager#396); a
+# launch by path goes around the alias. So the hook launches through the alias once per
+# call, for the probe, instead of three times. With no usable path (empty, or not an
+# executable file), both calls use the candidate as before.
+PY_EXE=${FOUND_PY#*|}
+{ [ -f "$PY_EXE" ] && [ -x "$PY_EXE" ]; } || PY_EXE=
 
 # is_valid_hook_json: true iff $1 parses as a JSON object containing a top-level
 # "hookSpecificOutput" key. Uses the REAL Python we already found (no jq dependency, P1-c:
 # substring grep false-accepts e.g. `not json "hookSpecificOutput"`). Reads candidate on stdin.
 is_valid_hook_json() {
-    # shellcheck disable=SC2086  # $REAL_PY is "py -3" or "python3" — intentional split
-    set -- $REAL_PY
+    if [ -n "$PY_EXE" ]; then
+        set -- "$PY_EXE"
+    else
+        # shellcheck disable=SC2086  # $REAL_PY is "py -3" or "python3" — intentional split
+        set -- $REAL_PY
+    fi
     printf '%s' "$GUARD_OUT" | "$@" -c '
 import sys, json
 try:
@@ -229,8 +249,12 @@ sys.exit(0 if isinstance(d, dict) and "hookSpecificOutput" in d else 1)
 #   * guard exits 0 AND stdout is a JSON object with hookSpecificOutput -> forward verbatim.
 #   * anything else (non-zero, timeout, empty, non-JSON, missing key) -> guard is BROKEN;
 #     per the maintainer decision (§3.2.1) degrade to pass-through + exit 0, never block.
-# shellcheck disable=SC2086  # $REAL_PY is "py -3" or "python3" — intentional split
-set -- $REAL_PY
+if [ -n "$PY_EXE" ]; then
+    set -- "$PY_EXE"
+else
+    # shellcheck disable=SC2086  # $REAL_PY is "py -3" or "python3" — intentional split
+    set -- $REAL_PY
+fi
 # Capture the guard's stderr to a temp so we can RELAY it on the success path (P2-h: the guard
 # has its own no-silent advisories — absent agent_type / schema drift / unreadable manifest —
 # that must surface; the launcher only suppresses stderr on its OWN degraded paths). On the

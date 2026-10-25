@@ -311,6 +311,44 @@ class LauncherPyDashThreeArgTest(unittest.TestCase):
                 first = fh.readline().strip()
             self.assertTrue(first.startswith("-3"), f"py must be called with -3 first; got {first!r}")
 
+    def test_py_alias_is_launched_once_per_call(self):
+        """#1015: on Windows each launch through the `py` App Execution Alias leaks memory in
+        AppXSvc. The probe goes through the candidate; the guard run and the JSON check use
+        the interpreter path the probe printed, so the candidate runs once per call."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            argv_log = os.path.join(bin_dir, "py_argv.log")
+            _write_exec(os.path.join(bin_dir, "py"), (
+                "#!/bin/sh\n"
+                f'echo call >> "{argv_log}"\n'
+                'if [ "$1" = "-3" ]; then shift; exec "' + REAL_PY + '" "$@"; fi\n'
+                "exit 1\n"
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            with open(argv_log) as fh:
+                calls = fh.read().splitlines()
+            self.assertEqual(len(calls), 1, f"py must run once (the probe); got {calls!r}")
+
+    def test_an_unusable_interpreter_path_falls_back_to_the_candidate(self):
+        """#1015: when the probe's path is not an executable file, the guard run and the JSON
+        check use the candidate, as before, so the guard still decides."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            argv_log = os.path.join(bin_dir, "py3_calls.log")
+            _write_exec(os.path.join(bin_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo call >> "{argv_log}"\n'
+                'case "$2" in *ARS_PY_OK*) printf \'ARS_PY_OK|/nonexistent/python\'; exit 0;; esac\n'
+                'exec "' + REAL_PY + '" "$@"\n'
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            with open(argv_log) as fh:
+                self.assertEqual(len(fh.read().splitlines()), 3)
+
 
 class LauncherSelfResolveTest(unittest.TestCase):
     """Launcher resolves the guard from its OWN path; works with CLAUDE_PLUGIN_ROOT unset
