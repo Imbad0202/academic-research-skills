@@ -85,7 +85,7 @@ _DEFAULT_PROBE_BOUND = "30"
 _HANG_PROBE_BOUND = "5"
 
 
-def _run_launcher(bin_dir, payload, extra_env=None, launcher=LAUNCHER):
+def _run_launcher(bin_dir, payload, extra_env=None, launcher=LAUNCHER, cwd=None):
     """Run the launcher with PATH = bin_dir + system dirs (bin_dir first, so injected
     interpreters shadow the real ones). Returns (exit_code, stdout, stderr).
 
@@ -109,6 +109,7 @@ def _run_launcher(bin_dir, payload, extra_env=None, launcher=LAUNCHER):
         capture_output=True,
         text=True,
         timeout=_LAUNCHER_TIMEOUT,
+        cwd=cwd,
     )
     return proc.returncode, proc.stdout, proc.stderr
 
@@ -314,40 +315,89 @@ class LauncherPyDashThreeArgTest(unittest.TestCase):
     def test_py_alias_is_launched_once_per_call(self):
         """#1015: on Windows each launch through the `py` App Execution Alias leaks memory in
         AppXSvc. The probe goes through the candidate; the guard run and the JSON check use
-        the interpreter path the probe printed, so the candidate runs once per call."""
+        the interpreter path the probe printed, so the candidate runs once per call. The fake
+        `py` answers the probe as Windows Python does, with its own path."""
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
-            argv_log = os.path.join(bin_dir, "py_argv.log")
+            calls_log = os.path.join(bin_dir, "py_calls.log")
             _write_exec(os.path.join(bin_dir, "py"), (
                 "#!/bin/sh\n"
-                f'echo call >> "{argv_log}"\n'
-                'if [ "$1" = "-3" ]; then shift; exec "' + REAL_PY + '" "$@"; fi\n'
-                "exit 1\n"
+                f'echo call >> "{calls_log}"\n'
+                '[ "$1" = "-3" ] || exit 1\n'
+                f'case "$3" in *sys.executable*) printf \'ARS_PY_OK|{REAL_PY}|\'; exit 0;;\n'
+                "  *ARS_PY_OK*) printf 'ARS_PY_OK'; exit 0;; esac\n"
+                f'shift; exec "{REAL_PY}" "$@"\n'
             ))
+            _stub(os.path.join(bin_dir, "python3"))
+            _stub(os.path.join(bin_dir, "python"))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
-            with open(argv_log) as fh:
+            with open(calls_log) as fh:
                 calls = fh.read().splitlines()
             self.assertEqual(len(calls), 1, f"py must run once (the probe); got {calls!r}")
+
+    def test_off_windows_the_candidate_runs_the_guard(self):
+        """#1015: off Windows the probe prints no path, so the guard run and the JSON check
+        use the candidate as before (a wrapper's environment and flags still apply)."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _stub(os.path.join(bin_dir, "py"))
+            calls_log = os.path.join(bin_dir, "py3_calls.log")
+            _write_exec(os.path.join(bin_dir, "python3"),
+                        f'#!/bin/sh\necho call >> "{calls_log}"\nexec "{REAL_PY}" "$@"\n')
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            with open(calls_log) as fh:
+                self.assertEqual(len(fh.read().splitlines()), 3)
 
     def test_an_unusable_interpreter_path_falls_back_to_the_candidate(self):
         """#1015: when the probe's path is not an executable file, the guard run and the JSON
         check use the candidate, as before, so the guard still decides."""
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
-            argv_log = os.path.join(bin_dir, "py3_calls.log")
+            _stub(os.path.join(bin_dir, "py"))
+            calls_log = os.path.join(bin_dir, "py3_calls.log")
             _write_exec(os.path.join(bin_dir, "python3"), (
                 "#!/bin/sh\n"
-                f'echo call >> "{argv_log}"\n'
-                'case "$2" in *ARS_PY_OK*) printf \'ARS_PY_OK|/nonexistent/python\'; exit 0;; esac\n'
+                f'echo call >> "{calls_log}"\n'
+                'case "$2" in *ARS_PY_OK*) printf \'ARS_PY_OK|/nonexistent/python|\'; exit 0;; esac\n'
                 'exec "' + REAL_PY + '" "$@"\n'
             ))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0, f"err={err!r}")
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
-            with open(argv_log) as fh:
+            with open(calls_log) as fh:
                 self.assertEqual(len(fh.read().splitlines()), 3)
+
+    def test_a_probe_with_extra_output_is_skipped(self):
+        """#1015: a candidate whose probe prints more than the one marker line (a
+        sitecustomize message, say) is skipped, as the exact-marker check skipped it before."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _write_exec(os.path.join(bin_dir, "py"), (
+                "#!/bin/sh\n"
+                f'if [ "$1" = "-3" ]; then shift; "{REAL_PY}" "$@"; status=$?; echo diagnostic; exit $status; fi\n'
+                "exit 1\n"
+            ))
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+
+    def test_a_json_module_in_the_working_directory_is_not_imported(self):
+        """#1015: the JSON check runs with -I, so a json.py in the hook's working directory
+        cannot replace the standard module and turn a deny into a pass-through."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _stub(os.path.join(bin_dir, "py"))
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            with open(os.path.join(ws, "json.py"), "w") as fh:
+                fh.write("raise SystemExit(1)\n")
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws}, cwd=ws)
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
 
 
 class LauncherSelfResolveTest(unittest.TestCase):

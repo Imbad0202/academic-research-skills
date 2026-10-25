@@ -58,6 +58,8 @@ PAYLOAD=$(cat)
 # broken-but-hanging interpreter can't wedge the hot path (spec §3.3): prefer `timeout` when
 # present, else a portable process-group watchdog.
 MARKER=ARS_PY_OK
+NL='
+'
 # Per-candidate (and guard) wall-clock bound, seconds. A small ops knob; validated to be a
 # bare integer so it can't smuggle anything into the `timeout`/`sleep` args. Default 3.
 PROBE_BOUND=${ARS_PROBE_BOUND:-3}
@@ -184,23 +186,25 @@ run_bounded() {
 }
 
 # Echo "<candidate>|<interpreter path>" for the first candidate ("cmd args") that verifies
-# as REAL Python, or nothing. A candidate qualifies ONLY if the probe exits 0 AND its stdout
-# starts with the marker and "|" (P1-a: a stub that prints the marker but exits non-zero must
-# be rejected). After the "|" the probe prints sys.executable, with "/" for "\" so Git Bash
-# reads a Windows path; it can be empty. Candidates in order; `py -3` first (the Windows
-# launcher).
+# as REAL Python, or nothing. A candidate qualifies ONLY if the probe exits 0 AND prints
+# exactly "<marker>|<path>|" on one line (P1-a: a stub that prints the marker but exits
+# non-zero must be rejected; a candidate that prints more is skipped, as before). The path is sys.executable on Windows only, with "/" for "\"
+# so Git Bash reads it, and empty when stdout cannot encode it; elsewhere it is empty, so the
+# candidate runs as before. Candidates in order; `py -3` first (the Windows launcher).
 find_real_python() {
     for cand in "py -3" "python3" "python"; do
         # shellcheck disable=SC2086  # intentional word-split: "py -3" -> py with arg -3
         set -- $cand
         cmd=$1
         command -v "$cmd" >/dev/null 2>&1 || continue
-        probe_out=$(run_bounded "$@" -c "import sys; sys.stdout.write('$MARKER|' + (sys.executable or '').replace(chr(92), '/'))" </dev/null 2>/dev/null)
+        probe_out=$(run_bounded "$@" -c "import sys; p = (sys.executable or '').replace(chr(92), '/') if sys.platform == 'win32' else ''; e = sys.stdout.encoding or 'ascii'; p = p if p.encode(e, 'replace').decode(e) == p else ''; sys.stdout.write('$MARKER|' + p + '|')" </dev/null 2>/dev/null)
         probe_status=$?
         if [ "$probe_status" -eq 0 ]; then
             case $probe_out in
-                "$MARKER|"*)
-                    printf '%s|%s' "$cand" "${probe_out#"$MARKER|"}"
+                *"$NL"*) ;;
+                "$MARKER|"*"|")
+                    probe_out=${probe_out#"$MARKER|"}
+                    printf '%s|%s' "$cand" "${probe_out%|}"
                     return 0
                     ;;
             esac
@@ -213,12 +217,14 @@ FOUND_PY=$(find_real_python) || emit_passthrough_and_exit
 REAL_PY=${FOUND_PY%%|*}
 [ -n "$REAL_PY" ] || emit_passthrough_and_exit
 
-# #1015: the guard run and the JSON check below use the interpreter's own path, not the
-# candidate. On Windows the `py` candidate is an App Execution Alias, and each launch through
-# an alias makes AppXSvc run an update check that leaks memory (python/pymanager#396); a
-# launch by path goes around the alias. So the hook launches through the alias once per
+# #1015: on Windows the guard run and the JSON check below use the interpreter's own path,
+# not the candidate. There the `py` candidate is an App Execution Alias, and each launch
+# through an alias makes AppXSvc run an update check that leaks memory (python/pymanager#396);
+# a launch by path goes around the alias. So the hook launches through the alias once per
 # call, for the probe, instead of three times. With no usable path (empty, or not an
-# executable file), both calls use the candidate as before.
+# executable file), both calls use the candidate as before. Both calls pass -I, so neither
+# reads PYTHON* variables, the user site, or the working directory; the candidate may have
+# added isolation flags, and the path does not carry them.
 PY_EXE=${FOUND_PY#*|}
 { [ -f "$PY_EXE" ] && [ -x "$PY_EXE" ]; } || PY_EXE=
 
@@ -232,7 +238,7 @@ is_valid_hook_json() {
         # shellcheck disable=SC2086  # $REAL_PY is "py -3" or "python3" — intentional split
         set -- $REAL_PY
     fi
-    printf '%s' "$GUARD_OUT" | "$@" -c '
+    printf '%s' "$GUARD_OUT" | "$@" -I -c '
 import sys, json
 try:
     d = json.load(sys.stdin)
@@ -263,7 +269,7 @@ fi
 # onto an attacker-owned symlink fails -> we'd read that as a broken guard and fail OPEN
 # (gemini round-6 P1). If mktemp can't give us a private file, degrade safely to pass-through.
 GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
-GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$@" "$GUARD" 2>"$GUARD_ERR")
+GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$@" -I "$GUARD" 2>"$GUARD_ERR")
 GUARD_STATUS=$?
 
 if [ "$GUARD_STATUS" -eq 0 ] && is_valid_hook_json; then
