@@ -46,8 +46,10 @@ REAL_PY = sys.executable
 
 
 def _write_exec(path, body):
-    """Write an executable script at `path` with `body` (a /bin/sh script)."""
-    with open(path, "w", encoding="utf-8") as fh:
+    """Write an executable script at `path` with `body` (a /bin/sh script). The default
+    encoding is kept on purpose: the body can embed sys.executable, whose bytes must match
+    the filesystem's, unlike the Python source written by _make_plugin_layout (#1021)."""
+    with open(path, "w") as fh:
         fh.write(body)
     os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
