@@ -850,6 +850,65 @@ class PluginRootInfraScopeTest(unittest.TestCase):
             shutil.rmtree(sibling, ignore_errors=True)
 
 
+class ToolNameBoundaryTest(unittest.TestCase):
+    """#1022: the guard inspects exactly the four tool names the hooks.json matcher routes to
+    it, case-sensitively; every other name passes through. Pins both sides of the documented
+    TOOL-NAME BOUNDARY so a later alias or casefold is a deliberate, tested change."""
+
+    UNINSPECTED = ("edit", "EDIT", "write", "multiedit", "bash", "apply_patch", "apply-patch",
+                   "NotebookEdit")
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.ws = os.path.realpath(self._tmp.name)
+        for d in ("phase2_investigation", "phase3_analysis", "hooks"):
+            os.makedirs(os.path.join(self.ws, d), exist_ok=True)
+        self.out_of_scope = os.path.join(self.ws, "phase3_analysis/synthesis.md")
+        self.infra = os.path.join(self.ws, "hooks/hooks.json")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def decide(self, p):
+        return guard.evaluate_decision(p, TEST_MANIFEST, self.ws)
+
+    def test_inspected_names_match_hook_matcher(self):
+        with open(os.path.join(REPO_ROOT, "hooks", "hooks.json"), encoding="utf-8") as fh:
+            hooks = json.load(fh)
+        matchers = [entry["matcher"] for entry in hooks["hooks"]["PreToolUse"]]
+        self.assertEqual(len(matchers), 1)
+        self.assertEqual(set(matchers[0].split("|")), guard.INSPECTED_TOOLS)
+        self.assertEqual(guard.INSPECTED_TOOLS, {"Write", "Edit", "MultiEdit", "Bash"})
+
+    def test_exact_names_are_inspected(self):
+        for tool in ("Write", "Edit", "MultiEdit"):
+            p = payload(tool, {"file_path": self.out_of_scope, "content": "x"},
+                        cwd=self.ws, agent_type="bibliography_agent")
+            self.assertEqual(self.decide(p)["decision"], "deny", tool)
+        p = payload("Bash", {"command": "ls"}, cwd=self.ws, agent_type="bibliography_agent")
+        self.assertEqual(self.decide(p)["decision"], "deny")
+
+    def test_uninspected_names_pass_through(self):
+        # Out-of-scope and infra targets alike: neither the scope check nor the infra
+        # self-protection runs for a name outside the set.
+        for tool in self.UNINSPECTED:
+            for target in (self.out_of_scope, self.infra):
+                p = payload(tool, {"file_path": target, "content": "x", "command": "ls"},
+                            cwd=self.ws, agent_type="bibliography_agent")
+                self.assertEqual(self.decide(p)["decision"], "allow", (tool, target))
+
+    def test_uninspected_name_emits_no_permission_decision(self):
+        import subprocess
+        guard_path = os.path.join(REPO_ROOT, "scripts", "ars_write_scope_guard.py")
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=self.ws)
+        inp = json.dumps(payload("apply_patch", {"file_path": self.infra}, cwd=self.ws,
+                                 agent_type="bibliography_agent"))
+        out = subprocess.run([sys.executable, guard_path], input=inp, env=env,
+                             capture_output=True, text=True)
+        decision = json.loads(out.stdout)
+        self.assertNotIn("permissionDecision", decision["hookSpecificOutput"])
+
+
 class MainPluginRootComputationTest(unittest.TestCase):
     """main() must compute plugin_root from CLAUDE_PLUGIN_ROOT, else the resolved repo root
     (resolve() to follow the ~/.claude/skills symlink install). codex P2-b."""

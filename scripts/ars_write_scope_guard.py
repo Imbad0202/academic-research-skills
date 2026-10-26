@@ -53,6 +53,18 @@ TOOL_INPUT SHAPES: Write / Edit / MultiEdit each carry a SINGLE top-level `file_
   shape is taken from the tool definition. The path-extraction below reads ONLY the
   top-level file_path and FAILS LOUD if a structured write tool ever lacks one — so a
   schema drift cannot silently fail the guard open.)
+
+TOOL-NAME BOUNDARY (#1022): the guard inspects a call only when `tool_name` is exactly
+  "Write", "Edit", "MultiEdit" or "Bash" (case-sensitive), the same four names as the
+  PreToolUse matcher in hooks/hooks.json. Any other name, `edit`, `apply_patch` and
+  `NotebookEdit` included, passes through with no permissionDecision: neither the scope
+  check nor the infrastructure self-protection runs for it, and the normal permission flow
+  still applies. Names are deliberately not casefolded or aliased. A host tool under another
+  name may carry another tool_input shape: read as Edit, a payload without a top-level
+  file_path would be denied for every caller, the main session included, and a patch that
+  touches several files would be checked on one path at most. A port that routes another
+  write tool here adds its name to the matcher and to INSPECTED_TOOLS together with a target
+  extractor for that tool's verified payload shape, and tests for both.
 """
 
 import fnmatch
