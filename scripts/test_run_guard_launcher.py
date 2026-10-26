@@ -47,7 +47,7 @@ REAL_PY = sys.executable
 
 def _write_exec(path, body):
     """Write an executable script at `path` with `body` (a /bin/sh script)."""
-    with open(path, "w") as fh:
+    with open(path, "w", encoding="utf-8") as fh:
         fh.write(body)
     os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
@@ -125,7 +125,7 @@ def _make_plugin_layout(base, guard_body):
     os.makedirs(os.path.join(base, "scripts"))
     launcher_copy = os.path.join(base, "hooks", "run_guard.sh")
     shutil.copy(LAUNCHER, launcher_copy)
-    with open(os.path.join(base, "scripts", "ars_write_scope_guard.py"), "w") as fh:
+    with open(os.path.join(base, "scripts", "ars_write_scope_guard.py"), "w", encoding="utf-8") as fh:
         fh.write(guard_body)
     # The real guard reads this manifest; copy it so an unmodified-guard layout also works.
     manifest = os.path.join(os.path.dirname(GUARD), "ars_phase_scope_manifest.json")
@@ -385,7 +385,7 @@ class LauncherPyDashThreeArgTest(unittest.TestCase):
             _fake_real_python(os.path.join(bin_dir, "python3"))
             for folder in (ws, evil):
                 for name in ("json.py", "runpy.py", "io.py"):
-                    with open(os.path.join(folder, name), "w") as fh:
+                    with open(os.path.join(folder, name), "w", encoding="utf-8") as fh:
                         fh.write("raise SystemExit(1)\n")
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = _run_launcher(
