@@ -905,6 +905,7 @@ class ToolNameBoundaryTest(unittest.TestCase):
                                  agent_type="bibliography_agent"))
         out = subprocess.run([sys.executable, guard_path], input=inp, env=env,
                              capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
         decision = json.loads(out.stdout)
         self.assertNotIn("permissionDecision", decision["hookSpecificOutput"])
 

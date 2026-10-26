@@ -61,10 +61,11 @@ TOOL-NAME BOUNDARY (#1022): the guard inspects a call only when `tool_name` is e
   check nor the infrastructure self-protection runs for it, and the normal permission flow
   still applies. Names are deliberately not casefolded or aliased. A host tool under another
   name may carry another tool_input shape: read as Edit, a payload without a top-level
-  file_path would be denied for every caller, the main session included, and a patch that
-  touches several files would be checked on one path at most. A port that routes another
-  write tool here adds its name to the matcher and to INSPECTED_TOOLS together with a target
-  extractor for that tool's verified payload shape, and tests for both.
+  file_path would be denied for every caller once the manifest loads, the main session
+  included, and a patch that touches several files would be checked on one path at most.
+  A port that routes another write tool here adds its name to the matcher and to
+  INSPECTED_TOOLS together with a target extractor for that tool's verified payload shape,
+  and tests for both.
 """
 
 import fnmatch
