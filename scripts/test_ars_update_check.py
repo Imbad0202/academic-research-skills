@@ -834,16 +834,21 @@ def test_system_message_carries_reminder_on_startup(tmp_path):
     assert msg.endswith("ARS (academic-research-skills) loaded. Its slash commands start with /ars-.")
 
 
-def test_system_message_without_reminder_when_current(tmp_path):
+def test_no_system_message_when_current(tmp_path):
+    # With no update the user has nothing to act on, so the session starts
+    # without a visible line (#1027); the model still gets the announce.
     root = make_plugin_root(tmp_path, "3.18.0")
     env = {
         "CLAUDE_PLUGIN_ROOT": str(root),
         "ARS_UPDATE_CHECK_STATE_DIR": str(tmp_path / "state"),
         "ARS_UPDATE_CHECK_REMOTE_URL": make_remote(tmp_path, "3.18.0"),
     }
-    r = run_announce('{"source":"clear"}', env)
-    msg = json.loads(r.stdout)["systemMessage"]
-    assert msg == "ARS (academic-research-skills) loaded. Its slash commands start with /ars-."
+    for source in ("startup", "clear"):
+        r = run_announce(json.dumps({"source": source}), env)
+        out = json.loads(r.stdout)
+        assert "systemMessage" not in out, source
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "ARS (academic-research-skills) plugin loaded." in ctx, source
 
 
 def test_no_system_message_after_compact_or_resume():

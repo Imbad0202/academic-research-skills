@@ -76,10 +76,13 @@ case "${SOURCE}" in
       fi
     fi
     # The user never sees additionalContext (Claude Code hooks reference), so
-    # what the user should read goes in systemMessage below (#999). The model
-    # gets the command and agent names only; the lint in
+    # the update reminder goes in systemMessage below (#999). With no update
+    # there is nothing for the user to act on, so no systemMessage (#1027).
+    # The model gets the command and agent names only; the lint in
     # .command-invariants.toml still checks every /ars-* token and the count.
-    SYSTEM_MSG="${UPDATE_LINE}ARS (academic-research-skills) loaded. Its slash commands start with /ars-."
+    if [[ -n "${UPDATE_LINE}" ]]; then
+      SYSTEM_MSG="${UPDATE_LINE}ARS (academic-research-skills) loaded. Its slash commands start with /ars-."
+    fi
     ANNOUNCE="${UPDATE_LINE}ARS (academic-research-skills) plugin loaded.
 
 Slash commands (16): /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate.
