@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.23.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.23.2)
+[![Version](https://img.shields.io/badge/version-v3.24.0-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.0)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -268,7 +268,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，采用 **逐准则、证据锚定的叙事判断**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 与 Schema 6 package 一律为 `NOT_CALIBRATED`；完整 calibration 可产生有界候选 profile，但尚未接入 live review。不得以固定总分映射接受、小修、大修或退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.23.2)
+### Academic Pipeline (v3.24.0)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 规则（由 agent 按流程遵守，不是运行时保证）：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）把每一项审查意见对应到作者的修订主张，并记录复审是否验证通过。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -340,6 +340,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 这里只列最近三个版本。完整更新记录在英文版 [CHANGELOG.md](CHANGELOG.md)。到 v3.21.2 为止的简体中文版本摘要已冻结存放于 [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)，之后不再更新。
 
+### v3.24.0（2026-10-27）— 审查小组推荐文献与审查意见的参考检查、write-scope guard 启动器改为单一进程，以及诚信检查规则修复
+
+> **两项审查参考检查与数项修复；没有新 skill，这两项检查在真实审查上的准确度尚未测量：**v3.24.0 在 Editorial Decision Letter 加上两份附件。第一份实时查询 Reviewer 2 与 Reviewer 3 推荐的每一篇著作，查询范围是引用验证关卡使用的四个索引，只报告有没有这条记录，不判断该著作是否支持推荐理由（#1001）。第二份把每一项 weakness，以及 Devil's Advocate 每一行 CRITICAL 或 MAJOR 意见，去掉审稿人席位标签后交给 session 模型的一个 subagent，由它判断稿件是否与该意见矛盾。只有判定者的引文通过脚本对稿件的比对检查，附件才列为矛盾；其他判定为错误的意见列为未确认（#1002）。这项检查默认开启，设置 `ARS_PANEL_CLAIM_CHECK=0` 可以关闭。两份附件都不影响审查决定、修订路线图或复审标准。第二项检查上线前，一项预注册的 held-out 审计检查了 805 条审查小组意见，估计错误意见的比例介于 1.5% 到 12.9%；Claude Opus 5.5 与 Claude Fable 5.1 担任判定者时都通过了它的对照关卡。write-scope guard 的启动器每次工具调用只启动一个 Python 进程，原来是三个，Windows 上 AppXSvc 的内存泄漏预计因此降为原来的三分之一左右，但 Windows 上的实际行为尚未测试（#1015）；guard 的代码注释也写明它检查哪些工具名称（#1022）。三条诚信检查规则在 Stage 5 入口、报告有效期限与 Stage 4′ 三点上取得一致（#1011），启动通知也改为只在有新版本时显示（#1027）。#1015、#1022 与 #1027 由外部用户报告。
+
 ### v3.23.2（2026-10-24）— 诚信检查只读引用的版本、Stage 2.5 一律执行，以及适配器、启动通知与 Windows 修复
 
 > **修复；没有新 skill。一项提示层变更做了小规模行为检查，其余尚未测量：**v3.23.2 让 Stage 2.5 与 4.5 的声明核查只拿稿件引用的那个版本来比对（#1006）。读不到引用的版本时，核查会记录一条访问备注并请用户提供 PDF，不再改读工作论文或预印本。在一份合成测试稿上运行六次（Claude Opus 5.5 与 Claude Fable 5.1 各三次，关闭网络工具），六次都遵守这条规则。先前的诚信报告不再能让 pipeline 跳过 Stage 2.5，改为附上作为参考（#995）。缺少必要输入时，每一份规则文件都会阻止阶段转换（#990）；苏格拉底导师的示例不再为用户的想法排名（#992）。SessionStart 启动通知会把更新提醒显示给用户，给模型看的启动内容约减少 2.1 KB（#999）。Obsidian 适配器接受未加引号的 ISO 日期年份，并拒绝布尔值与上标数字年份（#988、#989）；六个 lint 在 Windows 上改用 POSIX 形式比较路径（#964、#978）；Pi 包装器改为与 Pi 的结构化提示区段组合（#985）；`CITATION.cff` 加上作者的 ORCID iD（#1007）。#978、#985、#988 由外部贡献者提供。
@@ -347,7 +351,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.23.1（2026-10-16）— write-scope guard 修复、sr-screener 按 RFC 4180 读取 CSV、模型现况对齐（Gemini 4 Argon）
 
 > **修复与模型现况对齐；没有新 skill，也不宣称任何准确度或性能提升：**v3.23.1 补上 write-scope guard 两条未经检查就放行写入的路径，一条出现在 plugin 派发的 agent，一条出现在 Windows 内置的 `timeout.exe`（#972），文档也改为说明防护实际在哪些情况下启用（#974）。`sr-screener` 改按 RFC 4180 的引号规则读取 CSV 导出文件，不再使用从样本推测的引号规则（#979）。Gemini 4 Argon 以 provisional 身份列入，并成为推荐的 Google 验证模型；`gemini-3.1-pro-preview` 保持 validated（#980）。路由核心写明：消息中段出现的 `[direct-mode]` 标记不是跳出机制（#892）；在 plugin 安装环境的冒烟测试中，Claude Fable 5.1 修改后仍有 6 次中 3 次遵从该标记（修改前 6 次中 6 次），未达到验收标准，#892 仍未关闭。另有数项由外部贡献者提供的 lint 与 Windows 修复（#956、#963、#965、#977），`THIRD_PARTY.md` 也列入 md-to-word（#969）。
-
-### v3.23.0（2026-10-03）— 第五个 skill `sr-screener`、pipeline 纸上走查修复，以及证据与记录文件强化
-
-> **新增一个 skill，并修正把一次完整 pipeline 运行从头读到尾时发现的行为问题；提示层变更的效果尚未测量，`sr-screener` 不宣称筛选准确度：**v3.23.0 新增第五个 skill `sr-screener`（#919，由 @erfanz97 贡献）。它把综述研究的计划书转成用户确认过的纳入与排除规则，再由两个彼此不知道对方判断的审查 subagent 加上一位裁决者，筛选标题摘要与全文；测试使用合成数据，电子表格导出会让公式文字失效（#951）。纸上走查一次默认 pipeline 运行（#925 至 #929）之后，默认运行的行为有这些改变：v3.6.7 Audit Artifact Gate 改为可选；只问学者一次论文是否报告自己做的实验；用户为整次运行设定的限制以原话保存，并引述给之后适用的每一次派工（审查阶段改在 checkpoint 套用）；诚信关卡遵循同一套规则，付费墙后的来源改列为附注；Stage 5 与 6 只产出用户要的文件；可选开关会在 Stage 4.5 就提出 Stage 5 会拒绝的项目。Stage 2.5 与 4.5 checkpoint 改从 orchestrator 指定的文件夹重放证据行（#933、#947、#948），关卡判定为捏造的来源不会再进入之后的修订（#936），记录文件读取程序报告解析错误时不再引用文件内容（#898、#945）。较小的变更：阅读产出会说明单一来源的方法在什么情况下会失准（#916）、在固定时点提醒文献综述的形式由作者决定（#921）、Schema 1 与产出端对齐（#938），以及 `/ars-citation-check` 改为沿用 session 模型（#912）。

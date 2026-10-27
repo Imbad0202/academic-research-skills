@@ -9,8 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.23.2 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.24.0 | Full pipeline orchestrator | (coordinates all above) |
 | `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
+
+## v3.24.0 Key Additions (advisory checks of the panel's suggested references and findings + one-process guard launcher + integrity-rule repairs)
+
+- **The Editorial Decision Letter checks the references the panel suggests (#1001).** Reviewer 2 and Reviewer 3 repeat each recommended work in a `yaml suggested-references` block; `scripts/verify_panel_recommendations.py` looks each one up live in the four citation-gate indexes and reports, under `## Attachment: Suggested-Reference Check (advisory, #1001)`, whether a record exists, not whether the work supports the recommendation. The decision, the revision roadmap, and re-review criteria do not draw on it.
+- **The Editorial Decision Letter checks the panel's findings against the manuscript (#1002).** `scripts/audit_panel_claims.py` writes a seat-blind prompt for one session-model subagent with no tools and renders `## Attachment: Reviewer Claim Check (advisory, #1002)`; a contradiction is listed only when the judge's quotation passes the script's manuscript check. On by default; `ARS_PANEL_CLAIM_CHECK=0` turns it off. A preregistered held-out audit of 805 panel claims (part one) put the false-claim rate between 1.5% and 12.9%, and Claude Opus 5.5 and Claude Fable 5.1 passed its contrast gate; accuracy on real reviews is unmeasured.
+- **The write-scope guard launcher starts one Python process per tool call, not three (#1015).** The Windows AppXSvc leak through the Install Manager alias falls to about a third, not zero; the Windows behaviour is untested here. The guard's notes state the four tool names it checks (#1022).
+- **Smaller changes.** The integrity-check rules agree on Stage 5 entry, 24-hour report freshness, and Stage 4′ (#1011); the startup notice appears only when an update is available (#1027); King & Worthington (2026) is the sixth human-in-the-loop anchor in the README (#1003).
 
 ## v3.23.2 Key Additions (integrity checks read only the cited version + Stage 2.5 always runs + adapter, announce, and Windows repairs)
 
@@ -427,7 +434,7 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
-- **Suite version**: 3.23.2 (per CHANGELOG.md)
-- **Last Updated**: 2026-10-24
+- **Suite version**: 3.24.0 (per CHANGELOG.md)
+- **Last Updated**: 2026-10-27
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

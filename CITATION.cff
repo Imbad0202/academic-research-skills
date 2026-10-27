@@ -28,8 +28,8 @@ keywords:
   - peer-review
   - scholarly-writing
 license: CC-BY-NC-4.0
-version: 3.23.2
-date-released: 2026-10-24
+version: 3.24.0
+date-released: 2026-10-27
 # Zenodo concept DOI — represents all versions, always resolves to the latest.
 # (Per-release version DOIs are minted by Zenodo automatically; citing the
 #  concept DOI above always resolves to the latest version.)
