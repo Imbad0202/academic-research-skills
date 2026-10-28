@@ -2,6 +2,7 @@
 """Mutation tests for the #1030 card-confirmation pause."""
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -38,10 +39,14 @@ def tree(tmp_path: Path) -> Path:
 
 
 def _mutate(root: Path, old: str, new: str) -> None:
+    # Match across any whitespace run, as the lint does, so rewrapping a
+    # pinned sentence does not break its mutation test.
     path = root / SKILL
     text = path.read_text(encoding="utf-8")
-    assert old in text, f"anchor missing: {old!r}"
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    pattern = r"\s+".join(re.escape(word) for word in old.split())
+    mutated, count = re.subn(pattern, lambda _: new, text, count=1)
+    assert count == 1, f"anchor missing: {old!r}"
+    path.write_text(mutated, encoding="utf-8")
 
 
 def test_clean_tree_passes(tree: Path) -> None:
@@ -59,6 +64,20 @@ def test_each_rule_literal_is_load_bearing(tree: Path, literal: str) -> None:
     result = _run(tree)
     assert result.returncode == 1
     assert "rule 1 lacks" in result.stderr
+
+
+def test_calibration_exemption_cannot_flip(tree: Path) -> None:
+    _mutate(tree, "`calibration` does not pause,", "`calibration` also pauses,")
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "rule 1 lacks" in result.stderr
+
+
+def test_rewrapped_rule_still_passes(tree: Path) -> None:
+    literal = RULE_LITERALS[1]
+    _mutate(tree, literal, literal.replace(" until ", "\n   until "))
+    result = _run(tree)
+    assert result.returncode == 0, result.stderr
 
 
 def test_rule_cannot_lose_iron_rule_marker(tree: Path) -> None:
