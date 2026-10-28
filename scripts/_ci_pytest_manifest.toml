@@ -517,6 +517,10 @@ id = "611-calibration-tiers"
 path = "scripts/test_check_calibration_tiers.py"
 
 [[pytest]]
+id = "1030-reviewer-card-confirmation"
+path = "scripts/test_check_reviewer_card_confirmation.py"
+
+[[pytest]]
 id = "619-disclosure-closeout"
 path = "scripts/test_check_619_disclosure_closeout.py"
 

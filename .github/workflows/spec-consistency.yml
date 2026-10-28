@@ -688,6 +688,12 @@ jobs:
           python3 scripts/check_reviewer_role_label.py
           python3 scripts/check_calibration_tiers.py
 
+      - name: Run #1030 reviewer card-confirmation lint
+        # Mutation companion runs through scripts/_ci_pytest_manifest.toml.
+        env:
+          PYTHONPATH: .
+        run: python3 scripts/check_reviewer_card_confirmation.py
+
       - name: Run #610 receipt closed-enum defrift lint
         # Pins the four receipt enums (procedure_id / status /
         # not_computable_reason / tail_convention) to set equality across the
