@@ -106,6 +106,14 @@ def test_retired_rule_wording_fails_even_beside_the_new_rule(tree: Path) -> None
     assert "retired pre-#1030 wording" in result.stderr
 
 
+def test_rewrapped_retired_wording_still_fails(tree: Path) -> None:
+    wrapped = RETIRED[0].replace("; ", ";\n   ")
+    _mutate(tree, "2. ⚠️ **IRON RULE**", f"   - {wrapped}\n2. ⚠️ **IRON RULE**")
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "retired pre-#1030 wording" in result.stderr
+
+
 def test_literal_moved_out_of_rule_one_fails(tree: Path) -> None:
     # A load-bearing sentence relocated to rule 2 no longer binds Phase 1.
     literal = RULE_LITERALS[1]

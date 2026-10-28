@@ -63,11 +63,12 @@ def rule_one(section: str) -> str | None:
 
 def check(root: Path) -> list[str]:
     text = read_or_exit2(root, SKILL)
+    flat_text = norm_ws(text)
     errors: list[str] = []
     for old in RETIRED:
-        if old in text:
+        if norm_ws(old) in flat_text:
             errors.append(f"{SKILL}: retired pre-#1030 wording is back: {old!r}")
-    if FLOW_LITERAL not in text:
+    if norm_ws(FLOW_LITERAL) not in flat_text:
         errors.append(f"{SKILL}: Phase 0 flow line must say to stop and wait: {FLOW_LITERAL!r}")
     section = heading_section(text, SECTION)
     if section is None:

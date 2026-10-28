@@ -133,7 +133,7 @@ You can adjust any stage's mode at any time. Ready to begin?
 1. First checkpoint in the pipeline: always FULL
 2. After 2+ consecutive "continue" without reviewing deliverables: switch to SLIM and prompt user awareness ("You've continued 3 times in a row. Want to review progress?")
 3. Integrity boundaries (Stage 2.5, 4.5): always MANDATORY
-4. Review decisions (Stage 3, 3'): always MANDATORY
+4. Review decisions (Stage 3, 3'): always MANDATORY. Stage 3 also stops inside the stage, after the reviewer's Phase 0: show the Reviewer Configuration Cards, end the turn, and dispatch no reviewer seat until the user accepts the whole set (`academic-paper-reviewer/SKILL.md` § Checkpoint Rules, rule 1, #1030)
 5. Before finalization (Stage 5 entry gate): always MANDATORY — this is the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch, where the user explicitly confirms proceeding and makes the finalization-format decision (citation style); the in-stage LaTeX question and content confirmation stay inside Stage 5 execution. The Stage 5 completion checkpoint (Final Paper delivered, before Stage 6) is FULL — never SLIM. See `../references/pipeline_state_machine.md` § Stage 5 boundary semantics
 6. All other stages: start FULL, downgrade to SLIM if user says "just continue"
 
