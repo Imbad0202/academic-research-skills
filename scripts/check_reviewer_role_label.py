@@ -45,6 +45,11 @@ REQUIRED = {
         "full mode (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)",
         "La frontera entre el panel de la primera ronda y el despacho de re-review regido por contrato",
     ),
+    "README.pt-BR.md": (
+        "(Journal-Fit Reviewer + 3 revisores dinâmicos + Devil's Advocate)",
+        "full mode (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)",
+        "Fronteira entre o painel da primeira rodada e o acionamento da re-revisão regido por contrato",
+    ),
     "MODE_REGISTRY.md": (
         "Journal-Fit Reviewer quick assessment + key issues list",
     ),

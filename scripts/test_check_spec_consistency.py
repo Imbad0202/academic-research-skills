@@ -510,6 +510,119 @@ class TestReadmeKoSections(unittest.TestCase):
             )
 
 
+# Minimal pt-BR README capturing the surfaces check_readme_pt_sections polices:
+# badge, release tag link, the three kept release blocks (ASCII parens, like
+# es-ES), four localized mode headings ("N modos"), four skill-detail headings,
+# and the Portuguese DOCX line. pt-BR has no frozen changelog archive, so the
+# changelog section links only to CHANGELOG.md.
+PT_README = f"""\
+# Academic Research Skills
+
+[![Version](https://img.shields.io/badge/version-v{CUR_VER}-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v{CUR_VER})
+
+#### Deep Research (8 modos)
+
+#### Academic Paper (11 modos)
+
+#### Academic Paper Reviewer (6 modos)
+
+#### Academic Pipeline (orquestrador)
+
+### Deep Research (v{DR_VER})
+### Academic Paper (v{AP_VER})
+### Academic Paper Reviewer (v{APR_VER})
+### Academic Pipeline (v{CUR_VER})
+
+- DOCX (via Pandoc quando disponível)
+
+## Registro de alterações
+
+[CHANGELOG.md](CHANGELOG.md)
+
+{ASCII_KEPT}"""
+
+
+def _write_pt_readme(root: Path, text: str = PT_README) -> None:
+    (root / "CHANGELOG.md").write_text("# Changelog\n", encoding="utf-8")
+    (root / "README.pt-BR.md").write_text(text, encoding="utf-8")
+
+
+class TestReadmePtSections(unittest.TestCase):
+    def setUp(self) -> None:
+        self._orig_root = csc.ROOT
+        self._orig_errors = list(csc.ERRORS)
+        csc.ERRORS.clear()
+
+    def tearDown(self) -> None:
+        csc.ROOT = self._orig_root
+        csc.ERRORS.clear()
+        csc.ERRORS.extend(self._orig_errors)
+
+    def test_aligned_pt_readme_passes(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_pt_readme(root)
+
+            csc.check_readme_pt_sections()
+
+            self.assertEqual(
+                csc.ERRORS, [],
+                msg=f"unexpected errors on aligned pt fixture: {csc.ERRORS!r}",
+            )
+
+    def test_stale_pt_badge_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_pt_readme(
+                root,
+                PT_README.replace(
+                    f"version-v{CUR_VER}-blue", "version-v3.9.4.0-blue"
+                ).replace(f"releases/tag/v{CUR_VER}", "releases/tag/v3.9.4.0"),
+            )
+
+            csc.check_readme_pt_sections()
+
+            self.assertTrue(
+                any("README.pt-BR.md" in e and f"v{CUR_VER}" in e for e in csc.ERRORS),
+                msg=f"expected pt-BR drift error in: {csc.ERRORS!r}",
+            )
+
+    def test_missing_portuguese_mode_heading_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_pt_readme(
+                root,
+                PT_README.replace(
+                    "#### Deep Research (8 modos)", "#### Deep Research (8 modes)"
+                ),
+            )
+
+            csc.check_readme_pt_sections()
+
+            self.assertTrue(
+                any("README.pt-BR.md" in e and "8 modos" in e for e in csc.ERRORS),
+                msg=f"expected missing-heading error in: {csc.ERRORS!r}",
+            )
+
+    def test_fourth_release_heading_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            csc.ROOT = root
+            _write_pt_readme(
+                root, PT_README + "### v3.0.0 (2026-04-03) — old release\n"
+            )
+
+            csc.check_readme_pt_sections()
+
+            self.assertTrue(
+                any("README.pt-BR.md" in e and "v3.0.0" in e for e in csc.ERRORS),
+                msg=f"expected extra-release error in: {csc.ERRORS!r}",
+            )
+
+
 class TestReadmeZhSections(unittest.TestCase):
     """Coverage for the ZH_README_CONFIGS tuple branch added when zh-CN
     joined zh-TW under check_readme_zh_sections. check_readme_zh_sections

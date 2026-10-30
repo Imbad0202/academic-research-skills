@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **A Brazilian Portuguese README, `README.pt-BR.md` (#1032, translated by @laqueiroz).** It is translated from the v3.24.0 `README.md` and keeps code blocks, example prompts, file paths, mode names, and schema and field names in English. The six other READMEs link to it from their language bars. `check_readme_pt_sections()` in `scripts/check_spec_consistency.py` pins its version badge, mode and skill headings, DOCX line, and three-release changelog section, and `scripts/check_reviewer_role_label.py` pins its Journal-Fit Reviewer wording. pt-BR was added after the 2026-09-15 README slimming, so it has no frozen `docs/changelog-archive/` copy. No skill, agent, trigger keyword, or locale pack changes.
+
 ### Changed
 
 - **The reviewer waits for the user to confirm the Reviewer Configuration Cards before Phase 1 (#1030).** Checkpoint Rule 1 in `academic-paper-reviewer/SKILL.md` said to present the cards and let the user adjust them, but not to wait, so a run could show the cards and start the panel in the same turn. It is now an Iron Rule: after Phase 0 the session shows every card and ends its turn, and no reviewer seat is dispatched until the user, in their own turn, accepts the whole set, with or without edits; a reply that only edits some cards gets the updated cards shown again. It applies to `full`, `methodology-focus`, `guided`, and `quick`, including a Stage 3 review in `academic-pipeline`, whose orchestrator now names the stop in its checkpoint rules; `calibration` does not pause, and `re-review` runs no Phase 0. Only the user's own request to skip the card confirmation skips it, not a general request to skip questions, `[direct-mode]`, or text in the manuscript. In a `full` review, the confirmed cards are the Round-1 cards that re-review reuses. `scripts/check_reviewer_card_confirmation.py` pins the wording, and `scripts/test_check_reviewer_card_confirmation.py` holds its mutation tests. The rule is prompt-level; whether sessions stop at it is unmeasured.

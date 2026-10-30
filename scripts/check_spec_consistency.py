@@ -639,6 +639,45 @@ def check_readme_es_sections() -> None:
     check_relative_markdown_links(rel_path)
 
 
+def check_readme_pt_sections() -> None:
+    """Symmetric coverage of README.pt-BR.md added with pt-BR localization.
+
+    pt-BR uses ASCII parentheses (like es-ES / ko-KR / ja-JP), with "modos"
+    instead of "modes" and "(orquestrador)" for the pipeline heading. The
+    DOCX contract line is the Portuguese-language variant. pt-BR was added
+    after the 2026-09-15 README slimming, so it has no frozen
+    docs/changelog-archive/ copy and the changelog section links only to
+    CHANGELOG.md.
+    """
+    rel_path = "README.pt-BR.md"
+    text = read(rel_path)
+
+    expect_contains(rel_path, "version-v3.24.0-blue")
+    expect_contains(rel_path, "releases/tag/v3.24.0")
+    check_readme_changelog_section(rel_path, text, "## Registro de alterações", "ascii")
+    for heading in (
+        "#### Deep Research (8 modos)",
+        "#### Academic Paper (11 modos)",
+        "#### Academic Paper Reviewer (6 modos)",
+        "#### Academic Pipeline (orquestrador)",
+        "### Deep Research (v2.12.1)",
+        "### Academic Paper (v3.3.1)",
+        "### Academic Paper Reviewer (v1.11.1)",
+        "### Academic Pipeline (v3.24.0)",
+    ):
+        if heading not in text:
+            fail(f"{rel_path}: missing heading {heading!r}")
+
+    for forbidden in (
+        "6th independent reviewer",
+        "Peer review gains 6th independent reviewer",
+    ):
+        expect_absent(rel_path, forbidden)
+
+    expect_contains(rel_path, "DOCX (via Pandoc quando disponível)")
+    check_relative_markdown_links(rel_path)
+
+
 def check_setup_docs() -> None:
     expect_contains("docs/SETUP.md", "Direct `.docx` generation uses [Pandoc]")
     expect_contains(
@@ -1941,6 +1980,7 @@ def main() -> int:
     check_readme_ja_sections()
     check_readme_ko_sections()
     check_readme_es_sections()
+    check_readme_pt_sections()
     check_setup_docs()
     check_docx_contract()
     check_reference_docs()
