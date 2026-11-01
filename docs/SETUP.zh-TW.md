@@ -391,7 +391,12 @@ claude
 
 當你想在 [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork) 使用五個 ARS skills 時，請用此方式。Cowork 是 Claude Desktop 的 agentic workspace。
 
-> **請先試方法零。** 如果你的方案可以加 plugin，[帳號市集](#從-claudeai-或-claude-desktop-安裝帳號市集) 會一次裝好五個 skill、`/ars-*` 指令、plugin 代理程式與 hook，並同步本 repository 的新 commit。下面的上傳方式只裝 skill，每次發新版都要重新上傳。
+> **只在無法加入 plugin 時使用。** 在 claude.ai 與 Claude Desktop，建議的安裝方式是方法零的[帳號市集](#從-claudeai-或-claude-desktop-安裝帳號市集)。它會一次裝好五個 skill、`/ars-*` 指令、plugin 代理程式與 hook，並同步本 repository 的新 commit。只有下列情況才改用上傳：
+>
+> - 你的方案沒有 plugin。Anthropic 列出 plugin 只開放給付費方案。
+> - 你的組織只允許清單上的市集，而本 repository 不在清單上（[Manage plugins for your organization](https://support.claude.com/en/articles/13837433-manage-plugins-for-your-organization)）。
+>
+> 上傳方式只裝 skill，每次發新版都要重新上傳。
 >
 > Anthropic 正在分階段把一般對話與 Cowork 合併成同一個介面（[Claude Cowork and chat are one Claude](https://support.claude.com/en/articles/16761823-claude-cowork-and-chat-are-one-claude)）。已上傳的 skill 會保留。帳號已換成合併介面時，本節寫的「Cowork Task」請讀成「一段對話」。
 
@@ -502,7 +507,7 @@ Anthropic 目前的 [Project file limits](https://support.claude.com/en/articles
 **建議的替代路徑：**
 
 - 要在 claude.ai 或 Claude Desktop 執行 skill，付費方案請用[方法零的帳號市集](#從-claudeai-或-claude-desktop-安裝帳號市集)。一般對話不執行 plugin 代理程式與 hook。
-- 不裝 plugin、只上傳 skill，請用方法 3（Cowork）。五個 skill 會各自上傳為獨立 skill，不含 plugin 代理程式、指令與 hook。
+- 只有無法加入 plugin 時（情況列在方法 3 開頭），才用方法 3 上傳 skill。五個 skill 會各自上傳為獨立 skill，不含 plugin 代理程式、指令與 hook。
 - claude.ai 網頁端要存取 repo 內容，請用方法 4b（Project + GitHub integration，本節稍前說明）。Claude 可以讀取 skill 主體、references 與範例，你可以在 claude.ai 一般對話中提問或起草。
 - Claude Code 專案請用方法 1（project skills）或方法 2（standalone）。
 

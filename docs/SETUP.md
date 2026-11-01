@@ -395,7 +395,12 @@ claude
 
 Use this when you want the five ARS skills available in [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork), Claude Desktop's agentic workspace.
 
-> **Try Method 0 first.** If your plan can add plugins, the [account marketplace](#install-from-claudeai-or-claude-desktop-account-marketplace) installs the five skills together with the `/ars-*` commands, the plugin agents and the hooks, and it syncs new commits from this repository. The upload route below installs the skills only, and you upload again for each release.
+> **Use this only when you cannot add the plugin.** On claude.ai and Claude Desktop, the recommended route is the [account marketplace](#install-from-claudeai-or-claude-desktop-account-marketplace) in Method 0. It installs the five skills together with the `/ars-*` commands, the plugin agents and the hooks, and it syncs new commits from this repository. Upload the skills only in one of these cases:
+>
+> - Your plan has no plugins. Anthropic lists plugins for paid plans only.
+> - Your organization allows only listed marketplaces, and this repository is not on the list ([Manage plugins for your organization](https://support.claude.com/en/articles/13837433-manage-plugins-for-your-organization)).
+>
+> The upload route installs the skills only, and you upload again for each release.
 >
 > Anthropic is merging chat and Cowork into one experience, in stages ([Claude Cowork and chat are one Claude](https://support.claude.com/en/articles/16761823-claude-cowork-and-chat-are-one-claude)). Uploaded skills carry over. Where this section says "Cowork Task", read "a conversation" on an account that has the merged experience.
 
@@ -506,7 +511,7 @@ Method 4a is claude.ai's standard Custom Skill install path: zip each skill fold
 **Recommended paths instead:**
 
 - For skill execution on claude.ai or Claude Desktop, use the [account marketplace in Method 0](#install-from-claudeai-or-claude-desktop-account-marketplace) on a paid plan. Plugin agents and hooks do not run in plain chat there.
-- To upload the skills without the plugin, use [Method 3 (Cowork)](#method-3-claude-cowork-desktop). The five skills upload as standalone skills, without the plugin agents, commands or hooks.
+- Only if you cannot add the plugin (the cases listed in [Method 3](#method-3-claude-cowork-desktop)), upload the skills through Method 3. The five skills upload as standalone skills, without the plugin agents, commands or hooks.
 - For claude.ai web access to the repo content, use [Method 4b (Project + GitHub integration)](#method-4b-project--github-integration-repository-reading). Claude reads the skill bodies, references, and examples, and you can ask questions or draft against them in a normal claude.ai chat.
 - For Claude Code projects, use [Method 1 (project skills)](#method-1-as-project-skills-recommended) or [Method 2 (standalone)](#method-2-as-a-standalone-project).
 
