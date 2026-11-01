@@ -22,6 +22,27 @@ import uuid
 VERSION = "1.0.0"
 TOOL = "sr-screener"
 
+# The reviewer subagent's name before #1037 used underscores, which claude.ai rejects.
+# A saved screening_config.json can still name it the old way; reviewer_agent_type()
+# dispatches to the current name. The config value itself is not rewritten, so the
+# stage configuration identity of a screening already in progress does not change.
+REVIEWER_AGENT = "screening-reviewer-agent"
+LEGACY_REVIEWER_AGENT = "screening_reviewer_agent"
+
+
+def reviewer_agent_type(value):
+    """The agent_type to dispatch: a pre-#1037 reviewer name maps to the current one."""
+    value = value or ""
+    prefix, sep, name = value.rpartition(":")
+    if name == LEGACY_REVIEWER_AGENT:
+        return f"{prefix}{sep}{REVIEWER_AGENT}"
+    return value
+
+
+def is_lean_reviewer(value):
+    """True when agent_type names the Read/Grep-only reviewer, under either name."""
+    return reviewer_agent_type(value).rpartition(":")[2] == REVIEWER_AGENT
+
 ADVANCE = ("include", "unclear")
 LABELS = ("include", "unclear", "exclude")
 FIXED_CODES = {"include": "INC", "unclear": "UNC"}

@@ -1,5 +1,5 @@
 ---
-name: synthesis_agent
+name: synthesis-agent
 description: "Integrates findings across sources, resolves evidence conflicts, and maps knowledge gaps"
 model: inherit
 tools: Read, Write, Edit, Grep, Glob

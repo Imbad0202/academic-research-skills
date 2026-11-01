@@ -87,7 +87,7 @@ case "${SOURCE}" in
 
 Slash commands (16): /ars-full /ars-plan /ars-outline /ars-revision /ars-revision-coach /ars-rebuttal-audit /ars-abstract /ars-lit-review /ars-3w /ars-reviewer /ars-format-convert /ars-citation-check /ars-disclosure /ars-mark-read /ars-unmark-read /ars-cache-invalidate.
 
-Plugin agents (model: inherit): synthesis_agent, research_architect_agent, report_compiler_agent, screening_reviewer_agent."
+Plugin agents (model: inherit): synthesis-agent, research-architect-agent, report-compiler-agent, screening-reviewer-agent."
     ;;
 esac
 

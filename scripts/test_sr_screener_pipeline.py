@@ -122,7 +122,7 @@ CONFIG = {
     "core_criteria": ["children after cardiac surgery", "urinary NGAL"],
     "seeds": [{"label": "Smith 2021", "doi": "10.1000/test.0001"}],
     "languages_allowed": ["English"],
-    "agent_type": "academic-research-skills:screening_reviewer_agent",
+    "agent_type": "academic-research-skills:screening_reviewer_agent",  # pre-#1037 name, kept on purpose
 }
 
 
@@ -196,7 +196,36 @@ def test_prompts_embed_protocol_verbatim_and_data_rule(prepared: Path) -> None:
     assert all(e["model"] == "sonnet" for e in index)
     scripts = list((work / "runs").glob("ta_pilot_*.workflow.js"))
     assert len(scripts) == 2  # initial identity-bearing pilot plus this prompt-emitting run
-    assert "academic-research-skills:screening_reviewer_agent" in scripts[0].read_text(encoding="utf-8")
+    script = scripts[0].read_text(encoding="utf-8")
+    # #1037: a saved config with the old underscore name dispatches to the current name.
+    assert "academic-research-skills:screening-reviewer-agent" in script
+    assert "screening_reviewer_agent" not in script
+
+
+@pytest.mark.parametrize("value, expected", [
+    ("academic-research-skills:screening_reviewer_agent", "academic-research-skills:screening-reviewer-agent"),
+    ("screening_reviewer_agent", "screening-reviewer-agent"),
+    ("academic-research-skills:screening-reviewer-agent", "academic-research-skills:screening-reviewer-agent"),
+    ("screening-reviewer-agent", "screening-reviewer-agent"),
+    ("other-plugin:some_agent", "other-plugin:some_agent"),
+    ("", ""),
+    (None, ""),
+])
+def test_reviewer_agent_type_maps_the_pre_1037_name(value, expected) -> None:
+    assert LIB.reviewer_agent_type(value) == expected
+
+
+@pytest.mark.parametrize("value, lean", [
+    ("academic-research-skills:screening-reviewer-agent", True),
+    ("screening-reviewer-agent", True),
+    ("academic-research-skills:screening_reviewer_agent", True),
+    ("screening_reviewer_agent", True),
+    ("", False),
+    ("general-purpose", False),
+])
+def test_methods_access_sentence_names_either_reviewer_name(value, lean) -> None:
+    # build_outputs.py writes the "could only read the record file" sentence on this test.
+    assert LIB.is_lean_reviewer(value) is lean
 
 
 def test_qc_sample_below_minimum_is_refused(prepared: Path) -> None:
@@ -313,6 +342,9 @@ def test_no_silent_defaults_then_complete_run(prepared: Path) -> None:
     assert counts["records_screened"] == 5
     assert counts["records_excluded"] == 2
     assert counts["duplicates_removed"] == 1
+    # #1037: the config still names the reviewer the pre-#1037 way; the access sentence stays.
+    methods = (prepared / "out" / "TA_methods_selection.md").read_text(encoding="utf-8")
+    assert "The reviewer agents could only read the record file they were given" in methods
 
     schema = json.loads(CORPUS_SCHEMA.read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)

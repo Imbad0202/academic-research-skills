@@ -42,7 +42,7 @@
 
 ### v3.7.0 Plugin agent 與模型路由
 
-當 ARS 以 Claude Code plugin 方式安裝（`/plugin install academic-research-skills`）時，會把三個下游 worker agent 暴露為 plugin-shipped subagent：`synthesis_agent`、`research_architect_agent`、`report_compiler_agent`。三個 agent frontmatter 都標 `model: inherit`，意思是它們**繼承派工 session 的模型**而非寫死特定 floor：
+當 ARS 以 Claude Code plugin 方式安裝（`/plugin install academic-research-skills`）時，會把三個下游 worker agent 暴露為 plugin-shipped subagent：`synthesis-agent`、`research-architect-agent`、`report-compiler-agent`（#1037 之前是底線名稱）。三個 agent frontmatter 都標 `model: inherit`，意思是它們**繼承派工 session 的模型**而非寫死特定 floor：
 
 - Opus session 跑完整 pipeline 時 agent 是 Opus，保留這三個 agent 設計的整合深度。
 - Sonnet session 取得 Sonnet agent，跟主 session cost / latency 對齊。

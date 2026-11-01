@@ -143,7 +143,7 @@ Seven roles run on four agent files and two deterministic scripts:
 
 Roles 3-5 and the QC rechecks run as the lean `screening_reviewer_agent` subagent (Read and Grep
 only, no memory of other reviewers). Plugin installs ship it in the plugin's `agents/` folder as
-`academic-research-skills:screening_reviewer_agent`; for a skills-copy install, copy
+`academic-research-skills:screening-reviewer-agent`; for a skills-copy install, copy
 `agents/screening_reviewer_agent.md` into `.claude/agents/`. A lean agent keeps hundreds of calls
 cheap, and the missing tools keep reviewers independent: they cannot browse, write files or see
 each other's work. What each role sees, and why: `references/reviewer_roles.md`.

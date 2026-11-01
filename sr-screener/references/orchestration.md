@@ -12,10 +12,10 @@
 - **Plugin install** (skill + subagent): `/plugin marketplace add Imbad0202/academic-research-skills`,
   then `/plugin install academic-research-skills`. The reviewer subagent ships in the plugin's
   `agents/` folder and is listed with the plugin prefix:
-  `academic-research-skills:screening_reviewer_agent`.
+  `academic-research-skills:screening-reviewer-agent`.
 - **Skills-copy install** (the `sr-screener` folder symlinked or copied into `~/.claude/skills/`):
   also copy `sr-screener/agents/screening_reviewer_agent.md` into `.claude/agents/` (this
-  project) or `~/.claude/agents/` (all projects); it is then listed as `screening_reviewer_agent`.
+  project) or `~/.claude/agents/` (all projects); it is then listed as `screening-reviewer-agent`.
 - Put the exact agent name shown in the session's agent list into `agent_type` in
   `screening_config.json`. A wrong name makes every call fail at once, which the pilot shows
   immediately. An empty `agent_type` uses the default workflow subagent: it works, but it

@@ -42,7 +42,7 @@
 
 ### v3.7.0 Plugin agents and model routing
 
-When ARS is installed as a Claude Code plugin (`/plugin install academic-research-skills`), three downstream worker agents are exposed as plugin-shipped subagents: `synthesis_agent`, `research_architect_agent`, and `report_compiler_agent`. Each declares `model: inherit` in its frontmatter, which means they run under the **dispatching session's model** rather than a pinned floor:
+When ARS is installed as a Claude Code plugin (`/plugin install academic-research-skills`), three downstream worker agents are exposed as plugin-shipped subagents: `synthesis-agent`, `research-architect-agent`, and `report-compiler-agent` (underscore names before #1037). Each declares `model: inherit` in its frontmatter, which means they run under the **dispatching session's model** rather than a pinned floor:
 
 - An Opus session running the full pipeline gets Opus agents, preserving the integrative depth those agents were designed for.
 - A Sonnet session gets Sonnet agents, matching the cost/latency profile of the parent run.

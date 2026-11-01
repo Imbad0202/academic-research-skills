@@ -38,7 +38,7 @@
     "FTB": "<exact model name and ID>",
     "FTADJ": "<exact model name and ID>"
   },
-  "agent_type": "academic-research-skills:screening_reviewer_agent",
+  "agent_type": "academic-research-skills:screening-reviewer-agent",
   "batching": {"max_records": 50, "max_chars": 90000, "wrap": 150},
   "dedup": {"doi_title_guard": true}
 }
