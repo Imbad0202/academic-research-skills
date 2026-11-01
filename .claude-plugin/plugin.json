@@ -9,6 +9,13 @@
   "homepage": "https://github.com/Imbad0202/academic-research-skills",
   "repository": "https://github.com/Imbad0202/academic-research-skills",
   "license": "CC-BY-NC-4.0",
+  "skills": [
+    "./academic-paper",
+    "./academic-paper-reviewer",
+    "./academic-pipeline",
+    "./deep-research",
+    "./sr-screener"
+  ],
   "keywords": [
     "academic",
     "research",

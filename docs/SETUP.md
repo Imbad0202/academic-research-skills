@@ -288,7 +288,7 @@ If you use Claude Code CLI, VS Code extension, or JetBrains extension, install A
 /plugin install academic-research-skills
 ```
 
-The five skills (`deep-research`, `academic-paper`, `academic-paper-reviewer`, `academic-pipeline`, `sr-screener`) are auto-discovered from the plugin's `skills/` directory.
+The five skills (`deep-research`, `academic-paper`, `academic-paper-reviewer`, `academic-pipeline`, `sr-screener`) load from the skill paths declared in `.claude-plugin/plugin.json`. The repository has no `skills/` symlink directory: a plugin copy synced from a claude.ai account marketplace drops symlinks, and Claude Code would load every skill twice if it found both (#1035).
 
 **Slash command forms (#633).** Plugin installs namespace commands as `/academic-research-skills:ars-<mode>` — that form is canonical. Every command also declares an explicit frontmatter `name`, so on Claude Code v2.1.216 or later the bare `/ars-<mode>` alias works too whenever no other command claims that name; the bare form is what the session-start announce lists. On Claude Code older than v2.1.216, the frontmatter `name` replaces the whole command name, so commands appear only in their bare `/ars-<mode>` form (still invocable; the namespaced form loses autocomplete).
 

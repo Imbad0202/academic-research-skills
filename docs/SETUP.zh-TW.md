@@ -284,7 +284,7 @@ Claude 會在 `<install-root>/<skill-name>/SKILL.md` 尋找 skills。這個 repo
 /plugin install academic-research-skills
 ```
 
-五個 skill（`deep-research`、`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`、`sr-screener`）會從 plugin 的 `skills/` 目錄自動載入。
+五個 skill（`deep-research`、`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`、`sr-screener`）依 `.claude-plugin/plugin.json` 宣告的 skill 路徑載入。repo 不放 `skills/` symlink 目錄：從 claude.ai 帳號市集同步的 plugin 副本不帶 symlink，而 Claude Code 若兩者都找到，每個 skill 會載入兩次（#1035）。
 
 **斜線命令的兩種形式（#633）。** Plugin 安裝下命令會帶命名空間：`/academic-research-skills:ars-<mode>`，這是正式形式。每個命令同時宣告了明確的 frontmatter `name`，所以在 Claude Code v2.1.216 以上，只要沒有其他命令撞名，短形式 `/ars-<mode>` 也可以直接用；session 開場宣告列的就是短形式。在 v2.1.216 之前的版本，frontmatter `name` 會取代整個命令名，命令只會以短形式 `/ars-<mode>` 出現（仍可正常呼叫，但命名空間形式失去自動完成）。
 
