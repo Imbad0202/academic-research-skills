@@ -69,7 +69,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 **驗證可用：** 跑 `/ars-plan` 並描述你正在寫的論文，ARS 會用蘇格拉底對話幫你規劃章節結構。想要單次測試的話改跑 `/ars-lit-review "你的主題"`。
 
-**👉 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md)** — 完整指南：安裝 Claude Code、設定 API key、選用的 Pandoc/tectonic（DOCX/PDF）、跨模型驗證（`ARS_CROSS_MODEL`），以及六種安裝方式（Plugin（Claude Code、claude.ai 或 Claude Desktop）、專案 skills、全域 skills、claude.ai Project、repo clone、Claude Science 匯入）。
+**👉 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md)** — 完整指南：安裝 Claude Code、設定 API key、選用的 Pandoc/tectonic（DOCX/PDF）、跨模型驗證（`ARS_CROSS_MODEL`），以及六種安裝方式（Plugin（Claude Code／claude.ai／Claude Desktop）、專案 skills、全域 skills、claude.ai Project、repo clone、Claude Science 匯入）。
 
 > **你的安裝管道實際啟用哪些控制機制？** 可用性依安裝管道而異，請查逐管道對照表：[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)（英文）。
 

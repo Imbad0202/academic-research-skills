@@ -17,7 +17,7 @@ anchors to ISO/IEC 42001) — not an ISO-mandated artifact.
 | Channel | Documented in | Channel-wide limitation |
 |---|---|---|
 | **Plugin** — Claude Code plugin install | [SETUP Method 0](SETUP.md#method-0-claude-code-plugin-v370-recommended-for-claude-code-cli--ide-users) | None — the reference channel. |
-| **claude.ai plugin** — the same plugin installed from the account marketplace on claude.ai or Claude Desktop, read in two columns: plain chat, and work in a local folder on Claude Desktop | [SETUP Method 0](SETUP.md#install-from-claudeai-or-claude-desktop-account-marketplace) | Plain chat runs no hooks and no plugin agents, as Anthropic documents. In both columns the skill scripts run in Claude's cloud environment, not on your machine. One session of each kind was checked on Claude Desktop (macOS) on 2026-11-02 (note 11); most cells are Untested. |
+| **claude.ai plugin** — the same plugin installed from the account marketplace on claude.ai or Claude Desktop, read in two columns: plain chat, and work in a project or a local folder on Claude Desktop | [SETUP Method 0](SETUP.md#install-from-claudeai-or-claude-desktop-account-marketplace) | Plain chat runs no hooks and no plugin agents, as Anthropic documents. In both columns the skill scripts run in Claude's cloud environment, not on your machine. Checked on Claude Desktop (macOS) on 2026-11-02; several mechanisms are untested (note 11). |
 | **Skills copy** — skill folders copied into a project's `.claude/skills/` or the global `~/.claude/skills/` | [SETUP Method 1](SETUP.md#method-1-as-project-skills-recommended) | Nothing wired by the plugin manifest runs (note 3). |
 | **Repo clone** — Claude Code run inside a clone of this repository | [SETUP Method 2](SETUP.md#method-2-as-a-standalone-project) | Nothing wired by the plugin manifest runs (note 3). |
 | **Cowork** — skills uploaded to Claude Cowork (desktop) | [SETUP Method 3](SETUP.md#method-3-claude-cowork-desktop) | Each skill runs standalone: no Task-tool subagent dispatch, so the coordinated pipeline — and its staged checkpoints — does not run as designed. |
@@ -33,7 +33,7 @@ in this channel · **Untested** = not yet run in this channel; do not rely on it
 where its row says Active — or Conditional with the linked note's conditions met — after
 applying your channel's channel-wide limitation above.
 
-| Mechanism | Plugin | claude.ai chat | Desktop local folder | Skills copy | Repo clone | Cowork | claude.ai Project | Claude Science | Pi port |
+| Mechanism | Plugin | Plain chat | Desktop project/folder | Skills copy | Repo clone | Cowork | claude.ai Project | Claude Science | Pi port |
 |---|---|---|---|---|---|---|---|---|---|
 | Methodology layer (the five skills' `SKILL.md` protocols) | Active | Active | Active | Active | Active | Active | Conditional | Active | Active ⁽¹⁰⁾ |
 | Skill auto-routing (trigger keywords → skill activation) | Active | Active | Active | Active | Active | Active | Absent | Conditional | Conditional |
@@ -45,7 +45,7 @@ applying your channel's channel-wide limitation above.
 | Subagent orchestration (Task-tool multi-agent dispatch) | Active | Untested ⁽¹¹⁾ | Active ⁽¹¹⁾ | Active | Active | Absent | Absent | Absent | Conditional |
 | Python-backed opt-in features (repo `scripts/`) | Conditional ⁽⁵⁾ | Conditional ⁽⁵⁾ ⁽¹¹⁾ | Conditional ⁽⁵⁾ ⁽¹¹⁾ | Conditional ⁽⁵⁾ | Conditional ⁽⁵⁾ | Absent | Absent | Absent | Conditional ⁽⁵⁾ |
 | Cross-model verification (consent-gated second model) | Conditional ⁽⁶⁾ | Untested ⁽¹¹⁾ | Untested ⁽¹¹⁾ | Conditional ⁽⁶⁾ | Conditional ⁽⁶⁾ | Absent | Absent | Absent | Absent |
-| Prompt-level checkpoints and integrity gates | Active ⁽⁷⁾ | Conditional ⁽⁷⁾ ⁽¹¹⁾ | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Conditional | Absent | Conditional | Conditional |
+| Prompt-level checkpoints and integrity gates | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Active ⁽⁷⁾ | Conditional | Absent | Conditional | Conditional |
 | sr-screener dual blinded screening (two reviewer subagents + adjudicator) | Active ⁽¹⁰⁾ | Untested ⁽¹⁰⁾ | Untested ⁽¹⁰⁾ | Conditional ⁽¹⁰⁾ | Conditional ⁽¹⁰⁾ | Absent ⁽¹⁰⁾ | Absent | Absent ⁽¹⁰⁾ | Absent ⁽¹⁰⁾ |
 
 CI-side checks (mutation-tested lints, content locks, changelog gates) are deliberately
@@ -144,23 +144,26 @@ runtime graceful-degradation mechanisms is
    skill's reviewer, so only `quick` mode runs, disclosed as single-reviewer triage (one
    model reading twice is not two independent reviewers). **claude.ai plugin:** plain chat
    does not list the plugin's reviewer agent; whether the reviewers run on a general
-   subagent there, and whether the dual review runs in local-folder work, has not been
-   tested. **Pi port:** the community-maintained wrapper does
+   subagent there, and whether the dual review runs in project or folder work, has not
+   been tested. **Pi port:** the community-maintained wrapper does
    not yet package this skill.
-11. The claude.ai columns rest on Anthropic's
+11. The two claude.ai plugin columns rest on Anthropic's
    [Use plugins in Claude](https://support.claude.com/en/articles/13837440-use-plugins-in-claude)
    (skills and commands work in chat; hooks and sub-agents run in Cowork and Claude Code,
-   not in chat) and on one session of each kind on Claude Desktop (macOS) on 2026-11-02,
-   before #1037 renamed the plugin agents for claude.ai. **Plain chat:** one skill loaded,
-   `/ars-lit-review` ran, a skill script ran in Claude's cloud environment, and the
-   SessionStart announce did not appear. Asked to use a plugin agent, the session read the
-   agent file and dispatched a general subagent in its place, so the checkpoint
-   instructions are present but the staged pipeline does not run with its plugin agents.
-   **Local-folder work:** the SessionStart announce appeared, the plugin agents were
-   dispatched, and a skill script ran on a cloud copy of the plugin and wrote its output to
-   the local folder. Not exercised in either column: the write-scope guard, the tools
-   allowlist, the update reminder, the compaction handoff reminder, cross-model
-   verification, and sr-screener's dual review. Claude projects on the web were not tested.
+   not in chat) and on checks on Claude Desktop (macOS) on 2026-11-02, before and after
+   #1037 renamed the plugin agents for claude.ai. Chat in a browser on claude.ai is covered
+   by Anthropic's article only. **Plain chat:** one skill loaded, `/ars-lit-review` ran, a
+   skill script ran in Claude's cloud environment, and the SessionStart announce did not
+   appear. After #1037 the session listed only built-in subagent types (`general-purpose`,
+   `Explore`, `Plan` and others) and no plugin agents. Whether the skills' multi-agent
+   stages run on those general subagents was not tested. **Project or folder work:** in a
+   local folder before #1037, the SessionStart announce appeared, and a skill script ran on
+   a cloud copy of the plugin and wrote its output to the folder. In a project after #1037,
+   the session listed the four plugin agents and dispatched
+   `academic-research-skills:synthesis-agent` directly. Not exercised in either column: the
+   write-scope guard, the tools allowlist, the update reminder, the compaction handoff
+   reminder, cross-model verification, sr-screener's dual review, a full pipeline run, and
+   projects on claude.ai in a browser.
 
 ## Environment degradations within a channel
 

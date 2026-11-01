@@ -72,7 +72,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 **Verify it works:** run `/ars-plan` and describe a paper you're working on — ARS will start a Socratic dialogue to map out chapter structure. For a single-shot test instead, try `/ars-lit-review "your topic"`.
 
-**👉 [docs/SETUP.md](docs/SETUP.md)** — full guide: install Claude Code, set up API keys, optional Pandoc/tectonic for DOCX/PDF, cross-model verification (`ARS_CROSS_MODEL`), and six installation methods (Plugin for Claude Code, claude.ai or Claude Desktop, project skills, global skills, claude.ai Project, repo-cloned, Claude Science import).
+**👉 [docs/SETUP.md](docs/SETUP.md)** — full guide: install Claude Code, set up API keys, optional Pandoc/tectonic for DOCX/PDF, cross-model verification (`ARS_CROSS_MODEL`), and six installation methods (Plugin for Claude Code / claude.ai / Claude Desktop, project skills, global skills, claude.ai Project, repo-cloned, Claude Science import).
 
 **👉 [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)** — what leaves your machine (bibliographic resolvers, optional consent-gated cross-model calls, the plugin update check), what is cached locally, for how long, and how to turn each path off.
 

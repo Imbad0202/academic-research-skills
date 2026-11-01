@@ -301,23 +301,23 @@ Claude 會在 `<install-root>/<skill-name>/SKILL.md` 尋找 skills。這個 repo
 3. 輸入 `Imbad0202/academic-research-skills`。
 4. 從新加入的市集安裝 `academic-research-skills`。
 
-能用到哪些功能，取決於在哪裡使用。Anthropic 的說明寫到：skill 與指令在一般對話、Cowork 與 Claude Code 都能用；hook 與子代理只在 Cowork 與 Claude Code 執行，一般對話不執行。我們在 2026-11-02（#1037 之前）用 Claude Desktop（macOS）各測了一個對話：
+能用到哪些功能，取決於在哪裡使用。Anthropic 的說明寫到：skill 與指令在一般對話、Cowork 與 Claude Code 都能用；hook 與子代理只在 Cowork 與 Claude Code 執行，一般對話不執行。我們在 2026-11-02 用 Claude Desktop（macOS）實測，#1037 前後各一次：
 
-- **一般對話：** 一個 skill 有載入，`/ars-lit-review` 可以執行，skill 腳本在 Claude 的雲端環境執行。沒有出現 SessionStart 開場訊息。要求使用 plugin 代理程式時，對話先讀代理程式檔案，再改派一般子代理。
-- **在本機資料夾裡工作：** 出現 SessionStart 開場訊息，plugin 代理程式可以派工。腳本在 plugin 的雲端副本執行，並把產出寫進該資料夾。
-- **沒有測：** 寫入範圍防護、工具白名單、更新提醒、跨模型驗證、sr-screener 雙人篩選。不要假設寫入範圍防護在 claude.ai 或 Claude Desktop 上有作用。
+- **一般對話：** 一個 skill 有載入，`/ars-lit-review` 可以執行，skill 腳本在 Claude 的雲端環境執行。沒有出現 SessionStart 開場訊息。#1037 之後，對話只列出內建的子代理類型（`general-purpose`、`Explore`、`Plan` 等），沒有 plugin 代理程式，並提議改用 `general-purpose`。
+- **在專案或本機資料夾裡工作：** #1037 之前在本機資料夾測試，出現 SessionStart 開場訊息，腳本在 plugin 的雲端副本執行，並把產出寫進該資料夾。#1037 之後在專案裡測試，對話列出四個 plugin 代理程式（例如 `academic-research-skills:synthesis-agent`），並直接派工給 `synthesis-agent`。
+- **沒有測：** 寫入範圍防護、工具白名單、更新提醒、跨模型驗證、sr-screener 雙人篩選、完整 pipeline 執行，以及在瀏覽器開啟的 claude.ai 專案。不要假設寫入範圍防護在 claude.ai 或 Claude Desktop 上有作用。
 
-#1037 之前，四個 plugin 代理程式的名稱含底線，claude.ai 不接受：市集同步時沒有收入這四個代理程式，並顯示警告。現在的名稱是 `synthesis-agent`、`research-architect-agent`、`report-compiler-agent` 與 `screening-reviewer-agent`。各項機制的對照見 [CONTROL_AVAILABILITY.md](CONTROL_AVAILABILITY.md)（英文）。
+#1037 之前，四個 plugin 代理程式的名稱含底線，claude.ai 不接受：市集頁面對每一個都顯示警告，說明所列項目未收入。現在的名稱是 `synthesis-agent`、`research-architect-agent`、`report-compiler-agent` 與 `screening-reviewer-agent`，警告已經消失。各項機制的對照見 [CONTROL_AVAILABILITY.md](CONTROL_AVAILABILITY.md)（英文）。
 
 市集會同步本 repository 的新 commit：2026 年 11 月兩次合併後，同步的 commit 都跟著更新，不需要重裝。
 
 Claude Code 以同一個帳號登入時，帳號市集也會把 plugin 同步到 Claude Code（需 v2.1.273 以上）。Claude Code 使用 API key 或 Amazon Bedrock 等雲端服務時，不會同步。我們實測時，Claude Code 另外從 GitHub 市集裝了 ARS，`claude plugin list` 顯示同步副本沒有載入，所以 skill 沒有重複載入。
 
-每個地方只用一種安裝方式。如果你上傳過 skill zip（方法三），或把 skill 資料夾複製進 Claude Code（方法一、方法二），改用 plugin 時請移除這些副本，否則同一個 skill 可能出現兩次。
+每個地方只用一種安裝方式。如果你上傳過 skill zip（方法三或方法 4a），或把 skill 資料夾複製進 Claude Code（方法一、方法二），改用 plugin 時請移除這些副本，否則同一個 skill 可能出現兩次。
 
 **Plugin 平台支援範圍：**
 - ✅ Claude Code CLI / VS Code extension / JetBrains extension — 完整支援
-- ✅ claude.ai 與 Claude Desktop 付費方案 — 透過上方的帳號市集安裝；一般對話不執行 hook 與 plugin 代理程式
+- ✅ claude.ai 與 Claude Desktop 付費方案 — 透過上方的帳號市集安裝；一般對話不執行 hook 與 plugin 代理程式，寫入範圍防護在那裡沒有測過
 - ❌ Anthropic API 直呼 — 不支援 plugin
 - ➡️ Codex CLI — 改裝姊妹版 [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex)（同一套 workflow 內容、Codex 原生包裝）
 
@@ -443,7 +443,7 @@ templates/
 
 #### 與 Claude Code 的一個取捨
 
-用此方式上傳的每個 skill 各自獨立運作，是一份 standalone 的指令集，體驗與 Claude Code 不同。在 Claude Code 中，這些 skill 是協作團隊：`academic-pipeline` 會把它們串起來（research → write → review → revise），每個 skill 各自驅動自己那組 sub-agent。Cowork 的 uploaded-skill runtime 不提供這種 sub-agent orchestration，所以個別 skill 會回應，但完整的 end-to-end pipeline 不會像在 Claude Code 那樣運作。想要完整的協作體驗，請用上方的方法零（plugin），或在 Claude Code 用方法一（project skills）安裝 ARS。
+用此方式上傳的每個 skill 各自獨立運作，是一份 standalone 的指令集，體驗與 Claude Code 不同。在 Claude Code 中，這些 skill 是協作團隊：`academic-pipeline` 會把它們串起來（research → write → review → revise），每個 skill 各自驅動自己那組 sub-agent。Cowork 的 uploaded-skill runtime 不提供這種 sub-agent orchestration，所以個別 skill 會回應，但完整的 end-to-end pipeline 不會像在 Claude Code 那樣運作。想要完整的協作體驗，請在 Claude Code 用上方的方法零（plugin）或方法一（project skills）安裝 ARS。在 Claude Desktop，方法零的帳號市集也會把 plugin 代理程式帶進專案與資料夾工作；完整 pipeline 在那裡還沒測過。
 
 ### 方法四：使用 claude.ai（網頁版）
 
@@ -460,7 +460,7 @@ ARS 是為 Claude Code 設計的 skill suite。各 skill 分別是 4 到 13 個 
 - **方法 4b**：claude.ai Projects 各方案皆可使用，詳見 Anthropic 的 [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects)；付費方案（Pro、Max、Team、Enterprise）有更大的知識庫容量與更強的檢索能力。需要透過 Anthropic connector 進行 GitHub 驗證 — 請參考 [Using the GitHub integration](https://support.claude.com/en/articles/10167454-using-the-github-integration) 與 [Set up Claude integrations](https://support.claude.com/en/articles/10168395-set-up-claude-integrations)。Private repositories 需要在 repo 或 organization 上授權 Anthropic GitHub App。Team 與 Enterprise 方案則需要 owner 層級先啟用 connector，使用者才能加入 GitHub 來源的檔案。
 - **方法 4a**：Custom Skills 在 Free、Pro、Max、Team、Enterprise 方案皆可使用，詳見 Anthropic 的 [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude)。同篇文件也說明 Skills 需要在 Settings → Capabilities 啟用 **code execution**。方法 4a 不需要 GitHub 驗證 — 你要在本機將每個 skill 資料夾各自壓成 zip，再透過 Settings → Capabilities → Skills 逐一上傳。Zip 結構錯誤與 200 字元 `description` 上限會在上傳時顯示錯誤；請參考 Anthropic 的 [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to) 與 [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills)。
 
-#### 方法 4b：Project + GitHub integration（推薦給 claude.ai）
+#### 方法 4b：Project + GitHub integration（閱讀 repository）
 
 claude.ai Projects 會把內容當成靜態知識提供給 Claude 檢索與引用。請參考 Anthropic 的 [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects)。這不是 Skill 安裝。Skill 不會自動載入，trigger phrases 不會路由。Claude 可以讀取 repo 內容、針對它回答問題或進行引用，但不會把 skills 當成 agentic workflows 執行。
 
