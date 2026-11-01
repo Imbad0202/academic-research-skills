@@ -218,17 +218,20 @@ def test_reviewer_agent_type_maps_the_pre_1037_name(value, expected) -> None:
     assert LIB.reviewer_agent_type(value) == expected
 
 
-@pytest.mark.parametrize("old, new", [
-    ("academic-research-skills:screening_reviewer_agent", "academic-research-skills:screening-reviewer-agent"),
-    ("screening_reviewer_agent", "screening-reviewer-agent"),
+@pytest.mark.parametrize("old, new, same", [
+    # Both plugin names reach the same plugin agent.
+    ("academic-research-skills:screening_reviewer_agent", "academic-research-skills:screening-reviewer-agent", True),
+    # Two bare names can be two different local files.
+    ("screening_reviewer_agent", "screening-reviewer-agent", False),
 ])
-def test_renaming_the_reviewer_keeps_the_stage_identity(tmp_path, old, new) -> None:
+def test_renaming_the_reviewer_keeps_the_stage_identity(tmp_path, old, new, same) -> None:
     def cfg(agent_type):
         path = tmp_path / f"{agent_type.replace(':', '_')}.json"
         path.write_text(json.dumps(dict(CONFIG, agent_type=agent_type)), encoding="utf-8")
         return LIB.load_config(str(path))
     for stage in ("ta", "ft"):
-        assert LIB.digest(LIB.screening_config(cfg(old), stage)) == LIB.digest(LIB.screening_config(cfg(new), stage))
+        equal = LIB.digest(LIB.screening_config(cfg(old), stage)) == LIB.digest(LIB.screening_config(cfg(new), stage))
+        assert equal is same
     # A real change of reviewer still changes the identity.
     assert LIB.screening_config(cfg("general-purpose"), "ta") != LIB.screening_config(cfg(new), "ta")
 

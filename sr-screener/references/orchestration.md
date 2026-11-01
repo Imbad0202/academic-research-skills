@@ -24,7 +24,8 @@
   `academic-research-skills:screening_reviewer_agent` dispatches to the new plugin name. A bare
   `screening_reviewer_agent` is dispatched as written, because it names your own copy; after you
   copy the new agent file, change `agent_type` to `screening-reviewer-agent`. Changing between the
-  two spellings does not archive the decisions of a stage in progress.
+  two plugin names does not archive the decisions of a stage in progress; changing a bare name
+  does, because the two names can be two different local files.
 - Python 3.9+ runs the scripts; `pip install openpyxl` gives an Excel log instead of CSV files.
 
 ## 2. Paths

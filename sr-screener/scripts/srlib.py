@@ -26,9 +26,10 @@ TOOL = "sr-screener"
 # Plugin installs now list only the new name, so a saved config that names the plugin's
 # reviewer the old way dispatches to the new name. A bare old name refers to the user's
 # own copy in .claude/agents/, which keeps its old name until the user copies the new
-# file, so it is dispatched as written. The stage configuration identity treats the old
-# and new spellings as the same reviewer, so editing agent_type to the new name does not
-# archive a screening in progress.
+# file, so it is dispatched as written. The stage configuration identity treats the
+# plugin's old and new names as one reviewer, because both reach the same plugin agent;
+# editing agent_type between them does not archive a screening in progress. Two bare
+# names can be two different local files, so they stay distinct.
 REVIEWER_AGENT = "screening-reviewer-agent"
 LEGACY_REVIEWER_AGENT = "screening_reviewer_agent"
 PLUGIN_PREFIX = "academic-research-skills:"
@@ -50,10 +51,10 @@ def is_lean_reviewer(value):
 
 
 def _identity_agent_type(value):
-    """agent_type as it enters the stage identity: the new spelling counts as the old one."""
+    """agent_type as it enters the stage identity: the plugin's new name counts as its old one."""
     value = value or ""
-    if value in _REVIEWER_NAMES:
-        return value.replace(REVIEWER_AGENT, LEGACY_REVIEWER_AGENT)
+    if value == PLUGIN_PREFIX + REVIEWER_AGENT:
+        return PLUGIN_PREFIX + LEGACY_REVIEWER_AGENT
     return value
 
 ADVANCE = ("include", "unclear")
