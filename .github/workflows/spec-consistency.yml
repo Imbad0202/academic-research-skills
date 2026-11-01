@@ -94,7 +94,7 @@ jobs:
         run: python3 scripts/check_data_access_level.py
 
       - name: Check skill-inventory parity (#809)
-        # Top-level <name>/SKILL.md dirs == skills/ symlinks == CLAUDE.md
+        # Top-level <name>/SKILL.md dirs == plugin.json skills (no skills/ dir, #1035) == CLAUDE.md
         # Skills Overview rows == marketplace.json plugins[].skills, plus the
         # "N skills" count claims in plugin/marketplace descriptions. The pytest
         # companion `test_check_skill_inventory_parity.py` runs via the unified

@@ -41,6 +41,7 @@ def _write_manifests(
     market_desc: str | None = None,
     market_top_desc: str | None = None,
     plugin_desc: str | None = None,
+    plugin_entries: object = None,
 ) -> None:
     (root / ".claude-plugin").mkdir(exist_ok=True)
     entries = market_entries if market_entries is not None else [f"./{n}" for n in names]
@@ -61,17 +62,11 @@ def _write_manifests(
     plugin = {
         "name": "test",
         "description": plugin_desc if plugin_desc is not None else f"pipeline: {len(names)} skills, 9 modes",
+        "skills": plugin_entries if plugin_entries is not None else [f"./{n}" for n in names],
     }
     (root / ".claude-plugin" / "plugin.json").write_text(
         json.dumps(plugin, indent=2), encoding="utf-8"
     )
-
-
-def _write_symlinks(root: Path, names: tuple[str, ...]) -> None:
-    skills = root / "skills"
-    skills.mkdir(exist_ok=True)
-    for n in names:
-        os.symlink(f"../{n}", skills / n)
 
 
 def _write_registry(root: Path, text: str) -> None:
@@ -81,7 +76,6 @@ def _write_registry(root: Path, text: str) -> None:
 def _build_root(root: Path, names: tuple[str, ...] = NAMES) -> None:
     for n in names:
         write_skill(root, n, f"name: {n}\ndescription: t\nmetadata:\n  version: '1'\n")
-    _write_symlinks(root, names)
     _write_table(root, names)
     _write_manifests(root, names)
     _write_registry(root, f"# Modes\n\n**9 modes** across {len(names)} skills.\n")
@@ -108,7 +102,7 @@ def test_cli_exit_codes(tmp_path: Path) -> None:
     ok = run_skill_linter(SCRIPT, tmp_path)
     assert ok.returncode == 0, ok.stdout + ok.stderr
     assert "OK:" in ok.stdout
-    (tmp_path / "skills" / NAMES[0]).unlink()
+    _write_manifests(tmp_path, NAMES, plugin_entries=[f"./{NAMES[1]}"])
     bad = run_skill_linter(SCRIPT, tmp_path)
     assert bad.returncode == 1
     assert "ERROR:" in bad.stdout
@@ -119,7 +113,7 @@ def test_empty_root_is_a_violation(tmp_path: Path) -> None:
     _assert_single(_violations(tmp_path), "no top-level <name>/SKILL.md found")
 
 
-# ---- surface B: skills/ symlinks -------------------------------------------
+# ---- surface B: plugin.json skills -----------------------------------------
 
 def test_unpackaged_skill_dir_fails(tmp_path: Path) -> None:
     """A fifth directory on disk that nothing else knows about (the #807 shape)."""
@@ -129,7 +123,7 @@ def test_unpackaged_skill_dir_fails(tmp_path: Path) -> None:
     assert len(v) == 6, v
     missing = [line for line in v if "'gamma-skill' exists on disk" in line]
     assert len(missing) == 3, v
-    assert any("skills/ symlinks" in line for line in missing)
+    assert any("plugin.json skills" in line for line in missing)
     assert any("Skills Overview table" in line for line in missing)
     assert any("marketplace.json plugins[].skills" in line for line in missing)
     # the "2 skills" claims are now stale on every count surface
@@ -137,45 +131,72 @@ def test_unpackaged_skill_dir_fails(tmp_path: Path) -> None:
     assert len(counts) == 3, v  # marketplace, plugin.json, MODE_REGISTRY.md
 
 
-def test_missing_symlink_fails(tmp_path: Path) -> None:
+def test_missing_plugin_entry_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
-    (tmp_path / "skills" / NAMES[1]).unlink()
+    _write_manifests(tmp_path, NAMES, plugin_entries=[f"./{NAMES[0]}"])
     _assert_single(_violations(tmp_path), f"'{NAMES[1]}' exists on disk")
 
 
-def test_extra_symlink_without_dir_fails(tmp_path: Path) -> None:
+def test_extra_plugin_entry_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
-    os.symlink("../ghost", tmp_path / "skills" / "ghost")
+    _write_manifests(tmp_path, NAMES, plugin_entries=[f"./{n}" for n in NAMES] + ["./stale"])
+    _assert_single(_violations(tmp_path), "plugin.json skills lists skill 'stale'")
+
+
+@pytest.mark.parametrize("bad", ["alpha-skill", "skills/alpha-skill", "./Alpha", "./a/b", 7, "./alpha-skill\n"])
+def test_malformed_plugin_entry_fails(tmp_path: Path, bad) -> None:
+    _build_root(tmp_path)
+    _write_manifests(tmp_path, NAMES, plugin_entries=[bad, f"./{NAMES[1]}"])
     v = _violations(tmp_path)
-    assert len(v) == 2, v
-    assert any("dangling symlink" in line for line in v)
-    assert any("lists skill 'ghost' but no top-level" in line for line in v)
+    assert any("plugin.json: skills entry" in line and "must be './<name>'" in line for line in v), v
+    assert any(f"'{NAMES[0]}' exists on disk" in line and "plugin.json skills" in line for line in v), v
 
 
-def test_symlink_to_wrong_target_fails(tmp_path: Path) -> None:
+def test_duplicate_plugin_entry_fails(tmp_path: Path) -> None:
     _build_root(tmp_path)
-    link = tmp_path / "skills" / NAMES[0]
-    link.unlink()
-    os.symlink(f"../{NAMES[1]}", link)
-    _assert_single(_violations(tmp_path), "symlink resolves to")
+    _write_manifests(tmp_path, NAMES, plugin_entries=[f"./{n}" for n in NAMES] + [f"./{NAMES[0]}"])
+    _assert_single(_violations(tmp_path), f"plugin.json: skills lists './{NAMES[0]}' more than once")
 
 
-def test_real_directory_instead_of_symlink_fails(tmp_path: Path) -> None:
+@pytest.mark.parametrize("value", ["./alpha-skill", {"a": 1}])
+def test_plugin_skills_not_a_list_fails(tmp_path: Path, value) -> None:
     _build_root(tmp_path)
-    link = tmp_path / "skills" / NAMES[0]
-    link.unlink()
-    link.mkdir()
-    _assert_single(_violations(tmp_path), "must be a symlink")
-
-
-def test_missing_skills_dir_fails(tmp_path: Path) -> None:
-    _build_root(tmp_path)
-    for n in NAMES:
-        (tmp_path / "skills" / n).unlink()
-    (tmp_path / "skills").rmdir()
+    _write_manifests(tmp_path, NAMES, plugin_entries=value)
     v = _violations(tmp_path)
-    assert any("directory is missing" in line for line in v)
-    assert sum("not listed in skills/ symlinks" in line for line in v) == len(NAMES)
+    assert any("plugin.json: skills must be a list" in line for line in v), v
+
+
+def test_plugin_skills_absent_fails(tmp_path: Path) -> None:
+    """The #1035 shape: no skills key, so a symlink-free copy registers none."""
+    _build_root(tmp_path)
+    path = tmp_path / ".claude-plugin" / "plugin.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    del data["skills"]
+    path.write_text(json.dumps(data), encoding="utf-8")
+    v = _violations(tmp_path)
+    assert any("plugin.json: skills must be a list" in line for line in v), v
+    assert sum("not listed in .claude-plugin/plugin.json skills" in line for line in v) == len(NAMES), v
+
+
+@pytest.mark.parametrize("shape", ["symlinks", "empty_dir", "file"])
+def test_skills_dir_is_a_violation(tmp_path: Path, shape: str) -> None:
+    """Claude Code scans skills/ on top of plugin.json skills[]: double load (#1035)."""
+    _build_root(tmp_path)
+    skills = tmp_path / "skills"
+    if shape == "file":
+        skills.write_text("x", encoding="utf-8")
+    else:
+        skills.mkdir()
+        if shape == "symlinks":
+            for n in NAMES:
+                os.symlink(f"../{n}", skills / n)
+    _assert_single(_violations(tmp_path), "skills: must not exist")
+
+
+def test_dangling_skills_symlink_is_a_violation(tmp_path: Path) -> None:
+    _build_root(tmp_path)
+    os.symlink("nowhere", tmp_path / "skills")
+    _assert_single(_violations(tmp_path), "skills: must not exist")
 
 
 # ---- surface C: CLAUDE.md table --------------------------------------------
@@ -365,6 +386,12 @@ def test_malformed_manifest_entry_fails(tmp_path: Path, bad) -> None:
     assert any("must be './<name>'" in line for line in v), v
     # the malformed entry does not count as listing alpha-skill
     assert any(f"'{NAMES[0]}' exists on disk" in line for line in v), v
+
+
+def test_duplicate_manifest_entry_fails(tmp_path: Path) -> None:
+    _build_root(tmp_path)
+    _write_manifests(tmp_path, NAMES, market_entries=[f"./{n}" for n in NAMES] + [f"./{NAMES[1]}"])
+    _assert_single(_violations(tmp_path), f"plugins[0].skills lists './{NAMES[1]}' more than once")
 
 
 def test_invalid_manifest_json_fails(tmp_path: Path) -> None:
