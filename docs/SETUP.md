@@ -305,18 +305,23 @@ On a paid plan (Pro, Max, Ultra, Team, Enterprise), you can add the same plugin 
 3. Enter `Imbad0202/academic-research-skills`.
 4. Install `academic-research-skills` from the new marketplace.
 
-What runs depends on where you use it. Anthropic's article says skills and commands work in chat, in Cowork and in Claude Code, and that hooks and sub-agents run in Cowork and Claude Code but not in chat. We checked this on Claude Desktop (macOS) on 2026-11-02:
+What runs depends on where you use it. Anthropic's article says skills and commands work in chat, in Cowork and in Claude Code, and that hooks and sub-agents run in Cowork and Claude Code but not in chat. We checked one session of each kind on Claude Desktop (macOS) on 2026-11-02, before #1037:
 
-- **Plain chat:** the five skills load, `/ars-*` commands work, and the skill scripts run in Claude's cloud environment. The SessionStart announce does not run, and the four plugin agents are not available.
-- **Work in a project or a local folder:** the SessionStart announce runs and the plugin agents are dispatched. Scripts run on a cloud copy of the plugin and can write their output back to the folder.
+- **Plain chat:** one skill loaded, `/ars-lit-review` ran, and a skill script ran in Claude's cloud environment. The SessionStart announce did not appear. Asked to use a plugin agent, the session read the agent file and dispatched a general subagent in its place.
+- **Work in a local folder:** the SessionStart announce appeared and the plugin agents were dispatched. A script ran on a cloud copy of the plugin and wrote its output to the folder.
+- **Not tested:** the write-scope guard, the tools allowlist, the update reminder, cross-model verification and sr-screener's dual review. Do not assume the write-scope guard is active on claude.ai or Claude Desktop.
 
-Before #1037 the four plugin agents had underscore names, which claude.ai rejects; the marketplace synced them with a warning. They are now `synthesis-agent`, `research-architect-agent`, `report-compiler-agent` and `screening-reviewer-agent`. The per-mechanism map for both modes is in [CONTROL_AVAILABILITY.md](CONTROL_AVAILABILITY.md).
+Before #1037 the four plugin agents had underscore names, which claude.ai rejects: the marketplace synced the plugin without them and showed a warning. They are now `synthesis-agent`, `research-architect-agent`, `report-compiler-agent` and `screening-reviewer-agent`. The per-mechanism map is in [CONTROL_AVAILABILITY.md](CONTROL_AVAILABILITY.md).
 
-The account marketplace also syncs the plugin to Claude Code v2.1.273 or later when Claude Code is signed in with the same account. If Claude Code also has ARS installed from the GitHub marketplace, the local install loads and the synced copy does not, so the skills do not load twice.
+The marketplace syncs new commits from this repository: after two merges in November 2026 the synced commit moved without a reinstall.
+
+The account marketplace also syncs the plugin to Claude Code v2.1.273 or later when Claude Code is signed in with the same account. It does not sync when Claude Code uses an API key or a cloud provider such as Amazon Bedrock. In our check, with ARS also installed from the GitHub marketplace, `claude plugin list` showed the synced copy as not loaded, so the skills did not load twice.
+
+Use one install route in each place. If you uploaded the skill zips (Method 3) or copied the skill folders into Claude Code (Methods 1-2), remove those copies when you move to the plugin, or the same skill can appear twice.
 
 **Plugin platform scope:**
 - ✅ Claude Code CLI / VS Code extension / JetBrains extension — full support
-- ✅ claude.ai and Claude Desktop, paid plans — through the account marketplace above; hooks and plugin agents run only in project or folder work
+- ✅ claude.ai and Claude Desktop, paid plans — through the account marketplace above; hooks and plugin agents do not run in plain chat
 - ❌ Anthropic API direct calls — plugins not supported
 - ➡️ Codex CLI — install the sibling distribution [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) (same workflow content, Codex-native packaging)
 
@@ -390,7 +395,7 @@ claude
 
 Use this when you want the five ARS skills available in [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork), Claude Desktop's agentic workspace.
 
-> **Try Method 0 first.** If your plan can add plugins, the [account marketplace](#install-from-claudeai-or-claude-desktop-account-marketplace) installs the five skills together with the `/ars-*` commands, the plugin agents and the hooks, and it follows new releases. The upload route below installs the skills only, and you upload again for each release.
+> **Try Method 0 first.** If your plan can add plugins, the [account marketplace](#install-from-claudeai-or-claude-desktop-account-marketplace) installs the five skills together with the `/ars-*` commands, the plugin agents and the hooks, and it syncs new commits from this repository. The upload route below installs the skills only, and you upload again for each release.
 >
 > Anthropic is merging chat and Cowork into one experience, in stages ([Claude Cowork and chat are one Claude](https://support.claude.com/en/articles/16761823-claude-cowork-and-chat-are-one-claude)). Uploaded skills carry over. Where this section says "Cowork Task", read "a conversation" on an account that has the merged experience.
 
@@ -442,15 +447,15 @@ Type `/` in a Cowork Task to open the command palette and select a skill, or des
 
 #### One trade-off versus Claude Code
 
-Uploaded this way, each skill runs on its own as a standalone instruction set. This is a different experience from Claude Code. In Claude Code the skills work as a coordinated team: `academic-pipeline` chains them (research → write → review → revise) and each skill drives its own group of sub-agents. Cowork's uploaded-skill runtime does not provide that sub-agent orchestration, so the individual skills respond, but the full end-to-end pipeline does not run the way it does in Claude Code. For the full orchestrated experience, install ARS in Claude Code via Method 0 (plugin) or Method 1 (project skills) above.
+Uploaded this way, each skill runs on its own as a standalone instruction set. This is a different experience from Claude Code. In Claude Code the skills work as a coordinated team: `academic-pipeline` chains them (research → write → review → revise) and each skill drives its own group of sub-agents. Cowork's uploaded-skill runtime does not provide that sub-agent orchestration, so the individual skills respond, but the full end-to-end pipeline does not run the way it does in Claude Code. For the full orchestrated experience, install ARS through Method 0 (plugin) or, in Claude Code, Method 1 (project skills) above.
 
 ### Method 4: Use with claude.ai (web)
 
 > **To run the skills on claude.ai, use Method 0.** On a paid plan, the [account marketplace](#install-from-claudeai-or-claude-desktop-account-marketplace) installs ARS as a plugin. This section covers the two older routes: reading the repository as Project knowledge (4b) and uploading skill zips (4a).
 
-ARS is a Claude Code-native suite. The skills are multi-agent teams (4 to 13 agents each) that depend on multi-agent orchestration, executable scripts under `scripts/`, and Material Passport file handoffs. claude.ai's web interface delivers a different runtime than Claude Code, and the two access paths it offers reach this repository in different ways:
+ARS is a Claude Code-native suite. The skills are multi-agent teams (4 to 13 agents each) that depend on multi-agent orchestration, executable scripts under `scripts/`, and Material Passport file handoffs. claude.ai's web interface delivers a different runtime than Claude Code, and the two routes covered here reach this repository in different ways:
 
-- **Method 4b — Project + GitHub integration** (recommended for claude.ai users): brings the repository into a claude.ai Project as retrievable knowledge. Claude can read the skill bodies, references, schemas, and example outputs, and answer questions or draft against them. Not a Skill install — auto-loading and skill routing do not happen, but the content is fully available for reading and citation.
+- **Method 4b — Project + GitHub integration** (to read the repository): brings the repository into a claude.ai Project as retrievable knowledge. Claude can read the skill bodies, references, schemas, and example outputs, and answer questions or draft against them. Not a Skill install — auto-loading and skill routing do not happen, but the content is fully available for reading and citation.
 - **Method 4a — Custom Skill upload**: claude.ai's standard Skill install path (Settings → Capabilities → Skills, one zip per skill). Not recommended for this suite — see the rationale below before using it.
 
 #### Prerequisites
@@ -463,7 +468,7 @@ ARS is a Claude Code-native suite. The skills are multi-agent teams (4 to 13 age
 
 claude.ai Projects deliver content as static knowledge for Claude to retrieve and cite — see Anthropic's [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects). This is NOT a Skill install. Skill auto-loading does not happen. Trigger phrases do not route. Claude can read the repo content for reading and citation, and answer questions about it, but does not execute the skills as agentic workflows.
 
-Use this when you want claude.ai to have access to the repo content — including the agent definitions, references, and example outputs — for reading and citation, without needing agentic skill execution. For agentic execution, use Method 0 (plugin, including the claude.ai account marketplace), or Methods 1-2 in Claude Code.
+Use this when you want claude.ai to have access to the repo content — including the agent definitions, references, and example outputs — for reading and citation, without needing agentic skill execution. For agentic execution, use Method 0 (plugin, including the account marketplace on claude.ai and Claude Desktop), or Methods 1-2 in Claude Code.
 
 > **The merged chat and Cowork experience does not support this yet.** Anthropic lists "Add from GitHub" as not yet supported once chat and Cowork are one experience ([Claude Cowork and chat are one Claude](https://support.claude.com/en/articles/16761823-claude-cowork-and-chat-are-one-claude)). On an account that has the merged experience, step 3 below may not be available.
 
@@ -500,7 +505,7 @@ Method 4a is claude.ai's standard Custom Skill install path: zip each skill fold
 
 **Recommended paths instead:**
 
-- For skill execution on claude.ai or Claude Desktop, use the [account marketplace in Method 0](#install-from-claudeai-or-claude-desktop-account-marketplace) on a paid plan. Plugin agents and hooks run only in project or folder work there.
+- For skill execution on claude.ai or Claude Desktop, use the [account marketplace in Method 0](#install-from-claudeai-or-claude-desktop-account-marketplace) on a paid plan. Plugin agents and hooks do not run in plain chat there.
 - To upload the skills without the plugin, use [Method 3 (Cowork)](#method-3-claude-cowork-desktop). The five skills upload as standalone skills, without the plugin agents, commands or hooks.
 - For claude.ai web access to the repo content, use [Method 4b (Project + GitHub integration)](#method-4b-project--github-integration-recommended-for-claudeai). Claude reads the skill bodies, references, and examples, and you can ask questions or draft against them in a normal claude.ai chat.
 - For Claude Code projects, use [Method 1 (project skills)](#method-1-as-project-skills-recommended) or [Method 2 (standalone)](#method-2-as-a-standalone-project).
@@ -534,7 +539,7 @@ The upload UI will reject each zip with a description-too-long error because eve
 
 **claude.ai vs Claude Code:**
 
-- Method 4b is for content reading, not active Skill execution. For agentic skill execution, prefer Method 0 (Claude Code or the claude.ai account marketplace) or Methods 1-2.
+- Method 4b is for content reading, not active Skill execution. For agentic skill execution, prefer Method 0 (Claude Code, or the account marketplace on claude.ai and Claude Desktop) or Methods 1-2.
 - claude.ai does not support local shell commands; results may be less comprehensive than Claude Code workflows that rely on local scripts.
 - Cross-model verification (`ARS_CROSS_MODEL`) requires Claude Code with API keys.
 - Direct `.docx` generation requires Pandoc, and LaTeX/PDF output requires Claude Code with `tectonic`; claude.ai can still produce Markdown and DOCX conversion instructions.

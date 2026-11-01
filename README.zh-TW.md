@@ -18,7 +18,7 @@
 
 裝完跑 `/ars-plan`，ARS 會用蘇格拉底對話幫你規劃章節結構。需要前置條件或傳統 symlink 安裝請看 [快速安裝](#快速安裝)。
 
-使用 claude.ai 或 Claude Desktop（付費方案）時，在 **Customize → Plugins → Add marketplace** 加入同一個 repository。在那裡，hook 與 plugin 代理程式只在專案或資料夾工作時執行，詳見 [SETUP 方法零](docs/SETUP.zh-TW.md#從-claudeai-或-claude-desktop-安裝帳號市集)。
+使用 claude.ai 或 Claude Desktop（付費方案）時，在 **Customize → Plugins → Add → Add marketplace → Add from a repository** 加入同一個 repository，再安裝 `academic-research-skills`。在那裡的一般對話不執行 hook 與 plugin 代理程式，詳見 [SETUP 方法零](docs/SETUP.zh-TW.md#從-claudeai-或-claude-desktop-安裝帳號市集)。
 
 > **AI 是你的副駕駛，不是機長。** 它可以起草文字，full mode 甚至會起草整篇論文；但決定權在你，pipeline 每個階段都會停下來等你確認。它處理苦工（搜文獻、排格式、驗數據、查邏輯一致性），讓你專注在真正需要你腦子的事：定義問題、選方法、詮釋數據的意義、決定「我認為」後面要接什麼。作者是你，送出的每一個主張都由你負責。
 >
@@ -69,7 +69,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 **驗證可用：** 跑 `/ars-plan` 並描述你正在寫的論文，ARS 會用蘇格拉底對話幫你規劃章節結構。想要單次測試的話改跑 `/ars-lit-review "你的主題"`。
 
-**👉 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md)** — 完整指南：安裝 Claude Code、設定 API key、選用的 Pandoc/tectonic（DOCX/PDF）、跨模型驗證（`ARS_CROSS_MODEL`），以及六種安裝方式（Plugin（Claude Code 或 claude.ai）、專案 skills、全域 skills、claude.ai Project、repo clone、Claude Science 匯入）。
+**👉 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md)** — 完整指南：安裝 Claude Code、設定 API key、選用的 Pandoc/tectonic（DOCX/PDF）、跨模型驗證（`ARS_CROSS_MODEL`），以及六種安裝方式（Plugin（Claude Code、claude.ai 或 Claude Desktop）、專案 skills、全域 skills、claude.ai Project、repo clone、Claude Science 匯入）。
 
 > **你的安裝管道實際啟用哪些控制機制？** 可用性依安裝管道而異，請查逐管道對照表：[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)（英文）。
 

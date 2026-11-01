@@ -18,7 +18,7 @@ A comprehensive suite of Claude Code skills for academic research, covering the 
 
 Then try `/ars-plan` to walk through your paper structure via Socratic dialogue, or jump to [Quick install](#quick-install) for prerequisites and the traditional symlink flow.
 
-On claude.ai or Claude Desktop (paid plans), add the same repository under **Customize → Plugins → Add marketplace**. Hooks and plugin agents run only in project or folder work there; see [SETUP Method 0](docs/SETUP.md#install-from-claudeai-or-claude-desktop-account-marketplace).
+On claude.ai or Claude Desktop (paid plans), add the same repository under **Customize → Plugins → Add → Add marketplace → Add from a repository**, then install `academic-research-skills`. Hooks and plugin agents do not run in plain chat there; see [SETUP Method 0](docs/SETUP.md#install-from-claudeai-or-claude-desktop-account-marketplace).
 
 > **AI is your copilot, not the pilot.** It can draft text, including a whole paper in full mode, but the decisions stay yours, and the pipeline stops for your confirmation at every stage. It handles the grunt work (hunting down references, formatting citations, verifying data, checking logical consistency) so you can focus on the parts that actually require your brain: defining the question, choosing the method, interpreting what the data means, and deciding what comes after "I argue that." You remain the author, and you answer for every claim you submit.
 >
@@ -72,7 +72,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 **Verify it works:** run `/ars-plan` and describe a paper you're working on — ARS will start a Socratic dialogue to map out chapter structure. For a single-shot test instead, try `/ars-lit-review "your topic"`.
 
-**👉 [docs/SETUP.md](docs/SETUP.md)** — full guide: install Claude Code, set up API keys, optional Pandoc/tectonic for DOCX/PDF, cross-model verification (`ARS_CROSS_MODEL`), and six installation methods (Plugin for Claude Code or claude.ai, project skills, global skills, claude.ai Project, repo-cloned, Claude Science import).
+**👉 [docs/SETUP.md](docs/SETUP.md)** — full guide: install Claude Code, set up API keys, optional Pandoc/tectonic for DOCX/PDF, cross-model verification (`ARS_CROSS_MODEL`), and six installation methods (Plugin for Claude Code, claude.ai or Claude Desktop, project skills, global skills, claude.ai Project, repo-cloned, Claude Science import).
 
 **👉 [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)** — what leaves your machine (bibliographic resolvers, optional consent-gated cross-model calls, the plugin update check), what is cached locally, for how long, and how to turn each path off.
 
