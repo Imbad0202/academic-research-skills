@@ -23,25 +23,38 @@ VERSION = "1.0.0"
 TOOL = "sr-screener"
 
 # The reviewer subagent's name before #1037 used underscores, which claude.ai rejects.
-# A saved screening_config.json can still name it the old way; reviewer_agent_type()
-# dispatches to the current name. The config value itself is not rewritten, so the
-# stage configuration identity of a screening already in progress does not change.
+# Plugin installs now list only the new name, so a saved config that names the plugin's
+# reviewer the old way dispatches to the new name. A bare old name refers to the user's
+# own copy in .claude/agents/, which keeps its old name until the user copies the new
+# file, so it is dispatched as written. The stage configuration identity treats the old
+# and new spellings as the same reviewer, so editing agent_type to the new name does not
+# archive a screening in progress.
 REVIEWER_AGENT = "screening-reviewer-agent"
 LEGACY_REVIEWER_AGENT = "screening_reviewer_agent"
+PLUGIN_PREFIX = "academic-research-skills:"
+_REVIEWER_NAMES = {REVIEWER_AGENT, LEGACY_REVIEWER_AGENT,
+                   PLUGIN_PREFIX + REVIEWER_AGENT, PLUGIN_PREFIX + LEGACY_REVIEWER_AGENT}
 
 
 def reviewer_agent_type(value):
-    """The agent_type to dispatch: a pre-#1037 reviewer name maps to the current one."""
+    """The agent_type to dispatch: the plugin's pre-#1037 reviewer name maps to the new one."""
     value = value or ""
-    prefix, sep, name = value.rpartition(":")
-    if name == LEGACY_REVIEWER_AGENT:
-        return f"{prefix}{sep}{REVIEWER_AGENT}"
+    if value == PLUGIN_PREFIX + LEGACY_REVIEWER_AGENT:
+        return PLUGIN_PREFIX + REVIEWER_AGENT
     return value
 
 
 def is_lean_reviewer(value):
-    """True when agent_type names the Read/Grep-only reviewer, under either name."""
-    return reviewer_agent_type(value).rpartition(":")[2] == REVIEWER_AGENT
+    """True when agent_type names ARS's Read/Grep-only reviewer, under either name."""
+    return (value or "") in _REVIEWER_NAMES
+
+
+def _identity_agent_type(value):
+    """agent_type as it enters the stage identity: the new spelling counts as the old one."""
+    value = value or ""
+    if value in _REVIEWER_NAMES:
+        return value.replace(REVIEWER_AGENT, LEGACY_REVIEWER_AGENT)
+    return value
 
 ADVANCE = ("include", "unclear")
 LABELS = ("include", "unclear", "exclude")
@@ -148,7 +161,7 @@ def screening_config(cfg, stage):
         "core_criteria": cfg["core_criteria"],
         "personas": {r: cfg["personas"][r] for r in ("A", "B")},
         "models": {r: cfg["models"].get(r) or "" for r in roles},
-        "agent_type": cfg.get("agent_type") or "",
+        "agent_type": _identity_agent_type(cfg.get("agent_type")),
     }
     if stage == "ta":
         qc = cfg["qc"]

@@ -402,18 +402,24 @@ class LegacyAgentNameTest(unittest.TestCase):
                     self.assertEqual(self._write(form, "probe.txt"), "deny")
                     self.assertEqual(self._write(form, f"{glob_dir}/out.md"), "allow")
 
-    def test_other_plugin_current_name_not_fenced(self):
-        self.assertEqual(self._write("other-plugin:synthesis-agent", "probe.txt"), "allow")
+    def test_other_plugin_names_not_fenced(self):
+        for form in ("other-plugin:synthesis-agent", "other-plugin:synthesis_agent"):
+            with self.subTest(agent_type=form):
+                self.assertEqual(self._write(form, "probe.txt"), "allow")
 
-    def test_legacy_map_matches_agent_frontmatter(self):
-        # Each key is an agents/ file stem; each value is that file's frontmatter name.
-        for legacy, current in guard.LEGACY_AGENT_NAMES.items():
-            with self.subTest(agent=legacy):
-                text = Path(REPO_ROOT, "agents", legacy + ".md").read_text(encoding="utf-8")
-                block = text.split("---", 2)[1]
-                names = [ln.split(":", 1)[1].strip() for ln in block.splitlines()
-                         if ln.startswith("name:")]
-                self.assertEqual(names, [current])
+    def test_legacy_map_covers_every_renamed_plugin_agent(self):
+        # Scan agents/: every file whose stem differs from its frontmatter name must be a
+        # LEGACY_AGENT_NAMES key mapping to that name, and the map holds nothing else.
+        renamed = {}
+        for path in sorted(Path(REPO_ROOT, "agents").glob("*.md")):
+            block = path.read_text(encoding="utf-8").split("---", 2)[1]
+            names = [ln.split(":", 1)[1].strip() for ln in block.splitlines()
+                     if ln.startswith("name:")]
+            self.assertEqual(len(names), 1, path)
+            if names[0] != path.stem:
+                renamed[path.stem] = names[0]
+        self.assertEqual(len(renamed), 4)
+        self.assertEqual(renamed, guard.LEGACY_AGENT_NAMES)
 
     def test_manifest_keeps_no_legacy_key(self):
         # A legacy key in the manifest would be unreachable: _manifest_key maps it away.

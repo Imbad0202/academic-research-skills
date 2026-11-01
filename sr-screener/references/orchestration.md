@@ -20,6 +20,11 @@
   `screening_config.json`. A wrong name makes every call fail at once, which the pilot shows
   immediately. An empty `agent_type` uses the default workflow subagent: it works, but it
   carries more tools and more overhead per call.
+- Before #1037 the reviewer was named `screening_reviewer_agent`. A saved
+  `academic-research-skills:screening_reviewer_agent` dispatches to the new plugin name. A bare
+  `screening_reviewer_agent` is dispatched as written, because it names your own copy; after you
+  copy the new agent file, change `agent_type` to `screening-reviewer-agent`. Changing between the
+  two spellings does not archive the decisions of a stage in progress.
 - Python 3.9+ runs the scripts; `pip install openpyxl` gives an Excel log instead of CSV files.
 
 ## 2. Paths

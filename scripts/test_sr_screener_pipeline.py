@@ -203,11 +203,14 @@ def test_prompts_embed_protocol_verbatim_and_data_rule(prepared: Path) -> None:
 
 
 @pytest.mark.parametrize("value, expected", [
+    # The plugin lists only the new name, so its old scoped name is rewritten.
     ("academic-research-skills:screening_reviewer_agent", "academic-research-skills:screening-reviewer-agent"),
-    ("screening_reviewer_agent", "screening-reviewer-agent"),
+    # A bare old name is the user's own copy, which keeps its old name: dispatch as written.
+    ("screening_reviewer_agent", "screening_reviewer_agent"),
     ("academic-research-skills:screening-reviewer-agent", "academic-research-skills:screening-reviewer-agent"),
     ("screening-reviewer-agent", "screening-reviewer-agent"),
-    ("other-plugin:some_agent", "other-plugin:some_agent"),
+    # Another plugin's agent is not ARS's to rename.
+    ("other-plugin:screening_reviewer_agent", "other-plugin:screening_reviewer_agent"),
     ("", ""),
     (None, ""),
 ])
@@ -215,11 +218,27 @@ def test_reviewer_agent_type_maps_the_pre_1037_name(value, expected) -> None:
     assert LIB.reviewer_agent_type(value) == expected
 
 
+@pytest.mark.parametrize("old, new", [
+    ("academic-research-skills:screening_reviewer_agent", "academic-research-skills:screening-reviewer-agent"),
+    ("screening_reviewer_agent", "screening-reviewer-agent"),
+])
+def test_renaming_the_reviewer_keeps_the_stage_identity(tmp_path, old, new) -> None:
+    def cfg(agent_type):
+        path = tmp_path / f"{agent_type.replace(':', '_')}.json"
+        path.write_text(json.dumps(dict(CONFIG, agent_type=agent_type)), encoding="utf-8")
+        return LIB.load_config(str(path))
+    for stage in ("ta", "ft"):
+        assert LIB.digest(LIB.screening_config(cfg(old), stage)) == LIB.digest(LIB.screening_config(cfg(new), stage))
+    # A real change of reviewer still changes the identity.
+    assert LIB.screening_config(cfg("general-purpose"), "ta") != LIB.screening_config(cfg(new), "ta")
+
+
 @pytest.mark.parametrize("value, lean", [
     ("academic-research-skills:screening-reviewer-agent", True),
     ("screening-reviewer-agent", True),
     ("academic-research-skills:screening_reviewer_agent", True),
     ("screening_reviewer_agent", True),
+    ("other-plugin:screening-reviewer-agent", False),
     ("", False),
     ("general-purpose", False),
 ])
