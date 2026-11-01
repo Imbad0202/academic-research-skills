@@ -12,14 +12,20 @@
 - **Plugin install** (skill + subagent): `/plugin marketplace add Imbad0202/academic-research-skills`,
   then `/plugin install academic-research-skills`. The reviewer subagent ships in the plugin's
   `agents/` folder and is listed with the plugin prefix:
-  `academic-research-skills:screening_reviewer_agent`.
+  `academic-research-skills:screening-reviewer-agent`.
 - **Skills-copy install** (the `sr-screener` folder symlinked or copied into `~/.claude/skills/`):
   also copy `sr-screener/agents/screening_reviewer_agent.md` into `.claude/agents/` (this
-  project) or `~/.claude/agents/` (all projects); it is then listed as `screening_reviewer_agent`.
+  project) or `~/.claude/agents/` (all projects); it is then listed as `screening-reviewer-agent`.
 - Put the exact agent name shown in the session's agent list into `agent_type` in
   `screening_config.json`. A wrong name makes every call fail at once, which the pilot shows
   immediately. An empty `agent_type` uses the default workflow subagent: it works, but it
   carries more tools and more overhead per call.
+- Before #1037 the reviewer was named `screening_reviewer_agent`. A saved
+  `academic-research-skills:screening_reviewer_agent` dispatches to the new plugin name. A bare
+  `screening_reviewer_agent` is dispatched as written, because it names your own copy; after you
+  copy the new agent file, change `agent_type` to `screening-reviewer-agent`. Changing between the
+  two plugin names does not archive the decisions of a stage in progress; changing a bare name
+  does, because the two names can be two different local files.
 - Python 3.9+ runs the scripts; `pip install openpyxl` gives an Excel log instead of CSV files.
 
 ## 2. Paths

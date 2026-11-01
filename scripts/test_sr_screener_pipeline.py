@@ -122,7 +122,7 @@ CONFIG = {
     "core_criteria": ["children after cardiac surgery", "urinary NGAL"],
     "seeds": [{"label": "Smith 2021", "doi": "10.1000/test.0001"}],
     "languages_allowed": ["English"],
-    "agent_type": "academic-research-skills:screening_reviewer_agent",
+    "agent_type": "academic-research-skills:screening_reviewer_agent",  # pre-#1037 name, kept on purpose
 }
 
 
@@ -196,7 +196,58 @@ def test_prompts_embed_protocol_verbatim_and_data_rule(prepared: Path) -> None:
     assert all(e["model"] == "sonnet" for e in index)
     scripts = list((work / "runs").glob("ta_pilot_*.workflow.js"))
     assert len(scripts) == 2  # initial identity-bearing pilot plus this prompt-emitting run
-    assert "academic-research-skills:screening_reviewer_agent" in scripts[0].read_text(encoding="utf-8")
+    script = scripts[0].read_text(encoding="utf-8")
+    # #1037: a saved config with the old underscore name dispatches to the current name.
+    assert "academic-research-skills:screening-reviewer-agent" in script
+    assert "screening_reviewer_agent" not in script
+
+
+@pytest.mark.parametrize("value, expected", [
+    # The plugin lists only the new name, so its old scoped name is rewritten.
+    ("academic-research-skills:screening_reviewer_agent", "academic-research-skills:screening-reviewer-agent"),
+    # A bare old name is the user's own copy, which keeps its old name: dispatch as written.
+    ("screening_reviewer_agent", "screening_reviewer_agent"),
+    ("academic-research-skills:screening-reviewer-agent", "academic-research-skills:screening-reviewer-agent"),
+    ("screening-reviewer-agent", "screening-reviewer-agent"),
+    # Another plugin's agent is not ARS's to rename.
+    ("other-plugin:screening_reviewer_agent", "other-plugin:screening_reviewer_agent"),
+    ("", ""),
+    (None, ""),
+])
+def test_reviewer_agent_type_maps_the_pre_1037_name(value, expected) -> None:
+    assert LIB.reviewer_agent_type(value) == expected
+
+
+@pytest.mark.parametrize("old, new, same", [
+    # Both plugin names reach the same plugin agent.
+    ("academic-research-skills:screening_reviewer_agent", "academic-research-skills:screening-reviewer-agent", True),
+    # Two bare names can be two different local files.
+    ("screening_reviewer_agent", "screening-reviewer-agent", False),
+])
+def test_renaming_the_reviewer_keeps_the_stage_identity(tmp_path, old, new, same) -> None:
+    def cfg(agent_type):
+        path = tmp_path / f"{agent_type.replace(':', '_')}.json"
+        path.write_text(json.dumps(dict(CONFIG, agent_type=agent_type)), encoding="utf-8")
+        return LIB.load_config(str(path))
+    for stage in ("ta", "ft"):
+        equal = LIB.digest(LIB.screening_config(cfg(old), stage)) == LIB.digest(LIB.screening_config(cfg(new), stage))
+        assert equal is same
+    # A real change of reviewer still changes the identity.
+    assert LIB.screening_config(cfg("general-purpose"), "ta") != LIB.screening_config(cfg(new), "ta")
+
+
+@pytest.mark.parametrize("value, lean", [
+    ("academic-research-skills:screening-reviewer-agent", True),
+    ("screening-reviewer-agent", True),
+    ("academic-research-skills:screening_reviewer_agent", True),
+    ("screening_reviewer_agent", True),
+    ("other-plugin:screening-reviewer-agent", False),
+    ("", False),
+    ("general-purpose", False),
+])
+def test_methods_access_sentence_names_either_reviewer_name(value, lean) -> None:
+    # build_outputs.py writes the "could only read the record file" sentence on this test.
+    assert LIB.is_lean_reviewer(value) is lean
 
 
 def test_qc_sample_below_minimum_is_refused(prepared: Path) -> None:
@@ -313,6 +364,9 @@ def test_no_silent_defaults_then_complete_run(prepared: Path) -> None:
     assert counts["records_screened"] == 5
     assert counts["records_excluded"] == 2
     assert counts["duplicates_removed"] == 1
+    # #1037: the config still names the reviewer the pre-#1037 way; the access sentence stays.
+    methods = (prepared / "out" / "TA_methods_selection.md").read_text(encoding="utf-8")
+    assert "The reviewer agents could only read the record file they were given" in methods
 
     schema = json.loads(CORPUS_SCHEMA.read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)

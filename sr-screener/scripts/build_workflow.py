@@ -330,7 +330,7 @@ def main():
         "codesText": codes_text(cfg, a.stage),
         "personas": cfg["personas"],
         "models": cfg["models"],
-        "agentType": cfg.get("agent_type") or "",
+        "agentType": srlib.reviewer_agent_type(cfg.get("agent_type")),
         "conflictPolicy": cfg["conflict_policy"] if a.stage == "ta" else "adjudicate",
         "dir": os.path.join(work, "batches").replace("\\", "/"),
         "idWidth": width,

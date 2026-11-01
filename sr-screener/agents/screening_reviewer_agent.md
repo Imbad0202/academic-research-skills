@@ -1,5 +1,5 @@
 ---
-name: screening_reviewer_agent
+name: screening-reviewer-agent
 description: "Blinded screening reviewer for sr-screener: applies a confirmed protocol to one batch of records or one full-text report and returns one decision per record"
 model: inherit
 tools: Read, Grep
@@ -83,7 +83,7 @@ genuinely absent from the report or an unreadable file.
 
 ## Install note
 
-Plugin installs list this agent as `academic-research-skills:screening_reviewer_agent`. For a
+Plugin installs list this agent as `academic-research-skills:screening-reviewer-agent`. For a
 skills-copy install, copy this file into `.claude/agents/` (one project) or `~/.claude/agents/`
-(all projects) and use `screening_reviewer_agent`. Put the name the session lists into
+(all projects) and use `screening-reviewer-agent`. Put the name the session lists into
 `agent_type` in `screening_config.json`.

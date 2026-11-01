@@ -40,8 +40,9 @@ PAYLOAD CONTRACT (first-party verified against official Claude Code hook docs 20
   tool_name, tool_input, plus subagent-conditional agent_id / agent_type. For an agent
   defined in a project or user agents dir, `agent_type` equals its frontmatter `name`
   (e.g. "bibliography_agent"); for an agent shipped by this plugin it is the plugin-scoped
-  identifier ("academic-research-skills:synthesis_agent", #971). The manifest keys the bare
-  name; `_manifest_key` maps the scoped form back to it. Captured payloads (Claude Code
+  identifier ("academic-research-skills:synthesis-agent", #971). The manifest keys the bare
+  name; `_manifest_key` maps the scoped form back to it, and maps a pre-#1037 underscore
+  name (LEGACY_AGENT_NAMES) to the current one. Captured payloads (Claude Code
   2.1.296, #973) also carry `tool_use_id` and `prompt_id`; the guard does not read them, so
   their presence or absence never changes a decision.
 
@@ -90,6 +91,18 @@ INSPECTED_TOOLS = STRUCTURED_WRITE_TOOLS | {"Bash"}
 # manifest name is not an ARS agent and stays out of the fence. Pinned to the `name` in
 # .claude-plugin/plugin.json by the guard tests.
 PLUGIN_AGENT_NAMESPACE = "academic-research-skills:"
+
+# The four plugin-exposed agents took hyphenated frontmatter names (#1037): claude.ai
+# rejects an agent name with an underscore. An agent file copied into a project or user
+# agents dir before #1037 still reports its old underscore name, so the guard maps each
+# old name to the current one and keeps fencing it. The values must equal the current
+# frontmatter names; the guard tests pin that.
+LEGACY_AGENT_NAMES = {
+    "synthesis_agent": "synthesis-agent",
+    "research_architect_agent": "research-architect-agent",
+    "report_compiler_agent": "report-compiler-agent",
+    "screening_reviewer_agent": "screening-reviewer-agent",
+}
 
 # Step 2 infrastructure self-protection — normalized workspace-relative path patterns
 # that NO agent (and not even the unconstrained main session) may write. These are the
@@ -294,11 +307,14 @@ def _infra_protected_target(raw_path, cwd, plugin_root):
 
 def _manifest_key(agent_type):
     """The manifest key for a payload agent_type: this plugin's scoped identifier
-    ("academic-research-skills:synthesis_agent") maps to the bare name the manifest keys
-    ("synthesis_agent"); anything else is returned unchanged (#971)."""
-    if isinstance(agent_type, str) and agent_type.startswith(PLUGIN_AGENT_NAMESPACE):
-        return agent_type[len(PLUGIN_AGENT_NAMESPACE):]
-    return agent_type
+    ("academic-research-skills:synthesis-agent") maps to the bare name the manifest keys
+    ("synthesis-agent") (#971), and a pre-#1037 underscore name maps to its current
+    hyphenated name (#1037); anything else is returned unchanged."""
+    if not isinstance(agent_type, str):
+        return agent_type
+    if agent_type.startswith(PLUGIN_AGENT_NAMESPACE):
+        agent_type = agent_type[len(PLUGIN_AGENT_NAMESPACE):]
+    return LEGACY_AGENT_NAMES.get(agent_type, agent_type)
 
 
 def _allow_unconstrained(agent_type):

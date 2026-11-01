@@ -451,7 +451,7 @@ def main():
             tool = (f"the sr-screener skill (version {srlib.VERSION}) of the open-source Academic Research Skills suite "
                     f"({REPO_URL}), running in Claude Code")
             access = ("The reviewer agents could only read the record file they were given (no web access). "
-                      if (cfg.get("agent_type") or "").split(":")[-1] == "screening_reviewer_agent" else "")
+                      if srlib.is_lean_reviewer(cfg.get("agent_type")) else "")
             if a.stage == "ta":
                 conflict = (f"Disagreements between advancing (include or unclear) and excluding a record "
                             f"({n_conf} records) were resolved by a third AI reviewer ({mlab('ADJ')}) that re-read the record. "

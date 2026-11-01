@@ -68,7 +68,7 @@ runtime graceful-degradation mechanisms is
    The guard is optional subagent hardening; core skills are unaffected when it is
    inactive (README Requirements). It fences a Bucket A role only when that role runs as
    a subagent dispatched under its own agent type, which today means the plugin agents
-   `synthesis_agent` and `research_architect_agent`; roles that run inline in the main
+   `synthesis-agent` and `research-architect-agent`; roles that run inline in the main
    session, the default for most, are not fenced (#973).
 3. Hooks and plugin agents are wired by the **plugin manifest** (`hooks/hooks.json`,
    `agents/`, resolved via `CLAUDE_PLUGIN_ROOT`). A skills-copy or repo-clone install
@@ -134,7 +134,7 @@ runtime graceful-degradation mechanisms is
    other channels are covered only by the copy check (`scripts/check_routing_core_sync.py`).
 10. sr-screener's dual review needs subagents plus its own Python scripts, which live
    inside the skill folder (`sr-screener/scripts/`, standard library only), so a copied
-   skill folder carries them. **Plugin:** the `screening_reviewer_agent` (tools: Read,
+   skill folder carries them. **Plugin:** the `screening-reviewer-agent` (tools: Read,
    Grep) is wired from `agents/`. **Skills copy / repo clone:** active once
    `sr-screener/agents/screening_reviewer_agent.md` is copied into `.claude/agents/`
    and named in `screening_config.json`; with an empty `agent_type` the default

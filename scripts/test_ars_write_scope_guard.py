@@ -48,7 +48,7 @@ TEST_MANIFEST = {
             "phase": "2",
             "allowed_write_globs": ["phase2_*/**"],
         },
-        "synthesis_agent": {
+        "synthesis-agent": {  # the shipped manifest's key since #1037
             "bucket": "A",
             "skill": "deep-research",
             "phase": "3",
@@ -373,6 +373,57 @@ class PluginScopedAgentTypeTest(unittest.TestCase):
         p = payload("Write", {"file_path": os.path.join(self.ws, "probe.txt"), "content": "x"},
                     cwd=self.ws, agent_type=guard.PLUGIN_AGENT_NAMESPACE)
         self.assertEqual(self.decide(p)["decision"], "allow")
+
+
+class LegacyAgentNameTest(unittest.TestCase):
+    """#1037: the four plugin-exposed agents took hyphenated names. The current name and a
+    pre-#1037 underscore name, bare or plugin-scoped, must reach the same fence."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.ws = os.path.realpath(self._tmp.name)
+        self.manifest = guard._load_manifest()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _write(self, agent_type, rel):
+        p = payload("Write", {"file_path": os.path.join(self.ws, rel), "content": "x"},
+                    cwd=self.ws, agent_type=agent_type)
+        return guard.evaluate_decision(p, self.manifest, self.ws)["decision"]
+
+    def test_every_name_form_is_fenced(self):
+        ns = guard.PLUGIN_AGENT_NAMESPACE
+        for current, glob_dir in (("synthesis-agent", "phase3_analysis"),
+                                  ("research-architect-agent", "phase1_design")):
+            legacy = current.replace("-", "_")
+            for form in (current, ns + current, legacy, ns + legacy):
+                with self.subTest(agent_type=form):
+                    self.assertEqual(self._write(form, "probe.txt"), "deny")
+                    self.assertEqual(self._write(form, f"{glob_dir}/out.md"), "allow")
+
+    def test_other_plugin_names_not_fenced(self):
+        for form in ("other-plugin:synthesis-agent", "other-plugin:synthesis_agent"):
+            with self.subTest(agent_type=form):
+                self.assertEqual(self._write(form, "probe.txt"), "allow")
+
+    def test_legacy_map_covers_every_renamed_plugin_agent(self):
+        # Scan agents/: every file whose stem differs from its frontmatter name must be a
+        # LEGACY_AGENT_NAMES key mapping to that name, and the map holds nothing else.
+        renamed = {}
+        for path in sorted(Path(REPO_ROOT, "agents").glob("*.md")):
+            block = path.read_text(encoding="utf-8").split("---", 2)[1]
+            names = [ln.split(":", 1)[1].strip() for ln in block.splitlines()
+                     if ln.startswith("name:")]
+            self.assertEqual(len(names), 1, path)
+            if names[0] != path.stem:
+                renamed[path.stem] = names[0]
+        self.assertEqual(len(renamed), 4)
+        self.assertEqual(renamed, guard.LEGACY_AGENT_NAMES)
+
+    def test_manifest_keeps_no_legacy_key(self):
+        # A legacy key in the manifest would be unreachable: _manifest_key maps it away.
+        self.assertFalse(set(guard.LEGACY_AGENT_NAMES) & set(self.manifest["agents"]))
 
 
 class CapturedPayloadTest(unittest.TestCase):

@@ -22,6 +22,41 @@ import uuid
 VERSION = "1.0.0"
 TOOL = "sr-screener"
 
+# The reviewer subagent's name before #1037 used underscores, which claude.ai rejects.
+# Plugin installs now list only the new name, so a saved config that names the plugin's
+# reviewer the old way dispatches to the new name. A bare old name refers to the user's
+# own copy in .claude/agents/, which keeps its old name until the user copies the new
+# file, so it is dispatched as written. The stage configuration identity treats the
+# plugin's old and new names as one reviewer, because both reach the same plugin agent;
+# editing agent_type between them does not archive a screening in progress. Two bare
+# names can be two different local files, so they stay distinct.
+REVIEWER_AGENT = "screening-reviewer-agent"
+LEGACY_REVIEWER_AGENT = "screening_reviewer_agent"
+PLUGIN_PREFIX = "academic-research-skills:"
+_REVIEWER_NAMES = {REVIEWER_AGENT, LEGACY_REVIEWER_AGENT,
+                   PLUGIN_PREFIX + REVIEWER_AGENT, PLUGIN_PREFIX + LEGACY_REVIEWER_AGENT}
+
+
+def reviewer_agent_type(value):
+    """The agent_type to dispatch: the plugin's pre-#1037 reviewer name maps to the new one."""
+    value = value or ""
+    if value == PLUGIN_PREFIX + LEGACY_REVIEWER_AGENT:
+        return PLUGIN_PREFIX + REVIEWER_AGENT
+    return value
+
+
+def is_lean_reviewer(value):
+    """True when agent_type names ARS's Read/Grep-only reviewer, under either name."""
+    return (value or "") in _REVIEWER_NAMES
+
+
+def _identity_agent_type(value):
+    """agent_type as it enters the stage identity: the plugin's new name counts as its old one."""
+    value = value or ""
+    if value == PLUGIN_PREFIX + REVIEWER_AGENT:
+        return PLUGIN_PREFIX + LEGACY_REVIEWER_AGENT
+    return value
+
 ADVANCE = ("include", "unclear")
 LABELS = ("include", "unclear", "exclude")
 FIXED_CODES = {"include": "INC", "unclear": "UNC"}
@@ -127,7 +162,7 @@ def screening_config(cfg, stage):
         "core_criteria": cfg["core_criteria"],
         "personas": {r: cfg["personas"][r] for r in ("A", "B")},
         "models": {r: cfg["models"].get(r) or "" for r in roles},
-        "agent_type": cfg.get("agent_type") or "",
+        "agent_type": _identity_agent_type(cfg.get("agent_type")),
     }
     if stage == "ta":
         qc = cfg["qc"]

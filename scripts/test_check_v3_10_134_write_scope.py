@@ -76,9 +76,10 @@ class MutationTest(unittest.TestCase):
         self._assert_fails("I2")
 
     def test_I3_bcd_leak_into_manifest_fails(self):
-        # A Bucket B agent's name (report_compiler_agent) appears as a manifest key.
+        # A Bucket B agent's frontmatter name (report-compiler-agent since #1037) appears
+        # as a manifest key.
         real = self._real_keys()
-        lint.load_manifest_keys = lambda: real | {"report_compiler_agent"}
+        lint.load_manifest_keys = lambda: real | {"report-compiler-agent"}
         errs = lint.run_checks()
         self.assertTrue(any("I3" in e for e in errs),
                         f"expected an I3 leak error; got {errs}")
