@@ -417,26 +417,28 @@ This fallback uploads the five ARS skills to [Claude Cowork](https://support.cla
 
 #### Step 1: Build one zip per skill
 
-Clone the repo, then zip each of the five skill folders individually so that each zip has its own `SKILL.md` at the top level (not nested under an extra folder). The `-x "*.DS_Store"` flag keeps macOS metadata out of the archive.
+Clone the repo, then zip each of the five skill folders on its own. Anthropic's [Create custom skills](https://claude.com/docs/skills/how-to) asks for the skill folder at the top of the zip, so the archive holds `<skill-name>/SKILL.md`, and for a folder name that matches the `name` field in `SKILL.md`. The `-x "*.DS_Store"` flag keeps macOS metadata out of the archive.
+
+claude.ai already has a skill from Anthropic named `deep-research`, and it refuses an upload with the same name ("This skill name is already in use"). The commands below therefore zip a copy of `deep-research` named `ars-deep-research`, with its `name` field changed to match. The clone itself does not change.
 
 ```bash
 git clone https://github.com/Imbad0202/academic-research-skills.git
 cd academic-research-skills
 
-for s in deep-research academic-paper academic-paper-reviewer academic-pipeline sr-screener; do
-  (cd "$s" && zip -r "../$s.zip" . -x "*.DS_Store")
+for s in academic-paper academic-paper-reviewer academic-pipeline sr-screener; do
+  zip -r "$s.zip" "$s" -x "*.DS_Store"
 done
+
+# deep-research is uploaded as ars-deep-research
+rm -rf ars-deep-research && cp -R deep-research ars-deep-research
+perl -pi -e 's/^name: deep-research(\r?)$/name: ars-deep-research$1/' ars-deep-research/SKILL.md
+zip -r ars-deep-research.zip ars-deep-research -x "*.DS_Store"
+rm -rf ars-deep-research
 ```
 
-This produces five zips in the repo root: `deep-research.zip`, `academic-paper.zip`, `academic-paper-reviewer.zip`, `academic-pipeline.zip`, `sr-screener.zip`. Each zip's top level looks like (`sr-screener` also carries `scripts/`):
+This produces five zips in the repo root: `ars-deep-research.zip`, `academic-paper.zip`, `academic-paper-reviewer.zip`, `academic-pipeline.zip`, `sr-screener.zip`. Run `unzip -l <zip>` to check one: every entry starts with the skill folder, for example `ars-deep-research/SKILL.md`, `ars-deep-research/agents/` and `ars-deep-research/references/` (`sr-screener` also carries `sr-screener/scripts/`).
 
-```text
-SKILL.md
-agents/
-examples/
-references/
-templates/
-```
+The other ARS skills refer to `deep-research` by name. In an upload install, whether such a reference reaches the uploaded `ars-deep-research` or Anthropic's `deep-research` has not been tested.
 
 #### Step 2: Upload each zip
 
@@ -444,7 +446,7 @@ templates/
 2. Use the **+** in the Skills panel to upload a skill, and select one of the five zips. Repeat for all five, one at a time.
 3. Each skill then appears under **Personal skills**, already enabled, with **Trigger: Slash command + auto**. Re-uploading a skill with the same name replaces the existing one (useful when updating to a new ARS release).
 
-Verified on Claude Desktop (June 2026): `deep-research.zip` built this way installs cleanly, the full skill description is preserved (no 200-character truncation), and `/deep-research` appears in the Cowork command palette.
+Checked on Claude Desktop in June 2026: `deep-research.zip` installed, the full skill description was kept, and `/deep-research` appeared in the Cowork command palette. That was before the name clash above. On 2026-11-02, `ars-deep-research.zip` uploaded with its 1,021-character description and ran in a conversation (see the trade-off below). That zip had `SKILL.md` at its top level, the layout earlier versions of this page gave; the commands above follow Anthropic's layout instead.
 
 #### Step 3: Use the skills in a Cowork Task
 
@@ -452,7 +454,7 @@ Type `/` in a Cowork Task to open the command palette and select a skill, or des
 
 #### One trade-off versus Claude Code
 
-Uploaded this way, each skill runs on its own as a standalone instruction set. This is a different experience from Claude Code. In Claude Code the skills work as a coordinated team: `academic-pipeline` chains them (research → write → review → revise) and each skill drives its own group of sub-agents. Cowork's uploaded-skill runtime does not provide that sub-agent orchestration, so the individual skills respond, but the full end-to-end pipeline does not run the way it does in Claude Code. For the full orchestrated experience, install ARS in Claude Code through Method 0 (plugin) or Method 1 (project skills) above. On Claude Desktop, the account marketplace in Method 0 also brings the plugin agents to project and folder work; a full pipeline run there has not been tested.
+Uploaded this way, each skill runs on its own as a standalone instruction set. This is a different experience from Claude Code. In Claude Code the skills work as a coordinated team: `academic-pipeline` chains them (research → write → review → revise) and each skill drives its own group of sub-agents. Uploaded skills do not register ARS's own agents, commands or hooks. In one check on 2026-11-02 (Claude Desktop on macOS, chat merged with Cowork, the ARS plugin removed), a conversation using the uploaded `ars-deep-research` skill dispatched a built-in `Explore` sub-agent, which read `agents/synthesis_agent.md` from the uploaded skill and returned its first heading. The first dispatch did not run; a retry did. Whether the skills' multi-agent stages, and the full end-to-end pipeline, run this way has not been tested. For the full orchestrated experience, install ARS in Claude Code through Method 0 (plugin) or Method 1 (project skills) above. On Claude Desktop, the account marketplace in Method 0 also brings the plugin agents to project and folder work; a full pipeline run there has not been tested.
 
 ### Method 4: Use with claude.ai (web)
 
@@ -467,7 +469,7 @@ ARS is a Claude Code-native suite. The skills are multi-agent teams (4 to 13 age
 
 - A claude.ai account. Plan availability differs by sub-method (see below).
 - **For Method 4b**: claude.ai Projects are available across plan tiers per Anthropic's [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects); paid plans (Pro, Max, Team, Enterprise) get larger knowledge capacity and stronger retrieval. GitHub authentication is required through the Anthropic connector — see [Using the GitHub integration](https://support.claude.com/en/articles/10167454-using-the-github-integration) and [Set up Claude integrations](https://support.claude.com/en/articles/10168395-set-up-claude-integrations). Private repositories require the Anthropic GitHub App to be authorized on the repo or organization. Team and Enterprise plans require owner-level connector enablement before users can add GitHub-sourced files.
-- **For Method 4a**: Custom Skills are available on Free, Pro, Max, Team, and Enterprise per Anthropic's [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude). The same article notes that Skills require **code execution to be enabled** in Settings → Capabilities. No GitHub authentication is needed for Method 4a — you zip each skill folder locally and upload one zip per skill through Settings → Capabilities → Skills. Zip structure errors and the 200-character `description` cap surface as upload-time errors; see Anthropic's [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to) and [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
+- **For Method 4a**: Custom Skills are available on Free, Pro, Max, Team, and Enterprise per Anthropic's [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude). The same article notes that Skills require **code execution to be enabled** in Settings → Capabilities. No GitHub authentication is needed for Method 4a — you zip each skill folder locally and upload one zip per skill through Settings → Capabilities → Skills. Zip structure errors and a skill name already in use surface as upload-time errors; see Anthropic's [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to) and [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
 #### Method 4b: Project + GitHub integration (repository reading)
 
@@ -503,10 +505,10 @@ Anthropic's current [Project file limits](https://support.claude.com/en/articles
 
 #### Method 4a: Custom Skill upload (not recommended for this suite)
 
-Method 4a is claude.ai's standard Custom Skill install path: zip each skill folder, upload through Settings → Capabilities → Skills, and Claude treats it as an installed Skill with auto-loading and routing. claude.ai's Custom Skills do support multi-file skill packages including `scripts/` (see Anthropic's [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills) on supporting files and code execution), so Method 4a is mechanically capable of hosting skills with executable assets. The reasons not to recommend it for this specific suite are different and compound:
+Method 4a is claude.ai's standard Custom Skill install path: zip each skill folder, upload through Settings → Capabilities → Skills, and Claude treats it as an installed Skill with auto-loading and routing. claude.ai's Custom Skills do support multi-file skill packages including `scripts/` (see Anthropic's [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills) on supporting files and code execution), so Method 4a is mechanically capable of hosting skills with executable assets. It is not recommended for this suite because the account marketplace in Method 0 installs the same skills together with their agents, commands and hooks. Two points about the upload route:
 
-1. **ARS depends on Claude Code-only orchestration features**. Each ARS skill drives 12-13 specialised agents through Claude Code's Task / subagent tooling and Material Passport file handoffs that resume across sessions. The Anthropic-documented scope of claude.ai's Custom Skill runtime — a containerised code-execution environment per session, with the Skills user guide ([Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude)) describing skill activation but not multi-agent dispatch — does not include Claude Code's Task / subagent control surface. Method 4a is therefore expected to surface ARS as the SKILL.md body's instructions, without the multi-agent dispatch that produces the suite's actual outputs. We have not run a live upload to characterise this in detail; the recommendation is forward-looking based on the Claude Code-specific assumptions baked into the agent orchestration, not on a measured failure.
-2. **Cost to Claude Code and Cowork routing**. claude.ai limits each skill's `description` field to 200 characters per the [Custom Skills documentation](https://claude.com/docs/skills/how-to), while the [Agent Skills specification](https://agentskills.io/specification) and [Claude Code Skills documentation](https://code.claude.com/docs/en/skills) allow up to 1,024 characters. The five ARS descriptions each exceed the 200-character claude.ai cap while staying under the 1,024-character Claude Code allowance, front-loading routing keywords that Claude Code and Cowork use to discriminate between research, writing, review, and orchestration. Trimming them to fit Method 4a would weaken routing on Claude Code and Cowork — the platforms ARS was built for — in exchange for an unverified partial fit on claude.ai.
+1. **ARS was built around Claude Code's orchestration**. Each ARS skill drives 12-13 specialised agents and hands files across sessions through the Material Passport. Uploaded skills do not register ARS's agents, commands or hooks. One check on 2026-11-02 found that an uploaded skill can dispatch a built-in sub-agent (see the [Method 3 trade-off](#one-trade-off-versus-claude-code)); whether the multi-agent stages and the cross-session handoffs work this way has not been tested.
+2. **Description length**. Anthropic's [Create custom skills](https://claude.com/docs/skills/how-to) allows a `description` of up to 1,024 characters, the limit in the [Agent Skills specification](https://agentskills.io/specification), and claude.ai accepted the 1,021-character `deep-research` description on 2026-11-02. This page used to cite a 200-character cap; that cap no longer applies, and the ARS descriptions are not trimmed.
 
 **Recommended paths instead:**
 
@@ -515,32 +517,7 @@ Method 4a is claude.ai's standard Custom Skill install path: zip each skill fold
 - For claude.ai web access to the repo content, use [Method 4b (Project + GitHub integration)](#method-4b-project--github-integration-repository-reading). Claude reads the skill bodies, references, and examples, and you can ask questions or draft against them in a normal claude.ai chat.
 - For Claude Code projects, use [Method 1 (project skills)](#method-1-as-project-skills-recommended) or [Method 2 (standalone)](#method-2-as-a-standalone-project).
 
-If you still want to try Method 4a despite the limitations above, zip each skill folder so the archive's top-level entry is `<skill-name>/SKILL.md` (not `<skill-name>/<skill-name>/SKILL.md` — that nesting buries the discovery file one level too deep). The `zip -r` commands below produce that shape correctly:
-
-```bash
-git clone https://github.com/Imbad0202/academic-research-skills.git
-cd academic-research-skills
-
-zip -r deep-research.zip deep-research
-zip -r academic-paper.zip academic-paper
-zip -r academic-paper-reviewer.zip academic-paper-reviewer
-zip -r academic-pipeline.zip academic-pipeline
-zip -r sr-screener.zip sr-screener
-```
-
-Then in claude.ai:
-
-1. Sign in to [claude.ai](https://claude.ai).
-2. Open **Settings**.
-3. Open **Capabilities**.
-4. Open **Skills**.
-5. Upload `deep-research.zip`.
-6. Upload `academic-paper.zip`.
-7. Upload `academic-paper-reviewer.zip`.
-8. Upload `academic-pipeline.zip`.
-9. Upload `sr-screener.zip`.
-
-The upload UI will reject each zip with a description-too-long error because every ARS description exceeds claude.ai's 200-character cap. The descriptions are intentionally not trimmed; see the rationale above.
+If you still want to upload the skills, build and upload the zips as in [Method 3](#method-3-claude-cowork-desktop) Steps 1-2, including the `ars-deep-research` copy. Methods 3 and 4a now use the same upload page.
 
 **claude.ai vs Claude Code:**
 
