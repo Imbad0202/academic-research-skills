@@ -450,7 +450,8 @@ def main():
             qc_adv = sum(1 for r in rows if r["pre_qc"])
             tool = (f"the sr-screener skill (version {srlib.VERSION}) of the open-source Academic Research Skills suite "
                     f"({REPO_URL}), running in Claude Code")
-            access = ("The reviewer agents could only read the record file they were given (no web access). "
+            access = ("The reviewer agents had read-only file tools and no web access; "
+                      "each was instructed to read only the file it was given. "
                       if srlib.is_lean_reviewer(cfg.get("agent_type")) else "")
             if a.stage == "ta":
                 conflict = (f"Disagreements between advancing (include or unclear) and excluding a record "

@@ -246,7 +246,7 @@ def test_renaming_the_reviewer_keeps_the_stage_identity(tmp_path, old, new, same
     ("general-purpose", False),
 ])
 def test_methods_access_sentence_names_either_reviewer_name(value, lean) -> None:
-    # build_outputs.py writes the "could only read the record file" sentence on this test.
+    # build_outputs.py writes the read-only-tools access sentence on this test.
     assert LIB.is_lean_reviewer(value) is lean
 
 
@@ -366,7 +366,10 @@ def test_no_silent_defaults_then_complete_run(prepared: Path) -> None:
     assert counts["duplicates_removed"] == 1
     # #1037: the config still names the reviewer the pre-#1037 way; the access sentence stays.
     methods = (prepared / "out" / "TA_methods_selection.md").read_text(encoding="utf-8")
-    assert "The reviewer agents could only read the record file they were given" in methods
+    assert ("The reviewer agents had read-only file tools and no web access; "
+            "each was instructed to read only the file it was given.") in methods
+    # #1039: the tool list does not confine Read and Grep to one file.
+    assert "could only read" not in methods
 
     schema = json.loads(CORPUS_SCHEMA.read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
