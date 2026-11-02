@@ -20,7 +20,7 @@ anchors to ISO/IEC 42001) — not an ISO-mandated artifact.
 | **claude.ai plugin** — the same plugin installed from the account marketplace on claude.ai or Claude Desktop, read in two columns: plain chat, and work in a project or a local folder on Claude Desktop | [SETUP Method 0](SETUP.md#install-from-claudeai-or-claude-desktop-account-marketplace) | Plain chat runs no hooks and no plugin agents, as Anthropic documents. In both columns the skill scripts run in Claude's cloud environment, not on your machine. Checked on Claude Desktop (macOS) on 2026-11-02; several mechanisms are untested (note 11). |
 | **Skills copy** — skill folders copied into a project's `.claude/skills/` or the global `~/.claude/skills/` | [SETUP Method 1](SETUP.md#method-1-as-project-skills-recommended) | Nothing wired by the plugin manifest runs (note 3). |
 | **Repo clone** — Claude Code run inside a clone of this repository | [SETUP Method 2](SETUP.md#method-2-as-a-standalone-project) | Nothing wired by the plugin manifest runs (note 3). |
-| **Cowork** — skills uploaded to Claude Cowork (desktop) | [SETUP Method 3](SETUP.md#method-3-claude-cowork-desktop) | Each skill is uploaded on its own, without ARS's agents, commands or hooks, and `deep-research` is uploaded as `ars-deep-research` (note 12). One check saw a built-in sub-agent dispatched; whether the coordinated pipeline and its staged checkpoints run as designed has not been tested. |
+| **Cowork** — skills uploaded to Claude Cowork (desktop) | [SETUP Method 3](SETUP.md#method-3-claude-cowork-desktop) | Each skill is uploaded on its own; the upload registers none of ARS's agents, commands or hooks, and `deep-research` is uploaded as `ars-deep-research` (note 12). One check saw a built-in sub-agent dispatched; whether the coordinated pipeline and its staged checkpoints run as designed has not been tested. |
 | **claude.ai Project** — repo attached to a claude.ai Project as retrievable knowledge | [SETUP Method 4](SETUP.md#method-4-use-with-claudeai-web) | Read-only knowledge: Claude can read and cite the skill bodies, but nothing executes — no activation, routing, hooks, scripts, or orchestration. (The Method 4a upload path is documented but not recommended; see SETUP § Method 4a.) Anthropic lists "Add from GitHub" as not yet supported in the merged chat and Cowork experience. |
 | **Claude Science** — skills imported via "Import from GitHub" | [SETUP Method 5](SETUP.md#method-5-claude-science-import-v3140) | Methodology layer only; Claude Code-specific machinery does not transfer, and Claude Science substitutes its own agent system (details: SETUP Method 5). Imports are point-in-time snapshots. |
 | **Pi port** — community-maintained wrapper for the Pi coding agent | [`pi/README.md`](../pi/README.md) | Two documented boundaries: the wrapper itself supplies no agent isolation or orchestration — an installed Pi orchestration capability is used when available, otherwise roles run sequentially (degraded execution, disclosed, not independent multi-agent review) — and no Claude hooks (write-scope enforcement stays prompt-level). `/ars-pi-doctor` reports what the local environment supplies. |
@@ -167,13 +167,15 @@ runtime graceful-degradation mechanisms is
    reminder, cross-model verification, sr-screener's dual review, a full pipeline run, and
    projects on claude.ai in a browser.
 12. The Cowork column rests on one check on Claude Desktop (macOS) on 2026-11-02, with
-   chat merged with Cowork and the ARS plugin removed (#1040). claude.ai refused an
-   upload named `deep-research` because Anthropic already provides a skill with that
-   name, so the skill was uploaded as `ars-deep-research`, as SETUP Method 3 now
-   instructs. In a conversation, that skill dispatched a built-in `Explore` sub-agent,
+   chat merged with Cowork and the ARS plugin removed (#1040). Claude Desktop refused
+   an upload named `deep-research` because Anthropic already provides a skill with that
+   name, so the skill was uploaded as `ars-deep-research`, the name SETUP Method 3 now
+   uses. That zip had `SKILL.md` at its top level, not the skill folder that SETUP now
+   puts there. In a conversation, that skill dispatched a built-in `Explore` sub-agent,
    which read `agents/synthesis_agent.md` from the uploaded skill and returned its first
    heading; the first dispatch did not run and a retry did. The upload registers no ARS
-   agent, so any dispatch uses a built-in subagent type. Not exercised: the skills'
+   agent; this check used the built-in `Explore` type. One dispatch is not multi-agent
+   orchestration, so the subagent row stays Untested. Not exercised: the skills'
    multi-agent stages, sr-screener's dual review, a full pipeline run, and whether a
    reference to `deep-research` in another ARS skill reaches the uploaded copy or
    Anthropic's skill.

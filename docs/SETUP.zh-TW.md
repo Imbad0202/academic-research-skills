@@ -400,7 +400,7 @@ claude
 >
 > Anthropic 正在分階段把一般對話與 Cowork 合併成同一個介面（[Claude Cowork and chat are one Claude](https://support.claude.com/en/articles/16761823-claude-cowork-and-chat-are-one-claude)）。已上傳的 skill 會保留。帳號已換成合併介面時，本節寫的「Cowork Task」請讀成「一段對話」。
 
-> **Cowork 不會讀取 `~/.claude/skills/`。** 該目錄屬於 Claude Code（CLI / IDE），Cowork 不會掃描它。Cowork 讀取的是你透過 **Settings → Capabilities → Skills** 上傳的 skill，每個 skill 各自打包成一個 zip。把 skill 資料夾 symlink 或複製到 `~/.claude/skills/`，無論重啟幾次都不會讓它們出現在 Cowork。
+> **Cowork 不會讀取 `~/.claude/skills/`。** 該目錄屬於 Claude Code（CLI / IDE），Cowork 不會掃描它。Cowork 讀取的是你透過 **Customize → Skills** 上傳的 skill，每個 skill 各自打包成一個 zip。把 skill 資料夾 symlink 或複製到 `~/.claude/skills/`，無論重啟幾次都不會讓它們出現在 Cowork。
 
 #### 前置需求
 
@@ -415,7 +415,7 @@ claude
 
 clone repo 後，把五個 skill 資料夾各自打包成 zip。Anthropic 的 [Create custom skills](https://claude.com/docs/skills/how-to) 要求 zip 最上層是 skill 資料夾，也就是 zip 內含 `<skill-name>/SKILL.md`，而且資料夾名稱要和 `SKILL.md` 的 `name` 欄位相同。`-x "*.DS_Store"` 用來排除 macOS metadata。
 
-claude.ai 已經有一個 Anthropic 提供、名為 `deep-research` 的 skill，同名的上傳會被拒絕（"This skill name is already in use"）。所以下面的指令把 `deep-research` 複製成 `ars-deep-research` 再打包，並把 `name` 欄位改成相同的名稱。clone 下來的 repo 本身不會改動。
+Anthropic 提供一個名為 `deep-research` 的 skill。2026-11-02 在 Claude Desktop 上，Skills 清單裡已經有它，同名的上傳被拒絕（"This skill name is already in use"）。所以下面的指令把 `deep-research` 複製成 `ars-deep-research` 再打包，並把 `name` 欄位改成相同的名稱。clone 下來的 repo 本身不會改動。
 
 ```bash
 git clone https://github.com/Imbad0202/academic-research-skills.git
@@ -438,7 +438,7 @@ rm -rf ars-deep-research
 
 #### 步驟 2：逐一上傳每個 zip
 
-1. 在 Claude Desktop（或 claude.ai，上傳的 skill 會同步到同一個帳號）中，前往 **Settings → Capabilities → Skills**。
+1. 在 Claude Desktop（或 claude.ai，上傳的 skill 會同步到同一個帳號）中，前往 **Customize → Skills**（Anthropic 的 [Create custom skills](https://claude.com/docs/skills/how-to) 寫明 claude.ai 與桌面版都在這裡；較早的版本放在 Settings → Capabilities → Skills）。
 2. 用 Skills 面板的 **+** 上傳 skill，選擇其中一個 zip。五個 zip 各上傳一次，一次一個。
 3. 每個 skill 上傳後會出現在 **Personal skills** 下，已自動啟用，**Trigger 為 Slash command + auto**。以相同名稱重新上傳會覆蓋既有的 skill（更新到新版 ARS 時很方便）。
 
@@ -459,13 +459,13 @@ rm -rf ars-deep-research
 ARS 是為 Claude Code 設計的 skill suite。各 skill 分別是 4 到 13 個 agent 組成的工作團隊，仰賴多 agent 協作、`scripts/` 下可執行的轉接器，以及 Material Passport 的檔案交接。claude.ai 網頁版的執行環境跟 Claude Code 不同，本節的兩條路徑接進這個 repository 的方式差別很大：
 
 - **方法 4b — Project + GitHub integration**（用來閱讀 repository）：把 repository 接進 claude.ai Project 當成可檢索的知識庫。Claude 可以讀取 skill 主體、references、schemas 與範例輸出，並依此回答問題或起草。不是 Skill 安裝 — 不會自動載入、不會做 skill routing，但內容可完整讀取與引用。
-- **方法 4a — Custom Skill upload**：claude.ai 標準的 Skill 安裝路徑（Settings → Capabilities → Skills，每個 skill 各一個 zip）。**不推薦給本 suite 使用** — 使用前請先看下方原因。
+- **方法 4a — Custom Skill upload**：claude.ai 標準的 Skill 安裝路徑（Customize → Skills，每個 skill 各一個 zip）。**不推薦給本 suite 使用** — 使用前請先看下方原因。
 
 #### 前置需求
 
 - claude.ai 帳號。可用方案因 sub-method 不同（見下）。
 - **方法 4b**：claude.ai Projects 各方案皆可使用，詳見 Anthropic 的 [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects)；付費方案（Pro、Max、Team、Enterprise）有更大的知識庫容量與更強的檢索能力。需要透過 Anthropic connector 進行 GitHub 驗證 — 請參考 [Using the GitHub integration](https://support.claude.com/en/articles/10167454-using-the-github-integration) 與 [Set up Claude integrations](https://support.claude.com/en/articles/10168395-set-up-claude-integrations)。Private repositories 需要在 repo 或 organization 上授權 Anthropic GitHub App。Team 與 Enterprise 方案則需要 owner 層級先啟用 connector，使用者才能加入 GitHub 來源的檔案。
-- **方法 4a**：Custom Skills 在 Free、Pro、Max、Team、Enterprise 方案皆可使用，詳見 Anthropic 的 [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude)。同篇文件也說明 Skills 需要在 Settings → Capabilities 啟用 **code execution**。方法 4a 不需要 GitHub 驗證 — 你要在本機將每個 skill 資料夾各自壓成 zip，再透過 Settings → Capabilities → Skills 逐一上傳。Zip 結構錯誤與 skill 名稱已被使用，會在上傳時顯示錯誤；請參考 Anthropic 的 [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to) 與 [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills)。
+- **方法 4a**：Custom Skills 在 Free、Pro、Max、Team、Enterprise 方案皆可使用，詳見 Anthropic 的 [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude)。同篇文件也說明 Skills 需要在 Settings → Capabilities 啟用 **code execution**。方法 4a 不需要 GitHub 驗證 — 你要在本機將每個 skill 資料夾各自壓成 zip，再透過 Customize → Skills 逐一上傳。Zip 結構錯誤與 skill 名稱已被使用，會在上傳時顯示錯誤；請參考 Anthropic 的 [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to) 與 [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills)。
 
 #### 方法 4b：Project + GitHub integration（閱讀 repository）
 
@@ -501,10 +501,10 @@ Anthropic 目前的 [Project file limits](https://support.claude.com/en/articles
 
 #### 方法 4a：Custom Skill upload（不推薦給本 suite）
 
-方法 4a 是 claude.ai 標準的 Custom Skill 安裝路徑：把每個 skill 資料夾壓成 zip、透過 Settings → Capabilities → Skills 上傳，Claude 會把它當成已安裝的 Skill，提供自動載入與 routing。claude.ai Custom Skills 確實支援多檔 skill 套件，包含 `scripts/`（請見 Anthropic 的 [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills) 對 supporting files 與 code execution 的說明），所以方法 4a 在機制上是可以 host 帶可執行檔的 skill 的。**不推薦給本 suite 使用**，因為方法零的帳號市集會安裝同樣的 skill，並一起裝好代理程式、指令與 hook。關於上傳方式，有兩點說明：
+方法 4a 是 claude.ai 標準的 Custom Skill 安裝路徑：把每個 skill 資料夾壓成 zip、透過 Customize → Skills 上傳，Claude 會把它當成已安裝的 Skill，提供自動載入與 routing。claude.ai Custom Skills 確實支援多檔 skill 套件，包含 `scripts/`（請見 Anthropic 的 [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills) 對 supporting files 與 code execution 的說明），所以方法 4a 在機制上是可以 host 帶可執行檔的 skill 的。**不推薦給本 suite 使用**，因為方法零的帳號市集會安裝同樣的 skill，並一起裝好代理程式、指令與 hook。關於上傳方式，有兩點說明：
 
 1. **ARS 是圍繞 Claude Code 的編排功能設計的**。每個 ARS skill 驅動 12-13 個專責 agent，並透過 Material Passport 在跨 session 之間交接檔案。上傳的 skill 不會註冊 ARS 的代理程式、指令與 hook。2026-11-02 的一次檢查發現，上傳的 skill 可以派出內建的子代理（見[方法三的取捨](#與-claude-code-的一個取捨)）；多代理階段與跨 session 交接能否這樣運作，還沒測過。
-2. **Description 長度**。Anthropic 的 [Create custom skills](https://claude.com/docs/skills/how-to) 允許 `description` 最長 1,024 字元，與 [Agent Skills specification](https://agentskills.io/specification) 的上限相同；2026-11-02 claude.ai 也接受了 1,021 字元的 `deep-research` description。本頁過去引用的 200 字元上限已不適用，ARS 的 description 不會刪短。
+2. **Description 長度**。Anthropic 的 [Create custom skills](https://claude.com/docs/skills/how-to) 允許 `description` 最長 1,024 字元，與 [Agent Skills specification](https://agentskills.io/specification) 的上限相同；2026-11-02 Claude Desktop 也接受了 1,021 字元的 `deep-research` description（以 `ars-deep-research` 的名稱上傳）。本頁過去引用的 200 字元上限已不適用，ARS 的 description 不會刪短。
 
 **建議的替代路徑：**
 
@@ -513,7 +513,7 @@ Anthropic 目前的 [Project file limits](https://support.claude.com/en/articles
 - claude.ai 網頁端要存取 repo 內容，請用方法 4b（Project + GitHub integration，本節稍前說明）。Claude 可以讀取 skill 主體、references 與範例，你可以在 claude.ai 一般對話中提問或起草。
 - Claude Code 專案請用方法 1（project skills）或方法 2（standalone）。
 
-如果你仍想上傳 skill，請照[方法三](#方法三claude-cowork桌面版)的步驟 1 與步驟 2 打包並上傳，包括 `ars-deep-research` 那份複本。方法三與方法 4a 現在使用同一個上傳頁面。
+如果你仍想上傳 skill，請照[方法三](#方法三claude-cowork桌面版)的步驟 1 與步驟 2 打包並上傳，包括 `ars-deep-research` 那份複本。Anthropic 的 [Create custom skills](https://claude.com/docs/skills/how-to) 寫明 claude.ai 與桌面版使用同一個上傳頁面。
 
 **claude.ai 與 Claude Code 的差異：**
 

@@ -404,7 +404,7 @@ This fallback uploads the five ARS skills to [Claude Cowork](https://support.cla
 >
 > Anthropic is merging chat and Cowork into one experience, in stages ([Claude Cowork and chat are one Claude](https://support.claude.com/en/articles/16761823-claude-cowork-and-chat-are-one-claude)). Uploaded skills carry over. Where this section says "Cowork Task", read "a conversation" on an account that has the merged experience.
 
-> **Cowork does not read `~/.claude/skills/`.** That directory belongs to Claude Code (the CLI / IDE), and Cowork does not scan it. Cowork loads skills you upload through **Settings → Capabilities → Skills**, each as its own zip. Symlinking or copying the skill folders into `~/.claude/skills/` will not make them appear in Cowork, no matter how many times you restart.
+> **Cowork does not read `~/.claude/skills/`.** That directory belongs to Claude Code (the CLI / IDE), and Cowork does not scan it. Cowork loads skills you upload through **Customize → Skills**, each as its own zip. Symlinking or copying the skill folders into `~/.claude/skills/` will not make them appear in Cowork, no matter how many times you restart.
 
 #### Prerequisites
 
@@ -419,7 +419,7 @@ This fallback uploads the five ARS skills to [Claude Cowork](https://support.cla
 
 Clone the repo, then zip each of the five skill folders on its own. Anthropic's [Create custom skills](https://claude.com/docs/skills/how-to) asks for the skill folder at the top of the zip, so the archive holds `<skill-name>/SKILL.md`, and for a folder name that matches the `name` field in `SKILL.md`. The `-x "*.DS_Store"` flag keeps macOS metadata out of the archive.
 
-claude.ai already has a skill from Anthropic named `deep-research`, and it refuses an upload with the same name ("This skill name is already in use"). The commands below therefore zip a copy of `deep-research` named `ars-deep-research`, with its `name` field changed to match. The clone itself does not change.
+Anthropic provides a skill named `deep-research`. On Claude Desktop on 2026-11-02 it was already in the Skills list, and an upload with the same name was refused ("This skill name is already in use"). The commands below therefore zip a copy of `deep-research` named `ars-deep-research`, with its `name` field changed to match. The clone itself does not change.
 
 ```bash
 git clone https://github.com/Imbad0202/academic-research-skills.git
@@ -442,7 +442,7 @@ The other ARS skills refer to `deep-research` by name. In an upload install, whe
 
 #### Step 2: Upload each zip
 
-1. In Claude Desktop (or claude.ai — uploaded skills sync to the same account), go to **Settings → Capabilities → Skills**.
+1. In Claude Desktop (or claude.ai — uploaded skills sync to the same account), go to **Customize → Skills** (the location Anthropic's [Create custom skills](https://claude.com/docs/skills/how-to) gives for both claude.ai and the desktop app; older versions placed it under Settings → Capabilities → Skills).
 2. Use the **+** in the Skills panel to upload a skill, and select one of the five zips. Repeat for all five, one at a time.
 3. Each skill then appears under **Personal skills**, already enabled, with **Trigger: Slash command + auto**. Re-uploading a skill with the same name replaces the existing one (useful when updating to a new ARS release).
 
@@ -463,13 +463,13 @@ Uploaded this way, each skill runs on its own as a standalone instruction set. T
 ARS is a Claude Code-native suite. The skills are multi-agent teams (4 to 13 agents each) that depend on multi-agent orchestration, executable scripts under `scripts/`, and Material Passport file handoffs. claude.ai's web interface delivers a different runtime than Claude Code, and the two routes covered here reach this repository in different ways:
 
 - **Method 4b — Project + GitHub integration** (to read the repository): brings the repository into a claude.ai Project as retrievable knowledge. Claude can read the skill bodies, references, schemas, and example outputs, and answer questions or draft against them. Not a Skill install — auto-loading and skill routing do not happen, but the content is fully available for reading and citation.
-- **Method 4a — Custom Skill upload**: claude.ai's standard Skill install path (Settings → Capabilities → Skills, one zip per skill). Not recommended for this suite — see the rationale below before using it.
+- **Method 4a — Custom Skill upload**: claude.ai's standard Skill install path (Customize → Skills, one zip per skill). Not recommended for this suite — see the rationale below before using it.
 
 #### Prerequisites
 
 - A claude.ai account. Plan availability differs by sub-method (see below).
 - **For Method 4b**: claude.ai Projects are available across plan tiers per Anthropic's [What are Projects?](https://support.claude.com/en/articles/9517075-what-are-projects); paid plans (Pro, Max, Team, Enterprise) get larger knowledge capacity and stronger retrieval. GitHub authentication is required through the Anthropic connector — see [Using the GitHub integration](https://support.claude.com/en/articles/10167454-using-the-github-integration) and [Set up Claude integrations](https://support.claude.com/en/articles/10168395-set-up-claude-integrations). Private repositories require the Anthropic GitHub App to be authorized on the repo or organization. Team and Enterprise plans require owner-level connector enablement before users can add GitHub-sourced files.
-- **For Method 4a**: Custom Skills are available on Free, Pro, Max, Team, and Enterprise per Anthropic's [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude). The same article notes that Skills require **code execution to be enabled** in Settings → Capabilities. No GitHub authentication is needed for Method 4a — you zip each skill folder locally and upload one zip per skill through Settings → Capabilities → Skills. Zip structure errors and a skill name already in use surface as upload-time errors; see Anthropic's [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to) and [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
+- **For Method 4a**: Custom Skills are available on Free, Pro, Max, Team, and Enterprise per Anthropic's [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude). The same article notes that Skills require **code execution to be enabled** in Settings → Capabilities. No GitHub authentication is needed for Method 4a — you zip each skill folder locally and upload one zip per skill through Customize → Skills. Zip structure errors and a skill name already in use surface as upload-time errors; see Anthropic's [Custom Skills packaging documentation](https://claude.com/docs/skills/how-to) and [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
 #### Method 4b: Project + GitHub integration (repository reading)
 
@@ -505,10 +505,10 @@ Anthropic's current [Project file limits](https://support.claude.com/en/articles
 
 #### Method 4a: Custom Skill upload (not recommended for this suite)
 
-Method 4a is claude.ai's standard Custom Skill install path: zip each skill folder, upload through Settings → Capabilities → Skills, and Claude treats it as an installed Skill with auto-loading and routing. claude.ai's Custom Skills do support multi-file skill packages including `scripts/` (see Anthropic's [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills) on supporting files and code execution), so Method 4a is mechanically capable of hosting skills with executable assets. It is not recommended for this suite because the account marketplace in Method 0 installs the same skills together with their agents, commands and hooks. Two points about the upload route:
+Method 4a is claude.ai's standard Custom Skill install path: zip each skill folder, upload through Customize → Skills, and Claude treats it as an installed Skill with auto-loading and routing. claude.ai's Custom Skills do support multi-file skill packages including `scripts/` (see Anthropic's [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills) on supporting files and code execution), so Method 4a is mechanically capable of hosting skills with executable assets. It is not recommended for this suite because the account marketplace in Method 0 installs the same skills together with their agents, commands and hooks. Two points about the upload route:
 
 1. **ARS was built around Claude Code's orchestration**. Each ARS skill drives 12-13 specialised agents and hands files across sessions through the Material Passport. Uploaded skills do not register ARS's agents, commands or hooks. One check on 2026-11-02 found that an uploaded skill can dispatch a built-in sub-agent (see the [Method 3 trade-off](#one-trade-off-versus-claude-code)); whether the multi-agent stages and the cross-session handoffs work this way has not been tested.
-2. **Description length**. Anthropic's [Create custom skills](https://claude.com/docs/skills/how-to) allows a `description` of up to 1,024 characters, the limit in the [Agent Skills specification](https://agentskills.io/specification), and claude.ai accepted the 1,021-character `deep-research` description on 2026-11-02. This page used to cite a 200-character cap; that cap no longer applies, and the ARS descriptions are not trimmed.
+2. **Description length**. Anthropic's [Create custom skills](https://claude.com/docs/skills/how-to) allows a `description` of up to 1,024 characters, the limit in the [Agent Skills specification](https://agentskills.io/specification), and on 2026-11-02 Claude Desktop accepted the 1,021-character `deep-research` description, uploaded under the name `ars-deep-research`. This page used to cite a 200-character cap; that cap no longer applies, and the ARS descriptions are not trimmed.
 
 **Recommended paths instead:**
 
@@ -517,7 +517,7 @@ Method 4a is claude.ai's standard Custom Skill install path: zip each skill fold
 - For claude.ai web access to the repo content, use [Method 4b (Project + GitHub integration)](#method-4b-project--github-integration-repository-reading). Claude reads the skill bodies, references, and examples, and you can ask questions or draft against them in a normal claude.ai chat.
 - For Claude Code projects, use [Method 1 (project skills)](#method-1-as-project-skills-recommended) or [Method 2 (standalone)](#method-2-as-a-standalone-project).
 
-If you still want to upload the skills, build and upload the zips as in [Method 3](#method-3-claude-cowork-desktop) Steps 1-2, including the `ars-deep-research` copy. Methods 3 and 4a now use the same upload page.
+If you still want to upload the skills, build and upload the zips as in [Method 3](#method-3-claude-cowork-desktop) Steps 1-2, including the `ars-deep-research` copy. Anthropic's [Create custom skills](https://claude.com/docs/skills/how-to) gives the same upload page for claude.ai and the desktop app.
 
 **claude.ai vs Claude Code:**
 
