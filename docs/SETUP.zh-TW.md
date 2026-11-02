@@ -393,10 +393,10 @@ claude
 
 > **只在無法加入 plugin 時使用。** 在 claude.ai 與 Claude Desktop，建議的安裝方式是方法零的[帳號市集](#從-claudeai-或-claude-desktop-安裝帳號市集)。它會一次裝好五個 skill、`/ars-*` 指令、plugin 代理程式與 hook，並同步本 repository 的新 commit。只有下列情況才改用上傳：
 >
-> - 你的方案沒有 plugin。Anthropic 列出 plugin 只開放給付費方案。
-> - 你的組織只允許清單上的市集，而本 repository 不在清單上（[Manage plugins for your organization](https://support.claude.com/en/articles/13837433-manage-plugins-for-your-organization)）。
+> - 你的方案沒有 plugin。Anthropic 列出的 plugin 適用方案都是付費方案。
+> - 組織的市集允許清單或封鎖清單不允許加入本 repository（[Manage plugins for your organization](https://support.claude.com/en/articles/13837433-manage-plugins-for-your-organization)）。
 >
-> 上傳方式只裝 skill，每次發新版都要重新上傳。
+> 上傳的前提是你可以上傳 skill：Team 與 Enterprise 的管理員可以關閉使用者自建的 skill。上傳方式只裝 skill，每次發新版都要重新上傳。
 >
 > Anthropic 正在分階段把一般對話與 Cowork 合併成同一個介面（[Claude Cowork and chat are one Claude](https://support.claude.com/en/articles/16761823-claude-cowork-and-chat-are-one-claude)）。已上傳的 skill 會保留。帳號已換成合併介面時，本節寫的「Cowork Task」請讀成「一段對話」。
 

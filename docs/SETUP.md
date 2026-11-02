@@ -397,10 +397,10 @@ This fallback uploads the five ARS skills to [Claude Cowork](https://support.cla
 
 > **Use this only when you cannot add the plugin.** On claude.ai and Claude Desktop, the recommended route is the [account marketplace](#install-from-claudeai-or-claude-desktop-account-marketplace) in Method 0. It installs the five skills together with the `/ars-*` commands, the plugin agents and the hooks, and it syncs new commits from this repository. Upload the skills only in one of these cases:
 >
-> - Your plan has no plugins. Anthropic lists plugins for paid plans only.
-> - Your organization allows only listed marketplaces, and this repository is not on the list ([Manage plugins for your organization](https://support.claude.com/en/articles/13837433-manage-plugins-for-your-organization)).
+> - Your plan has no plugins. The plans Anthropic lists for plugins are all paid plans.
+> - Your organization's marketplace allow list or block list does not permit this repository ([Manage plugins for your organization](https://support.claude.com/en/articles/13837433-manage-plugins-for-your-organization)).
 >
-> The upload route installs the skills only, and you upload again for each release.
+> Uploading also needs skill uploads to be available to you: on Team and Enterprise, an admin can turn off user-created skills. The upload route installs the skills only, and you upload again for each release.
 >
 > Anthropic is merging chat and Cowork into one experience, in stages ([Claude Cowork and chat are one Claude](https://support.claude.com/en/articles/16761823-claude-cowork-and-chat-are-one-claude)). Uploaded skills carry over. Where this section says "Cowork Task", read "a conversation" on an account that has the merged experience.
 
