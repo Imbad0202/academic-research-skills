@@ -34,7 +34,7 @@ ARS 建立在這個前提上：**人類研究者 + AI 的組合，比純自動�
 
 v3.8 補上 L3 缺口的另一半。v3.7.3 讓每一筆引用都帶 locator anchor，v3.8 在這個基礎上加一道 opt-in 稽核（`ARS_CLAIM_AUDIT=1`）：抓回每一個 anchor 指向的原始文本，判斷論文裡的 claim 是否真有被該引用支撐。五類新的 HIGH-WARN annotation（claim-not-supported、negative-constraint-violation、fabricated-reference、anchorless、constraint-violation-uncited）會在 formatter terminal hard gate 直接攔下輸出。Calibration runner 隨 release 附一組 25 筆的合成 gold set，採 FNR<0.15、FPR<0.10 雙閾值。隨附的測試用的是直接回傳標準答案的替身裁判，所以它驗證的是工具本身，不是真正的 AI 裁判；目前還沒有真裁判的 calibration 結果，正式放大投入要等這份證據（v3.8 spec §5）。
 
-[**Ren 等人**](https://arxiv.org/abs/2607.13104)（2026，*Self-Improvements in Modern Agentic Systems: A Survey*）補上第三個、survey 層級的錨點。其科學發現章節的綜合結論（§7.4）指出：發現型 agent 難以自行驗證 novelty、正確性與可重現性，反而可能鑽弱代理指標的漏洞；證據管理必須跨異質工具與文獻維持；並帶有治理疑慮——「證據薄弱時，科學寫作也會放大錯誤資訊」。其生成迴圈章節（§5.1–§5.2）把人工稽核與保留人類標註列為自生成評估迴圈的實務防護；歷史章節（§2.2）則記下同一課題最早的版本：Lenat 的 EURISKO 的實務成功高度依賴使用者充當外部評估訊號、修剪無效的 heuristic 漂移——survey 明言此限制延續到現代 agentic 系統。ARS 引用這篇 survey 作為 human-in-the-loop 立場的設計依據，而非「人機協作必然勝過全自動」的實證證明；survey 對 ARS 可落地的增量記錄在 #539–#541 與 #547–#550。
+[**Ren 等人**](https://arxiv.org/abs/2607.13104)（2026，*Self-Improvements in Modern Agentic Systems: A Survey*）補上第三個、survey 層級的錨點。其科學發現章節的綜合結論（§7.4）指出：發現型 agent 難以自行驗證 novelty、正確性與可重現性，反而可能鑽弱代理指標的漏洞；證據管理必須跨異質工具與文獻維持；並帶有「證據薄弱時，科學寫作也會放大錯誤資訊」的治理疑慮。其生成迴圈章節（§5.1–§5.2）把人工稽核與保留人類標註列為自生成評估迴圈的實務防護；歷史章節（§2.2）則記下同一課題最早的版本：Lenat 的 EURISKO 的實務成功高度依賴使用者充當外部評估訊號、修剪無效的 heuristic 漂移。這篇 survey 明言此限制延續到現代 agentic 系統。ARS 引用這篇 survey 作為 human-in-the-loop 立場的設計依據，而非「人機協作必然勝過全自動」的實證證明；survey 對 ARS 可落地的增量記錄在 #539–#541 與 #547–#550。
 
 [**Gartenberg 等人**](https://doi.org/10.1287/orsc.2026.ed.v37.n3)（2026，*Organization Science* 37(3):795-812，*More versus better*）補上第四個錨點，也是第一個來自期刊端的錨點。*Organization Science* 的 AI 工作小組用商用 AI 寫作分類器與標準可讀性指標，量了該刊 2021 年 1 月到 2026 年 2 月收到的全部首次投稿（6,957 篇）與文字型審查意見（10,389 份）。被判為大量由 AI 撰寫的稿件在這些指標上更難讀、也更常被 desk reject；AI 味較重的審查意見偏向理論、遠離資料；編輯群的結論是，現行 AI 工具加上「不發表就出局」的誘因，「看來正把系統推向『更多而非更好』的均衡」。其 §5 把「認知投降」（cognitive surrender，該文引 Shaw & Nave, 2026）與「人先行」的用法對比，並要求作者揭露稿件如何產出。這些證據是觀察性、總體層次、且只來自一本期刊，分類器也是專有工具。ARS 引用這篇社論作為「產量不是目標」（見 `POSITIONING.md`）、Collaboration Depth Observer 與 claim-strength ladder 的設計依據，不是關於 ARS 產出的證據；可落地的增量記錄在 #829–#833。
 
@@ -75,7 +75,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 **👉 [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)** — 哪些資料會離開你的電腦（書目 resolver、選用且需明確同意的跨模型呼叫、更新檢查）、本機快取存什麼與存多久、每條路徑怎麼關閉。（英文）
 
-**使用 Claude Science？** 五個 skill 可直接匯入：**Skills → Import from GitHub**，貼上 `https://github.com/Imbad0202/academic-research-skills`，按 **Preview**，再按 **Import**（需本 repo v3.14.0+——匯入器讀取 marketplace manifest 中明列的 skill 路徑）。匯入是單次快照：ARS 更新後需重新匯入。匯入的 skill 承載 ARS 方法論（研究／寫作／審查協定）；Claude Code 專屬機制——slash commands、hooks、subagent 編排——不會轉移。細節見 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md) 方法五。
+**使用 Claude Science？** 五個 skill 可直接匯入：**Skills → Import from GitHub**，貼上 `https://github.com/Imbad0202/academic-research-skills`，按 **Preview**，再按 **Import**（需本 repo v3.14.0+，因為匯入器讀取 marketplace manifest 中明列的 skill 路徑）。匯入是單次快照：ARS 更新後需重新匯入。匯入的 skill 承載 ARS 方法論（研究／寫作／審查協定）；Claude Code 專屬機制（slash commands、hooks、subagent 編排）不會轉移。細節見 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md) 方法五。
 
 **使用 Pi？** 執行 `pi install git:github.com/Imbad0202/academic-research-skills` 安裝 repo 內的社群維護 wrapper。它持續以原始 ARS 內容為準，並記錄 Pi 在編排與 hooks 方面的限制。詳見 [`pi/README.md`](pi/README.md)。
 
@@ -304,7 +304,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 - **跨模型驗證**：設定 `ARS_CROSS_MODEL` 啟用第二 AI 模型獨立審查。詳見 [docs/SETUP.zh-TW.md](docs/SETUP.zh-TW.md)。
 - **AI 自我反思報告**：Pipeline 結束後自動產出 AI 行為自評。
 
-這些優化不能完全解決 AI 的結構性限制——它們讓限制變得可見、可追蹤、可被人類介入。
+這些優化不能完全解決 AI 的結構性限制，但能讓限制變得可見、可追蹤、可被人類介入。
 
 ---
 
