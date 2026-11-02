@@ -389,7 +389,7 @@ claude
 
 ### 方法三：Claude Cowork（桌面版）
 
-當你想在 [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork) 使用五個 ARS skills 時，請用此方式。Cowork 是 Claude Desktop 的 agentic workspace。
+這個備用方式把五個 ARS skills 上傳到 [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork)。Cowork 是 Claude Desktop 的 agentic workspace。
 
 > **只在無法加入 plugin 時使用。** 在 claude.ai 與 Claude Desktop，建議的安裝方式是方法零的[帳號市集](#從-claudeai-或-claude-desktop-安裝帳號市集)。它會一次裝好五個 skill、`/ars-*` 指令、plugin 代理程式與 hook，並同步本 repository 的新 commit。只有下列情況才改用上傳：
 >

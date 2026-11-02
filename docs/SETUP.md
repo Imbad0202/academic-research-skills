@@ -393,7 +393,7 @@ claude
 
 ### Method 3: Claude Cowork (desktop)
 
-Use this when you want the five ARS skills available in [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork), Claude Desktop's agentic workspace.
+This fallback uploads the five ARS skills to [Claude Cowork](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork), Claude Desktop's agentic workspace.
 
 > **Use this only when you cannot add the plugin.** On claude.ai and Claude Desktop, the recommended route is the [account marketplace](#install-from-claudeai-or-claude-desktop-account-marketplace) in Method 0. It installs the five skills together with the `/ars-*` commands, the plugin agents and the hooks, and it syncs new commits from this repository. Upload the skills only in one of these cases:
 >
