@@ -359,7 +359,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.24.1 (2026-11-02) — claude.ai アカウントマーケットプレイスからの plugin インストール、レビュー前の設定カード確認、ブラジルポルトガル語 README
 
-> **claude.ai と Claude Desktop のインストール修正、新しい skill やモードはなし:** ARS は claude.ai のアカウントマーケットプレイスからインストールできるようになりました。このリリースより前は、この方法では 5 つのコア skill が 1 つも読み込まれず（#1035）、4 つの plugin エージェントは名前に下線を含むため claude.ai に取り込まれませんでした（#1037）。Claude Desktop では、5 つの skill と `/ars-*` コマンドは通常のチャットで使え、plugin エージェントと SessionStart の起動通知はプロジェクトまたはフォルダでの作業で使えます。write-scope ガード、ツールの許可リスト、パイプライン全体の実行はそこでは未検証です。レビューは Reviewer Configuration Cards をユーザーが確認するまで待つようになり（#1030）、README にブラジルポルトガル語版が加わりました（#1032）。
+> **claude.ai と Claude Desktop のインストール修正、新しい skill やモードはなし:** ARS は claude.ai のアカウントマーケットプレイスからインストールできるようになりました。このリリースより前は、この方法では 5 つのコア skill が 1 つも読み込まれず（#1035）、4 つの plugin エージェントは名前に下線を含むため claude.ai に取り込まれませんでした（#1037）。Claude Desktop では、通常のチャットで skill 1 つと `/ars-lit-review` が動作し、プロジェクトのセッションは plugin エージェント `synthesis-agent` に直接ディスパッチし、フォルダでの作業では SessionStart の起動通知が表示されました。write-scope ガード、ツールの許可リスト、パイプライン全体の実行は claude.ai と Claude Desktop では未検証です。レビューは Reviewer Configuration Cards をユーザーが確認するまで待つようになり（#1030）、README にブラジルポルトガル語版が加わりました（#1032）。
 
 ### v3.24.0 (2026-10-27) — パネルが推薦する文献と指摘の参考チェック、1 プロセスで動くガード起動、整合性ルールの修正
 

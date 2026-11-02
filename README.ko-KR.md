@@ -372,7 +372,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.24.1 (2026-11-02) — claude.ai 계정 마켓플레이스에서 plugin 설치, 리뷰 전 설정 카드 확인, 브라질 포르투갈어 README
 
-> **claude.ai와 Claude Desktop 설치 수정, 새 skill이나 모드 없음:** 이제 ARS를 claude.ai 계정 마켓플레이스에서 설치할 수 있습니다. 이 릴리스 전에는 이 방식으로 설치하면 핵심 skill 다섯 개가 하나도 로드되지 않았고(#1035), plugin 에이전트 네 개는 이름에 밑줄이 있어 claude.ai가 받아들이지 않았습니다(#1037). Claude Desktop에서 skill 다섯 개와 `/ars-*` 명령은 일반 채팅에서 동작하고, plugin 에이전트와 SessionStart 시작 알림은 프로젝트나 폴더 작업에서 동작합니다. write-scope guard, 도구 허용 목록, 전체 파이프라인 실행은 그 환경에서 테스트하지 않았습니다. 리뷰는 이제 사용자가 Reviewer Configuration Cards를 확인할 때까지 기다리며(#1030), README에 브라질 포르투갈어판이 추가되었습니다(#1032).
+> **claude.ai와 Claude Desktop 설치 수정, 새 skill이나 모드 없음:** 이제 ARS를 claude.ai 계정 마켓플레이스에서 설치할 수 있습니다. 이 릴리스 전에는 이 방식으로 설치하면 핵심 skill 다섯 개가 하나도 로드되지 않았고(#1035), plugin 에이전트 네 개는 이름에 밑줄이 있어 claude.ai가 받아들이지 않았습니다(#1037). Claude Desktop에서 일반 채팅으로 skill 하나와 `/ars-lit-review`가 실행되었고, 프로젝트 세션은 plugin 에이전트 `synthesis-agent`에 바로 작업을 넘겼으며, 폴더 작업에서는 SessionStart 시작 알림이 나타났습니다. write-scope guard, 도구 허용 목록, 전체 파이프라인 실행은 claude.ai와 Claude Desktop에서 테스트하지 않았습니다. 리뷰는 이제 사용자가 Reviewer Configuration Cards를 확인할 때까지 기다리며(#1030), README에 브라질 포르투갈어판이 추가되었습니다(#1032).
 
 ### v3.24.0 (2026-10-27) — 패널이 추천한 문헌과 지적 사항의 참고용 검사, 단일 프로세스 guard 실행기, 무결성 규칙 수정
 

@@ -352,7 +352,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.24.1（2026-11-02）— 從 claude.ai 帳號市集安裝 plugin、審稿前確認設定卡，以及巴西葡萄牙文 README
 
-> **claude.ai 與 Claude Desktop 的安裝修復；沒有新 skill 或模式：**ARS 現在可以從 claude.ai 帳號市集安裝。這一版之前，這種安裝方式載入不到五個核心 skill（#1035），而且四個 plugin 代理程式的名稱含底線，claude.ai 不收（#1037）。在 Claude Desktop 上，五個 skill 與 `/ars-*` 指令在一般對話可以使用；plugin 代理程式與 SessionStart 開場訊息在專案或資料夾工作時可以使用。寫入範圍防護、工具白名單與完整 pipeline 在那裡尚未測試。審稿時現在會等使用者確認 Reviewer Configuration Cards（#1030），README 也新增巴西葡萄牙文版（#1032）。
+> **claude.ai 與 Claude Desktop 的安裝修復；沒有新 skill 或模式：**ARS 現在可以從 claude.ai 帳號市集安裝。這一版之前，這種安裝方式下，五個核心 skill 全都無法載入（#1035），而且四個 plugin 代理程式的名稱含底線，claude.ai 不收（#1037）。在 Claude Desktop 上，一般對話裡有一個 skill 與 `/ars-lit-review` 實際執行；專案對話直接派工給 plugin 代理程式 `synthesis-agent`；資料夾工作時出現 SessionStart 開場訊息。寫入範圍防護、工具白名單與完整 pipeline 在 claude.ai 與 Claude Desktop 上尚未測試。審稿時現在會等使用者確認 Reviewer Configuration Cards（#1030），README 也新增巴西葡萄牙文版（#1032）。
 
 ### v3.24.0（2026-10-27）— 審查小組建議文獻與審查意見的參考檢查、write-scope guard 啟動器改為單一行程，以及誠信檢查規則修復
 

@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ## [3.24.1] - 2026-11-02 — Plugin installs from a claude.ai account marketplace, reviewer card confirmation, and a Brazilian Portuguese README
 
-> **Install repairs for claude.ai and Claude Desktop; no new skill or mode:** ARS now installs from a claude.ai account marketplace. Before this release, that install loaded none of the five core skills (#1035), and claude.ai left out the four plugin agents because their names had underscores (#1037). On Claude Desktop, the five skills and `/ars-*` commands work in plain chat, and the plugin agents and the SessionStart announce work in project or folder work. The write-scope guard, the tools allowlist, and a full pipeline run there are untested. The reviewer now waits for the user to confirm the Reviewer Configuration Cards (#1030), and the README has a Brazilian Portuguese translation (#1032).
+> **Install repairs for claude.ai and Claude Desktop; no new skill or mode:** ARS now installs from a claude.ai account marketplace. Before this release, that install loaded none of the five core skills (#1035), and claude.ai left out the four plugin agents because their names had underscores (#1037). On Claude Desktop, a skill and `/ars-lit-review` ran in plain chat, a project session dispatched the `synthesis-agent` plugin agent, and the SessionStart announce appeared in folder work. The write-scope guard, the tools allowlist, and a full pipeline run are untested on claude.ai and Claude Desktop. The reviewer now waits for the user to confirm the Reviewer Configuration Cards (#1030), and the README has a Brazilian Portuguese translation (#1032).
 
 ### Added
 
