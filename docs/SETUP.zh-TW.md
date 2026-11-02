@@ -140,10 +140,10 @@ ARS 暴露若干 opt-in flag，全部預設 OFF；設定後僅影響當前 sessi
 | `ARS_SOCRATIC_ADJACENT_PROBE=1` | v3.13.0 (#461) | 讓蘇格拉底導師以提問方式提出一個相鄰的研究框架，一次一個，每個 session 最多兩次。 | `deep-research/agents/socratic_mentor_agent.md` |
 | `ARS_RE_REVIEW_LEGACY=1` | v3.20.0 (#576) | Stage 3′ 再審改用封存的舊版 schema 與檢查器，不走三道關卡契約。 | `academic-paper-reviewer/references/re_review_mode_protocol.md` § Legacy Mode |
 | `ARS_INQUIRY_LEDGER=1` | v3.21.1 (#743) | 探究分支帳本（alpha）。需要研究流程設定檔的綁定，而 pipeline 沒有任何步驟會建立它；沒有綁定時照線性流程跑，並說明一次。 | `academic-pipeline/agents/pipeline_orchestrator_agent.md` § Inquiry Branch Ledger |
-| `ARS_VERIFICATION_CACHE_PATH` | v3.11 | 覆寫引用查驗 cache 的位置（見下節）。不是 on/off flag——cache 預設開啟，此變數只改位置。 | `scripts/verification_cache.py` |
+| `ARS_VERIFICATION_CACHE_PATH` | v3.11 | 覆寫引用查驗 cache 的位置（見下節）。不是 on/off flag：cache 預設開啟，此變數只改位置。 | `scripts/verification_cache.py` |
 | `ARS_CACHE_STALE_ADVISORY_DAYS` | v3.18.0 (#541) | cache 時效 advisory 的天數門檻：由 cache 供應且超過此天數的查驗結果，會在誠信檢查點以 `ADV-CACHE` advisory 列呈現（永不擋關）。預設 30；`0` 停用；格式錯誤或負值回落預設。 | `scripts/verification_cache.py` |
 | `ARS_CACHE_REVALIDATE=1` | v3.18.0 (#541) | 選擇性即時重驗（gate 層）：超過時效門檻的快取列改為逐列繞過、即時查驗並回寫。成本隨過期列數量增加。預設關閉＝僅 advisory。 | `scripts/verification_gate/__init__.py` + `integrity_verification_agent.md` § A0.5 |
-| `ARS_MODEL_TIERING` | v3.16.0 (#517) | Opt-in 模型分層：`economy`（frontier session——execution 型 agent 降一階，樓地板 Opus 級）或 `quality-boost`（低於 frontier 的 session——judgment 型 agent 在檢查點表面跳升到 frontier 級：Stage 2.5/4.5 關卡、opt-in 的 Stage 4→5 claim–ref audit、最終審查）。未設定 = 全部用 session model；未知值警告一次後視同未設定。 | `shared/model_tiering.md` |
+| `ARS_MODEL_TIERING` | v3.16.0 (#517) | Opt-in 模型分層：`economy`（用於 frontier session：execution 型 agent 降一階，樓地板 Opus 級）或 `quality-boost`（用於低於 frontier 的 session：judgment 型 agent 在檢查點表面跳升到 frontier 級，包括 Stage 2.5/4.5 關卡、opt-in 的 Stage 4→5 claim–ref audit、最終審查）。未設定 = 全部用 session model；未知值警告一次後視同未設定。 | `shared/model_tiering.md` |
 
 ---
 
@@ -181,7 +181,7 @@ ARS 刻意不提供使用者層級的設定檔。要讓內容偏好「設一次�
 
 - **無需設定。** Cache 首次使用時自動建在 `~/.cache/ars/verification.db`，條目 90 天後過期。arXiv resolver 不需 API key。
 - **改位置**：匯出 `ARS_VERIFICATION_CACHE_PATH=/your/path.db`（例如跨專案共用一份 cache，或放在較快的磁碟）。
-- **作廢單筆引用**：`/ars-cache-invalidate <citation_key>`——移除該 key 的所有 cache 列（四個 resolver、所有 query form）；若無 cache 則為冪等 no-op。
+- **作廢單筆引用**：`/ars-cache-invalidate <citation_key>`：移除該 key 的所有 cache 列（四個 resolver、所有 query form）；若無 cache 則為冪等 no-op。
 
 Cache 為單一 process（SQLite WAL）；多使用者共用同一 cache 檔案不在範圍內。
 
@@ -550,11 +550,11 @@ Claude Science 可直接從 GitHub 匯入五個 ARS skill：
 
 1. 開啟 **Customize → Capabilities → Skills → Import from GitHub**。
 2. 貼上 `https://github.com/Imbad0202/academic-research-skills`，按 **Preview**。
-3. 五個 skill（`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`、`deep-research`、`sr-screener`）全部出現——按 **Import**（v3.14.0 驗證時、加入 `sr-screener` 之前，按鈕顯示 **Import 4 skills**）。
+3. 五個 skill（`academic-paper`、`academic-paper-reviewer`、`academic-pipeline`、`deep-research`、`sr-screener`）全部出現後，按 **Import**（v3.14.0 驗證時、加入 `sr-screener` 之前，按鈕顯示 **Import 4 skills**）。
 
 **注意事項：**
 
-- 需要 repo 狀態為 v3.14.0+——匯入器讀取 `.claude-plugin/marketplace.json` 中明列的 skill 路徑。更早的 tag 只透過 symlink 的 `skills/` 目錄暴露 skill，GitHub-API 匯入器無法穿越（會回報「no skills/ dirs with SKILL.md」）。
+- 需要 repo 狀態為 v3.14.0+，因為匯入器讀取 `.claude-plugin/marketplace.json` 中明列的 skill 路徑。更早的 tag 只透過 symlink 的 `skills/` 目錄暴露 skill，GitHub-API 匯入器無法穿越（會回報「no skills/ dirs with SKILL.md」）。
 - 匯入是**單次快照**：Claude Science 不會追蹤 repo。ARS 發版後需重新匯入才能取得更新。
-- **會轉移的**：方法論層——各 skill 的 `SKILL.md` 與其協定（研究／寫作／審查），Claude Science 的 agent 會在相關時讀取。
-- **不會轉移的**：Claude Code 專屬機制——`/ars-*` slash commands、hooks（含 write-scope guard）、跨模型驗證 scripts、Task-tool subagent 編排。Claude Science 有自己的 specialist agent 系統與內建引用查核 reviewer；把 Claude Science 上的執行視為「ARS 方法論 + Claude Science 自家機制」，而非 1:1 的 pipeline 移植。
+- **會轉移的**：方法論層，即各 skill 的 `SKILL.md` 與其協定（研究／寫作／審查），Claude Science 的 agent 會在相關時讀取。
+- **不會轉移的**：Claude Code 專屬機制，包括 `/ars-*` slash commands、hooks（含 write-scope guard）、跨模型驗證 scripts、Task-tool subagent 編排。Claude Science 有自己的 specialist agent 系統與內建引用查核 reviewer；把 Claude Science 上的執行視為「ARS 方法論 + Claude Science 自家機制」，而非 1:1 的 pipeline 移植。
