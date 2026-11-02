@@ -181,7 +181,7 @@ ARS 刻意不提供使用者層級的設定檔。要讓內容偏好「設一次�
 
 - **無需設定。** Cache 首次使用時自動建在 `~/.cache/ars/verification.db`，條目 90 天後過期。arXiv resolver 不需 API key。
 - **改位置**：匯出 `ARS_VERIFICATION_CACHE_PATH=/your/path.db`（例如跨專案共用一份 cache，或放在較快的磁碟）。
-- **作廢單筆引用**：`/ars-cache-invalidate <citation_key>`：移除該 key 的所有 cache 列（四個 resolver、所有 query form）；若無 cache 則為冪等 no-op。
+- **作廢單筆引用**：`/ars-cache-invalidate <citation_key>`，會移除該 key 的所有 cache 列（四個 resolver、所有 query form）；若無 cache 則為冪等 no-op。
 
 Cache 為單一 process（SQLite WAL）；多使用者共用同一 cache 檔案不在範圍內。
 
