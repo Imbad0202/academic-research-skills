@@ -125,6 +125,9 @@ reproducible.
 - The integrity gate (Stage 2.5, Stage 4.5 in the academic pipeline) does NOT read
   `repro_lock`. The lock is for post-hoc reproducibility investigation, not runtime
   validation. Adding it does not change pipeline behavior.
+- An `experiment_provenance[]` entry nests its own lock, and its key is always required. When any
+  field has no honest value for the experiment, the entry carries `repro_lock: null` with a
+  `repro_lock_reason` instead of placeholders (see the entry schema, #1049).
 - `check_repro_lock.py` can be run standalone on any passport file. It is not wired into
   the CI lint suite by default — it validates on-demand against specific passport files.
 

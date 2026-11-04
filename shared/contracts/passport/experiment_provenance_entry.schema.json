@@ -16,6 +16,18 @@
     "known_limitations"
   ],
 
+  "allOf": [
+    {
+      "title": "repro_lock_reason accompanies a null repro_lock and nothing else (#1049)",
+      "if": {
+        "required": ["repro_lock"],
+        "properties": { "repro_lock": { "type": "null" } }
+      },
+      "then": { "required": ["repro_lock_reason"] },
+      "else": { "not": { "required": ["repro_lock_reason"] } }
+    }
+  ],
+
   "properties": {
     "experiment_id": {
       "type": "string",
@@ -35,9 +47,9 @@
       "description": "Optional free-form description of what the experiment tested and why."
     },
     "repro_lock": {
-      "type": "object",
+      "type": ["object", "null"],
       "additionalProperties": false,
-      "description": "Per-experiment reproducibility lock — the SAME inline-object shape as the passport-level repro_lock (shared/artifact_reproducibility_pattern.md), nested here so each experiment carries its own configuration trail. Re-declared (not $ref'd) because the source is an inline-prose object, not a schema file; the canonical required-field set is single-sourced in scripts/repro_lock_validation.py with a drift test. Documents configuration, NOT a deterministic replay guarantee.",
+      "description": "Per-experiment reproducibility lock — the SAME inline-object shape as the passport-level repro_lock (shared/artifact_reproducibility_pattern.md), nested here so each experiment carries its own configuration trail. Re-declared (not $ref'd) because the source is an inline-prose object, not a schema file; the canonical required-field set is single-sourced in scripts/repro_lock_validation.py with a drift test. Documents configuration, NOT a deterministic replay guarantee. The KEY MUST be present. Its value is null when any of these fields has no honest value for the experiment, for example a survey, an analysis that used no LLM or ARS session, or a trained model with no ARS prompts to hash; repro_lock_reason then says why (#1049).",
       "required": [
         "schema_version",
         "stochasticity_declaration",
@@ -100,6 +112,13 @@
           }
         }
       }
+    },
+    "repro_lock_reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "\\S",
+      "description": "Why this experiment records no repro_lock, in the scholar's words, naming any real details such as the model id. Required when repro_lock is null, rejected when it is an object. Free text: it discloses the gap, does not prove the lock does not apply, and no script checks the details it names (#1049)."
     },
     "planned_vs_executed": {
       "type": "array",
