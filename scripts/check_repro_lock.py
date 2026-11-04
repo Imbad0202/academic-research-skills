@@ -7,7 +7,8 @@ Usage: python scripts/check_repro_lock.py path/to/passport.yaml
 - `repro_lock: null`: WARN, exit 0 (honest opt-out).
 - Populated block with all required sub-fields: OK, exit 0.
 - Populated block with a missing sub-field, an unknown schema_version, or a
-  required value that is null or the wrong type: ERROR, exit 1.
+  required value that is null or the wrong type: ERROR, exit 1. The one required
+  value that may be null is cross_model.secondary_model_id.
 """
 from __future__ import annotations
 
