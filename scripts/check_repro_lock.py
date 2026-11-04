@@ -6,7 +6,8 @@ Usage: python scripts/check_repro_lock.py path/to/passport.yaml
 - Missing `repro_lock` key (not even null): ERROR, exit 1.
 - `repro_lock: null`: WARN, exit 0 (honest opt-out).
 - Populated block with all required sub-fields: OK, exit 0.
-- Populated block with missing sub-field or unknown schema_version: ERROR, exit 1.
+- Populated block with a missing sub-field, an unknown schema_version, or a
+  required value that is null or the wrong type: ERROR, exit 1.
 """
 from __future__ import annotations
 
@@ -72,7 +73,8 @@ def main() -> int:
             print(f"ERROR: {e}")
         print(
             f"\n{len(errors)} violation(s). "
-            f"See shared/artifact_reproducibility_pattern.md for required fields.",
+            f"See shared/artifact_reproducibility_pattern.md for required fields. "
+            f"If a field has no honest value, set 'repro_lock: null' instead of filling the block.",
             file=sys.stderr,
         )
         return 1

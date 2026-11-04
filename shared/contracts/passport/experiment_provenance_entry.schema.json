@@ -154,6 +154,7 @@
             "description": "Optional metric name the reported result reports (e.g. 'macro-F1')."
           },
           "value": {
+            "type": ["number", "string"],
             "description": "Optional reported value for the metric (number or string)."
           }
         }

@@ -72,7 +72,9 @@ repro_lock:
 
 The block lives as an optional child of the Material Passport (Schema 9 in
 `shared/handoff_schemas.md`). A missing key fails the lint. A null value passes with a
-warning. A populated block with all required sub-fields passes silently.
+warning. A populated block with all required sub-fields passes silently. A required value
+that is null or the wrong type fails; only `cross_model.secondary_model_id` may be null. A
+field with no honest value is a reason to set the whole block to `null`, not to leave it blank.
 
 ## Field-by-field rationale
 
@@ -130,22 +132,27 @@ reproducible.
   field has no honest value for the experiment, the entry carries `repro_lock: null` with a
   `repro_lock_reason` instead of placeholders (see the entry schema, #1049).
 - `check_repro_lock.py` can be run standalone on any passport file. It is not wired into
-  the CI lint suite by default — it validates on-demand against specific passport files.
+  the CI lint suite by default — it validates on-demand against specific passport files. A
+  CI test runs it on the shipped `examples/passport_with_experiment_provenance.yaml`.
+- `check_repro_lock.py` uses `scripts/repro_lock_validation.py`, and entries use the JSON
+  entry schema. The two agree on required keys and value rules, checked by a drift test over
+  a fixed set of values. They differ on extra keys: only the entry schema rejects them.
 
 ## Red flags when reading a populated repro_lock
 
 - `model.weight_stable: true` — this value is not implemented yet; if you see it, the
   passport author is claiming something the infrastructure cannot verify. Treat as
-  suspicious until a signed attestation mechanism exists.
+  suspicious until a signed attestation mechanism exists. No validator rejects this value;
+  it is for the reader to catch.
 - `prompts.hash_timing` anything other than `"skill-load"` — this is an unknown variant
-  that the current tooling does not understand. The lint will not flag it as invalid, but
-  the semantics are undefined.
+  with undefined semantics. `check_repro_lock.py` and the entry schema both reject it, so
+  seeing one means the passport skipped those checks.
 - Empty or stub hashes (`"sha256:"` prefix with no content, or a short placeholder string
   like `"sha256:abc123"`) — the generator was broken or the author filled in a placeholder.
   Hashes should be 64-character hex strings for SHA-256.
 - `stochasticity_declaration` modified from the verbatim required string — the author is
   signalling they believe the lock is stronger than it is. Read the entire passport twice
-  before trusting any claims about reproducibility.
+  before trusting any claims about reproducibility. No validator compares this wording.
 
 ## How to generate a lock (for agent authors)
 

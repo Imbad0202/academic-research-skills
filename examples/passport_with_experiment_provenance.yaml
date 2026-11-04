@@ -4,8 +4,10 @@
 # An ML paper that ran TWO experiments externally and brought the results back.
 # Demonstrates the full intake + claim->experiment alignment layer:
 #
-#   - experiment_provenance[]: 2 entries, each with its own nested repro_lock,
-#     planned_vs_executed[], negative_results[], known_limitations[].
+#   - repro_lock: the passport-level lock for the ARS run that wrote the paper.
+#   - experiment_provenance[]: 2 entries, each with planned_vs_executed[],
+#     negative_results[], known_limitations[], and repro_lock: null plus a
+#     repro_lock_reason, because both train their own model outside ARS (#1049).
 #   - claim_intent_manifests[]: one manifest carrying THREE claims —
 #       * C-001 pure-experiment claim (planned_experiment_ids only),
 #       * C-002 mixed-evidence claim (BOTH planned_refs AND
@@ -21,6 +23,8 @@
 #
 # Shape-validate the provenance entries with:
 #   python scripts/check_experiment_provenance.py examples/passport_with_experiment_provenance.yaml
+# Passport-level repro_lock check:
+#   python scripts/check_repro_lock.py examples/passport_with_experiment_provenance.yaml
 # Cross-array invariant check (convert to JSON first — that lint reads JSON):
 #   the test suite (scripts/test_experiment_provenance.py) feeds this example
 #   through check_claim_audit_consistency.validate_passport and asserts 0 findings.
@@ -33,6 +37,28 @@ version_label: "v1.0"
 integrity_pass_date: "2026-06-08T09:30:00Z"
 content_hash: "sha256:e1f2a3b4c5d6789012345678901234567890123456789012345678901234abcd"
 
+repro_lock:
+  schema_version: "1.0"
+  stochasticity_declaration: "LLM outputs are not byte-reproducible. This lockfile documents configuration, not a deterministic replay guarantee."
+  ars_version: "3.12.0"
+  model:
+    family: claude
+    id: claude-opus-4-7
+    weight_stable: false
+  prompts:
+    hash_timing: skill-load
+    skill_md_hash: "sha256:e9a280dedb965ce69cd22eb9689f9cc37a823ac78c3e0fd6b67d6555889121bb"
+    agents_bundle_hash: "sha256:0c6089e246e298543bc86fc43a25191c3b6299fc79fa65073a1964a228f6f999"
+  materials:
+    list_hash: "sha256:3f15eb12abedd614f9a5c035af289c1234f5e527ffde859c57039dcab7705a5f"
+    count: 5
+  external_protocols:
+    s2_api_protocol_version: "3.12"
+    s2_snapshot_available: false
+  cross_model:
+    enabled: false
+    secondary_model_id: null
+
 experiment_intake_declaration:
   status: experiments_declared
   declared_at: "2026-06-08T09:05:00Z"
@@ -44,27 +70,10 @@ experiment_provenance:
     description: >-
       Measures the contribution of the head-pruning step to downstream macro-F1
       on the held-out test split, holding all other hyperparameters fixed.
-    repro_lock:
-      schema_version: "1.0"
-      stochasticity_declaration: "LLM/training outputs are not byte-reproducible. This lockfile documents configuration, not a deterministic replay guarantee."
-      ars_version: "3.11.1"
-      model:
-        family: custom
-        id: encoder-v2-pruned
-        weight_stable: true
-      prompts:
-        hash_timing: skill-load
-        skill_md_hash: "sha256:a1a2a3a4a5a6789012345678901234567890123456789012345678901234abcd"
-        agents_bundle_hash: "sha256:b1b2b3b4b5b6789012345678901234567890123456789012345678901234abcd"
-      materials:
-        list_hash: "sha256:c1c2c3c4c5c6789012345678901234567890123456789012345678901234abcd"
-        count: 3
-      external_protocols:
-        s2_api_protocol_version: "3.11"
-        s2_snapshot_available: false
-      cross_model:
-        enabled: false
-        secondary_model_id: null
+    repro_lock: null
+    repro_lock_reason: >-
+      Trained model encoder-v2-pruned, run outside any ARS session. It has no ARS
+      prompts or session materials to hash, so this entry records no lock.
     planned_vs_executed:
       - planned: "macro-F1 on held-out test set with head-pruning removed"
         executed: true
@@ -87,27 +96,10 @@ experiment_provenance:
     description: >-
       Measures accuracy retention and memory footprint after applying 8-bit
       post-training quantization to the released checkpoint.
-    repro_lock:
-      schema_version: "1.0"
-      stochasticity_declaration: "LLM/training outputs are not byte-reproducible. This lockfile documents configuration, not a deterministic replay guarantee."
-      ars_version: "3.11.1"
-      model:
-        family: custom
-        id: encoder-v2-int8
-        weight_stable: true
-      prompts:
-        hash_timing: skill-load
-        skill_md_hash: "sha256:d1d2d3d4d5d6789012345678901234567890123456789012345678901234abcd"
-        agents_bundle_hash: "sha256:e1e2e3e4e5e6789012345678901234567890123456789012345678901234abcd"
-      materials:
-        list_hash: "sha256:f1f2f3f4f5f6789012345678901234567890123456789012345678901234abcd"
-        count: 2
-      external_protocols:
-        s2_api_protocol_version: "3.11"
-        s2_snapshot_available: false
-      cross_model:
-        enabled: false
-        secondary_model_id: null
+    repro_lock: null
+    repro_lock_reason: >-
+      Trained model encoder-v2-int8, run outside any ARS session. It has no ARS
+      prompts or session materials to hash, so this entry records no lock.
     planned_vs_executed:
       - planned: "macro-F1 retention after 8-bit quantization vs fp32 baseline"
         executed: true
