@@ -327,9 +327,9 @@ or override the FAIL); an entry reaches PASS WITH NOTES only when NO FAIL condit
 (D7) Declaration-anchored anti-skip — run FIRST, before any provenance read.
     Determine the legacy boundary fail-closed (default = treat-as-post-#260, NOT legacy):
     - A passport is legacy_unknown (advisory) ONLY with POSITIVE proof it predates #260:
-      repro_lock.ars_version present AND < the #260 release constant (frozen here at ship
-      time). Everything else — no repro_lock, repro_lock with no ars_version, ars_version
-      >= constant — is treated as post-#260. Version-unprovable is NOT legacy.
+      passport-level repro_lock.ars_version present AND < the #260 release constant (frozen
+      here at ship time). Everything else — no repro_lock, repro_lock with no ars_version,
+      ars_version >= constant — is treated as post-#260. Version-unprovable is NOT legacy.
     Four FAIL conditions (the first three structural/deterministic — EP-INV-4 also catches
     #2/#3 in the lint; the fourth is the heuristic you run here):
       1. treated-as-post-#260 AND experiment_intake_declaration is absent → FAIL
@@ -356,6 +356,12 @@ planned_experiment_ids resolves to, sampled per the mode below):
       omitted key cannot silently bypass the check-4 advisory — the same skip C3 was
       hardened against). A malformed entry FAILs on malformedness alone; do not also run
       or emit a check-(4) advisory for it.
+    - A null repro_lock with its repro_lock_reason is well-formed: the scholar records that
+      some or all of the lock's fields have no honest value for this experiment, and why (#1049).
+      These are MALFORMED: a null repro_lock with a missing or blank reason; a populated
+      repro_lock with a repro_lock_reason; a populated repro_lock missing a field the entry
+      schema requires. A null lock is not by itself PROVENANCE_INSUFFICIENT; judge check (3)
+      from the results and disclosures the entry carries.
 
 (1) Completeness
     - Every referenced experiment_id resolves to exactly one experiment_provenance[] entry,
@@ -419,7 +425,8 @@ a FAIL); PASS WITH NOTES only when no FAIL condition is met.
   case — so the #260 check cannot be silently dropped by shipping a manuscript whose
   experiment claims carry no provenance block.
 
-repro_lock stays passive (un-gated) while experiment_provenance[] is gated here — not an
+The settings in repro_lock stay passive (un-gated, apart from the D7 version read and the
+check-(0) shape rule) while experiment_provenance[] is gated here — not an
 inconsistency: repro_lock documents LLM/artifact reproducibility settings; experiment_provenance[]
 is evidence backing manuscript claims. Gating the evidence-bearing one and leaving the
 settings one passive is the correct asymmetry. The FAILs here block at THIS integrity gate;

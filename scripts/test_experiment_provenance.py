@@ -822,6 +822,9 @@ INTAKE_CONTRACT = (
     "before the first Stage 2 writer dispatch",
     "before the first integrity gate",
     "Stage 2 writers are not dispatched until this intake is sealed",
+    "`repro_lock: null`",
+    "says why in `repro_lock_reason`",
+    "never fill the fields with placeholders",
 )
 
 
@@ -975,6 +978,77 @@ class D4cCarveoutBoundaryTests(unittest.TestCase):
             REPO / "academic-pipeline/agents/claim_ref_alignment_audit_agent.md"
         ).read_text(encoding="utf-8")
         self.assertIn("planned_experiment_ids", agent)
+
+
+class NoApplicableLockTests(_LintBase):
+    """#1049: an experiment with no honest repro_lock values records null and why."""
+
+    REASON = "Human survey responses; no LLM or ARS session produced this data."
+
+    def _errors(self, entry: dict[str, Any]) -> list[Any]:
+        v = build_schema_validator(load_json_schema(PROVENANCE_SCHEMA))
+        return list(v.iter_errors(entry))
+
+    def _null_entry(self) -> dict[str, Any]:
+        entry = provenance_entry()
+        entry["repro_lock"] = None
+        entry["repro_lock_reason"] = self.REASON
+        return entry
+
+    def test_null_with_reason_is_well_formed(self) -> None:
+        errors = self._errors(self._null_entry())
+        self.assertEqual(errors, [], msg=f"{errors}")
+
+    def test_null_without_reason_fails(self) -> None:
+        entry = self._null_entry()
+        del entry["repro_lock_reason"]
+        self.assertNotEqual(self._errors(entry), [])
+
+    def test_blank_reason_fails(self) -> None:
+        for blank in ("", "   ", "\n\t"):
+            with self.subTest(reason=blank):
+                entry = self._null_entry()
+                entry["repro_lock_reason"] = blank
+                self.assertNotEqual(self._errors(entry), [])
+
+    def test_omitted_key_still_fails_even_with_reason(self) -> None:
+        """A reason does not stand in for the key: a forgotten lock stays visible."""
+        entry = self._null_entry()
+        del entry["repro_lock"]
+        self.assertNotEqual(self._errors(entry), [])
+
+    def test_partial_object_still_fails(self) -> None:
+        entry = provenance_entry()
+        entry["repro_lock"] = {
+            "schema_version": "1.0",
+            "stochasticity_declaration": "Human responses; no model involved.",
+        }
+        self.assertNotEqual(self._errors(entry), [])
+
+    def test_full_object_with_reason_fails(self) -> None:
+        entry = provenance_entry()
+        entry["repro_lock_reason"] = self.REASON
+        self.assertNotEqual(self._errors(entry), [])
+
+    def test_passes_the_cross_array_lint(self) -> None:
+        self.assertClean(build_passport(provenance=[self._null_entry()]))
+
+    def test_reference_docs_name_the_field(self) -> None:
+        for path in (
+            REPO / "shared/handoff_schemas.md",
+            REPO / "shared/artifact_reproducibility_pattern.md",
+        ):
+            with self.subTest(surface=path.name):
+                self.assertIn("repro_lock_reason", path.read_text(encoding="utf-8"))
+
+    def test_gate_keeps_null_out_of_the_legacy_boundary_and_the_verdict(self) -> None:
+        text = INTEGRITY_AGENT.read_text(encoding="utf-8")
+        self.assertIn("passport-level repro_lock.ars_version", text)
+        self.assertIn("A null repro_lock with its repro_lock_reason is well-formed", text)
+        self.assertIn("a null repro_lock with a missing or blank reason", text)
+        self.assertIn("a populated\n      repro_lock with a repro_lock_reason", text)
+        self.assertIn("a populated repro_lock missing a field the entry", text)
+        self.assertIn("not by itself PROVENANCE_INSUFFICIENT", text)
 
 
 if __name__ == "__main__":

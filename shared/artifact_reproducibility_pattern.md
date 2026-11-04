@@ -122,9 +122,13 @@ reproducible.
   `repro_lock: null` passes with a warning (explicit opt-out).
 - Existing passports with `repro_lock` absent fail the new lint. Existing passports with
   `repro_lock: null` pass with a warning. Populated blocks pass silently.
-- The integrity gate (Stage 2.5, Stage 4.5 in the academic pipeline) does NOT read
-  `repro_lock`. The lock is for post-hoc reproducibility investigation, not runtime
-  validation. Adding it does not change pipeline behavior.
+- The integrity gate (Stage 2.5, Stage 4.5 in the academic pipeline) reads `repro_lock` for
+  two things only: the passport-level `ars_version` for the D7 legacy boundary, and the shape
+  of each entry's nested lock. It does not judge the settings. The lock is for post-hoc
+  reproducibility investigation, not runtime validation.
+- An `experiment_provenance[]` entry nests its own lock, and its key is always required. When any
+  field has no honest value for the experiment, the entry carries `repro_lock: null` with a
+  `repro_lock_reason` instead of placeholders (see the entry schema, #1049).
 - `check_repro_lock.py` can be run standalone on any passport file. It is not wired into
   the CI lint suite by default — it validates on-demand against specific passport files.
 
