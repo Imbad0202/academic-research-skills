@@ -17,10 +17,10 @@ from pathlib import Path
 
 import yaml
 
-# Canonical repro_lock field set + shape validator are single-sourced in
-# repro_lock_validation.py so the nested copy in
-# experiment_provenance_entry.schema.json (#260) cannot silently drift from
-# this standalone validator. The drift test asserts the two stay in sync.
+# The repro_lock field set and validator live in repro_lock_validation.py. The
+# nested copy in experiment_provenance_entry.schema.json (#260) is declared
+# separately. A drift test compares them on required keys, supported values, and
+# a fixed set of wrong and edge-case values, not on every possible value.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from repro_lock_validation import (  # noqa: E402
     REQUIRED_FIELDS,  # re-exported for backward compat / external importers

@@ -128,7 +128,7 @@ def _valid_lock() -> dict:
 
 # Values tried in every required position. Strings and numbers near a rule's
 # edge are included so a one-sided check shows up as a disagreement.
-_PROBES = (None, "", " ", "x", "1.0", "skill-load", 0, -1, 3, 3.0, 1.5, True, False, [], {}, [1], {"a": 1})
+_PROBES = (None, "", " ", "x", "1.0", "skill-load", 0, -1, 1, 3, 3.0, 1.5, True, False, [], {}, [1], {"a": 1})
 
 
 class ValidatorAgreementTest(unittest.TestCase):
