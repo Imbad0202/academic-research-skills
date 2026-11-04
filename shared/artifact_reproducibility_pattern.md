@@ -87,9 +87,8 @@ tooling or audit the change manually.
 
 ### ars_version
 
-Suite version from CHANGELOG. This couples the prompt hashes to the release: changing
-`ars_version` will change the bundle hash even if individual prompt files didn't change.
-That coupling is intentional — version boundaries mark coordinated changes.
+Suite version from CHANGELOG. It records which release ran. It is not part of the prompt
+hashes, so they stay the same across releases when the prompt files did not change.
 
 ### model.weight_stable
 
