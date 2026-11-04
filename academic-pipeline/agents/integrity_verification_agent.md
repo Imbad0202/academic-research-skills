@@ -357,9 +357,11 @@ planned_experiment_ids resolves to, sampled per the mode below):
       hardened against). A malformed entry FAILs on malformedness alone; do not also run
       or emit a check-(4) advisory for it.
     - A null repro_lock with its repro_lock_reason is well-formed: the scholar records that
-      some or all of the lock's fields have no honest value for this experiment, and why (#1049). A null
-      repro_lock with no reason is MALFORMED. A null lock is not by itself PROVENANCE_INSUFFICIENT;
-      judge check (3) from the results and disclosures the entry carries.
+      some or all of the lock's fields have no honest value for this experiment, and why (#1049).
+      These are MALFORMED: a null repro_lock with a missing or blank reason; a populated
+      repro_lock with a repro_lock_reason; a populated repro_lock missing a field the entry
+      schema requires. A null lock is not by itself PROVENANCE_INSUFFICIENT; judge check (3)
+      from the results and disclosures the entry carries.
 
 (1) Completeness
     - Every referenced experiment_id resolves to exactly one experiment_provenance[] entry,
@@ -423,7 +425,8 @@ a FAIL); PASS WITH NOTES only when no FAIL condition is met.
   case — so the #260 check cannot be silently dropped by shipping a manuscript whose
   experiment claims carry no provenance block.
 
-repro_lock stays passive (un-gated) while experiment_provenance[] is gated here — not an
+The settings in repro_lock stay passive (un-gated, apart from the D7 version read and the
+check-(0) shape rule) while experiment_provenance[] is gated here — not an
 inconsistency: repro_lock documents LLM/artifact reproducibility settings; experiment_provenance[]
 is evidence backing manuscript claims. Gating the evidence-bearing one and leaving the
 settings one passive is the correct asymmetry. The FAILs here block at THIS integrity gate;

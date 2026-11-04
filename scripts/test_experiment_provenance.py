@@ -1045,6 +1045,9 @@ class NoApplicableLockTests(_LintBase):
         text = INTEGRITY_AGENT.read_text(encoding="utf-8")
         self.assertIn("passport-level repro_lock.ars_version", text)
         self.assertIn("A null repro_lock with its repro_lock_reason is well-formed", text)
+        self.assertIn("a null repro_lock with a missing or blank reason", text)
+        self.assertIn("a populated\n      repro_lock with a repro_lock_reason", text)
+        self.assertIn("a populated repro_lock missing a field the entry", text)
         self.assertIn("not by itself PROVENANCE_INSUFFICIENT", text)
 
 
