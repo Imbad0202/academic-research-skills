@@ -103,5 +103,65 @@ class TestReproLock(unittest.TestCase):
             self.assertIn("stochasticity_declaration", result.stdout)
 
 
+    def test_every_required_value_null_fails(self) -> None:
+        """A mapping with all keys present and all values null is not a populated lock (#1050)."""
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "passport.yaml"
+            p.write_text(textwrap.dedent("""\
+                repro_lock:
+                  schema_version: null
+                  stochasticity_declaration: null
+                  ars_version: null
+                  model: null
+                  prompts: null
+                  materials: null
+                  external_protocols: null
+                  cross_model: null
+                """))
+            result = _run(p)
+            self.assertEqual(result.returncode, 1)
+            for field in ("schema_version", "ars_version", "model", "cross_model"):
+                self.assertIn(field, result.stdout)
+            self.assertIn("repro_lock: null", result.stderr)
+
+    def test_one_null_sub_block_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "passport.yaml"
+            y = _valid_passport_yaml().replace(
+                "model:\n    family: claude\n    id: claude-opus-4-7\n    weight_stable: false\n",
+                "model: null\n",
+            )
+            self.assertIn("model: null", y)
+            p.write_text(y)
+            result = _run(p)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("repro_lock.model", result.stdout)
+
+    def test_null_leaf_value_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "passport.yaml"
+            p.write_text(_valid_passport_yaml().replace('list_hash: "sha256:ghi789"', "list_hash: null"))
+            result = _run(p)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("repro_lock.materials.list_hash", result.stdout)
+
+    def test_wrong_type_fails(self) -> None:
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "passport.yaml"
+            p.write_text(_valid_passport_yaml().replace("count: 12", 'count: "twelve"'))
+            result = _run(p)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("repro_lock.materials.count", result.stdout)
+
+    def test_unhashable_schema_version_reports_an_error(self) -> None:
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "passport.yaml"
+            p.write_text(_valid_passport_yaml().replace('schema_version: "1.0"', "schema_version: [1, 0]"))
+            result = _run(p)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("repro_lock.schema_version", result.stdout)
+            self.assertNotIn("Traceback", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

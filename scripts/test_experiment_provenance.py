@@ -1051,5 +1051,93 @@ class NoApplicableLockTests(_LintBase):
         self.assertIn("not by itself PROVENANCE_INSUFFICIENT", text)
 
 
+class ReproLockAlignmentTests(unittest.TestCase):
+    """The shipped example, gate text, docs, and schema agree on repro_lock (#1050)."""
+
+    STANDALONE_VALIDATOR = REPO / "scripts/check_repro_lock.py"
+    VERBATIM_DECLARATION = (
+        "LLM outputs are not byte-reproducible. This lockfile documents configuration, "
+        "not a deterministic replay guarantee."
+    )
+
+    def setUp(self) -> None:
+        self.example = yaml.safe_load(EXAMPLE.read_text(encoding="utf-8"))
+
+    def _d7(self) -> str:
+        text = INTEGRITY_AGENT.read_text(encoding="utf-8")
+        start = text.index("(D7) Declaration-anchored anti-skip")
+        return text[start : text.index("For each referenced experiment_provenance[] entry", start)]
+
+    def test_example_passes_the_standalone_validator(self) -> None:
+        proc = run_script(self.STANDALONE_VALIDATOR, str(EXAMPLE), extra_env={"PYTHONPATH": str(REPO)})
+        self.assertEqual(proc.returncode, 0, msg=f"{proc.stdout}\n{proc.stderr}")
+        self.assertNotIn("WARN", proc.stderr)
+
+    def test_example_passport_lock_follows_the_pattern(self) -> None:
+        lock = self.example["repro_lock"]
+        self.assertEqual(lock["stochasticity_declaration"], self.VERBATIM_DECLARATION)
+        self.assertIs(lock["model"]["weight_stable"], False)
+        self.assertEqual(lock["prompts"]["hash_timing"], "skill-load")
+        for digest in (
+            lock["prompts"]["skill_md_hash"],
+            lock["prompts"]["agents_bundle_hash"],
+            lock["materials"]["list_hash"],
+        ):
+            self.assertRegex(digest, r"^sha256:[0-9a-f]{64}$")
+
+    def test_example_is_on_the_post_260_side_of_the_boundary(self) -> None:
+        version = tuple(int(part) for part in self.example["repro_lock"]["ars_version"].split("."))
+        self.assertGreaterEqual(version, (3, 12, 0))
+
+    def test_example_entries_disclose_instead_of_placeholders(self) -> None:
+        """Both experiments train their own model, so #1049 calls for null plus a reason."""
+        for entry in self.example["experiment_provenance"]:
+            with self.subTest(experiment_id=entry["experiment_id"]):
+                self.assertIsNone(entry["repro_lock"])
+                self.assertTrue(entry["repro_lock_reason"].strip())
+
+    def test_d7_names_the_release_that_shipped_260(self) -> None:
+        self.assertIn("< 3.12.0", self._d7())
+        self.assertNotIn("release constant", self._d7())
+        changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+        section = changelog[changelog.index("## [3.12.0]") : changelog.index("## [3.11.1]")]
+        self.assertIn("Experiment Provenance Intake", section)
+        self.assertIn("(#260", section)
+
+    def test_d7_fails_a_post_260_legacy_unknown_declaration(self) -> None:
+        d7 = self._d7()
+        self.assertIn("Five FAIL conditions", d7)
+        self.assertRegex(d7, r"5\. treated-as-post-#260 AND status == legacy_unknown")
+
+    def test_no_surface_shows_the_incomplete_declaration(self) -> None:
+        """EP-INV-5 needs declared_by and declared_at, so the bare form would fail if copied."""
+        for path in (
+            INTEGRITY_AGENT,
+            REPO / "shared/handoff_schemas.md",
+            REPO / "docs/design/2026-06-08-260-experiment-provenance-intake-spec.md",
+        ):
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(path=path.name):
+                self.assertNotIn("{status: no_experiments_declared}", text)
+                self.assertNotIn("{ status: no_experiments_declared }", text)
+
+    def test_docs_state_what_the_gate_and_checker_do(self) -> None:
+        pattern = (REPO / "shared/artifact_reproducibility_pattern.md").read_text(encoding="utf-8")
+        self.assertNotIn("will not flag", pattern)
+        architecture = (REPO / "docs/ARCHITECTURE.md").read_text(encoding="utf-8")
+        self.assertNotIn("**not** read by the Stage 2.5 / 4.5 integrity gate", architecture)
+
+    def test_planned_vs_executed_value_is_a_number_or_string(self) -> None:
+        validator = build_schema_validator(load_json_schema(PROVENANCE_SCHEMA))
+        for good in (0.81, 3, "0.1937 / 0.249"):
+            entry = provenance_entry()
+            entry["planned_vs_executed"][0]["value"] = good
+            self.assertEqual(list(validator.iter_errors(entry)), [], msg=repr(good))
+        for bad in (None, True, [0.81], {"f1": 0.81}):
+            entry = provenance_entry()
+            entry["planned_vs_executed"][0]["value"] = bad
+            self.assertTrue(list(validator.iter_errors(entry)), msg=repr(bad))
+
+
 if __name__ == "__main__":
     unittest.main()

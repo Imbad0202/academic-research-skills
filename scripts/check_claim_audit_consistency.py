@@ -875,7 +875,7 @@ def _check_experiment_provenance_invariants(
     # only fire on the two known status literals, so `status: "garbage"` slips
     # through with no finding. This is the deterministic shape half of D7 the
     # symmetry check alone does not cover; it does NOT decide presence/absence
-    # (the ars_version legacy gate, a Stage-1 gate check, owns that).
+    # (the ars_version legacy check in D7, run at the Stage 2.5/4.5 gate, owns that).
     if declaration is not None:
         if not isinstance(declaration, dict):
             findings.append(
