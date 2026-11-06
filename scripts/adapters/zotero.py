@@ -34,7 +34,7 @@ from scripts.adapters._common import (  # noqa: E402
 )
 
 ADAPTER_NAME = "zotero.py"
-ADAPTER_VERSION = "1.1.0"
+ADAPTER_VERSION = "1.1.1"
 
 # v3.10 (spec §3 PR-B item 13): Zotero item type → venue_type. Zotero's itemType
 # is structured source metadata, so this is `adapter_declared` provenance — NOT
@@ -67,6 +67,8 @@ def map_venue_type(item_type: str | None) -> tuple[str, str]:
 RE_YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
 RE_STRIP_HTML = re.compile(r"<[^>]+>")
 RE_DOI_PREFIX = re.compile(r"^(?:https?://(?:dx\.|www\.)?doi\.org/|doi:)", re.I)
+# Same pattern as `doi` in literature_corpus_entry.schema.json.
+RE_BARE_DOI = re.compile(r"10\.[0-9]{4,9}/[^\s]+")
 
 # Design doc §410: date strings whose first token is a month or season name
 # are ambiguous and must be rejected — the year may be in a non-standard position.
@@ -161,7 +163,10 @@ def extract_year(date_val: str | dict | None) -> int | None:
 def strip_doi(doi: str | None) -> str | None:
     if not doi:
         return None
-    return RE_DOI_PREFIX.sub("", doi.strip()).strip() or None
+    value = doi.strip()
+    while prefix := RE_DOI_PREFIX.match(value):
+        value = value[prefix.end():].strip()
+    return value or None
 
 
 def main() -> int:
@@ -240,6 +245,18 @@ def main() -> int:
             })
             continue
 
+        # Checked before ensure_unique_citekey so a rejected item does not
+        # reserve its citation key.
+        doi = strip_doi(item.get("DOI"))
+        if doi and not RE_BARE_DOI.fullmatch(doi):
+            rejected.append({
+                "source": source_key,
+                "reason": "invalid_field_format",
+                "detail": f"DOI is not a bare DOI after removing prefixes: {doi}",
+                "raw": item,
+            })
+            continue
+
         # Both branches below are only reached when missing is empty, so all
         # required fields are guaranteed valid at this point.
         final_key = ensure_unique_citekey(citekey, seen_keys)
@@ -276,7 +293,6 @@ def main() -> int:
         venue_type, venue_type_provenance = map_venue_type(item.get("itemType"))
         entry["venue_type"] = venue_type
         entry["venue_type_provenance"] = venue_type_provenance
-        doi = strip_doi(item.get("DOI"))
         if doi:
             entry["doi"] = doi
         tags = [t.get("tag") for t in item.get("tags", []) if t.get("tag")]

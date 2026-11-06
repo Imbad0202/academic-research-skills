@@ -3,6 +3,9 @@ from pathlib import Path
 import subprocess
 import json
 
+from jsonschema import Draft202012Validator
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER = REPO_ROOT / "scripts/adapters/zotero.py"
 FIXTURE_INPUT = REPO_ROOT / "scripts/adapters/examples/zotero/input_fixture/export.json"
@@ -461,3 +464,96 @@ def test_strip_doi_url_prefixes():
                 "https://dx.doi.org/10.1000/xyz", "http://dx.doi.org/10.1000/xyz",
                 "https://www.doi.org/10.1000/xyz"):
         assert z.strip_doi(raw) == "10.1000/xyz", raw
+
+
+# --- #1056: entry["doi"] must satisfy the corpus entry schema ---------------
+
+ENTRY_SCHEMA_PATH = REPO_ROOT / "shared/contracts/passport/literature_corpus_entry.schema.json"
+REJECTION_SCHEMA_PATH = REPO_ROOT / "shared/contracts/passport/rejection_log.schema.json"
+
+
+def _validator_for(schema_path):
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+
+def _doi_item(doi, *, citation_key="smith2024", item_id=1):
+    item = {
+        "citationKey": citation_key,
+        "itemID": item_id,
+        "itemType": "journalArticle",
+        "title": "A title",
+        "creators": [{"creatorType": "author", "lastName": "Smith", "firstName": "A"}],
+        "date": "2024",
+    }
+    if doi is not None:
+        item["DOI"] = doi
+    return item
+
+
+def _run_items(tmp_path, items, load_yaml):
+    src = tmp_path / "in.json"
+    src.write_text(json.dumps(items), encoding="utf-8")
+    p = tmp_path / "p.yaml"
+    r = tmp_path / "r.yaml"
+    res = _run("--input", str(src), "--passport", str(p), "--rejection-log", str(r))
+    assert res.returncode == 0, res.stderr
+    return load_yaml(p)["literature_corpus"], load_yaml(r)
+
+
+@pytest.mark.parametrize("raw", [
+    "doi:https://doi.org/10.1000/xyz",
+    "https://doi.org/doi:10.1000/xyz",
+    "doi: https://dx.doi.org/10.1000/xyz",
+    "DOI:doi:10.1000/xyz",
+])
+def test_nested_doi_prefixes_reach_the_entry_as_a_bare_doi(tmp_path, load_yaml, raw):
+    corpus, log = _run_items(tmp_path, [_doi_item(raw)], load_yaml)
+    assert log["rejected"] == []
+    assert corpus[0]["doi"] == "10.1000/xyz"
+    _validator_for(ENTRY_SCHEMA_PATH).validate(corpus[0])
+
+
+@pytest.mark.parametrize("raw", [
+    "not-a-doi",
+    "doi.org/10.1000/xyz",
+    "10.1000/xyz and more",
+    "10.12/xyz",
+    "10.1000/",
+])
+def test_doi_that_is_still_not_bare_is_rejected_with_a_log_row(tmp_path, load_yaml, raw):
+    corpus, log = _run_items(tmp_path, [_doi_item(raw, item_id=7)], load_yaml)
+    assert corpus == []
+    assert len(log["rejected"]) == 1
+    row = log["rejected"][0]
+    assert row["source"] == "7"
+    assert row["reason"] == "invalid_field_format"
+    assert raw in row["detail"]
+    _validator_for(REJECTION_SCHEMA_PATH).validate(log)
+    # The case table itself is checked against the schema, not against the adapter.
+    entry = {
+        "citation_key": "smith2024",
+        "title": "A title",
+        "authors": [{"family": "Smith"}],
+        "year": 2024,
+        "source_pointer": "zotero://select/items/0_7",
+        "doi": raw,
+    }
+    assert not _validator_for(ENTRY_SCHEMA_PATH).is_valid(entry)
+
+
+@pytest.mark.parametrize("raw", [None, "", "   ", "doi:", "https://doi.org/"])
+def test_blank_doi_keeps_the_entry_without_a_doi(tmp_path, load_yaml, raw):
+    corpus, log = _run_items(tmp_path, [_doi_item(raw)], load_yaml)
+    assert log["rejected"] == []
+    assert "doi" not in corpus[0]
+
+
+def test_rejected_doi_does_not_reserve_the_citation_key(tmp_path, load_yaml):
+    items = [
+        _doi_item("not-a-doi", item_id=1),
+        _doi_item("10.1000/xyz", item_id=2),
+    ]
+    corpus, log = _run_items(tmp_path, items, load_yaml)
+    assert [row["source"] for row in log["rejected"]] == ["1"]
+    assert [e["citation_key"] for e in corpus] == ["smith2024"]
