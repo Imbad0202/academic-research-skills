@@ -735,3 +735,47 @@ def test_date_object_without_a_year_is_unparseable(tmp_path, load_yaml, value):
     corpus, log = _run_items(tmp_path, [_full_item(date=value), _SIBLING], load_yaml)
     assert [e["citation_key"] for e in corpus] == ["jones2023"]
     assert [row["reason"] for row in log["rejected"]] == ["year_unparseable"]
+
+
+# --- years before 1900, and the schema check before an entry is written ------
+
+@pytest.mark.parametrize("date,year", [
+    ("1899", 1899),
+    ("1859-11-24", 1859),
+    ("1066/10/14", 1066),
+    ("c. 1850", 1850),
+    ("1650, reprinted 2005", 2005),
+    ("1900", 1900),
+    ("2099", 2099),
+], ids=repr)
+def test_year_is_read_from_a_date_string(tmp_path, load_yaml, date, year):
+    corpus, log = _run_items(tmp_path, [_full_item(date=date)], load_yaml)
+    assert log["rejected"] == []
+    assert corpus[0]["year"] == year
+
+
+@pytest.mark.parametrize("date", ["999", "1850s", "Spring 1850", "forthcoming", "n.d."], ids=repr)
+def test_date_string_without_a_clear_year_is_unparseable(tmp_path, load_yaml, date):
+    corpus, log = _run_items(tmp_path, [_full_item(date=date)], load_yaml)
+    assert corpus == []
+    assert log["rejected"][0]["reason"] == "year_unparseable"
+
+
+@pytest.mark.parametrize("year", [1, 999, 2101, 3000], ids=repr)
+def test_entry_that_fails_the_schema_is_rejected_and_the_run_continues(tmp_path, load_yaml, year):
+    item = _full_item(date=None, issued={"date-parts": [[year]]})
+    corpus, log = _run_items(tmp_path, [item, _SIBLING], load_yaml)
+    assert [e["citation_key"] for e in corpus] == ["jones2023"]
+    row = log["rejected"][0]
+    assert row["reason"] == "invalid_field_format"
+    assert row["source"] == "1"
+    assert "year" in row["detail"]
+    _assert_outputs_match_schemas(corpus, log)
+
+
+def test_entry_that_fails_the_schema_does_not_reserve_the_citation_key(tmp_path, load_yaml):
+    bad = _full_item(date=None, issued={"date-parts": [[1]]})
+    good = _full_item(itemID=2)
+    corpus, log = _run_items(tmp_path, [bad, good], load_yaml)
+    assert [row["source"] for row in log["rejected"]] == ["1"]
+    assert [e["citation_key"] for e in corpus] == ["smith2024"]

@@ -37,6 +37,7 @@ from scripts.adapters._common import (  # noqa: E402
     write_rejection_log,
     parse_semicolon_names,
     ensure_unique_citekey,
+    find_schema_problem,
     now_iso,
 )
 
@@ -71,7 +72,7 @@ def declare_venue_type(fm: Any) -> tuple[str, str]:
 RE_FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
 RE_H1 = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 RE_AUTHORS_LINE = re.compile(r"^\*\*Authors\*\*:\s*(.+)$", re.MULTILINE)
-RE_YEAR_LINE = re.compile(r"^\*\*Year\*\*:\s*((?:19|20)\d{2})\s*$", re.MULTILINE)
+RE_YEAR_LINE = re.compile(r"^\*\*Year\*\*:\s*(\d{4})\s*$", re.MULTILINE)
 RE_YEAR_IN_SOURCE = re.compile(r"((?:19|20)\d{2})")
 
 
@@ -340,6 +341,17 @@ def main() -> int:
     for md in iter_markdown_files(args.input):
         accepted, rejection = process_file(md, args.input, vault_name, existing_keys)
         if accepted is not None:
+            problem = find_schema_problem(accepted)
+            if problem:
+                existing_keys.discard(accepted["citation_key"])
+                source = str(md.relative_to(args.input))
+                rejected.append({
+                    "source": source,
+                    "reason": "invalid_field_format",
+                    "detail": problem,
+                    "raw": source,
+                })
+                continue
             entries.append(accepted)
         elif rejection is not None:
             rejected.append(rejection)

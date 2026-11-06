@@ -517,3 +517,65 @@ def test_convention_b_note_never_writes_a_frontmatter_doi(tmp_path, load_yaml):
     corpus, log = _run_vault(tmp_path, {"a.md": note}, load_yaml)
     assert log["rejected"] == []
     assert "doi" not in corpus[0]
+
+
+# --- the schema check before an entry is written, and years before 1900 ------
+
+def _note_with(extra):
+    return "---\ncitekey: smith2024\ntitle: A title\nauthors: \"Smith, A\"\nyear: 2024\n" + extra + "\n---\nBody.\n"
+
+
+@pytest.mark.parametrize("note,field", [
+    (_note_with("venue: 123"), "venue"),
+    (_note_with("venue: [A journal]"), "venue"),
+    (_note_with("tags: not-a-list"), "tags"),
+    (_note_with("tags: [1, 2]"), "tags"),
+    (_note_with("tags: [\"\"]"), "tags"),
+    ("---\ncitekey: s\ntitle: T\nauthors: \"S, A\"\nyear: 1\n---\nBody.\n", "year"),
+    ("---\ncitekey: s\ntitle: T\nauthors: \"S, A\"\nyear: 3000\n---\nBody.\n", "year"),
+    ("---\ncitekey: s\ntitle: T\nauthors: \"S, A\"\nyear: \"0999\"\n---\nBody.\n", "year"),
+    ("---\ncitekey: s\ntitle: T\nauthors:\n  - {family: S, orcid: x}\nyear: 2024\n---\nBody.\n", "authors"),
+], ids=["venue-int", "venue-list", "tags-text", "tags-int", "tags-blank",
+        "year-1", "year-3000", "year-0999", "authors-extra-key"])
+def test_note_that_fails_the_schema_is_rejected_and_the_run_continues(tmp_path, load_yaml, note, field):
+    good = "---\ncitekey: jones2023\ntitle: T\nauthors: \"Jones, B\"\nyear: 2023\n---\nBody.\n"
+    corpus, log = _run_vault(tmp_path, {"a.md": note, "b.md": good}, load_yaml)
+    assert [e["citation_key"] for e in corpus] == ["jones2023"]
+    assert len(log["rejected"]) == 1
+    row = log["rejected"][0]
+    assert row["source"] == "a.md"
+    assert row["reason"] == "invalid_field_format"
+    assert field in row["detail"]
+    _validator_for(ENTRY_SCHEMA_PATH).validate(corpus[0])
+    _validator_for(REJECTION_SCHEMA_PATH).validate(log)
+
+
+def test_note_that_fails_the_schema_does_not_reserve_the_citation_key(tmp_path, load_yaml):
+    notes = {"a.md": _note_with("venue: 123"), "b.md": _note_with("venue: A journal")}
+    corpus, log = _run_vault(tmp_path, notes, load_yaml)
+    assert [row["source"] for row in log["rejected"]] == ["a.md"]
+    assert [e["citation_key"] for e in corpus] == ["smith2024"]
+
+
+def test_valid_venue_and_tags_stay_on_the_entry(tmp_path, load_yaml):
+    corpus, log = _run_vault(tmp_path, {"a.md": _note_with("venue: A journal\ntags: [x, y]")}, load_yaml)
+    assert log["rejected"] == []
+    assert corpus[0]["venue"] == "A journal"
+    assert corpus[0]["tags"] == ["x", "y"]
+
+
+def test_convention_b_accepts_a_year_before_1900(tmp_path, load_yaml):
+    note = "# A title\n\n**Authors**: Darwin, C.\n**Year**: 1859\n\nNotes here.\n"
+    corpus, log = _run_vault(tmp_path, {"a.md": note}, load_yaml)
+    assert log["rejected"] == []
+    assert corpus[0]["year"] == 1859
+    assert "1859" not in corpus[0]["user_notes"]
+
+
+def test_convention_b_year_outside_the_schema_range_is_rejected(tmp_path, load_yaml):
+    note = "# A title\n\n**Authors**: Darwin, C.\n**Year**: 0999\n\nNotes here.\n"
+    corpus, log = _run_vault(tmp_path, {"a.md": note}, load_yaml)
+    assert corpus == []
+    assert log["rejected"][0]["reason"] == "invalid_field_format"
+    assert "year" in log["rejected"][0]["detail"]
+    _validator_for(REJECTION_SCHEMA_PATH).validate(log)
