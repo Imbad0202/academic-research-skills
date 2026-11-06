@@ -27,7 +27,9 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from scripts.adapters._common import (  # noqa: E402
+    coerce_doi,
     ensure_unique_citekey,
+    find_schema_problem,
     write_passport,
     write_rejection_log,
     now_iso,
@@ -65,10 +67,10 @@ def map_venue_type(item_type: str | None) -> tuple[str, str]:
     return vt, "adapter_declared"
 
 RE_YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
+# Read only when RE_YEAR finds nothing, so a modern year always wins. Anchored
+# to the start because a later number can be a time zone offset (+1200).
+RE_YEAR_BEFORE_1900 = re.compile(r"^(?:c\.\s*)?(1[0-8]\d{2})\b")
 RE_STRIP_HTML = re.compile(r"<[^>]+>")
-RE_DOI_PREFIX = re.compile(r"^(?:https?://(?:dx\.|www\.)?doi\.org/|doi:)", re.I)
-# Same pattern as `doi` in literature_corpus_entry.schema.json.
-RE_BARE_DOI = re.compile(r"10\.[0-9]{4,9}/[^\s]+")
 
 # Design doc §410: date strings whose first token is a month or season name
 # are ambiguous and must be rejected — the year may be in a non-standard position.
@@ -80,6 +82,54 @@ _SEASONAL_PREFIXES = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+
+
+# Fields read as strings. DOI is not listed because coerce_doi checks it.
+_STRING_FIELDS = (
+    "citationKey", "key", "itemType", "title", "publicationTitle",
+    "proceedingsTitle", "bookTitle", "abstractNote",
+)
+# Fields read as lists of objects, and the string fields of those objects.
+_OBJECT_LIST_FIELDS = {
+    "creators": ("creatorType", "name", "lastName", "firstName"),
+    "tags": ("tag",),
+    "notes": ("note",),
+}
+
+
+def _is_wrong_string(value) -> bool:
+    return value is not None and not isinstance(value, str)
+
+
+def find_wrong_type(item: dict) -> str | None:
+    """Return a description of the first field with the wrong JSON type, or None.
+
+    Null means absent, so the required-field checks handle it. overview.md
+    section 5 sends these items to the rejection log instead of stopping the run.
+    """
+    for field in _STRING_FIELDS:
+        if _is_wrong_string(item.get(field)):
+            return f"{field} must be a string, got {type(item[field]).__name__}"
+    item_id = item.get("itemID")
+    if item_id is not None and (isinstance(item_id, bool) or not isinstance(item_id, (int, str))):
+        return f"itemID must be an integer or a string, got {type(item_id).__name__}"
+    for field in ("date", "issued"):  # a date string or a CSL date object
+        value = item.get(field)
+        if value is not None and not isinstance(value, (str, dict)):
+            return f"{field} must be a string or an object, got {type(value).__name__}"
+    for field, subfields in _OBJECT_LIST_FIELDS.items():
+        value = item.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, list):
+            return f"{field} must be a list, got {type(value).__name__}"
+        for element in value:
+            if not isinstance(element, dict):
+                return f"{field} must hold objects, got {type(element).__name__}"
+            for subfield in subfields:
+                if _is_wrong_string(element.get(subfield)):
+                    return f"{field}[].{subfield} must be a string, got {type(element[subfield]).__name__}"
+    return None
 
 
 class _AuthorsResult(NamedTuple):
@@ -102,7 +152,7 @@ def extract_authors(creators: list[dict]) -> _AuthorsResult:
     for c in creators or []:
         if c.get("creatorType") != "author":
             continue
-        if "name" in c:  # institution / corporate author
+        if c.get("name") is not None:  # institution / corporate author
             literal = c["name"].strip()
             if not literal:
                 # blank name would produce {"literal": ""} which violates the schema
@@ -138,7 +188,10 @@ def extract_year(date_val: str | dict | None) -> int | None:
     # CSL issued dict: {"date-parts": [[2023, ...]]}
     if isinstance(date_val, dict):
         parts = date_val.get("date-parts")
-        if parts and isinstance(parts, list) and parts[0]:
+        if parts and isinstance(parts, list) and parts[0] and isinstance(parts[0], list):
+            # CSL-JSON date-parts hold integers or numeric strings.
+            if isinstance(parts[0][0], (bool, float)):
+                return None
             try:
                 return int(parts[0][0])
             except (TypeError, ValueError):
@@ -154,19 +207,10 @@ def extract_year(date_val: str | dict | None) -> int | None:
     if _SEASONAL_PREFIXES.match(date_str):
         return None
 
-    m = RE_YEAR.search(date_str)
+    m = RE_YEAR.search(date_str) or RE_YEAR_BEFORE_1900.search(date_str)
     if m:
         return int(m.group(1))
     return None
-
-
-def strip_doi(doi: str | None) -> str | None:
-    if not doi:
-        return None
-    value = doi.strip()
-    while prefix := RE_DOI_PREFIX.match(value):
-        value = value[prefix.end():].strip()
-    return value or None
 
 
 def main() -> int:
@@ -195,10 +239,29 @@ def main() -> int:
     seen_keys: set[str] = set()
 
     for item in data:
+        if not isinstance(item, dict):
+            rejected.append({
+                "source": "<unknown>",
+                "reason": "invalid_field_format",
+                "detail": f"item must be an object, got {type(item).__name__}",
+                "raw": json.dumps(item),
+            })
+            continue
+
         citekey = item.get("citationKey") or ""
         item_id = str(item.get("itemID") or "").strip()
         zotero_key = str(item.get("key") or "").strip()
-        source_key = item_id or citekey or "<unknown>"
+        source_key = item_id or str(citekey) or "<unknown>"
+
+        wrong_type = find_wrong_type(item)
+        if wrong_type:
+            rejected.append({
+                "source": source_key,
+                "reason": "invalid_field_format",
+                "detail": wrong_type,
+                "raw": item,
+            })
+            continue
 
         # Validate all required fields up front; collect every missing field name
         # so the rejection log gives the full picture in one entry.
@@ -247,12 +310,12 @@ def main() -> int:
 
         # Checked before ensure_unique_citekey so a rejected item does not
         # reserve its citation key.
-        doi = strip_doi(item.get("DOI"))
-        if doi and not RE_BARE_DOI.fullmatch(doi):
+        doi, doi_error = coerce_doi(item.get("DOI"))
+        if doi_error:
             rejected.append({
                 "source": source_key,
                 "reason": "invalid_field_format",
-                "detail": f"DOI is not a bare DOI after removing prefixes: {doi}",
+                "detail": doi_error,
                 "raw": item,
             })
             continue
@@ -295,7 +358,7 @@ def main() -> int:
         entry["venue_type_provenance"] = venue_type_provenance
         if doi:
             entry["doi"] = doi
-        tags = [t.get("tag") for t in item.get("tags", []) if t.get("tag")]
+        tags = [t.get("tag") for t in item.get("tags") or [] if t.get("tag")]
         if tags:
             entry["tags"] = tags
         abstract = item.get("abstractNote")
@@ -310,6 +373,17 @@ def main() -> int:
             )
             if plain.strip():
                 entry["user_notes"] = plain
+
+        problem = find_schema_problem(entry)
+        if problem:
+            seen_keys.discard(final_key)
+            rejected.append({
+                "source": source_key,
+                "reason": "invalid_field_format",
+                "detail": problem,
+                "raw": item,
+            })
+            continue
 
         entries.append(entry)
 

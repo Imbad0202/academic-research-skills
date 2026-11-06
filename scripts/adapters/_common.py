@@ -5,12 +5,15 @@ They are also what a user-written adapter would copy and adapt.
 """
 from __future__ import annotations
 import datetime
+import functools
 import io
+import json
 import re
 from pathlib import Path
 from typing import Any
 
 import yaml
+from jsonschema import Draft202012Validator
 
 
 def path_to_file_uri(path: Path | str) -> str:
@@ -25,12 +28,68 @@ def path_to_file_uri(path: Path | str) -> str:
 
 ADAPTER_SPEC_VERSION = "1.0.0"  # bump when overview.md contract changes
 
+_ENTRY_SCHEMA_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "shared/contracts/passport/literature_corpus_entry.schema.json"
+)
+_RE_DOI_PREFIX = re.compile(r"^(?:https?://(?:dx\.|www\.)?doi\.org/|doi:)", re.I)
+# Same pattern as `doi` in literature_corpus_entry.schema.json.
+_RE_BARE_DOI = re.compile(r"10\.[0-9]{4,9}/[^\s]+")
 _NON_ALNUM = re.compile(r"[^A-Za-z0-9]+")
 _TITLE_WORD = re.compile(r"[A-Za-z]+")
 _STOPWORDS = {
     "a", "an", "the", "of", "in", "on", "at", "by", "for", "to", "with",
     "and", "or", "but", "is", "are", "was", "were",
 }
+
+
+@functools.lru_cache(maxsize=1)
+def _entry_validator() -> Draft202012Validator:
+    schema = json.loads(_ENTRY_SCHEMA_PATH.read_text(encoding="utf-8"))
+    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+
+def find_schema_problem(entry: dict[str, Any]) -> str | None:
+    """Describe the first way `entry` fails the corpus entry schema, or return None.
+
+    overview.md section 4 says an adapter must not emit an invalid entry, so
+    a caller sends a failing entry to the rejection log as invalid_field_format.
+    """
+    errors = sorted(
+        _entry_validator().iter_errors(entry),
+        key=lambda error: [str(part) for part in error.absolute_path],
+    )
+    if not errors:
+        return None
+    where = ".".join(str(part) for part in errors[0].absolute_path) or "entry"
+    return f"{where}: {errors[0].message[:200]}"
+
+
+def strip_doi(doi: str | None) -> str | None:
+    """Remove every leading DOI prefix. Blank input and bare prefixes give None."""
+    if not doi:
+        return None
+    value = doi.strip()
+    while prefix := _RE_DOI_PREFIX.match(value):
+        value = value[prefix.end():].strip()
+    return value or None
+
+
+def coerce_doi(raw: Any) -> tuple[str | None, str | None]:
+    """Turn a source DOI value into a bare DOI.
+
+    Returns (doi, None) on success, where doi is None for an absent or blank
+    value, or (None, error_detail) for a value that overview.md section 4
+    sends to the rejection log as invalid_field_format.
+    """
+    if raw is None:
+        return None, None
+    if not isinstance(raw, str):
+        return None, f"DOI must be a string, got {type(raw).__name__}"
+    doi = strip_doi(raw)
+    if doi and not _RE_BARE_DOI.fullmatch(doi):
+        return None, f"DOI is not a bare DOI after removing prefixes: {doi}"
+    return doi, None
 
 
 def sanitize_citation_key(raw: str) -> str:

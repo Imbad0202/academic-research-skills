@@ -2,6 +2,8 @@
 from pathlib import Path
 import subprocess
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER = REPO_ROOT / "scripts/adapters/folder_scan.py"
 FIXTURE_DIR = REPO_ROOT / "scripts/adapters/examples/folder_scan/input_fixture"
@@ -258,3 +260,16 @@ def test_folder_scan_venue_type_always_unknown(tmp_path, load_yaml):
     for e in entries:
         assert e["venue_type"] == "unknown"
         assert e["venue_type_provenance"] == "unknown"
+
+
+@pytest.mark.parametrize("name", ["IMG_1234.pdf", "Scan_1500_notes.pdf", "Page1200.pdf"])
+def test_number_before_1900_in_a_filename_is_not_read_as_a_year(tmp_path, load_yaml, name):
+    folder = tmp_path / "pdfs"
+    folder.mkdir()
+    (folder / name).write_text("x", encoding="utf-8")
+    p = tmp_path / "p.yaml"
+    r = tmp_path / "r.yaml"
+    res = _run("--input", str(folder), "--passport", str(p), "--rejection-log", str(r))
+    assert res.returncode == 0, res.stderr
+    assert load_yaml(p)["literature_corpus"] == []
+    assert [row["source"] for row in load_yaml(r)["rejected"]] == [name]

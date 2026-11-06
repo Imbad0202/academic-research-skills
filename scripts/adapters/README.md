@@ -25,7 +25,7 @@ python scripts/adapters/folder_scan.py \
     --rejection-log /tmp/rejection_log.yaml
 ```
 
-Filenames are parsed with two conventions plus a fallback: `{Family}_{Year}_{title}.{ext}`, `{Family}{Year}{title}.{ext}`, or `... {Year} ... {Family} ...`. Files whose filename cannot yield both a family and a year are rejected. Non-ASCII filenames are rejected (Unicode support is a deferred extension). Symlinks are followed but the rejection log records the un-resolved path so collisions across subdirectories remain distinguishable.
+Filenames are parsed with two conventions plus a fallback: `{Family}_{Year}_{title}.{ext}`, `{Family}{Year}{title}.{ext}`, or `... {Year} ... {Family} ...`. Files whose filename cannot yield both a family and a year are rejected. Years before 1900 are not read from filenames, because a number such as the one in `IMG_1234.pdf` would be mistaken for a year. Non-ASCII filenames are rejected (Unicode support is a deferred extension). Symlinks are followed but the rejection log records the un-resolved path so collisions across subdirectories remain distinguishable.
 
 ### zotero
 
