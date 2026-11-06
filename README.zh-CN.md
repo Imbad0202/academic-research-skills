@@ -342,7 +342,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.24.2（2026-11-06）— 实验可如实表示没有 lock 值、repro_lock 规则对齐，以及 sr-screener 方法段落更正
 
-> **修复与文档；没有新 skill 或模式，提示层的改动未经测量：**`experiment_provenance[]` 的条目现在可以如实表示没有可填的 lock 值，写法是 `repro_lock: null` 加上 `repro_lock_reason`（#1049）。问卷或没有使用 LLM 的分析，以前只能填占位值才能通过。旧版 ARS 不接受这个写法，所以用这个写法的 passport 需要这一版。`check_repro_lock.py` 现在会拦下留空或类型错误的必填值，`planned_vs_executed[].value` 也只接受数字或文本，所以有些以前通过的 passport 现在会失败（#1050）。`sr-screener` 的方法段落不再说审查代理只能读记录文件：工具清单去掉的是网络与写入权限，只读指定文件是一项指示（#1039）。SETUP 记录了一次检查：上传的 skill 在对话中派出内置子代理；多代理阶段仍未测试（#1040）。
+> **修复与文档；没有新 skill 或模式，提示层的改动未经测量：**`experiment_provenance[]` 的条目现在可以如实表示没有可填的 lock 值，写法是 `repro_lock: null` 加上 `repro_lock_reason`（#1049）。问卷或没有使用 LLM 的分析，以前只能填占位值才能通过。旧版 ARS 不接受这个写法，所以用这个写法的 passport 需要这一版。`check_repro_lock.py` 现在会拦下违反字段类型或值规则的必填值，例如 `null` 的 model id；`cross_model.secondary_model_id` 仍可为 `null`。`planned_vs_executed[].value` 只接受数字或文本，所以有些以前通过的 passport 现在会失败（#1050）。`sr-screener` 的方法段落不再说审查代理只能读记录文件：工具清单去掉的是网络与写入权限，只读指定文件是一项指示（#1039）。SETUP 记录了两次检查：上传的 skill 在对话中重试后派出内置子代理；多代理阶段仍未测试（#1040）。
 
 ### v3.24.1（2026-11-02）— 从 claude.ai 账号市集安装 plugin、审稿前确认配置卡，以及巴西葡萄牙文 README
 

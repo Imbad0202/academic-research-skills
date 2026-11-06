@@ -15,9 +15,9 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 ## v3.24.2 Key Additions (an honest null for experiment locks + repro_lock alignment + a corrected sr-screener methods sentence)
 
 - **An experiment with no honest lock values can say so (#1049).** An `experiment_provenance[]` entry keeps the `repro_lock` key, and its value may be `null` with a `repro_lock_reason`; a reason beside a populated lock is rejected. Earlier ARS releases reject this form.
-- **`repro_lock` docs, example, gate, and validators agree (#1050).** `check_repro_lock.py` fails a required value that is null or the wrong type, `planned_vs_executed[].value` accepts only a number or a string, and the D7 text names 3.12.0 as the boundary and fails a post-#260 passport with `legacy_unknown`. Some passports that passed before now fail. The gate text is prompt-level and unmeasured.
+- **`repro_lock` docs, example, gate, and validators agree (#1050).** `check_repro_lock.py` fails a required value that breaks its field's type or value rule (`cross_model.secondary_model_id` may still be null), `planned_vs_executed[].value` accepts only a number or a string, and the D7 text names 3.12.0 as the boundary and fails a post-#260 passport with `legacy_unknown`. Some passports that passed before now fail. The gate text is prompt-level and unmeasured.
 - **The `sr-screener` methods text states what the tool list enforces (#1039).** The reviewers have read-only file tools and no web access; reading only the given file is an instruction.
-- **Smaller changes.** SETUP records a check in which an uploaded skill dispatched a built-in sub-agent in a conversation, with multi-agent stages untested (#1040); `SETUP.zh-TW` and `README.zh-TW` drop their double em dashes (PR #1044).
+- **Smaller changes.** SETUP records two checks in which an uploaded skill dispatched a built-in sub-agent in a conversation after a retry, with multi-agent stages untested (#1040); `SETUP.zh-TW` and `README.zh-TW` drop their double em dashes (PR #1044).
 
 ## v3.24.1 Key Additions (plugin installs from a claude.ai account marketplace + reviewer card confirmation + Brazilian Portuguese README)
 

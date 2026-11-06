@@ -372,7 +372,7 @@ https://github.com/Imbad0202/academic-research-skills
 
 ### v3.24.2 (2026-11-06) — 실험이 lock 값 없음을 정직하게 표시, repro_lock 정렬, sr-screener 방법 문장 수정
 
-> **수정과 문서, 새 skill이나 모드 없음, 프롬프트 수준 변경은 측정하지 않음:** 이제 `experiment_provenance[]` 항목은 정직하게 적을 lock 값이 없음을 `repro_lock: null`과 `repro_lock_reason`으로 표시할 수 있습니다(#1049). 전에는 설문이나 LLM을 쓰지 않은 분석이 자리표시자 값을 넣어야만 통과했습니다. 이전 ARS는 이 형식을 거부하므로, 이 형식을 쓰는 passport에는 이 릴리스가 필요합니다. `check_repro_lock.py`는 이제 필수 값이 null이거나 타입이 틀리면 실패하고, `planned_vs_executed[].value`는 숫자나 문자열만 받으므로, 전에 통과한 일부 passport가 이제 실패합니다(#1050). `sr-screener` 방법 문장은 더 이상 리뷰어가 레코드 파일만 읽을 수 있다고 하지 않습니다. 도구 목록이 없애는 것은 웹과 쓰기 권한이고, 주어진 파일만 읽는 것은 지시입니다(#1039). SETUP은 업로드한 skill이 대화에서 내장 서브 에이전트를 실행한 확인 결과를 기록합니다. 멀티 에이전트 단계는 아직 테스트하지 않았습니다(#1040).
+> **수정과 문서, 새 skill이나 모드 없음, 프롬프트 수준 변경은 측정하지 않음:** 이제 `experiment_provenance[]` 항목은 정직하게 적을 lock 값이 없음을 `repro_lock: null`과 `repro_lock_reason`으로 표시할 수 있습니다(#1049). 전에는 설문이나 LLM을 쓰지 않은 분석이 자리표시자 값을 넣어야만 통과했습니다. 이전 ARS는 이 형식을 거부하므로, 이 형식을 쓰는 passport에는 이 릴리스가 필요합니다. `check_repro_lock.py`는 이제 null인 model id처럼 필드의 타입이나 값 규칙을 어긴 필수 값에서 실패합니다. `cross_model.secondary_model_id`는 계속 null일 수 있습니다. `planned_vs_executed[].value`는 숫자나 문자열만 받으므로, 전에 통과한 일부 passport가 이제 실패합니다(#1050). `sr-screener` 방법 문장은 더 이상 리뷰어가 레코드 파일만 읽을 수 있다고 하지 않습니다. 도구 목록이 없애는 것은 웹과 쓰기 권한이고, 주어진 파일만 읽는 것은 지시입니다(#1039). SETUP은 업로드한 skill이 대화에서 재시도 후 내장 서브 에이전트를 실행한 두 차례의 확인 결과를 기록합니다. 멀티 에이전트 단계는 아직 테스트하지 않았습니다(#1040).
 
 ### v3.24.1 (2026-11-02) — claude.ai 계정 마켓플레이스에서 plugin 설치, 리뷰 전 설정 카드 확인, 브라질 포르투갈어 README
 
