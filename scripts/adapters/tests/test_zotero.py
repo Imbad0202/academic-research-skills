@@ -452,3 +452,12 @@ def test_zotero_map_venue_type_unknown_and_absent():
     assert z.map_venue_type("blogPost") == ("unknown", "unknown")
     assert z.map_venue_type(None) == ("unknown", "unknown")
     assert z.map_venue_type("") == ("unknown", "unknown")
+
+
+def test_strip_doi_url_prefixes():
+    z = _import_zotero()
+    # literature_corpus_entry.schema.json requires a bare DOI (^10\.).
+    for raw in ("10.1000/xyz", "doi:10.1000/xyz", "https://doi.org/10.1000/xyz",
+                "https://dx.doi.org/10.1000/xyz", "http://dx.doi.org/10.1000/xyz",
+                "https://www.doi.org/10.1000/xyz"):
+        assert z.strip_doi(raw) == "10.1000/xyz", raw
