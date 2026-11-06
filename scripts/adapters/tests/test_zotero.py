@@ -584,7 +584,7 @@ def _full_item(**overrides):
 
 
 _SIBLING = _doi_item("10.1000/other", citation_key="jones2023", item_id=2)
-_STRING_FIELDS = ("citationKey", "key", "itemType", "title", "publicationTitle",
+_STRING_FIELDS = ("citationKey", "key", "itemType", "title", "date", "publicationTitle",
                   "proceedingsTitle", "bookTitle", "abstractNote", "DOI")
 _NOT_A_STRING = (123, 1.5, True, 0, False, [], ["x"], {}, {"a": 1})
 _LIST_FIELDS = ("creators", "tags", "notes")
@@ -603,6 +603,7 @@ _WRONG_TYPE_CASES = (
     + [(field, value) for field in _LIST_FIELDS for value in _NOT_A_LIST]
     + [(field, value) for field, values in _NESTED_WRONG.items() for value in values]
     + [("itemID", value) for value in (True, False, 1.5, ["x"], {"a": 1})]
+    + [("issued", value) for value in (123, 1.5, True, 0, False, "2024", [], [2024])]
 )
 
 
@@ -640,17 +641,43 @@ def test_null_optional_field_keeps_the_item(tmp_path, load_yaml, field):
     _assert_outputs_match_schemas(corpus, log)
 
 
-@pytest.mark.parametrize("overrides,missing", [
-    ({"citationKey": None}, "citation_key"),
-    ({"title": None}, "title"),
-    ({"creators": None}, "authors"),
-    ({"creators": [{"creatorType": "author", "name": None}]}, "authors"),
-    ({"itemID": None, "key": None}, "source_pointer"),
+@pytest.mark.parametrize("overrides,reason,missing", [
+    ({"citationKey": None}, "missing_required_field", "citation_key"),
+    ({"title": None}, "missing_required_field", "title"),
+    ({"date": None}, "year_unparseable", "year"),
+    ({"creators": None}, "authors_unparseable", "authors"),
+    ({"creators": [{"creatorType": "author", "name": None}]}, "authors_unparseable", "authors"),
+    ({"creators": [{"creatorType": "author", "lastName": None}]}, "authors_unparseable", "authors"),
+    ({"itemID": None, "key": None}, "missing_required_field", "source_pointer"),
 ], ids=repr)
-def test_null_required_field_is_a_missing_field(tmp_path, load_yaml, overrides, missing):
+def test_null_required_field_is_a_missing_field(tmp_path, load_yaml, overrides, reason, missing):
     corpus, log = _run_items(tmp_path, [_full_item(**overrides)], load_yaml)
     assert corpus == []
+    assert log["rejected"][0]["reason"] == reason
     assert log["rejected"][0]["missing_fields"] == [missing]
+    _assert_outputs_match_schemas(corpus, log)
+
+
+@pytest.mark.parametrize("overrides,authors,tags", [
+    ({"creators": [{"creatorType": "author", "name": None, "lastName": "Smith"}]},
+     [{"family": "Smith"}], ["a tag"]),
+    ({"creators": [{"creatorType": "author", "lastName": "Smith", "firstName": None}]},
+     [{"family": "Smith"}], ["a tag"]),
+    ({"creators": [{"creatorType": None, "lastName": "Jones"},
+                   {"creatorType": "author", "lastName": "Smith"}]},
+     [{"family": "Smith"}], ["a tag"]),
+    ({"tags": [{"tag": None}, {"tag": "kept"}]},
+     [{"family": "Smith", "given": "A"}], ["kept"]),
+    ({"notes": [{"note": None}, {"note": "<p>kept</p>"}]},
+     [{"family": "Smith", "given": "A"}], ["a tag"]),
+], ids=repr)
+def test_null_nested_field_counts_as_absent(tmp_path, load_yaml, overrides, authors, tags):
+    corpus, log = _run_items(tmp_path, [_full_item(**overrides)], load_yaml)
+    assert log["rejected"] == []
+    assert corpus[0]["authors"] == authors
+    assert corpus[0]["tags"] == tags
+    if "notes" in overrides:
+        assert corpus[0]["user_notes"] == "kept"
     _assert_outputs_match_schemas(corpus, log)
 
 
@@ -671,6 +698,7 @@ def test_wrong_type_item_does_not_reserve_the_citation_key(tmp_path, load_yaml):
     {"date-parts": [[True]]},
     {"date-parts": ["2023"]},
     {"date-parts": [[float("inf")]]},
+    {"date-parts": [[2024.9]]},
 ], ids=repr)
 def test_wrong_type_csl_year_is_rejected_and_the_run_continues(tmp_path, load_yaml, issued):
     item = _full_item(date=None, issued=issued)
@@ -678,3 +706,12 @@ def test_wrong_type_csl_year_is_rejected_and_the_run_continues(tmp_path, load_ya
     assert [e["citation_key"] for e in corpus] == ["jones2023"]
     assert [row["reason"] for row in log["rejected"]] == ["year_unparseable"]
     _assert_outputs_match_schemas(corpus, log)
+
+
+def test_csl_year_held_as_a_string_is_accepted(tmp_path, load_yaml):
+    # CSL-JSON allows a date-part to be a string.
+    corpus, log = _run_items(
+        tmp_path, [_full_item(date=None, issued={"date-parts": [["2023"]]})], load_yaml
+    )
+    assert log["rejected"] == []
+    assert corpus[0]["year"] == 2023

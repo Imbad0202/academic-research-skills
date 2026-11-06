@@ -82,7 +82,7 @@ _SEASONAL_PREFIXES = re.compile(
 
 # Fields read as strings. DOI is not listed because coerce_doi checks it.
 _STRING_FIELDS = (
-    "citationKey", "key", "itemType", "title", "publicationTitle",
+    "citationKey", "key", "itemType", "title", "date", "publicationTitle",
     "proceedingsTitle", "bookTitle", "abstractNote",
 )
 # Fields read as lists of objects, and the string fields of those objects.
@@ -109,6 +109,9 @@ def find_wrong_type(item: dict) -> str | None:
     item_id = item.get("itemID")
     if item_id is not None and (isinstance(item_id, bool) or not isinstance(item_id, (int, str))):
         return f"itemID must be an integer or a string, got {type(item_id).__name__}"
+    issued = item.get("issued")
+    if issued is not None and not isinstance(issued, dict):
+        return f"issued must be an object, got {type(issued).__name__}"
     for field, subfields in _OBJECT_LIST_FIELDS.items():
         value = item.get(field)
         if value is None:
@@ -144,8 +147,8 @@ def extract_authors(creators: list[dict]) -> _AuthorsResult:
     for c in creators or []:
         if c.get("creatorType") != "author":
             continue
-        if "name" in c:  # institution / corporate author
-            literal = (c["name"] or "").strip()
+        if c.get("name") is not None:  # institution / corporate author
+            literal = c["name"].strip()
             if not literal:
                 # blank name would produce {"literal": ""} which violates the schema
                 had_blank_literal = True
@@ -181,11 +184,12 @@ def extract_year(date_val: str | dict | None) -> int | None:
     if isinstance(date_val, dict):
         parts = date_val.get("date-parts")
         if parts and isinstance(parts, list) and parts[0] and isinstance(parts[0], list):
-            if isinstance(parts[0][0], bool):
+            # CSL-JSON date-parts hold integers or numeric strings.
+            if isinstance(parts[0][0], (bool, float)):
                 return None
             try:
                 return int(parts[0][0])
-            except (TypeError, ValueError, OverflowError):
+            except (TypeError, ValueError):
                 return None
         return None
 
