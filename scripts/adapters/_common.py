@@ -25,12 +25,42 @@ def path_to_file_uri(path: Path | str) -> str:
 
 ADAPTER_SPEC_VERSION = "1.0.0"  # bump when overview.md contract changes
 
+_RE_DOI_PREFIX = re.compile(r"^(?:https?://(?:dx\.|www\.)?doi\.org/|doi:)", re.I)
+# Same pattern as `doi` in literature_corpus_entry.schema.json.
+_RE_BARE_DOI = re.compile(r"10\.[0-9]{4,9}/[^\s]+")
 _NON_ALNUM = re.compile(r"[^A-Za-z0-9]+")
 _TITLE_WORD = re.compile(r"[A-Za-z]+")
 _STOPWORDS = {
     "a", "an", "the", "of", "in", "on", "at", "by", "for", "to", "with",
     "and", "or", "but", "is", "are", "was", "were",
 }
+
+
+def strip_doi(doi: str | None) -> str | None:
+    """Remove every leading DOI prefix. Blank input and bare prefixes give None."""
+    if not doi:
+        return None
+    value = doi.strip()
+    while prefix := _RE_DOI_PREFIX.match(value):
+        value = value[prefix.end():].strip()
+    return value or None
+
+
+def coerce_doi(raw: Any) -> tuple[str | None, str | None]:
+    """Turn a source DOI value into a bare DOI.
+
+    Returns (doi, None) on success, where doi is None for an absent or blank
+    value, or (None, error_detail) for a value that overview.md section 4
+    sends to the rejection log as invalid_field_format.
+    """
+    if raw is None:
+        return None, None
+    if not isinstance(raw, str):
+        return None, f"DOI must be a string, got {type(raw).__name__}"
+    doi = strip_doi(raw)
+    if doi and not _RE_BARE_DOI.fullmatch(doi):
+        return None, f"DOI is not a bare DOI after removing prefixes: {doi}"
+    return doi, None
 
 
 def sanitize_citation_key(raw: str) -> str:
