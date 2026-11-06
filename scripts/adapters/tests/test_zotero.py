@@ -779,3 +779,38 @@ def test_entry_that_fails_the_schema_does_not_reserve_the_citation_key(tmp_path,
     corpus, log = _run_items(tmp_path, [bad, good], load_yaml)
     assert [row["source"] for row in log["rejected"]] == ["1"]
     assert [e["citation_key"] for e in corpus] == ["smith2024"]
+
+
+@pytest.mark.parametrize("date", [
+    "2101-01-01T00:00:00+1200",
+    "20241106T090000+1100",
+    "Report 1234",
+    "24 November 1859",
+], ids=repr)
+def test_number_after_the_start_of_a_date_is_not_read_as_an_early_year(tmp_path, load_yaml, date):
+    corpus, log = _run_items(tmp_path, [_full_item(date=date), _SIBLING], load_yaml)
+    assert [e["citation_key"] for e in corpus] == ["jones2023"]
+    assert [row["reason"] for row in log["rejected"]] == ["year_unparseable"]
+
+
+@pytest.mark.parametrize("date,year", [
+    ("1200-01-01T00:00:00+1100", 1200),
+    ("c.1850", 1850),
+    ("  1859  ", 1859),
+    ("2024-01-01T00:00:00+1200", 2024),
+], ids=repr)
+def test_early_year_at_the_start_and_modern_year_anywhere_are_read(tmp_path, load_yaml, date, year):
+    corpus, log = _run_items(tmp_path, [_full_item(date=date)], load_yaml)
+    assert log["rejected"] == []
+    assert corpus[0]["year"] == year
+
+
+def test_rejected_item_between_two_items_with_one_key_frees_only_its_own_key(tmp_path, load_yaml):
+    items = [
+        _full_item(itemID=1),
+        _full_item(itemID=2, date=None, issued={"date-parts": [[1]]}),
+        _full_item(itemID=3, date="2023"),
+    ]
+    corpus, log = _run_items(tmp_path, items, load_yaml)
+    assert [row["source"] for row in log["rejected"]] == ["2"]
+    assert {e["citation_key"]: e["year"] for e in corpus} == {"smith2024": 2024, "smith2024a": 2023}

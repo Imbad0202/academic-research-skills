@@ -67,8 +67,9 @@ def map_venue_type(item_type: str | None) -> tuple[str, str]:
     return vt, "adapter_declared"
 
 RE_YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
-# Read only when RE_YEAR finds nothing, so a modern year always wins.
-RE_YEAR_BEFORE_1900 = re.compile(r"\b(1[0-8]\d{2})\b")
+# Read only when RE_YEAR finds nothing, so a modern year always wins. Anchored
+# to the start because a later number can be a time zone offset (+1200).
+RE_YEAR_BEFORE_1900 = re.compile(r"^(?:c\.\s*)?(1[0-8]\d{2})\b")
 RE_STRIP_HTML = re.compile(r"<[^>]+>")
 
 # Design doc §410: date strings whose first token is a month or season name
