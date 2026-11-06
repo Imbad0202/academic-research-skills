@@ -584,7 +584,7 @@ def _full_item(**overrides):
 
 
 _SIBLING = _doi_item("10.1000/other", citation_key="jones2023", item_id=2)
-_STRING_FIELDS = ("citationKey", "key", "itemType", "title", "date", "publicationTitle",
+_STRING_FIELDS = ("citationKey", "key", "itemType", "title", "publicationTitle",
                   "proceedingsTitle", "bookTitle", "abstractNote", "DOI")
 _NOT_A_STRING = (123, 1.5, True, 0, False, [], ["x"], {}, {"a": 1})
 _LIST_FIELDS = ("creators", "tags", "notes")
@@ -603,7 +603,8 @@ _WRONG_TYPE_CASES = (
     + [(field, value) for field in _LIST_FIELDS for value in _NOT_A_LIST]
     + [(field, value) for field, values in _NESTED_WRONG.items() for value in values]
     + [("itemID", value) for value in (True, False, 1.5, ["x"], {"a": 1})]
-    + [("issued", value) for value in (123, 1.5, True, 0, False, "2024", [], [2024])]
+    + [(field, value) for field in ("date", "issued")
+       for value in (123, 1.5, True, 0, False, [], [2024], ["2024"])]
 )
 
 
@@ -715,3 +716,22 @@ def test_csl_year_held_as_a_string_is_accepted(tmp_path, load_yaml):
     )
     assert log["rejected"] == []
     assert corpus[0]["year"] == 2023
+
+
+@pytest.mark.parametrize("overrides,year", [
+    ({"date": "2022-06-15"}, 2022),
+    ({"date": {"date-parts": [[2021]]}}, 2021),
+    ({"date": None, "issued": "2020-01-02"}, 2020),
+    ({"date": None, "issued": {"date-parts": [[2019]]}}, 2019),
+], ids=repr)
+def test_date_and_issued_accept_a_string_or_an_object(tmp_path, load_yaml, overrides, year):
+    corpus, log = _run_items(tmp_path, [_full_item(**overrides)], load_yaml)
+    assert log["rejected"] == []
+    assert corpus[0]["year"] == year
+
+
+@pytest.mark.parametrize("value", [{}, {"a": 1}, {"date-parts": "2024"}], ids=repr)
+def test_date_object_without_a_year_is_unparseable(tmp_path, load_yaml, value):
+    corpus, log = _run_items(tmp_path, [_full_item(date=value), _SIBLING], load_yaml)
+    assert [e["citation_key"] for e in corpus] == ["jones2023"]
+    assert [row["reason"] for row in log["rejected"]] == ["year_unparseable"]
