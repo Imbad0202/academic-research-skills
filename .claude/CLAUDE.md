@@ -9,8 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.24.1 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.24.2 | Full pipeline orchestrator | (coordinates all above) |
 | `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
+
+## v3.24.2 Key Additions (an honest null for experiment locks + repro_lock alignment + a corrected sr-screener methods sentence)
+
+- **An experiment with no honest lock values can say so (#1049).** An `experiment_provenance[]` entry keeps the `repro_lock` key, and its value may be `null` with a `repro_lock_reason`; a reason beside a populated lock is rejected. Earlier ARS releases reject this form.
+- **`repro_lock` docs, example, gate, and validators agree (#1050).** `check_repro_lock.py` fails a required value that breaks its field's type or value rule (`cross_model.secondary_model_id` may still be null), `planned_vs_executed[].value` accepts only a number or a string, and the D7 text names 3.12.0 as the boundary and fails a post-#260 passport with `legacy_unknown`. Some passports that passed before now fail. The gate text is prompt-level and unmeasured.
+- **The `sr-screener` methods text states what the tool list enforces (#1039).** The reviewers have read-only file tools and no web access; reading only the given file is an instruction.
+- **Smaller changes.** SETUP records two checks in which an uploaded skill dispatched a built-in sub-agent in a conversation after a retry, with multi-agent stages untested (#1040); `SETUP.zh-TW` and `README.zh-TW` drop their double em dashes (PR #1044).
 
 ## v3.24.1 Key Additions (plugin installs from a claude.ai account marketplace + reviewer card confirmation + Brazilian Portuguese README)
 
@@ -441,7 +448,7 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
-- **Suite version**: 3.24.1 (per CHANGELOG.md)
-- **Last Updated**: 2026-11-02
+- **Suite version**: 3.24.2 (per CHANGELOG.md)
+- **Last Updated**: 2026-11-06
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

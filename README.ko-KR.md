@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.24.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.1)
+[![Version](https://img.shields.io/badge/version-v3.24.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.2)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -275,7 +275,7 @@ You: "status"
 
 기준별 증거에 연결된 **서술형 판단**을 수행하는 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. 현재 live review와 Schema 6 package는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다. 고정 총점을 Accept / Minor Revision / Major Revision / Reject에 매핑하지 않습니다. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.24.1)
+### Academic Pipeline (v3.24.2)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 규칙(에이전트가 따르는 프로토콜이며 실행 시 보장이 아님): 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 MANDATORY이며 기록 없는 우회 경로가 없고(모든 오버라이드는 Stage 6를 위해 사용자 사유 기록을 요구), R&R Traceability Matrix(Schema 11)는 각 심사 의견을 저자의 수정 주장에 대응시키고 재심사에서 그것이 검증되었는지를 기록합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -370,6 +370,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 여기에는 최근 3개 릴리스만 실려 있습니다. 전체 변경 이력은 영어판 [CHANGELOG.md](CHANGELOG.md)를 참조하세요. v3.21.2까지의 한국어 릴리스 요약은 [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)에 동결 보관되며 이후 갱신되지 않습니다.
 
+### v3.24.2 (2026-11-06) — 실험이 lock 값 없음을 정직하게 표시, repro_lock 정렬, sr-screener 방법 문장 수정
+
+> **수정과 문서, 새 skill이나 모드 없음, 프롬프트 수준 변경은 측정하지 않음:** 이제 `experiment_provenance[]` 항목은 정직하게 적을 lock 값이 없음을 `repro_lock: null`과 `repro_lock_reason`으로 표시할 수 있습니다(#1049). 전에는 설문이나 LLM을 쓰지 않은 분석이 자리표시자 값을 넣어야만 통과했습니다. 이전 ARS는 이 형식을 거부하므로, 이 형식을 쓰는 passport에는 이 릴리스가 필요합니다. `check_repro_lock.py`는 이제 null인 model id처럼 필드의 타입이나 값 규칙을 어긴 필수 값에서 실패합니다. `cross_model.secondary_model_id`는 계속 null일 수 있습니다. `planned_vs_executed[].value`는 숫자나 문자열만 받으므로, 전에 통과한 일부 passport가 이제 실패합니다(#1050). `sr-screener` 방법 문장은 더 이상 리뷰어가 레코드 파일만 읽을 수 있다고 하지 않습니다. 도구 목록이 없애는 것은 웹과 쓰기 권한이고, 주어진 파일만 읽는 것은 지시입니다(#1039). SETUP은 업로드한 skill이 대화에서 재시도 후 내장 서브 에이전트를 실행한 두 차례의 확인 결과를 기록합니다. 멀티 에이전트 단계는 아직 테스트하지 않았습니다(#1040).
+
 ### v3.24.1 (2026-11-02) — claude.ai 계정 마켓플레이스에서 plugin 설치, 리뷰 전 설정 카드 확인, 브라질 포르투갈어 README
 
 > **claude.ai와 Claude Desktop 설치 수정, 새 skill이나 모드 없음:** 이제 ARS를 claude.ai 계정 마켓플레이스에서 설치할 수 있습니다. 이 릴리스 전에는 이 방식으로 설치하면 핵심 skill 다섯 개가 하나도 로드되지 않았고(#1035), plugin 에이전트 네 개는 이름에 밑줄이 있어 claude.ai가 받아들이지 않았습니다(#1037). Claude Desktop에서 일반 채팅으로 skill 하나와 `/ars-lit-review`가 실행되었고, 프로젝트 세션은 plugin 에이전트 `synthesis-agent`에 바로 작업을 넘겼으며, 폴더 작업에서는 SessionStart 시작 알림이 나타났습니다. write-scope guard, 도구 허용 목록, 전체 파이프라인 실행은 claude.ai와 Claude Desktop에서 테스트하지 않았습니다. 리뷰는 이제 사용자가 Reviewer Configuration Cards를 확인할 때까지 기다리며(#1030), README에 브라질 포르투갈어판이 추가되었습니다(#1032).
@@ -378,6 +382,3 @@ https://github.com/Imbad0202/academic-research-skills
 
 > **리뷰 참고용 검사 2개와 수정, 새 skill 없음, 실제 리뷰에서의 검사 정확도는 측정하지 않음:** v3.24.0은 Editorial Decision Letter에 첨부 두 개를 추가합니다. 첫째는 Reviewer 2와 Reviewer 3이 추천한 각 문헌을 인용 검증 게이트의 네 인덱스에서 실시간으로 조회하고, 레코드가 있는지만 보고합니다. 그 문헌이 추천 이유를 뒷받침하는지는 판단하지 않습니다(#1001). 둘째는 각 weakness와 Devil's Advocate의 CRITICAL 또는 MAJOR 행을 좌석 라벨을 뺀 채 세션 모델의 subagent에 보내, 원고가 그 지적과 모순되는지 판정하게 합니다. 판정자의 인용문이 스크립트의 원고 대조 검사를 통과할 때만 모순으로 표시하고, 나머지 거짓 판정은 미확인으로 표시합니다(#1002). 기본으로 켜져 있으며 `ARS_PANEL_CLAIM_CHECK=0`으로 끌 수 있습니다. 두 첨부 모두 결정, 수정 로드맵, 재심사 기준에 반영되지 않습니다. 둘째 검사를 내놓기 전, 사전 등록한 held-out 감사가 패널 주장 805개를 검토해 거짓 주장 비율을 1.5%에서 12.9% 사이로 추정했고, Claude Opus 5.5와 Claude Fable 5.1은 판정자로서 그 대조 게이트를 통과했습니다. write-scope guard 실행기는 도구 호출마다 Python 프로세스를 세 개가 아니라 하나만 실행하므로, Windows AppXSvc 누수가 약 3분의 1로 줄어들 것으로 예상되지만 Windows에서의 실제 동작은 검증하지 않았습니다(#1015). guard의 코드 주석은 어떤 도구 이름을 검사하는지 명시합니다(#1022). 무결성 검사 규칙 세 가지가 Stage 5 진입, 보고서 유효 기간, Stage 4′에 대해 일치하게 되었고(#1011), 시작 알림은 업데이트가 있을 때만 표시됩니다(#1027). #1015, #1022, #1027은 외부 사용자가 보고했습니다.
 
-### v3.23.2 (2026-10-24) — 무결성 검사는 인용된 판본만 읽음, Stage 2.5 항상 실행, 어댑터·시작 알림·Windows 수정
-
-> **수정만 포함, 새 skill 없음. 프롬프트 수준 변경 하나에 소규모 동작 검사를 했고, 나머지는 효과 미측정:** v3.23.2에서 Stage 2.5와 4.5의 주장 검사는 원고가 인용한 판본하고만 주장을 대조합니다(#1006). 인용된 판본을 읽을 수 없으면 워킹 페이퍼나 프리프린트를 대신 읽지 않고, 접근 메모를 기록한 뒤 그 판본의 PDF를 사용자에게 요청합니다. 합성 픽스처 하나를 여섯 번 실행한 결과(Claude Opus 5.5와 Claude Fable 5.1 각 세 번, 웹 도구 끔), 여섯 번 모두 이 규칙을 따랐습니다. 이전 무결성 보고서가 있어도 파이프라인은 Stage 2.5를 건너뛰지 않으며, 보고서는 참고 자료로 첨부됩니다(#995). 필수 입력이 없으면 모든 규칙 문서에서 단계 전환이 막힙니다(#990). 소크라테스식 멘토의 예시는 더 이상 사용자의 아이디어에 순위를 매기지 않습니다(#992). SessionStart 시작 알림은 업데이트 안내를 사용자에게 보여 주고, 모델용 시작 내용은 약 2.1 KB 줄었습니다(#999). Obsidian 어댑터는 따옴표 없는 ISO 날짜의 연도를 받아들이고, 불리언 값과 위첨자 숫자로 쓴 연도는 거부합니다(#988, #989). 여섯 개 lint는 Windows에서도 경로를 POSIX 형식으로 비교합니다(#964, #978). Pi 래퍼는 Pi의 구조화된 프롬프트 섹션과 함께 동작합니다(#985). `CITATION.cff`에 저자의 ORCID iD를 추가했습니다(#1007). #978, #985, #988은 외부 기여자가 작성했습니다.

@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.24.1-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.1)
+[![Version](https://img.shields.io/badge/version-v3.24.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.2)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -268,7 +268,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，采用 **逐准则、证据锚定的叙事判断**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 与 Schema 6 package 一律为 `NOT_CALIBRATED`；完整 calibration 可产生有界候选 profile，但尚未接入 live review。不得以固定总分映射接受、小修、大修或退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.24.1)
+### Academic Pipeline (v3.24.2)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 规则（由 agent 按流程遵守，不是运行时保证）：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）把每一项审查意见对应到作者的修订主张，并记录复审是否验证通过。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -340,6 +340,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 这里只列最近三个版本。完整更新记录在英文版 [CHANGELOG.md](CHANGELOG.md)。到 v3.21.2 为止的简体中文版本摘要已冻结存放于 [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)，之后不再更新。
 
+### v3.24.2（2026-11-06）— 实验可如实表示没有 lock 值、repro_lock 规则对齐，以及 sr-screener 方法段落更正
+
+> **修复与文档；没有新 skill 或模式，提示层的改动未经测量：**`experiment_provenance[]` 的条目现在可以如实表示没有可填的 lock 值，写法是 `repro_lock: null` 加上 `repro_lock_reason`（#1049）。问卷或没有使用 LLM 的分析，以前只能填占位值才能通过。旧版 ARS 不接受这个写法，所以用这个写法的 passport 需要这一版。`check_repro_lock.py` 现在会拦下违反字段类型或值规则的必填值，例如 `null` 的 model id；`cross_model.secondary_model_id` 仍可为 `null`。`planned_vs_executed[].value` 只接受数字或文本，所以有些以前通过的 passport 现在会失败（#1050）。`sr-screener` 的方法段落不再说审查代理只能读记录文件：工具清单去掉的是网络与写入权限，只读指定文件是一项指示（#1039）。SETUP 记录了两次检查：上传的 skill 在对话中重试后派出内置子代理；多代理阶段仍未测试（#1040）。
+
 ### v3.24.1（2026-11-02）— 从 claude.ai 账号市集安装 plugin、审稿前确认配置卡，以及巴西葡萄牙文 README
 
 > **claude.ai 与 Claude Desktop 的安装修复；没有新 skill 或模式：**ARS 现在可以从 claude.ai 账号市集安装。这一版之前，这种安装方式下，五个核心 skill 全都无法加载（#1035），而且四个 plugin 代理的名称含下划线，claude.ai 不接受（#1037）。在 Claude Desktop 上，普通对话中有一个 skill 与 `/ars-lit-review` 实际运行；项目对话直接派工给 plugin 代理 `synthesis-agent`；文件夹工作时出现 SessionStart 启动通知。write-scope guard、工具白名单与完整 pipeline 在 claude.ai 与 Claude Desktop 上尚未测试。审稿时现在会等用户确认 Reviewer Configuration Cards（#1030），README 也新增巴西葡萄牙文版（#1032）。
@@ -348,6 +352,3 @@ https://github.com/Imbad0202/academic-research-skills
 
 > **两项审查参考检查与数项修复；没有新 skill，这两项检查在真实审查上的准确度尚未测量：**v3.24.0 在 Editorial Decision Letter 加上两份附件。第一份实时查询 Reviewer 2 与 Reviewer 3 推荐的每一篇著作，查询范围是引用验证关卡使用的四个索引，只报告有没有这条记录，不判断该著作是否支持推荐理由（#1001）。第二份把每一项 weakness，以及 Devil's Advocate 每一行 CRITICAL 或 MAJOR 意见，去掉审稿人席位标签后交给 session 模型的一个 subagent，由它判断稿件是否与该意见矛盾。只有判定者的引文通过脚本对稿件的比对检查，附件才列为矛盾；其他判定为错误的意见列为未确认（#1002）。这项检查默认开启，设置 `ARS_PANEL_CLAIM_CHECK=0` 可以关闭。两份附件都不影响审查决定、修订路线图或复审标准。第二项检查上线前，一项预注册的 held-out 审计检查了 805 条审查小组意见，估计错误意见的比例介于 1.5% 到 12.9%；Claude Opus 5.5 与 Claude Fable 5.1 担任判定者时都通过了它的对照关卡。write-scope guard 的启动器每次工具调用只启动一个 Python 进程，原来是三个，Windows 上 AppXSvc 的内存泄漏预计因此降为原来的三分之一左右，但 Windows 上的实际行为尚未测试（#1015）；guard 的代码注释也写明它检查哪些工具名称（#1022）。三条诚信检查规则在 Stage 5 入口、报告有效期限与 Stage 4′ 三点上取得一致（#1011），启动通知也改为只在有新版本时显示（#1027）。#1015、#1022 与 #1027 由外部用户报告。
 
-### v3.23.2（2026-10-24）— 诚信检查只读引用的版本、Stage 2.5 一律执行，以及适配器、启动通知与 Windows 修复
-
-> **修复；没有新 skill。一项提示层变更做了小规模行为检查，其余尚未测量：**v3.23.2 让 Stage 2.5 与 4.5 的声明核查只拿稿件引用的那个版本来比对（#1006）。读不到引用的版本时，核查会记录一条访问备注并请用户提供 PDF，不再改读工作论文或预印本。在一份合成测试稿上运行六次（Claude Opus 5.5 与 Claude Fable 5.1 各三次，关闭网络工具），六次都遵守这条规则。先前的诚信报告不再能让 pipeline 跳过 Stage 2.5，改为附上作为参考（#995）。缺少必要输入时，每一份规则文件都会阻止阶段转换（#990）；苏格拉底导师的示例不再为用户的想法排名（#992）。SessionStart 启动通知会把更新提醒显示给用户，给模型看的启动内容约减少 2.1 KB（#999）。Obsidian 适配器接受未加引号的 ISO 日期年份，并拒绝布尔值与上标数字年份（#988、#989）；六个 lint 在 Windows 上改用 POSIX 形式比较路径（#964、#978）；Pi 包装器改为与 Pi 的结构化提示区段组合（#985）；`CITATION.cff` 加上作者的 ORCID iD（#1007）。#978、#985、#988 由外部贡献者提供。
