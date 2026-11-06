@@ -66,6 +66,7 @@ def map_venue_type(item_type: str | None) -> tuple[str, str]:
 
 RE_YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
 RE_STRIP_HTML = re.compile(r"<[^>]+>")
+RE_DOI_PREFIX = re.compile(r"^(?:https?://(?:dx\.|www\.)?doi\.org/|doi:)", re.I)
 
 # Design doc §410: date strings whose first token is a month or season name
 # are ambiguous and must be rejected — the year may be in a non-standard position.
@@ -160,12 +161,7 @@ def extract_year(date_val: str | dict | None) -> int | None:
 def strip_doi(doi: str | None) -> str | None:
     if not doi:
         return None
-    doi = doi.strip()
-    for prefix in ("doi:", "DOI:", "https://doi.org/", "http://doi.org/"):
-        if doi.lower().startswith(prefix.lower()):
-            doi = doi[len(prefix):]
-            break
-    return doi.strip() or None
+    return RE_DOI_PREFIX.sub("", doi.strip()).strip() or None
 
 
 def main() -> int:
