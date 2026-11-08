@@ -258,7 +258,92 @@ os._exit(0)
 # (gemini round-6 P1). If mktemp can't give us a private file, degrade safely to pass-through.
 GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 
-# Candidates in order; `py -3` first (the Windows launcher). For each one:
+# Prefer PATH-resolved Python executables outside WindowsApps. If those are absent, try the
+# Python Install Manager's documented global-alias directory under LOCALAPPDATA before the
+# WindowsApps aliases. That directory contains direct commands for installed runtimes, so a
+# manager-only machine can run its installed Python without starting the App Execution Alias.
+# We inspect executable paths, never text printed by a candidate interpreter.
+#
+# Check the first PATH match directly. Only when it is under WindowsApps (or cannot be
+# verified) scan later entries for a regular installation. The ordinary path therefore keeps
+# its fast first-match behavior, while a WindowsApps-first PATH can still find real Python.
+# Only symlinks need subprocess-based resolution.
+is_windowsapps_candidate() {
+    _path=$1
+    case "$_path" in
+        /*|[A-Za-z]:[\\/]*) ;;
+        *) return 2 ;;
+    esac
+    _check_windowsapps_path "$_path" && return 0
+    [ -L "$_path" ] || return 1
+    if command -v cygpath >/dev/null 2>&1; then
+        _winpath=$(cygpath -aw -- "$_path" 2>/dev/null) || _winpath=
+        if [ -n "$_winpath" ] && _check_windowsapps_path "$_winpath"; then
+            return 0
+        fi
+    fi
+    _resolved=
+    if command -v realpath >/dev/null 2>&1; then
+        _resolved=$(realpath -e "$_path" 2>/dev/null) \
+            || _resolved=$(realpath "$_path" 2>/dev/null) \
+            || _resolved=
+    fi
+    if [ -z "$_resolved" ] && command -v readlink >/dev/null 2>&1; then
+        _resolved=$(readlink -f "$_path" 2>/dev/null) || _resolved=
+    fi
+    [ -n "$_resolved" ] || return 2
+    _check_windowsapps_path "$_resolved" && return 0
+    if command -v cygpath >/dev/null 2>&1; then
+        _winpath=$(cygpath -aw -- "$_resolved" 2>/dev/null) || _winpath=
+        if [ -n "$_winpath" ] && _check_windowsapps_path "$_winpath"; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+_check_windowsapps_path() {
+    case "$1" in
+        *"/"[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]"/"*|*"/"[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]|*"\\"[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]"\\"*|*"\\"[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]) return 0 ;;
+    esac
+    return 1
+}
+
+# Run one executable with the established single-process guard runner. Return 1 when the
+# candidate did not start clean Python and should be skipped; return 2 when it started but
+# the guard itself broke, which stops all further attempts and passes through as before.
+run_guard_candidate() {
+    _candidate=$1
+    shift
+    GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$_candidate" "$@" -I -c "$GUARD_RUNNER" "$GUARD" 2>"$GUARD_ERR")
+    GUARD_STATUS=$?
+    case $GUARD_OUT in
+        "$MARKER" | "$MARKER$NL"*) ;;
+        *) return 1 ;;
+    esac
+    if [ "$GUARD_STATUS" -ne 0 ] || [ "$GUARD_OUT" = "$MARKER" ]; then
+        return 2
+    fi
+    case $GUARD_OUT in
+        "$MARKER$NL"*"$NL$END_MARKER") ;;
+        *) return 1 ;;
+    esac
+    DECISION=${GUARD_OUT#"$MARKER$NL"}
+    DECISION=${DECISION%"$NL$END_MARKER"}
+    case $DECISION in
+        *"$NL"*) return 1 ;;
+        "{"*"}")
+            [ -s "$GUARD_ERR" ] && cat "$GUARD_ERR" >&2
+            rm -f "$GUARD_ERR" 2>/dev/null
+            printf '%s\n' "$DECISION"
+            exit 0
+            ;;
+    esac
+    return 1
+}
+
+# Candidates in their historical order; `py -3` remains the last-resort Install Manager
+# route. For each one:
 #   * no marker line first (stub, missing interpreter, hang before start) -> next candidate;
 #   * marker, exit 0, one line of JSON object, and the end line -> forward that decision;
 #   * marker, exit 0, and anything else after it -> the runner always ends with os._exit, so
@@ -268,35 +353,142 @@ GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 #     itself) -> the guard is BROKEN; per the maintainer
 #     decision (§3.2.1) degrade to pass-through + exit 0, never block, and do not run the
 #     guard again under another candidate.
+_stop_all_candidates=
+_fallback_py=
+_fallback_python3=
+_fallback_python=
 for cand in "py -3" "python3" "python"; do
-    # shellcheck disable=SC2086  # intentional word-split: "py -3" -> py with arg -3
-    set -- $cand
-    command -v "$1" >/dev/null 2>&1 || continue
-    GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$@" -I -c "$GUARD_RUNNER" "$GUARD" 2>"$GUARD_ERR")
-    GUARD_STATUS=$?
-    case $GUARD_OUT in
-        "$MARKER" | "$MARKER$NL"*) ;;
-        *) continue ;;
+    case "$cand" in
+        "py -3") _name=py; _args=-3 ;;
+        *) _name=$cand; _args= ;;
     esac
-    [ "$GUARD_STATUS" -eq 0 ] || break
-    [ "$GUARD_OUT" = "$MARKER" ] && break
-    case $GUARD_OUT in
-        "$MARKER$NL"*"$NL$END_MARKER") ;;
-        *) continue ;;
-    esac
-    DECISION=${GUARD_OUT#"$MARKER$NL"}
-    DECISION=${DECISION%"$NL$END_MARKER"}
-    case $DECISION in
-        *"$NL"*) ;;
-        "{"*"}")
-            # Healthy guard decision: relay its stderr advisories, then forward it.
-            [ -s "$GUARD_ERR" ] && cat "$GUARD_ERR" >&2
-            rm -f "$GUARD_ERR" 2>/dev/null
-            printf '%s\n' "$DECISION"
-            exit 0
+    _first_candidate=$(command -v "$_name" 2>/dev/null) || continue
+    [ -x "$_first_candidate" ] || continue
+    is_windowsapps_candidate "$_first_candidate"
+    _windowsapps_status=$?
+    if [ "$_windowsapps_status" -eq 1 ]; then
+        _candidate=$_first_candidate
+    else
+        # Keep WindowsApps/unverifiable first matches for the legacy last-resort pass.
+        case "$cand" in
+            "py -3") _fallback_py=$_first_candidate ;;
+            "python3") _fallback_python3=$_first_candidate ;;
+            "python") _fallback_python=$_first_candidate ;;
+        esac
+        _candidate=
+        _old_ifs=$IFS
+        IFS=:
+        set -f
+        _after_first=
+        for _dir in ${PATH:-}; do
+            [ -n "$_dir" ] || _dir=.
+            _path_candidate="$_dir/$_name"
+            if [ ! -x "$_path_candidate" ] && [ -x "$_path_candidate.exe" ]; then
+                _path_candidate="$_path_candidate.exe"
+            fi
+            if [ -z "$_after_first" ]; then
+                [ "$_path_candidate" = "$_first_candidate" ] && _after_first=1
+                continue
+            fi
+            [ -x "$_path_candidate" ] || continue
+            is_windowsapps_candidate "$_path_candidate"
+            _windowsapps_status=$?
+            [ "$_windowsapps_status" -eq 1 ] || continue
+            _candidate=$_path_candidate
+            break
+        done
+        set +f
+        IFS=$_old_ifs
+    fi
+    [ -n "$_candidate" ] || continue
+    if [ -n "$_args" ]; then
+        run_guard_candidate "$_candidate" "$_args"
+    else
+        run_guard_candidate "$_candidate"
+    fi
+    _candidate_status=$?
+    if [ "$_candidate_status" -eq 2 ]; then
+        _stop_all_candidates=1
+    fi
+    [ -z "$_stop_all_candidates" ] || break
+done
+
+# Python Install Manager offers a default global-alias directory at
+# %LOCALAPPDATA%\Python\bin. Its python3/python executables target installed runtimes
+# directly; trying these before WindowsApps avoids launching the manager alias on the common
+# default installation, even when the optional directory was not added to PATH.
+if [ -z "$_stop_all_candidates" ] && [ -n "${LOCALAPPDATA:-}" ]; then
+    case "$LOCALAPPDATA" in
+        /*) _manager_root=$LOCALAPPDATA ;;
+        [A-Za-z]:/*) _manager_root=$LOCALAPPDATA ;;
+        [A-Za-z]:\\*)
+            # Git Bash accepts drive paths with forward slashes. Convert backslashes using
+            # shell built-ins first, avoiding a cygpath process on the Windows hot path.
+            _old_ifs=$IFS
+            IFS='\'
+            set -f
+            set -- $LOCALAPPDATA
+            set +f
+            IFS=$_old_ifs
+            _manager_root=
+            for _manager_part do
+                if [ -n "$_manager_root" ]; then
+                    _manager_root=$_manager_root/$_manager_part
+                else
+                    _manager_root=$_manager_part
+                fi
+            done
+            ;;
+        *)
+            _manager_root=
             ;;
     esac
-done
+    # Keep cygpath as a compatibility fallback for paths that are not directly addressable
+    # by the current shell (for example, POSIX CI tests mapping a native Windows path).
+    if [ -z "$_manager_root" ] || { [ ! -d "$_manager_root" ]; }; then
+            if command -v cygpath >/dev/null 2>&1; then
+                _manager_root=$(cygpath -u -- "$LOCALAPPDATA" 2>/dev/null) || _manager_root=
+            fi
+    fi
+    if [ -n "$_manager_root" ] && [ -d "$_manager_root/Python/bin" ]; then
+        for _manager_name in python3.exe python.exe; do
+            _manager_candidate="$_manager_root/Python/bin/$_manager_name"
+            [ -f "$_manager_candidate" ] || continue
+            is_windowsapps_candidate "$_manager_candidate"
+            _windowsapps_status=$?
+            [ "$_windowsapps_status" -eq 1 ] || continue
+            run_guard_candidate "$_manager_candidate"
+            _candidate_status=$?
+            if [ "$_candidate_status" -eq 2 ]; then
+                _stop_all_candidates=1
+                break
+            fi
+        done
+    fi
+fi
+
+# Keep only WindowsApps or unverifiable PATH entries as the final fallback. Candidates already
+# run in the preferred pass are not started again after a failed probe.
+if [ -z "$_stop_all_candidates" ]; then
+    for cand in "py -3" "python3" "python"; do
+        case "$cand" in
+            "py -3") _candidate=$_fallback_py; _args=-3 ;;
+            "python3") _candidate=$_fallback_python3; _args= ;;
+            "python") _candidate=$_fallback_python; _args= ;;
+        esac
+        [ -n "$_candidate" ] || continue
+        if [ -n "$_args" ]; then
+            run_guard_candidate "$_candidate" "$_args"
+        else
+            run_guard_candidate "$_candidate"
+        fi
+        _candidate_status=$?
+        if [ "$_candidate_status" -eq 2 ]; then
+            _stop_all_candidates=1
+            break
+        fi
+    done
+fi
 
 # Guard broke / timed out / produced invalid output. Degrade, don't block, don't spam.
 # The same holds when no candidate started Python.

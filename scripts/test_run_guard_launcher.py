@@ -20,9 +20,10 @@ alias as the marker probe sees it). The launcher must:
   - stay SILENT on stderr on the degraded paths (PreToolUse is a hot path — any per-call
     stderr is the log spam #454 is about).
 
-NOTE (honest limitation): this is a POSIX-host simulation. The real Windows Store-alias path,
-`py.exe -3` under Git Bash, Git Bash path conversion, CRLF, and the no-Git-Bash PowerShell
-fallback still need a Windows repro (tracked in the spec §6).
+NOTE (honest limitation): most cases use fake interpreters and simulate candidate behavior.
+On Windows the launcher runs under Git Bash, so Windows path conversion and selection order
+are exercised, but the suite does not prove AppXSvc event behavior for the real Store alias,
+CRLF handling, or the no-Git-Bash PowerShell fallback (tracked in the spec §6).
 """
 
 import json
@@ -42,7 +43,14 @@ GUARD = os.path.join(REPO_ROOT, "scripts", "ars_write_scope_guard.py")
 PASS_THROUGH = {"hookSpecificOutput": {"hookEventName": "PreToolUse"}}
 
 # A real python to hand the launcher when a test needs the guard to actually run.
-REAL_PY = sys.executable
+def _shell_path(path):
+    """Convert a native Windows absolute path to the form Git Bash accepts."""
+    if os.name == "nt" and len(path) > 2 and path[1:3] in (":\\", ":/"):
+        return "/" + path[0].lower() + path[2:].replace("\\", "/")
+    return path
+
+
+REAL_PY = _shell_path(sys.executable)
 
 
 def _write_exec(path, body):
@@ -69,8 +77,15 @@ def _fake_real_python(path, real=REAL_PY):
 # System dirs that hold sh/cat/grep/command/mktemp/sleep/kill/timeout. bin_dir goes FIRST
 # on PATH so our injected fake py/python3/python (and any stub that shadows the system one)
 # win interpreter resolution, while the launcher's own shell utilities still resolve.
-_SYS_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
-_SH = shutil.which("sh") or "/bin/sh"
+if os.name == "nt":
+    _GIT_ROOT = os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"), "Git")
+    # The subprocess is Git Bash, so its PATH uses POSIX separators and paths even
+    # though Python and Windows use native paths.
+    _SYS_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
+    _SH = shutil.which("sh") or os.path.join(_GIT_ROOT, "usr", "bin", "sh.exe")
+else:
+    _SYS_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
+    _SH = shutil.which("sh") or "/bin/sh"
 _LAUNCHER_TIMEOUT = 45  # generous so a (bounded) hanging-candidate test can't false-fail
 
 # #545: GENEROUS default bound. For decision-forwarding tests the bound is pure safety
@@ -87,6 +102,20 @@ _DEFAULT_PROBE_BOUND = "30"
 _HANG_PROBE_BOUND = "5"
 
 
+def _launcher_test_env(bin_dir, extra_env=None):
+    """Build an isolated PATH in the path syntax expected by the selected shell."""
+    if os.name == "nt":
+        path = ":".join(_shell_path(part) for part in bin_dir.split(os.pathsep)) + ":" + _SYS_PATH
+    else:
+        path = bin_dir + os.pathsep + _SYS_PATH
+    env = {"PATH": path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND}
+    if os.name == "nt":
+        env["TMPDIR"] = _shell_path(tempfile.gettempdir())
+    if extra_env:
+        env.update(extra_env)
+    return env
+
+
 def _run_launcher(bin_dir, payload, extra_env=None, launcher=LAUNCHER, cwd=None):
     """Run the launcher with PATH = bin_dir + system dirs (bin_dir first, so injected
     interpreters shadow the real ones). Returns (exit_code, stdout, stderr).
@@ -95,15 +124,7 @@ def _run_launcher(bin_dir, payload, extra_env=None, launcher=LAUNCHER, cwd=None)
     a temp plugin layout (the only way to exercise a broken/alternate guard now that the
     ARS_GUARD_PATH_FOR_TEST back door is gone — the guard is ALWAYS resolved from the
     launcher's own ../scripts/, P2-e)."""
-    path = bin_dir + os.pathsep + _SYS_PATH
-    env = {
-        "PATH": path,
-        "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND,  # #545: see the constant's comment
-        # The launcher must resolve the guard from its OWN path, not any var (codex P1).
-        # We deliberately do NOT set CLAUDE_PLUGIN_ROOT in most tests.
-    }
-    if extra_env:
-        env.update(extra_env)
+    env = _launcher_test_env(bin_dir, extra_env)
     proc = subprocess.run(
         [_SH, launcher],
         input=json.dumps(payload),
@@ -258,11 +279,18 @@ class LauncherForeignTimeoutTest(unittest.TestCase):
         """The usability probe runs the `true` on PATH; one that hangs and ignores SIGTERM
         must not stall the launcher (`-k` bounds the probe), and the guard still decides."""
         real_timeout = shutil.which("timeout")
+        if not real_timeout and os.name == "nt":
+            bundled_timeout = os.path.join(_GIT_ROOT, "usr", "bin", "timeout.exe")
+            if os.path.isfile(bundled_timeout):
+                real_timeout = bundled_timeout
         if not real_timeout:
             self.skipTest("no `timeout` binary on this host")
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
             _fake_real_python(os.path.join(bin_dir, "python3"))
-            os.symlink(real_timeout, os.path.join(bin_dir, "timeout"))
+            _write_exec(os.path.join(bin_dir, "timeout"), (
+                "#!/bin/sh\n"
+                f'exec "{_shell_path(real_timeout)}" "$@"\n'
+            ))
             _write_exec(os.path.join(bin_dir, "true"), "#!/bin/sh\ntrap '' TERM\nsleep 30\n")
             payload = _bucket_a_payload(ws, os.path.join(ws, "totally_out_of_scope_dir", "x.md"))
             start = time.monotonic()
@@ -287,6 +315,301 @@ class LauncherStubSkipOrderingTest(unittest.TestCase):
             decision = json.loads(out)
             self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
                              "must skip the py stub and use the real python3")
+
+
+class LauncherWindowsAppsPreferenceTest(unittest.TestCase):
+    """Prefer a PATH executable outside WindowsApps without asking Python where it lives."""
+
+    def test_windowsapps_alias_is_skipped_when_regular_python_exists(self):
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as ws:
+            alias_dir = os.path.join(root, "WindowsApps")
+            regular_dir = os.path.join(root, "Python", "Scripts")
+            os.makedirs(alias_dir)
+            os.makedirs(regular_dir)
+            alias_log = os.path.join(root, "alias.log")
+            regular_log = os.path.join(root, "regular.log")
+            _write_exec(os.path.join(alias_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(alias_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            _write_exec(os.path.join(regular_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(regular_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            code, out, err = _run_launcher(alias_dir + os.pathsep + regular_dir, payload,
+                                           extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertFalse(os.path.exists(alias_log), "WindowsApps alias must not be launched")
+            self.assertTrue(os.path.exists(regular_log), "regular PATH Python must run")
+
+    def test_windowsapps_is_case_insensitive_and_only_python_falls_back(self):
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as ws:
+            alias_dir = os.path.join(root, "wInDoWsApPs")
+            utility_dir = os.path.join(root, "utilities")
+            os.makedirs(alias_dir)
+            os.makedirs(utility_dir)
+            # Keep host Python off the candidate path while retaining the system tools the
+            # launcher needs. These stubs fail as candidates, then the WindowsApps alias is
+            # reached only in the final fallback pass.
+            for name in ("py", "python3", "python"):
+                _stub(os.path.join(utility_dir, name))
+            if os.name == "nt":
+                system_tools_path = _SYS_PATH
+            else:
+                system_tools_dir = os.path.join(root, "system-tools")
+                os.makedirs(system_tools_dir)
+                for tool in ("cat", "dirname", "kill", "mktemp", "readlink", "realpath",
+                             "rm", "sleep", "timeout", "true"):
+                    source = shutil.which(tool)
+                    if source:
+                        os.symlink(source, os.path.join(system_tools_dir, tool))
+                system_tools_path = _shell_path(system_tools_dir)
+            alias_log = os.path.join(root, "alias.log")
+            _write_exec(os.path.join(alias_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(alias_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            test_path = ":".join((_shell_path(alias_dir), _shell_path(utility_dir),
+                                   system_tools_path))
+            code, out, err = _run_launcher(
+                alias_dir, payload,
+                extra_env={"PATH": test_path, "CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertTrue(os.path.exists(alias_log), "Install Manager-only fallback must still run")
+
+    def test_manager_global_alias_avoids_windowsapps_fallback(self):
+        """The manager aliases precede Store aliases and native LOCALAPPDATA is converted."""
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as ws:
+            windowsapps = os.path.join(root, "WindowsApps")
+            utility_dir = os.path.join(root, "utilities")
+            cygpath_dir = os.path.join(root, "cygpath-bin")
+            localappdata = os.path.join(root, "Local App Data")
+            manager_bin = os.path.join(localappdata, "Python", "bin")
+            os.makedirs(windowsapps)
+            os.makedirs(utility_dir)
+            os.makedirs(cygpath_dir)
+            os.makedirs(manager_bin)
+            for name in ("py", "python3", "python"):
+                _stub(os.path.join(utility_dir, name))
+            cygpath_log = os.path.join(root, "cygpath.log")
+            _write_exec(os.path.join(cygpath_dir, "cygpath"), (
+                "#!/bin/sh\n"
+                f'echo "$*" >> "{_shell_path(cygpath_log)}"\n'
+                'case "$1" in\n'
+                f'  -u) printf \'%s\\n\' "{_shell_path(localappdata)}" ;;\n'
+                '  -aw) printf \'%s\\n\' "$3" ;;\n'
+                'esac\n'
+            ))
+            alias_log = os.path.join(root, "windowsapps-alias.log")
+            manager_log = os.path.join(root, "manager-runtime.log")
+            _write_exec(os.path.join(windowsapps, "py"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(alias_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            _write_exec(os.path.join(manager_bin, "python3.exe"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(manager_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            test_path = ":".join((_shell_path(windowsapps), _shell_path(utility_dir),
+                                   _shell_path(cygpath_dir), _SYS_PATH))
+            code, out, err = _run_launcher(
+                windowsapps, payload,
+                extra_env={"PATH": test_path,
+                           "LOCALAPPDATA": r"C:\Users\Test User\AppData\Local",
+                           "TEST_LOCALAPPDATA_POSIX": _shell_path(localappdata),
+                           "CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertTrue(os.path.exists(manager_log), "manager runtime alias must run directly")
+            self.assertFalse(os.path.exists(alias_log), "WindowsApps py alias must remain unstarted")
+            with open(cygpath_log) as fh:
+                self.assertIn(r"-u -- C:\Users\Test User\AppData\Local", fh.read())
+
+    @unittest.skipIf(os.name == "nt", "cygpath link target test requires POSIX symlink support")
+    def test_cygpath_windows_style_path_is_checked_case_insensitively(self):
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as ws:
+            alias_dir = os.path.join(root, "first")
+            target_dir = os.path.join(root, "first-target")
+            regular_dir = os.path.join(root, "second")
+            cygpath_dir = os.path.join(root, "cygpath-bin")
+            os.makedirs(alias_dir)
+            os.makedirs(target_dir)
+            os.makedirs(regular_dir)
+            os.makedirs(cygpath_dir)
+            alias_log = os.path.join(root, "mapped-alias.log")
+            regular_log = os.path.join(root, "regular.log")
+            alias_target = os.path.join(target_dir, "python3-real")
+            _write_exec(alias_target, (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(alias_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            os.symlink(alias_target, os.path.join(alias_dir, "python3"))
+            _write_exec(os.path.join(regular_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(regular_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            _write_exec(os.path.join(cygpath_dir, "cygpath"), (
+                "#!/bin/sh\n"
+                'case "$1:$3" in\n'
+                f'  -aw:*{_shell_path(alias_dir).replace(os.sep, "/")}*) printf \'%s\\n\' \'C:\\\\Users\\\\DAVID\\\\AppData\\\\Local\\\\mIcRoSoFt\\\\WiNdOwSaPpS\\\\python3.exe\' ;;\n'
+                '  -aw:*) printf \'%s\\n\' "$3" ;;\n'
+                'esac\n'
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            test_path = ":".join((_shell_path(alias_dir), _shell_path(regular_dir),
+                                   _shell_path(cygpath_dir), _SYS_PATH))
+            code, out, err = _run_launcher(
+                alias_dir, payload,
+                extra_env={"PATH": test_path, "CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertFalse(os.path.exists(alias_log), "cygpath-mapped WindowsApps candidate must be skipped")
+            self.assertTrue(os.path.exists(regular_log), "regular PATH Python must be used after the alias is skipped")
+
+    def test_windowsapps_directory_name_requires_component_boundary(self):
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as ws:
+            near_match = os.path.join(root, "NotWindowsApps")
+            alias_dir = os.path.join(root, "WindowsApps")
+            os.makedirs(near_match)
+            os.makedirs(alias_dir)
+            regular_log = os.path.join(root, "regular.log")
+            alias_log = os.path.join(root, "alias.log")
+            _write_exec(os.path.join(near_match, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(regular_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            _write_exec(os.path.join(alias_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(alias_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            code, out, err = _run_launcher(
+                near_match + os.pathsep + alias_dir, payload,
+                extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertTrue(os.path.exists(regular_log), "NotWindowsApps is not the WindowsApps component")
+            self.assertFalse(os.path.exists(alias_log), "a later alias is unnecessary")
+
+    def test_failed_preferred_candidate_is_not_run_again(self):
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            failed_log = os.path.join(bin_dir, "python3.log")
+            real_log = os.path.join(bin_dir, "python.log")
+            _write_exec(os.path.join(bin_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(failed_log)}"\n'
+                "exit 1\n"
+            ))
+            _write_exec(os.path.join(bin_dir, "python"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(real_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            code, out, err = _run_launcher(
+                bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            with open(failed_log) as fh:
+                self.assertEqual(fh.read().splitlines(), ["called"])
+            self.assertTrue(os.path.exists(real_log), "later Python command should still be tried")
+
+    def test_regular_path_python_avoids_path_resolution_subprocesses(self):
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            resolver_log = os.path.join(bin_dir, "resolver.log")
+            _stub(os.path.join(bin_dir, "py"))
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            for tool in ("realpath", "readlink", "cygpath"):
+                _write_exec(os.path.join(bin_dir, tool), (
+                    "#!/bin/sh\n"
+                    f'echo {tool} >> "{_shell_path(resolver_log)}"\n'
+                    "exit 1\n"
+                ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            code, out, err = _run_launcher(
+                bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertFalse(os.path.exists(resolver_log), "regular executables need no path resolver subprocesses")
+
+    @unittest.skipIf(os.name == "nt", "symlink test requires POSIX symlink privileges")
+    def test_symlinked_python3_is_resolved_before_regular_python(self):
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            target = os.path.join(bin_dir, "python3-target")
+            target_log = os.path.join(bin_dir, "python3.log")
+            python_log = os.path.join(bin_dir, "python.log")
+            _write_exec(target, (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(target_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            os.symlink(target, os.path.join(bin_dir, "python3"))
+            _write_exec(os.path.join(bin_dir, "python"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(python_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            _write_exec(os.path.join(bin_dir, "realpath"), (
+                "#!/bin/sh\n"
+                'if [ "$1" = "-e" ]; then exit 1; fi\n'
+                'printf "%s\\n" "$1"\n'
+            ))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            code, out, err = _run_launcher(
+                bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertTrue(os.path.exists(target_log), "the symlinked python3 should run")
+            self.assertFalse(os.path.exists(python_log), "the resolved python3 should run first")
+
+    @unittest.skipIf(os.name == "nt", "symlink test requires POSIX symlink support")
+    def test_windowsapps_path_is_skipped_even_when_resolved_path_is_outside(self):
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(root, "WindowsApps")
+            target_dir = os.path.join(root, "target")
+            regular_dir = os.path.join(root, "regular")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(target_dir)
+            os.makedirs(regular_dir)
+            target_log = os.path.join(root, "target.log")
+            regular_log = os.path.join(root, "regular.log")
+            target = os.path.join(target_dir, "python3-real")
+            _write_exec(target, (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(target_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            _write_exec(os.path.join(regular_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(regular_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            os.symlink(target, os.path.join(windowsapps_dir, "python3"))
+            _stub(os.path.join(regular_dir, "py"))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "outside", "x.md"))
+            code, out, err = _run_launcher(
+                windowsapps_dir + os.pathsep + regular_dir, payload,
+                extra_env={"PATH": ":".join((_shell_path(windowsapps_dir),
+                                              _shell_path(regular_dir), _SYS_PATH)),
+                           "CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertFalse(os.path.exists(target_log), "the original WindowsApps path must be rejected")
+            self.assertTrue(os.path.exists(regular_log), "a later regular Python must be preferred")
 
 
 class LauncherPyDashThreeArgTest(unittest.TestCase):
@@ -424,8 +747,7 @@ class LauncherSelfResolveTest(unittest.TestCase):
             shutil.copy(manifest, os.path.join(spaced, "scripts", "ars_phase_scope_manifest.json"))
             _fake_real_python(os.path.join(bin_dir, "python3"))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            env = {"PATH": bin_dir + os.pathsep + _SYS_PATH, "CLAUDE_PROJECT_DIR": ws,
-                   "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND}
+            env = _launcher_test_env(bin_dir, {"CLAUDE_PROJECT_DIR": ws})
             proc = subprocess.run([_SH, os.path.join(spaced, "hooks", "run_guard.sh")],
                                   input=json.dumps(payload), env=env, capture_output=True,
                                   text=True, timeout=_LAUNCHER_TIMEOUT)
@@ -456,6 +778,34 @@ class LauncherGuardBrokeTest(unittest.TestCase):
         self.assertEqual(code, 0, f"must not propagate guard crash as block/error; err={err!r}")
         self.assertEqual(json.loads(out), PASS_THROUGH)
         self.assertEqual(err.strip(), "")
+
+    def test_guard_failure_in_preferred_candidate_stops_windowsapps_fallback(self):
+        with tempfile.TemporaryDirectory() as root, \
+                tempfile.TemporaryDirectory() as preferred_dir, \
+                tempfile.TemporaryDirectory() as base:
+            windowsapps_dir = os.path.join(root, "WindowsApps")
+            os.makedirs(windowsapps_dir)
+            preferred_log = os.path.join(preferred_dir, "preferred.log")
+            alias_log = os.path.join(windowsapps_dir, "alias.log")
+            _write_exec(os.path.join(preferred_dir, "python3"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(preferred_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            _write_exec(os.path.join(windowsapps_dir, "py"), (
+                "#!/bin/sh\n"
+                f'echo called >> "{_shell_path(alias_log)}"\n'
+                f'exec "{REAL_PY}" "$@"\n'
+            ))
+            launcher_copy = _make_plugin_layout(base, "import os\nos._exit(2)\n")
+            test_path = ":".join((_shell_path(preferred_dir), _shell_path(windowsapps_dir), _SYS_PATH))
+            code, out, err = _run_launcher(
+                preferred_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
+                launcher=launcher_copy, extra_env={"PATH": test_path})
+            self.assertEqual(code, 0, f"stderr={err!r}")
+            self.assertEqual(json.loads(out), PASS_THROUGH)
+            self.assertTrue(os.path.exists(preferred_log), "preferred candidate should run the guard")
+            self.assertFalse(os.path.exists(alias_log), "guard failure must stop later fallback candidates")
 
     def test_guard_prints_nothing(self):
         code, out, err = self._run_with_broken_guard("pass\n")  # exits 0, no stdout
@@ -595,13 +945,13 @@ class LauncherGuardBrokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as base:
             _fake_real_python(os.path.join(bin_dir, "python3"))
             launcher_copy = _make_plugin_layout(base, body)
-            path = bin_dir + os.pathsep + _SYS_PATH
+            env = _launcher_test_env(bin_dir, {
+                "LC_ALL": "en_US.ISO8859-1", "LANG": "en_US.ISO8859-1"})
             proc = subprocess.run(
                 [_SH, launcher_copy],
                 input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "丁\"x"}},
                                  ensure_ascii=False).encode("utf-8"),
-                env={"PATH": path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND,
-                     "LC_ALL": "en_US.ISO8859-1", "LANG": "en_US.ISO8859-1"},
+                env=env,
                 capture_output=True, timeout=_LAUNCHER_TIMEOUT)
             self.assertEqual(proc.returncode, 0)
             reason = json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
