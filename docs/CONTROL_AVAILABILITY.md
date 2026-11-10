@@ -131,7 +131,10 @@ runtime graceful-degradation mechanisms is
    honored a mid-message `[direct-mode]` token in some sessions after the routing core
    gained a sentence against it (#892), single cells of other fixtures failed (#960), and
    fixture 05 passed on both models only under two scoring readings
-   ([`CALIBRATION_LOG.md`](../tests/fixtures/issue_133_routing/CALIBRATION_LOG.md)). The
+   ([`CALIBRATION_LOG.md`](../tests/fixtures/issue_133_routing/CALIBRATION_LOG.md)). On
+   Claude Fable 5.2 the 2026-11-10 pass scored 21 of 21 in each kind of session under the
+   recorded scoring rules (20 of 21 in the plugin install when fixture 01 is read strictly),
+   at one session per fixture. The
    other channels are covered only by the copy check (`scripts/check_routing_core_sync.py`).
 10. sr-screener's dual review needs subagents plus its own Python scripts, which live
    inside the skill folder (`sr-screener/scripts/`, standard library only), so a copied

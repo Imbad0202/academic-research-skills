@@ -451,3 +451,93 @@ are scored as passes.
   `deep-research` `lit-review` mode. It is recorded in #960.
 - As before, one session per fixture is a smoke test, not a rate, and the pass is not held
   out. The fixture 06 counts are six sessions per cell.
+
+## 2026-11-10 pass: Claude Fable 5.2, all 21 fixtures
+
+### Condition
+
+- **Question.** Does the routing smoke hold on Claude Fable 5.2, which
+  `audits/harness-retirement-2026-11-fable-5-2.md` adds as a supported session model? No
+  routing text changed for this pass.
+- **Subject.** A standalone clone at `6d938867` (`main`), outside the home directory.
+- **Conditions, fence, tools, and credential.** As in the 2026-10 pass: plugin install and
+  repo clone; one fresh `claude -p` session per fixture with an empty `CLAUDE_CONFIG_DIR`,
+  an environment allowlist, `--permission-mode manual`, and the 3 USD budget cap. Claude
+  Code 2.1.321.
+- **Runs.** All 21 fixtures on `claude-fable-5-2` in both conditions (42 sessions), one
+  probe per condition first. Then fixture 06, plugin install, five more sessions. Then
+  fixtures 01 and 21 on `claude-fable-5-1` and `claude-opus-5-5` in both conditions, at
+  the same commit and Claude Code version (8 sessions). These two were chosen after the
+  Fable 5.2 outputs were read: fixture 01 fails when read strictly, and fixture 21 needed
+  a reading. Rerunning a cell that only needs a reading was not fixed before the run.
+
+### Scoring and reading (fixed before the run)
+
+- **Scoring.** The rules in the 2026-09-23 section, the two readings for the plugin install
+  in the 2026-09-24 section, and the #921 fields in the fixtures `README.md`.
+- **Reading.** The 2026-10 scores are reference points, not a controlled comparison: the
+  commit and the Claude Code version differ. "No worse" means at least 20 of 21 in each
+  condition and no new kind of failure. A failing cell is rerun on the two earlier models
+  at this commit before it is attributed to the model. One session per fixture is a smoke
+  test.
+
+### Probes and checks
+
+- Every init event reports the requested model, permission mode `default`, output style
+  `default`, and no API key source. Fixture 04 ran on `claude-sonnet-5-5` in both
+  conditions (command pin).
+- The SessionStart hook injected the routing core in every session.
+- No stream contains `issue_133_routing`, `expected.yaml`, `rationale.md`, or
+  `CALIBRATION_LOG`.
+- Every tool call that named a path outside the working directory was refused (27 in the
+  plugin install, 5 in the repo clone).
+- No Skill argument carried `[direct-mode]`.
+
+### Results: Claude Fable 5.2
+
+| Fixture | Expected | Plugin install | Repo clone |
+|---|---|---|---|
+| 01 | clarify | pass, or fail (RC, D) read strictly: options a-d, then two remarks on what the corpus may not cover | pass |
+| 03, 08 | clarify | pass | pass |
+| 02 | `academic-paper:lit-review`, note shown | pass | pass |
+| 04 (on `claude-sonnet-5-5`) | `academic-paper:lit-review`, note shown | pass | pass |
+| 05 | `bibliography_agent` | pass, under the two readings | pass |
+| 06 | clarify | pass | pass |
+| 07 | `academic-paper:abstract` | pass | pass |
+| 09, 11 | `academic-paper:revision` | pass | pass |
+| 10, 12 | `academic-paper-reviewer:full` | pass | pass |
+| 13, 14 (pair) | a `lit-review` mode, note shown | pass | pass |
+| 15, 20 | `deep-research:systematic-review`, note not shown | pass | pass |
+| 16 | `deep-research:lit-review`, note shown | pass | pass |
+| 17, 18 | `sr-screener` | pass | pass |
+| 19 | `academic-paper:lit-review`, note shown | pass | pass |
+| 21 | clarify, no screening started | pass | pass |
+| **Total** | | **21 of 21** (20 read strictly) | **21 of 21** |
+
+Scoring notes. Fixture 21: both cells explained the next steps and ended with "To start,
+ask me to screen the records", with no lettered options and no Skill call. The 2026-10 pass
+scored that shape as a pass; in the reference sessions at this commit, Claude Opus 5.5 in
+both conditions and Claude Fable 5.1 in the repo clone gave the same shape, and Claude
+Fable 5.1 in the plugin install gave options a-d. Fixture 01: in the reference sessions,
+Claude Fable 5.1 and Claude Opus 5.5 in the plugin install and Claude Opus 5.5 in the repo
+clone also added remarks on the abstract; Claude Fable 5.1 in the repo clone did not.
+Fixture 10 in the repo clone kept `full` and named `quick` and `methodology-focus` as
+available, which the 2026-10 note scores as a pass.
+
+### Results: fixture 06 on Claude Fable 5.2, plugin install
+
+6 of 6 sessions clarified with options a-d and made no Skill call (the session in the full
+run and five more).
+
+### What this pass shows
+
+- Under the recorded scoring rules, Claude Fable 5.2 passes 21 of 21 fixtures in each
+  condition. Read strictly, fixture 01 in the plugin install fails (RC, D), which gives
+  20 of 21 there.
+- Fixture 06 passed 6 of 6 in the plugin install on Claude Fable 5.2. This does not meet
+  the #892 acceptance rule, which names Claude Fable 5.1, and Claude Fable 5.1 was not
+  rerun on fixture 06 here. #892 stays open.
+- One session per fixture is a smoke test, not a rate, and the pass is not held out. The
+  card reports high evaluation awareness for Claude Mythos 5.2, the model Claude Fable 5.2
+  shares (audit row FT-018). The audit takes that caveat to apply to these sessions as to
+  any other test run.

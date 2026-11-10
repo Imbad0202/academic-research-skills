@@ -57,7 +57,10 @@ does not support.
   and partial checks described as full reads (mapped in
   `audits/harness-retirement-2026-09-opus-5-5.md` DM-015). Both move the weight of
   this row onto the supports-the-claim half — exactly the unmeasured
-  claim-verification row above.
+  claim-verification row above. The Claude Fable 5.2 system card reports, for Claude
+  Mythos 5.2 (the model Fable 5.2 shares), better closed-book factuality, and also
+  unclear attributions during literature review and inferences stated as facts (`audits/harness-retirement-2026-11-fable-5-2.md`
+  FT-012), which leaves the weight where it was.
 
 ### R2 — Silent claim-strength drift in revision
 
@@ -106,7 +109,13 @@ instructions that an agent follows as if they came from the user.
   model acts on instructions planted in text the user pasted into their own
   message, but acted on them in 0 of 105 attempts when the same text arrived as a
   tool result (§6.5.1; rates and product-side caveats in
-  `audits/harness-retirement-2026-09-opus-5-5.md` DG-1). The #675 scenarios
+  `audits/harness-retirement-2026-09-opus-5-5.md` DG-1). The Claude Fable 5.2
+  system card reports the same behavior at a lower rate, 0.3 to 0.5% of attempts
+  on the final snapshot of Claude Mythos 5.2, the model Fable 5.2 shares (`audits/harness-retirement-2026-11-fable-5-2.md` FT-009).
+  The same card reports a higher attack success rate for Fable 5.2 on a
+  tool-result injection benchmark, which it attributes mainly to classifier
+  fallbacks to an older model (same audit, FT-017).
+  The #675 scenarios
   include pasted reviewer and committee comments. The prompt-level boundary,
   including the interim #890 and #894 extensions, is trust-based; its effect on
   this regression is unmeasured, and #676 stays open with its structural
@@ -151,10 +160,11 @@ described.
 
 - **Existing controls**: commit-frozen measurement rows re-measured per change; the
   matrix staleness rule (`stale_after_days`); periodic harness-retirement audits
-  (`audits/harness-retirement-2026-09-opus-5-5.md` is the most recent completed
-  report, run when Claude Opus 5.5 joined Claude Fable 5.1 as a supported session
-  model; `audits/harness-retirement-2026-09-model-update.md` covers the Fable 5 →
-  Fable 5.1 and GPT-5.6 Sol → GPT-6 Astra change).
+  (`audits/harness-retirement-2026-11-fable-5-2.md` is the most recent completed
+  report, run when Claude Fable 5.2 joined Claude Fable 5.1 and Claude Opus 5.5 as
+  a supported session model; `audits/harness-retirement-2026-09-opus-5-5.md` covers
+  Opus 5.5, and `audits/harness-retirement-2026-09-model-update.md` covers the
+  Fable 5 → Fable 5.1 and GPT-5.6 Sol → GPT-6 Astra change).
 - **Evidence status**: `NOT_RUN` (asserted here; no capability-matrix row) — no
   measurement of cross-version drift itself exists.
 - **Residual gap**: measured rows are model- and time-specific by contract;
@@ -164,8 +174,13 @@ described.
   model until the user runs `/model`, with a transcript notice the user sees and
   the suite never reads (`shared/model_tiering.md`, the declared-model note under
   Resolving a tier at dispatch time; vendor specifics in
-  `audits/harness-retirement-2026-09-opus-5-5.md` DM-005), so every "session
+  `audits/harness-retirement-2026-09-opus-5-5.md` DM-005 and
+  `audits/harness-retirement-2026-11-fable-5-2.md` FT-017), so every "session
   model" in a provenance record is the declared model, not a per-call attestation.
+  A saved model can also change without a user action: Claude Code moves a saved
+  `claude-fable-5-1` to the `fable` alias on some plans, and the session then
+  starts at Fable 5.2's default effort unless a level was already set for it
+  (same audit, FT-001 and FT-002).
 
 ### R6 — Correlated same-family model error
 
@@ -259,8 +274,9 @@ subagent as a broader authorization than was given.
   measured on any session model.
 - **Residual gap**: the failure class is vendor-documented, not ARS-measured
   (evidence mapped in `audits/harness-retirement-2026-09-model-update.md` G-1 for
-  Fable 5.1 and `audits/harness-retirement-2026-09-opus-5-5.md` DM-013 for Opus
-  5.5); the prompt rule is trust-based.
+  Fable 5.1, `audits/harness-retirement-2026-09-opus-5-5.md` DM-013 for Opus
+  5.5, and `audits/harness-retirement-2026-11-fable-5-2.md` FT-010 for Fable 5.2);
+  the prompt rule is trust-based.
 
 ### R12 — Handoff loss across compaction and subagent returns
 
