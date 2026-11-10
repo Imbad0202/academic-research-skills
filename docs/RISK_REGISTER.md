@@ -57,9 +57,9 @@ does not support.
   and partial checks described as full reads (mapped in
   `audits/harness-retirement-2026-09-opus-5-5.md` DM-015). Both move the weight of
   this row onto the supports-the-claim half — exactly the unmeasured
-  claim-verification row above. The Claude Fable 5.2 system card reports better
-  closed-book factuality, and also unclear attributions during literature review
-  and inferences stated as facts (`audits/harness-retirement-2026-11-fable-5-2.md`
+  claim-verification row above. The Claude Fable 5.2 system card reports, for Claude
+  Mythos 5.2 (the model Fable 5.2 shares), better closed-book factuality, and also
+  unclear attributions during literature review and inferences stated as facts (`audits/harness-retirement-2026-11-fable-5-2.md`
   FT-012), which leaves the weight where it was.
 
 ### R2 — Silent claim-strength drift in revision

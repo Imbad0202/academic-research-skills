@@ -538,5 +538,6 @@ run and five more).
   the #892 acceptance rule, which names Claude Fable 5.1, and Claude Fable 5.1 was not
   rerun on fixture 06 here. #892 stays open.
 - One session per fixture is a smoke test, not a rate, and the pass is not held out. The
-  card for this model reports high evaluation awareness (audit row FT-018), which applies
-  to these sessions as to any other test run.
+  card reports high evaluation awareness for Claude Mythos 5.2, the model Claude Fable 5.2
+  shares (audit row FT-018). The audit takes that caveat to apply to these sessions as to
+  any other test run.

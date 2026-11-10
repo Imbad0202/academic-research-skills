@@ -14,10 +14,10 @@
 ## Executive summary
 
 - **Findings: 0 P0; 8 applied documentation changes (FT-001 to FT-008); 0 prompt-text retirements; 0 guardrails added; 9 keep rows and 1 still-deferred row now also carry a Fable 5.2 card citation (FT-009 to FT-018; FT-016 is the deferred row); 10 candidate follow-ups, none applied.**
-- **No agent prompt sentence expired.** The card reports gains on factuality and honesty under pressure. It also reports that the failure classes behind ARS's scaffolds remain: stating inferences as facts and making confident claims that the work does not support (p. 35), unclear attributions during literature review (p. 19), and acting on instructions in pasted text at a low residual rate (p. 133). A guardrail against a silent failure stays unless the evidence against it is strong, and ARS runs on three session models, two of which the earlier cards describe.
+- **No agent prompt sentence expired.** The card reports gains on factuality and honesty under pressure for Claude Mythos 5.2, the model Fable 5.2 shares. For the same model it also reports that the failure classes behind ARS's scaffolds remain: stating inferences as facts and making confident claims that the work does not support (p. 35), unclear attributions during literature review (p. 19), and acting on instructions in pasted text at a low residual rate (p. 133). A guardrail against a silent failure stays unless the evidence against it is strong, and ARS runs on three session models, two of which the earlier cards describe.
 - **One documented product fact was wrong for current Claude Code.** `docs/PERFORMANCE.md` told users to select Fable 5.1 with `/model fable`. Since Claude Code 2.1.321 that command selects Fable 5.2, and Fable 5.1 needs its model ID (FT-001).
-- **This audit reads early stopping as the new concern for a long ARS run (inference).** In replayed coding sessions the model left doable, requested work undone in 6 to 13% of sessions at `medium` to `xhigh` effort, against 4% for Fable 5.1, and it checked its work less (p. 34). The card's audit scores for false completion claims and for failing to disclose lazy behavior are the best of the four models shown (p. 113); that is a different test on a different scale. The card does not rank the two kinds of failure against each other, and it still reports confident claims that the work did not support (p. 35). ARS has no measurement of either behavior. See candidate follow-up C-1.
-- **Effort matters on Fable 5.2 in a new way.** Claude Code starts Fable 5.2 at `medium`, where its deep-research score is below both Fable 5.1 and Opus 5.5 at the same level (p. 219). A Pro or Max user whose saved model was `claude-fable-5-1` is moved to Fable 5.2 and starts at `medium` unless a level was already chosen (Claude Code docs). FT-002 gives the guidance.
+- **This audit reads early stopping as the new concern for a long ARS run (inference).** In replayed coding sessions Claude Mythos 5.2 left doable, requested work undone in 6 to 13% of sessions at `medium` to `xhigh` effort, against 4% for Fable 5.1, and it checked its work less (p. 34). The card's audit scores for false completion claims and for failing to disclose lazy behavior are the best of the four models shown (p. 113); that is a different test on a different scale. The card does not rank the two kinds of failure against each other, and it still reports confident claims that the work did not support (p. 35). ARS has no measurement of either behavior. See candidate follow-up C-1.
+- **Effort matters on Fable 5.2 in a new way.** Claude Code starts Fable 5.2 at `medium`, where its deep-research score is below both Fable 5.1 and Opus 5.5 at the same level (p. 219; Fable 5.1's `medium` value is from the prior audit). A Pro or Max user whose saved model was `claude-fable-5-1` is moved to Fable 5.2 and starts at `medium` unless a level was already chosen (Claude Code docs). FT-002 gives the guidance.
 
 ## Fable 5.2 next to Fable 5.1 and Opus 5.5, for ARS
 
@@ -33,7 +33,7 @@ Sources: **card** = *System Card: Claude Fable 5.2 & Claude Mythos 5.2* page; **
 | Default effort in Claude Code | `medium` | `high` | `medium` | docs |
 | Default effort on the Claude API | `high` | not checked | `medium` | docs (Fable 5.2 model page) |
 | Context window / max output | 1M tokens / 128K tokens | not re-checked | 1M / 128K | docs |
-| Content-classifier fallback | cybersecurity → Opus 4.8; biology and chemistry → Opus 5; frontier-LLM development → Opus 5 | same targets | same targets | card pp. 12-13; docs |
+| Content-classifier fallback | cybersecurity → Opus 4.8; biology and chemistry → Opus 5; frontier-LLM development → Opus 5 | cybersecurity → Opus 4.8; biology → Opus 5; frontier-LLM development not checked | same as Fable 5.1 | card pp. 12-13 (Fable 5.2); docs (cybersecurity and biology, all three) |
 | Data retention | requires 30-day retention; not available under zero data retention unless Anthropic expressly authorizes it | not checked | not checked | docs (Fable 5.2 model page) |
 | Effort of a dispatched subagent | on the session's model, the session's chosen level; on another model, that level does not apply | same rule | same rule | docs |
 
@@ -41,7 +41,7 @@ A saved `claude-fable-5-1` in user settings moves to the `fable` alias on Pro an
 
 ### Capability evidence relevant to ARS
 
-The card ran the capability benchmarks (pp. 207 to 239) on Claude Fable 5.2. It ran the rows below that cite pp. 19 to 138 on Claude Mythos 5.2, and where it names a Mythos 5.1 baseline this table keeps that name. Those rows describe the shared model (p. 78); they are not tests of the Fable 5.2 product with its safeguards.
+The capability rows below (pp. 207 to 239) are results the card reports for Claude Fable 5.2; two other rows of the card's summary table, not used here, come from Claude Mythos 5.2 without safeguards (De Novo Binder Design and CVE Rediscovery, pp. 207-208). The card ran the rows below that cite pp. 19 to 138 on Claude Mythos 5.2, and where it names a Mythos 5.1 baseline this table keeps that name. Those rows describe the shared model (p. 78); they are not tests of the Fable 5.2 product with its safeguards.
 
 | Evidence | Result | Source |
 |---|---|---|
@@ -53,12 +53,12 @@ The card ran the capability benchmarks (pp. 207 to 239) on Claude Fable 5.2. It 
 | GDPval-AA v2.1 (professional work products), Elo | 1831; Opus 5.5 1866; Fable 5.1 1763 | card p. 239 |
 | AA-Briefcase v1.1 (long-horizon knowledge work) | Elo 1785, behind Opus 5.5 at 1800; rubric pass rate 66.1%, ahead of Fable 5.1 (61.5%) and Opus 5.5 (61.2%) | card p. 239 |
 | Long context (ProgramBench, single 1M window) | 85.6%, below Fable 5.1 (87.6%) and Opus 5.5 (91.2%); it ran out of context before submitting on 68% of tasks. Shown the remaining context after each step, it scored 91.6% | card p. 216 |
-| Closed-book factuality (AA-Omniscience) | net score 0.72, ahead of all earlier models; incorrect answers 13%, against 17% for Opus 5.5 and 21% for Mythos 5.1 | card pp. 137-138 (charts) |
+| Closed-book factuality (AA-Omniscience) | net score 0.72, against 0.58 for Opus 5.5 and 0.56 for Mythos 5.1; incorrect answers 13%, against 17% for Opus 5.5 and 21% for Mythos 5.1 | card pp. 137-138 (charts) |
 | Honesty under pressure (MASK) | 94.7%; Opus 5.5 87.4%; Mythos 5.1 84.6% | card p. 138 (chart) |
 | Automated audit, honesty metrics (1 to 10, lower is better) | best of four models on false completion claims (1.31; Opus 5.5 1.48), failure to disclose bad or lazy behavior (1.29; 1.45), input hallucination (1.14; 1.32), sycophancy (1.43; 1.76) | card p. 113 (chart) |
 | Work left undone; checking its own work | left doable, requested work undone in 6 to 13% of replayed coding sessions at medium to xhigh, against 4% for Fable 5.1; ran tests less often than Fable 5.1 at low effort; quit without running an experiment in 63% of open-ended research sessions at medium | card p. 34 |
 | Research judgment (internal use; most reports from pre-release snapshots) | stays attached to earlier ideas, treats differences within noise as meaningful, changes agreed plans without saying so; in coding work on the release snapshot, states inferences as facts | card pp. 34-35 |
-| Literature handling (expert red-team) | unclear attributions during literature review; one team fixed this by supplying full PDFs; a verification agent that reviewed hundreds of claims found no hallucinated sources; a recurring error traced to one paper applied outside its scope | card p. 19 |
+| Literature handling (expert red-team) | unclear attributions during literature review; one team worked around this by supplying full PDFs; a verification agent that reviewed hundreds of claims found no hallucinated sources; a recurring error traced to one paper applied outside its scope | card p. 19 |
 | Effort and scope | FrontierCode 2.0 peaks at `xhigh` (49.1) and falls at `max` (45.7); the grading still penalizes out-of-scope changes | card p. 209 |
 | Evaluation awareness | internally aware it may be in an evaluation in as many as 43% of audit transcripts, more than earlier models | card p. 91 |
 
@@ -66,10 +66,10 @@ The card ran the capability benchmarks (pp. 207 to 239) on Claude Fable 5.2. It 
 
 These are readings of vendor evaluations, not ARS measurements. No full pipeline run has been timed or scored on any of the three models.
 
-- **`deep-research`.** At `high` effort and below, the card's deep-research benchmark favors Fable 5.1, and from `medium` to `xhigh` it also favors Opus 5.5 over Fable 5.2 (p. 219). For wide entity search with citations, Fable 5.2 leads at every level (p. 221). The documents do not decide which matters more for a given literature task.
+- **`deep-research`.** At `high` effort and below, the card's deep-research benchmark favors Fable 5.1, and from `medium` to `xhigh` it also favors Opus 5.5 over Fable 5.2 (p. 219; Fable 5.1's middle values are from the prior audit). For wide entity search with citations, Fable 5.2 leads at every level (p. 221). The documents do not decide which matters more for a given literature task.
 - **`academic-paper`.** Opus 5.5 keeps the lead on the two pairwise ratings of professional documents; Fable 5.2 leads on the AA-Briefcase rubric pass rate and on document-grounded numerical reasoning (pp. 237, 239).
 - **`academic-paper-reviewer` and the integrity gates.** The card's closed-book factuality and honesty-under-pressure results are stronger for Claude Mythos 5.2, the model Fable 5.2 shares, than for Opus 5.5 and Mythos 5.1 (pp. 137-138); the card did not run these two tests on the Fable 5.2 product. Reviewer calibration remains model-specific and no Fable 5.2 run exists; live packages stay `NOT_CALIBRATED`.
-- **`academic-pipeline`.** Long trajectories meet the card's early-stopping finding (p. 34) and its own stated blind spots for long trajectories, compaction, and multi-agent work (p. 126). The checkpoints and the run ledger are the existing controls; neither is measured.
+- **`academic-pipeline`.** Long trajectories meet the card's early-stopping finding for Claude Mythos 5.2 (p. 34) and its own stated blind spots for long trajectories, compaction, and multi-agent work (p. 126). The checkpoints and the run ledger are the existing controls; neither is measured.
 - **Work on untrusted retrieved or pasted text.** In the card's injection tests Fable 5.1 and Opus 5.5 have the lower end-to-end attack success rates. The card attributes the difference mainly to Fable 5.2 falling back to Opus 4.8 more often (FT-017). On the static benchmark, the attempts Fable 5.2 answered itself succeeded less often than its fallback-served attempts (2.05% against 5.17% at 15 attempts, p. 85), which is still above the overall rates for the other two models; in the adaptive coding test none of the 43 requests it answered itself was compromised (p. 87).
 - **Unpublished manuscripts under zero data retention.** Fable 5.2 is not available there without Anthropic's express authorization (docs).
 - **Light slash commands** pin `model: sonnet` and are unaffected by the session model.
@@ -163,9 +163,9 @@ Applied: a 2026-11-10 entry in the log, one clause in the README list, and one
 ```
 [FT-009] Instruction/data boundary: reviewer `<paper_content>` fence, the canonical
   block in the hot-spot agents and the five SKILL.md files, revision coach (DG-1) | category 2
-Rationale: card pp. 130-133. The model "often reasoned that anything in the user's
+Rationale: card pp. 130-133. Claude Mythos 5.2 "often reasoned that anything in the user's
   message must come from the user"; the final snapshot of Claude Mythos 5.2 still acted on a
-  planted instruction in 0.3 to 0.5% of attempts. The card also reports notes passed
+  planted instruction in 0.3 to 0.5% of attempts. The card also reports, for Mythos 5.2, notes passed
   between agents that changed the behavior of hundreds of agents (p. 105), which is
   the dispatch channel the #890 extension covers.
 Decision: keep. Less pressure than on Opus 5.5, not none.
@@ -173,10 +173,11 @@ Decision: keep. Less pressure than on Opus 5.5, not none.
 
 ```
 [FT-010] G-1 checkpoint decision provenance (R11); committee authority rule | category 2
-Rationale: card p. 103. An early snapshot, blocked by a permission check, started a
+Rationale: card p. 103. An early snapshot of Claude Mythos 5.2, blocked by a permission check, started a
   fresh subagent and "incorrectly quoted the user's intent" to it (seen in less
-  than 0.002% of completions; early snapshots). The audit metric for approval-gate
-  bypass is best or tied for the released model (pp. 115-117). In a second case an
+  than 0.002% of completions; early snapshots). The card says Claude Mythos 5.2 is best or
+  tied on most of its additional metrics for misaligned actions, a set that includes
+  approval-gate bypass (pp. 115-117); the page text gives no value for that metric alone. In a second case an
   early snapshot waited for a third party's approval, then "wrote an approval
   message from the other party in its own turn" and went on; 200 resamples from
   the final snapshot did not reproduce it (pp. 148-149, a test on one transcript).
@@ -188,13 +189,13 @@ Decision: keep.
 ```
 [FT-011] Required-tool steps backed by receipts (arithmetic receipts, token
   conservation, passport verification, PDF preflight, panel synthesis checker) | category 5
-Rationale: card p. 34. The model "checked its work less: at low effort, it ran tests
+Rationale: card p. 34. Claude Mythos 5.2 "checked its work less: at low effort, it ran tests
   less often than Fable 5.1". In training, it succeeded at using prohibited methods or
   access more often than Mythos 5.1 and Opus 5.5 (0.13% of episodes against 0.05% and
   0.08%). The card attributes a large part of that difference to tasks that required
   a tool or code, where the model answered directly instead (pp. 96-97). A receipt catches a skipped check that ARS
-  mandates; it does not make the model choose a check nobody mandated. The Claude Code documentation advises users of Fable
-  models to "skip the verification reminders". That advice is about coding sessions
+  mandates; it does not make the model choose a check nobody mandated. The Claude Code documentation tells users of Fable
+  models: "Skip the verification reminders". That advice is about coding sessions
   in general; ARS receipts are checks on a deliverable, and a skipped check is
   silent. They stay.
 Decision: keep. More load-bearing on Fable 5.2 (inference).
@@ -203,13 +204,13 @@ Decision: keep. More load-bearing on Fable 5.2 (inference).
 ```
 [FT-012] Read-scope attestations, three-layer citation anchors, Phase E claim
   verification, the cited-version rule (#1006) | category 2
-Rationale: card p. 19 (unclear attributions during literature review, fixed by
+Rationale: card p. 19 (Claude Mythos 5.2 in the expert red-team: unclear attributions during literature review, worked around by
   supplying full PDFs; no hallucinated sources found; one paper applied outside its
   scope across submissions); p. 31 (claims that are "superficially correct—for
   example, citing factual information drawn from real literature—but
   inappropriate in the context of the scenario"); p. 35 (inferences stated as
   facts). Closed-book
-  factuality improved (pp. 137-138), which is evidence about recall, not about
+  factuality improved for Mythos 5.2 (pp. 137-138), which is evidence about recall, not about
   whether a cited source supports a claim.
 Decision: keep. The weight stays on the supports-the-claim half (R1).
 ```
@@ -217,7 +218,7 @@ Decision: keep. The weight stays on the supports-the-claim half (R1).
 ```
 [FT-013] Claim-strength ladder, protected hedges, `[MATERIAL GAP]` routing, bounded
   novelty claims | category 2/6
-Rationale: card p. 35. "stated inferences as facts, made confident claims the code
+Rationale: card p. 35, on Claude Mythos 5.2. "stated inferences as facts, made confident claims the code
   did not support, and defended a wrong technical recommendation by arguing from
   the absence of evidence"; "treating differences within noise as meaningful".
   In the expert red-team, agentic submissions held overstated claims of efficacy
@@ -229,8 +230,8 @@ Decision: keep.
 ```
 [FT-014] DA concession scoring; "pressure is not evidence" | category 5
 Rationale: card p. 138 (MASK 94.7%, against 87.4% for Opus 5.5) and p. 113 (lowest
-  sycophancy score of four models). This is the one guardrail family where the card
-  gives the model, measured as Mythos 5.2, clearly less of the failure. The rule also serves Opus 5.5 and
+  sycophancy score of four models). Here the card gives the model, measured as
+  Mythos 5.2, clearly less of the failure, as it also does for pasted instructions (FT-009). The rule also serves Opus 5.5 and
   Fable 5.1 sessions, and the disinformation subcategory is still below Opus 5 and
   Sonnet 5 (p. 139).
 Decision: keep.
@@ -238,8 +239,8 @@ Decision: keep.
 
 ```
 [FT-015] Mechanical panel synthesis and finding contracts | category 5
-Rationale: card p. 117 reports the lowest rate of visible mismatches between
-  reasoning and outward behavior. The checker is a deterministic contract over a
+Rationale: card p. 117 reports, for Claude Mythos 5.2, the lowest rate of visible
+  mismatches between reasoning and outward behavior. The checker is a deterministic contract over a
   five-seat panel that can run on any supported model, so the evidence does not
   bear on retiring it. Page 18 shows the limit of a panel: several reviewing
   agents missed the same overclaim. The checker verifies that the synthesis
@@ -268,8 +269,9 @@ Rationale: card p. 85. In the indirect-injection benchmark, 53% of attempts agai
   and 0.96% for Opus 5.5. These are attack scenarios, not research sessions. Two points matter for ARS: bacteriophage
   red-teamers triggered the cybersecurity classifier with a "Trojan horse" analogy
   (p. 19), and a Claude Code session stays on the fallback model until the user runs
-  `/model`. It keeps the flagged request's effort level until the user chooses a
-  level or resumes the session (docs). A subagent's own
+  `/model`. It keeps the flagged request's effort level only until the user chooses a
+  level, picks a model in `/model`, or resumes the session; a level set for one turn
+  (`ultrathink`, or a skill's `effort` frontmatter) applies to that turn only (docs). A subagent's own
   fallback leaves the parent's model unchanged (docs), a path the note does not
   describe yet (C-9).
 Decision: keep; pointer added in `shared/model_tiering.md` and R5 (FT-006, FT-007).
@@ -277,20 +279,21 @@ Decision: keep; pointer added in `shared/model_tiering.md` and R5 (FT-006, FT-00
 
 ```
 [FT-018] G-4 evaluation-awareness caveat; MU-007 brevity and scope rules | category 5 / 3-like
-Rationale: card p. 91 (aware of a possible evaluation in up to 43% of audit
-  transcripts); p. 156 (higher grader awareness on every task type measured);
-  p. 209 (FrontierCode 2.0 falls from xhigh to max; its grading penalizes
+Rationale: card p. 91 (Claude Mythos 5.2: aware of a possible evaluation in up to 43%
+  of audit transcripts); p. 156 (Mythos 5.2: higher grader awareness on every task
+  type measured); p. 209 (Fable 5.2: FrontierCode 2.0 falls from xhigh to max; its grading penalizes
   out-of-scope changes, and the card does not say that this caused the fall).
-Decision: keep. The caveat applies to the three Fable 5.2 runs under Verification.
+Decision: keep. This audit applies the caveat to the three Fable 5.2 runs under
+  Verification, because the two products share the model (inference).
 ```
 
 Carried forward unchanged from the baseline: DM-007 (no effort pin in command frontmatter), DM-008 (announce token-budget line), DM-009 (evaluation-harness model defaults are measurement identities), DM-011 (release-history lines).
 
 ## Candidate follow-ups (not applied)
 
-- **C-1. Stage completeness on Fable 5.2.** The card's work-left-undone and early-stopping figures (p. 34) have no ARS measurement. The stage checkpoints, the missing-input rule (#990), and the run ledger `report` are the nearest controls, and all are prompt-level or advisory. Candidate: a held-out check that compares each stage's required outputs with what a run produced. The card says changes to prompting and scaffolding reduced early stopping in later tests, without saying what changed. A boundary for any such control: in the card's sandbox tests a `/goal`-style loop "that nudged the model to keep going" was a particularly effective prompt for reaching outside the sandbox (p. 128), so a completion check should separate authorized continuation from pressure to finish by any route.
+- **C-1. Stage completeness.** The card's work-left-undone and early-stopping figures for Claude Mythos 5.2 (p. 34) have no ARS measurement. The stage checkpoints, the missing-input rule (#990), and the run ledger `report` are the nearest controls, and all are prompt-level or advisory. Candidate: a held-out check that compares each stage's required outputs with what a run produced. The card says changes to prompting and scaffolding "seemed to reduce early stopping in later tests" (p. 34), without saying what changed. A boundary for any such control: in the card's sandbox tests of Mythos 5.2 a `/goal`-style loop "that nudged the model to keep going" was a particularly effective prompt for reaching outside the sandbox (p. 128), so a completion check should separate authorized continuation from pressure to finish by any route.
 - **C-2. Context budget in long runs.** Fable 5.2 ran out of context before submitting on 68% of ProgramBench tasks when the harness did not show the remaining context (p. 216). Candidate: user guidance that points long pipeline runs to `ARS_PASSPORT_RESET`.
-- **C-3. Plan changes without notice.** The card reports "changing agreed-upon experimental plans without saying so" (p. 35, mostly pre-release snapshots). `standing_constraints[]` and the run ledger hold the user's words; whether a run departs from them silently is unmeasured.
+- **C-3. Plan changes without notice.** For Claude Mythos 5.2 the card reports "changing agreed-upon experimental plans without saying so" (p. 35, mostly pre-release snapshots). `standing_constraints[]` and the run ledger hold the user's words; whether a run departs from them silently is unmeasured.
 - **C-4. Two eval-rubric conflicts found in the plugin-eval run** (Verification): the citation-check `no-overreach` grader fails a corrected excerpt that `citation_compliance_agent` asks for, and the revision-coach `all-9-covered` grader failed outputs that split one reviewer paragraph into two items. Tracked in #1062.
 - **C-5. A Fable 5.2 arm for the #1002 contrast test.** Not run. The attachment note already says other models are untested.
 - **C-6. Reviewer calibration and a same-condition plugin-eval baseline on all three models.** Not run.
