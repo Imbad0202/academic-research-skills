@@ -35,7 +35,7 @@ Sources: **card** = *System Card: Claude Fable 5.2 & Claude Mythos 5.2* page; **
 | Context window / max output | 1M tokens / 128K tokens | not re-checked | 1M / 128K | docs |
 | Content-classifier fallback | cybersecurity → Opus 4.8; biology and chemistry → Opus 5; frontier-LLM development → Opus 5 | cybersecurity → Opus 4.8; biology → Opus 5; frontier-LLM development not checked | same as Fable 5.1 | card pp. 12-13 (Fable 5.2); docs (cybersecurity and biology, all three) |
 | Data retention | requires 30-day retention; not available under zero data retention unless Anthropic expressly authorizes it | not checked | not checked | docs (Fable 5.2 model page) |
-| Effort of a dispatched subagent | on the session's model, the session's chosen level; on another model, that level does not apply | same rule | same rule | docs |
+| Effort of a dispatched subagent | a subagent with no `effort` of its own runs at the session's chosen level when it is on the session's model; on another model, that level does not apply | same rule | same rule | docs |
 
 A saved `claude-fable-5-1` in user settings moves to the `fable` alias on Pro and Max plans the first time v2.1.321 or later runs, and on Team and Enterprise plans when the organization's settings allow. Console accounts, third-party providers, and project, local, or managed settings keep `claude-fable-5-1` (docs).
 
