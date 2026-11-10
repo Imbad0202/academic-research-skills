@@ -467,7 +467,9 @@ are scored as passes.
 - **Runs.** All 21 fixtures on `claude-fable-5-2` in both conditions (42 sessions), one
   probe per condition first. Then fixture 06, plugin install, five more sessions. Then
   fixtures 01 and 21 on `claude-fable-5-1` and `claude-opus-5-5` in both conditions, at
-  the same commit and Claude Code version (8 sessions).
+  the same commit and Claude Code version (8 sessions). These two were chosen after the
+  Fable 5.2 outputs were read: fixture 01 fails when read strictly, and fixture 21 needed
+  a reading. Rerunning a cell that only needs a reading was not fixed before the run.
 
 ### Scoring and reading (fixed before the run)
 
@@ -475,8 +477,9 @@ are scored as passes.
   in the 2026-09-24 section, and the #921 fields in the fixtures `README.md`.
 - **Reading.** The 2026-10 scores are reference points, not a controlled comparison: the
   commit and the Claude Code version differ. "No worse" means at least 20 of 21 in each
-  condition and no new kind of failure. A cell that fails or needs a reading is rerun on
-  the two earlier models at this commit. One session per fixture is a smoke test.
+  condition and no new kind of failure. A failing cell is rerun on the two earlier models
+  at this commit before it is attributed to the model. One session per fixture is a smoke
+  test.
 
 ### Probes and checks
 
@@ -528,7 +531,9 @@ run and five more).
 
 ### What this pass shows
 
-- No cell fails on Claude Fable 5.2 in either condition under the recorded scoring rules.
+- Under the recorded scoring rules, Claude Fable 5.2 passes 21 of 21 fixtures in each
+  condition. Read strictly, fixture 01 in the plugin install fails (RC, D), which gives
+  20 of 21 there.
 - Fixture 06 passed 6 of 6 in the plugin install on Claude Fable 5.2. This does not meet
   the #892 acceptance rule, which names Claude Fable 5.1, and Claude Fable 5.1 was not
   rerun on fixture 06 here. #892 stays open.

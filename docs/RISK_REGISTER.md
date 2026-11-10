@@ -111,7 +111,7 @@ instructions that an agent follows as if they came from the user.
   tool result (§6.5.1; rates and product-side caveats in
   `audits/harness-retirement-2026-09-opus-5-5.md` DG-1). The Claude Fable 5.2
   system card reports the same behavior at a lower rate, 0.3 to 0.5% of attempts
-  on the final snapshot (`audits/harness-retirement-2026-11-fable-5-2.md` FT-009).
+  on the final snapshot of Claude Mythos 5.2, the model Fable 5.2 shares (`audits/harness-retirement-2026-11-fable-5-2.md` FT-009).
   The same card reports a higher attack success rate for Fable 5.2 on a
   tool-result injection benchmark, which it attributes mainly to classifier
   fallbacks to an older model (same audit, FT-017).
@@ -179,7 +179,8 @@ described.
   model" in a provenance record is the declared model, not a per-call attestation.
   A saved model can also change without a user action: Claude Code moves a saved
   `claude-fable-5-1` to the `fable` alias on some plans, and the session then
-  starts at Fable 5.2's default effort (same audit, FT-001 and FT-002).
+  starts at Fable 5.2's default effort unless a level was already set for it
+  (same audit, FT-001 and FT-002).
 
 ### R6 — Correlated same-family model error
 
