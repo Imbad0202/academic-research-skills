@@ -123,8 +123,8 @@ skill in 2 of 2. Cost: US$1.58.
 - **Judge style matters.** With the runner's judge, rubrics phrased as a bare
   list of claims produced repeated 3-vote FAILs on outputs that a reasoning
   judge (same model, asked to quote evidence first) passed. Every llm rubric in
-  this suite that showed that pattern (01 all-9-covered, 02 all-covered,
-  03 no-fabrication, 03 pushback-per-reviewer) is written as "work through the checks one at a
+  this suite that showed that pattern (02 all-covered, 03 no-fabrication,
+  03 pushback-per-reviewer) is written as "work through the checks one at a
   time and quote the evidence"; keep that style when adding graders.
 - **no-rewrite is judged, not regex-checked.** Manuscript prose vs. quoted
   reviewer text cannot be told apart lexically. A single suggested sentence of
@@ -135,7 +135,5 @@ skill in 2 of 2. Cost: US$1.58.
   one for a positive remark, and matches items by content and reviewer rather
   than by number. On `claude-fable-5-2` all three with-plugin runs failed the
   earlier wording, and each of them listed comment 2-1 as two rows (#1062).
-  The grader now works through the nine comments one at a time and quotes the
-  matching items, the style the judge-style caveat above asks for.
 - **05 and 07 show Δ 0** — the base model already handles them. They stay as
   regression guards.
