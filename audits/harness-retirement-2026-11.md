@@ -15,8 +15,8 @@
 
 - **Findings: 0 P0, 0 P1, 1 P2 (three sentences in two files), accepted and applied.**
 - The month's prompt changes trace to 13 merged PRs, each anchored to an issue: #823-#826, #857/#882, #849, #862 Phase 1, #890, #894, #916, #927, #928, #938, #973, #1001, #1037. None of them adds a model pin, a sampling override, a generic anti-hallucination line, a teaching few-shot block, or an open retry loop.
-- Two changes this period are themselves retirements of debt-like patterns, landed through their own reviewed PRs: hedging as a substitute for missing evidence was replaced by `[MATERIAL GAP]` or omission in `draft_writer_agent` (#825), fixed quotas (TEEL ≥80%, 120-200-word paragraphs, the em-dash and semicolon counts) were replaced by judgement tied to author and venue requirements (#825), and the fixed abstract lengths in `abstract_bilingual_agent` and `structure_architect_agent` were replaced by a lookup in one regime table keyed by paper type and language pair, with a venue limit taking precedence (#862).
-- **P2-F01:** three sentences added by #862 Phase 1 state, in whole or in part, how far the change's claim reaches. They are addressed to a reader of the repository, not to the model, they are not lint-pinned, and the same scope statement lives in `shared/output_language_pair.md` and `CHANGELOG.md`.
+- Three changes this period, landed through two reviewed PRs (#825, #862), are themselves retirements of debt-like patterns: hedging as a substitute for missing evidence was replaced by `[MATERIAL GAP]` or omission in `draft_writer_agent` (#825), fixed quotas (TEEL ≥80%, 120-200-word paragraphs, the em-dash and semicolon counts) were replaced by judgement tied to author and venue requirements (#825), and the fixed abstract lengths in `abstract_bilingual_agent` and `structure_architect_agent` were replaced by a lookup in one regime table keyed by paper type and language pair, with a venue limit taking precedence (#862).
+- **P2-F01:** three sentences added by #862 Phase 1 state, in whole or in part, how far the change's claim reaches. That claim-scope wording is addressed to a reader of the repository, not to the model; the instructions in the same sentences stay. The wording is not lint-pinned, and the same scope statement lives in `shared/output_language_pair.md` and `CHANGELOG.md`.
 
 ### Findings by issue #1034 category
 
@@ -46,7 +46,7 @@ Rationale: the sentences at :32 and :369 mix an instruction (treat absence as th
   default, keep the legacy keys and headings) with a statement of how far the change's
   claim reaches; the sentence at :43 is only such a statement. That statement tells a
   reviewer of the repository how far the change's evidence goes; it gives the model no
-  action. The same scope statement is in shared/output_language_pair.md:77 and :116-117
+  action. The same scope statement is in shared/output_language_pair.md:77 and :115-117
   and in the CHANGELOG 3.22.0 entry. No lint pins
   these sentences (grep over scripts/, shared/, tests/; check_output_language_pair_contract()
   checks registry membership and the default token, not this wording).
@@ -97,7 +97,7 @@ Kept: the block is the input grammar for `scripts/verify_panel_recommendations.p
 - Sampling and budget overrides (`temperature`, `top_p`, `max_tokens`, `budget_tokens`): **0 hits.**
 - Few-shot headings (`Example N`, `<example>`): **0 hits.**
 - Anti-hallucination phrasing: every new hit is a domain contract clause (#574 A5 no-invention, #882 DOI evidence boundary, #825 `[MATERIAL GAP]` routing, #916 bounded absence claims). High-stakes academic-citation domain: kept per the iron rule.
-- Largest bodies: `formatter_agent` 1,022 lines, `draft_writer_agent` 685, `literature_strategist_agent` 663. Their growth this period is the instruction/data boundary block (in all three) and the contract text listed above (the #862 Schema 4 section, the #916 method-weaknesses block, the #928 formatter scope rules); no other shared block was added.
+- Largest bodies: `formatter_agent` 1,022 lines, `draft_writer_agent` 685, `literature_strategist_agent` 663. Their growth this period includes the instruction/data boundary block (in all three), the longer #973 enforcement paragraph (in all 23 bodies), and contract text specific to each file: the #862 Schema 4 section in `draft_writer_agent`, the #916 method-weaknesses block in `literature_strategist_agent`, and the #928 output and content-scope rules in `formatter_agent`. No other block shared across agents was added.
 
 ## Verification
 
