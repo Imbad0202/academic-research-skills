@@ -459,12 +459,14 @@ venue overrides and the guide's disambiguation exceptions.
 The deliverable of this mode is the citation error report (the agent's Citation
 Audit Report): the errors found, the Corrected Reference List, and each in-text
 correction listed with its location and the exact replacement citation where
-one exists. Report a remark about a correct entry, such as a wording suggestion
-for the sentence that cites it, apart from the error list. Leave the user's
-excerpt or draft text to the user: offer a corrected version and produce it
-only when the user asks. In this mode the agent's Auto-correct principle covers
-the reference list and the listed replacements; its Corrected Draft output
-applies when it runs as Phase 5a of a full or revision run, not here (#1062).
+one exists. If you have a remark about an entry that is correct, such as a
+wording suggestion for the sentence that cites it, keep it out of the errors,
+the corrections, and the Items Flagged for Review, and put it in a separate
+notes line. Leave the user's excerpt or draft text to the user: offer a
+corrected version and produce it only when the user asks. In this mode the
+agent's Auto-correct principle covers the reference list and the listed
+replacements; its Corrected Draft output belongs to the paper-writing runs that
+call it as Phase 5a, not to this mode (#1062).
 
 ---
 

@@ -164,7 +164,7 @@ required on the conversion negative, real journal names replaced).
 - **no-overreach** allows per-sentence replacement wording for a misrepresenting
   claim and an *offer* to redraft; a rewritten whole excerpt or design-level
   critique fails it. Before #1062 the skill sent standalone citation-check to
-  `citation_compliance_agent.md`, whose Phase 5a output is a Corrected Draft,
+  `citation_compliance_agent.md`, whose Phase 5a output includes a Corrected Draft,
   and on `claude-fable-5-2` the with-plugin arm failed this grader in 15 of 15
   runs of cases 01-05 by returning a corrected excerpt. The Citation-Check Mode
   section of `academic-paper/SKILL.md` now names the report, the corrected
