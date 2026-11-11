@@ -170,7 +170,7 @@ When errors are found:
    - **`full` mode (Phase 5a):** fix it directly in the draft text. The result is the Corrected Draft.
    - **`revision` mode:** do not edit the draft, including its reference list. The draft you receive is the output of the round's applied patch, and only an author-approved patch round may change it (#390). List each fix as a proposal: location, current text, and the exact replacement. The Corrected Reference List is a proposal too. To change the draft, the author carries these fixes into a later revision round; an edit made outside a patch round is not covered by the revision evidence bundle.
    - **`citation-check` mode:** follow the Citation-Check Mode section of `SKILL.md`: return the report and produce no Corrected Draft; produce a corrected version of the user's text only when the user asks for it.
-2. **Log** each correction in the audit report; outside `full` mode, the Corrections Made table lists proposed corrections that were not applied
+2. **Log** each correction in the audit report; in `revision` mode the corrections are unapplied proposals, listed as the note under Output Format describes
 3. **Flag** ambiguous cases for human review
 
 ### Common Auto-Corrections
@@ -229,7 +229,9 @@ In `revision` mode nothing above is applied to the draft (Auto-Correction Protoc
 
 ```
 INPUT: Complete Draft (from draft_writer_agent) + Paper Configuration Record (citation format)
-OUTPUT: Citation Audit Report; plus the Corrected Draft in `full` mode only
+OUTPUT: Citation Audit Report; plus the Corrected Draft in `full` mode only,
+        or, in `citation-check` mode, a corrected version of the user's text
+        when the user asks for it
 
 Step 1: Build Citation Index
   1.1 Scan full text, extract all in-text citations -> Build InTextList[]
@@ -445,7 +447,7 @@ Quality gate not passed ->
 | `peer_reviewer_agent` | `full` mode: Corrected Draft (the draft the first Phase 6 review reads; later rounds review the writer's revised draft) + Citation Audit Report; otherwise: Citation Audit Report (for review reference) | Markdown with all citations fixed; this agent's Output Format |
 | `draft_writer_agent` | `full` mode: Corrected Draft (the base that the first Phase 6 revision round edits) | Markdown with all citations fixed |
 | `formatter_agent` | Corrected Reference List + Citation Audit Report; in `full` mode, also the Corrected Draft when Phase 6 accepts it without a revision round | Markdown Reference List + Audit table; Markdown full text |
-| User | `full` mode: flagged items for review; other modes: the whole Citation Audit Report, with its corrections and Corrected Reference List as proposals | `full` mode: Items Flagged for Review table; other modes: this agent's Output Format |
+| User | `full` mode: flagged items for review; `revision` mode: the whole Citation Audit Report, with its corrections and Corrected Reference List as proposals; `citation-check` mode: the deliverable that the Citation-Check Mode section of `SKILL.md` defines, plus a corrected version of the user's text only when the user asks | `full` mode: Items Flagged for Review table; `revision` mode: this agent's Output Format, with the revision-mode headings; `citation-check` mode: this agent's Output Format |
 
 ### Handoff Format Requirements
 
