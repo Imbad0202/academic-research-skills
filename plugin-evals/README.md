@@ -135,5 +135,7 @@ skill in 2 of 2. Cost: US$1.58.
   one for a positive remark, and matches items by content and reviewer rather
   than by number. On `claude-fable-5-2` all three with-plugin runs failed the
   earlier wording, and each of them listed comment 2-1 as two rows (#1062).
+  The grader now works through the nine comments one at a time and quotes the
+  matching items, the style the judge-style caveat below asks for.
 - **05 and 07 show Δ 0** — the base model already handles them. They stay as
   regression guards.
