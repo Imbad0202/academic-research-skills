@@ -165,7 +165,7 @@ Phase 1: RESEARCH      -> [literature_strategist]      -> Search Strategy + Sour
 Phase 2: ARCHITECTURE  -> [structure_architect]        -> Paper Outline + Evidence Map
 Phase 3: ARGUMENTATION -> [argument_builder]           -> Argument Blueprint
 Phase 4: DRAFTING      -> [draft_writer]               -> Complete Draft
-Phase 5a: CITATIONS    -> [citation_compliance] ──┐    -> Citation Audit Report
+Phase 5a: CITATIONS    -> [citation_compliance] ──┐    -> Citation Audit Report + Corrected Draft (to Phase 6)
 Phase 5b: ABSTRACT     -> [abstract_bilingual]   ─┘    -> Bilingual Abstract + Keywords  (parallel)
 Phase 6: PEER REVIEW   -> [peer_reviewer]              -> Review Report (max 2 revision loops)
 Phase 7: FORMAT        -> [formatter]                  -> Final Output Package
@@ -337,7 +337,7 @@ See `references/mode_selection_guide.md` for details.
 |------|---------|--------|--------|
 | `full` | "Write a paper" | All 9 (+ 11 if quantitative) | Complete paper draft (with figures if applicable) |
 | `outline-only` | "Paper outline" | 1->2->3 | Detailed outline + evidence map |
-| `revision` | "Revise paper" | 8->5->6 | Patch document + deterministically applied revised draft + apply report (#390; revision log via `templates/revision_tracking_template.md`) |
+| `revision` | "Revise paper" | 8->5->6 | Patch document + deterministically applied revised draft + apply report (#390; revision log via `templates/revision_tracking_template.md`) + Citation Audit Report with proposed citation fixes (#1068) |
 | `abstract-only` | "Write abstract" | 1->7 | Bilingual abstract + keywords |
 | `lit-review` | "Literature review" | 1->2 | Annotated bibliography + synthesis |
 | `format-convert` | "Convert to LaTeX" / "Convert citations to [format]" | 9 only | Formatted document; includes citation format conversion (APA 7 / Chicago / MLA / IEEE / Vancouver) |
@@ -466,8 +466,8 @@ accurate, keep it out of the errors, the corrections, and the Items Flagged for
 Review, and put it in a separate notes line. Leave the user's excerpt or draft text to the user: offer a
 corrected version and produce it only when the user asks. In this mode the
 agent's Auto-correct principle covers the reference list and the listed
-replacements; its Corrected Draft output belongs to the paper-writing runs that
-call it as Phase 5a, not to this mode (#1062).
+replacements; its Corrected Draft output belongs to `full`-mode runs that call
+it as Phase 5a, not to this mode (#1062, #1068).
 
 ---
 
@@ -500,6 +500,8 @@ In revision mode, `draft_writer_agent` does NOT re-emit the complete paper. The 
 5. **Continuous evidence:** every review write, all-declined no-op, and integrity-correction round enters `revision-evidence-bundle/1.0`, from an exact integrity-PASS draft to the exact final draft. A scope escalation requires a new explicit sidecar or a narrower patch; legacy full re-emission cannot claim current authorization PASS.
 
 Orchestrated runs follow `pipeline_orchestrator_agent.md` § Revision-Round Patch Sequencing; Mode B users run the same scripts by hand — exact commands in `references/revision_patch_protocol.md`. Honest boundary: registered surfaces and exact edit authority are machine-replayed, but unregistered semantic drift still requires E6 review. `scripts/claim_strength_drift_disposition.py` closes explicit handling of reported rows only; it does not make model-mediated detection deterministic or complete. The `academic-paper full` in-pair Phase 6→4 loop is outside this standalone/pipeline revision contract.
+
+**Citation check after revision (#1068).** In standalone revision mode (agents 8->5->6), `citation_compliance_agent` runs after the patch is applied. It does not edit the applied draft, its reference list included, and emits no Corrected Draft. It returns the Citation Audit Report with each fix as a proposal (location, current text, exact replacement) and the Corrected Reference List as a proposal. To change the draft, the author carries these fixes into a later revision round; an edit made outside a patch round is not covered by the revision evidence bundle. Pipeline revision rounds follow the orchestrator's Revision-Round Patch Sequencing, which does not dispatch this agent; there the Stage 2.5 and 4.5 integrity gates check citations.
 
 **Abstract after revision (#936).** Revision mode does not re-run `abstract_bilingual_agent`, so an abstract changes only where an author-approved target covers its blocks. A standalone revision's delivery always says the abstract was not regenerated. When the applied patch changes a finding, number, or scope that an abstract states, it also quotes each abstract sentence the patched text now contradicts, so the author can approve an abstract target in the next round or run `abstract-only`. In pipeline runs the integrity gate's C2 check also compares every abstract with the body.
 

@@ -84,7 +84,7 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 ### Phase 5a: Citations
 
 **Agent**: `citation_compliance_agent`
-**Output**: Citation Audit Report
+**Output**: Citation Audit Report + Corrected Draft (`full` mode only; the first Phase 6 review reads it and the first revision round edits it)
 
 - In-text <-> reference list cross-check (zero orphans)
 - Format compliance (per selected style)

@@ -108,9 +108,9 @@ User Input →
 - No existing paper draft (→ full mode)
 - Only need to check citation format (→ citation-check mode)
 
-**Expected Output**: Revised paper + revision notes (tracked changes)
+**Expected Output**: Patch document + deterministically applied revised draft + apply report + revision log (#390) + Citation Audit Report with proposed citation fixes (#1068)
 **Expected Duration**: Medium
-**Agents Used**: peer_reviewer → draft_writer → citation_compliance
+**Agents Used**: peer_reviewer → draft_writer → citation_compliance (proposes citation fixes; does not edit the applied draft, #1068)
 
 **Prerequisite**: User must provide existing paper content
 

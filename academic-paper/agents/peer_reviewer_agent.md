@@ -420,9 +420,9 @@ Quality gate not passed ->
 
 | Source Agent | Received Content | Data Format |
 |-----------|---------|---------|
-| `draft_writer_agent` | Complete Draft + Draft Metadata | Markdown full text + Word Count table |
+| `draft_writer_agent` | Complete Draft + Draft Metadata (in `full` mode, the first Phase 6 review takes only the Draft Metadata and reads the Corrected Draft; later rounds review the writer's Revised Draft with its Revision Log) | Markdown full text + Word Count table |
 | `structure_architect_agent` | Paper Outline | Detailed Outline (for structure comparison) |
-| `citation_compliance_agent` | Citation Audit Report | Audit table (for reference on citation quality) |
+| `citation_compliance_agent` | `full` mode: Corrected Draft (the Complete Draft with the Phase 5a citation fixes applied; the first Phase 6 review reads this version) + Citation Audit Report; otherwise: Citation Audit Report | Markdown full text; Audit table (for reference on citation quality) |
 | `argument_builder_agent` | Argument Blueprint | CER Chains (for checking argument completeness) |
 
 ### Output Destinations
