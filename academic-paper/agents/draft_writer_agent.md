@@ -345,6 +345,7 @@ Quality gate not passed ->
 | `structure_architect_agent` | Paper Outline + Word Count Allocation | Detailed Outline + Evidence Map |
 | `argument_builder_agent` | Argument Blueprint + CER Chains | Claim-Evidence-Reasoning list organized by section |
 | `peer_reviewer_agent` (revision rounds) | Review Report + Revision Instructions | Issues table (Critical/Major/Minor) |
+| `citation_compliance_agent` (`full` mode revision rounds) | Corrected Draft: the Complete Draft with the Phase 5a citation fixes applied; the first Phase 6 revision round edits this version, not the pre-5a draft | Markdown full text |
 
 ### Output Destinations
 

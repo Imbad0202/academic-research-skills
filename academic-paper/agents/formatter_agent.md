@@ -990,7 +990,7 @@ Quality gate not passed ->
 
 | Source Agent | Received Content | Data Format |
 |-----------|---------|---------|
-| `draft_writer_agent` | Final Reviewed Draft | Markdown full text (passed peer review) |
+| `draft_writer_agent` | Final Reviewed Draft: the version peer review accepted — the writer's latest revision, or, when Phase 6 accepted without a revision round, the Corrected Draft from `citation_compliance_agent` | Markdown full text (passed peer review) |
 | `citation_compliance_agent` | Corrected Reference List + Citation Audit Report | Markdown Reference List + Audit table |
 | `abstract_bilingual_agent` | Bilingual Abstracts + Keywords | Markdown (EN + zh-TW) |
 | `intake_agent` | Paper Configuration Record | Markdown table (output_format, target_journal, language) |

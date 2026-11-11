@@ -110,7 +110,7 @@ User Input →
 
 **Expected Output**: Revised paper + revision notes (tracked changes)
 **Expected Duration**: Medium
-**Agents Used**: peer_reviewer → draft_writer → citation_compliance
+**Agents Used**: peer_reviewer → draft_writer → citation_compliance (proposes citation fixes; does not edit the applied draft, #1068)
 
 **Prerequisite**: User must provide existing paper content
 
