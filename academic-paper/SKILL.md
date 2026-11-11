@@ -456,12 +456,15 @@ its locale-specific abbreviation and ordering checks rather than applying
 the Latin-script alphabetical checklist to Chinese names. Preserve supplied
 venue overrides and the guide's disambiguation exceptions.
 
-The deliverable of this mode is the Citation Audit Report: the findings, the
-Corrected Reference List, and each in-text correction listed with its location
-and the exact replacement citation. Leave the user's excerpt or draft text to
-the user: offer a corrected version and produce it only when the user asks.
-The agent's Corrected Draft output and its Auto-correct principle apply when it
-runs as Phase 6 of a full paper run, not in this mode (#1062).
+The deliverable of this mode is the citation error report (the agent's Citation
+Audit Report): the errors found, the Corrected Reference List, and each in-text
+correction listed with its location and the exact replacement citation where
+one exists. Report a remark about a correct entry, such as a wording suggestion
+for the sentence that cites it, apart from the error list. Leave the user's
+excerpt or draft text to the user: offer a corrected version and produce it
+only when the user asks. In this mode the agent's Auto-correct principle covers
+the reference list and the listed replacements; its Corrected Draft output
+applies when it runs as Phase 5a of a full or revision run, not here (#1062).
 
 ---
 
