@@ -125,9 +125,19 @@ skill in 2 of 2. Cost: US$1.58.
   judge (same model, asked to quote evidence first) passed. Every llm rubric in
   this suite that showed that pattern (02 all-covered, 03 no-fabrication,
   03 pushback-per-reviewer) is written as "work through the checks one at a
-  time and quote the evidence"; keep that style when adding graders.
+  time and quote the evidence", except 01 all-9-covered (below); keep that
+  style when adding graders.
 - **no-rewrite is judged, not regex-checked.** Manuscript prose vs. quoted
   reviewer text cannot be told apart lexically. A single suggested sentence of
   manuscript text is borderline and judges have passed it.
+- **01 all-9-covered accepts a finer split (#1062).** `revision_coach_agent.md`
+  splits a comment that makes more than one request, so comment 2-1 may appear
+  as two items. The grader passes that split, does not fail an extra row such as
+  one for a positive remark, and matches items by content and reviewer rather
+  than by number. On `claude-fable-5-2` all three with-plugin runs failed the
+  earlier wording, and each of them listed comment 2-1 as two rows (#1062).
+  It is not yet in the quote-the-evidence style: on the current wording 5 of 6
+  with-plugin runs passed, and the run that failed listed all nine comments,
+  attributed correctly, plus an extra note row (judges 0 of 3).
 - **05 and 07 show Δ 0** — the base model already handles them. They stay as
   regression guards.

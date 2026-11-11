@@ -163,7 +163,13 @@ required on the conversion negative, real journal names replaced).
   entries are plain and the grader treats either remark as neutral.
 - **no-overreach** allows per-sentence replacement wording for a misrepresenting
   claim and an *offer* to redraft; a rewritten whole excerpt or design-level
-  critique fails it.
+  critique fails it. Before #1062 the skill sent standalone citation-check to
+  `citation_compliance_agent.md`, whose Phase 5a output includes a Corrected Draft,
+  and on `claude-fable-5-2` the with-plugin arm failed this grader in 15 of 15
+  runs of cases 01-05 by returning a corrected excerpt. The Citation-Check Mode
+  section of `academic-paper/SKILL.md` now names the report, the corrected
+  reference list, and per-citation fixes as the deliverable, and keeps the
+  corrected excerpt for when the user asks.
 - **Regex presence checks are secondary.** `orphan-named` (w0.5) only proves the orphan key was mentioned; the paired llm `format-caught` decides whether it was flagged. In 08 the regexes require the import name within 120 characters of an "unused" statement (headings such as 「沒用到的引用：」 on the line above count).
 - **04 does not require the style to be named.** Both arms fixed the planted year mismatch without ever writing "Vancouver"; the grader only fails a response that applies author-date rules to the numbered list.
 - **07 and 08 show Δ 0** — the base model already handles them. They stay as

@@ -456,6 +456,19 @@ its locale-specific abbreviation and ordering checks rather than applying
 the Latin-script alphabetical checklist to Chinese names. Preserve supplied
 venue overrides and the guide's disambiguation exceptions.
 
+The deliverable of this mode is the citation error report (the agent's Citation
+Audit Report): the errors found, the Corrected Reference List, and each in-text
+correction listed with its location and the exact replacement citation where
+one exists. A sentence that misstates what a correctly listed source says is an
+error and goes in the error list. If you have a remark that reports no error,
+such as an optional wording suggestion for a sentence whose citation is
+accurate, keep it out of the errors, the corrections, and the Items Flagged for
+Review, and put it in a separate notes line. Leave the user's excerpt or draft text to the user: offer a
+corrected version and produce it only when the user asks. In this mode the
+agent's Auto-correct principle covers the reference list and the listed
+replacements; its Corrected Draft output belongs to the paper-writing runs that
+call it as Phase 5a, not to this mode (#1062).
+
 ---
 
 ## Rebuttal-Audit Mode
