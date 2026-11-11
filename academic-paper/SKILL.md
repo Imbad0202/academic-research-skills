@@ -456,6 +456,13 @@ its locale-specific abbreviation and ordering checks rather than applying
 the Latin-script alphabetical checklist to Chinese names. Preserve supplied
 venue overrides and the guide's disambiguation exceptions.
 
+The deliverable of this mode is the Citation Audit Report: the findings, the
+Corrected Reference List, and each in-text correction listed with its location
+and the exact replacement citation. Leave the user's excerpt or draft text to
+the user: offer a corrected version and produce it only when the user asks.
+The agent's Corrected Draft output and its Auto-correct principle apply when it
+runs as Phase 6 of a full paper run, not in this mode (#1062).
+
 ---
 
 ## Rebuttal-Audit Mode

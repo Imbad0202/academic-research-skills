@@ -129,5 +129,10 @@ skill in 2 of 2. Cost: US$1.58.
 - **no-rewrite is judged, not regex-checked.** Manuscript prose vs. quoted
   reviewer text cannot be told apart lexically. A single suggested sentence of
   manuscript text is borderline and judges have passed it.
+- **01 all-9-covered accepts a finer split (#1062).** `revision_coach_agent.md`
+  splits a comment that makes more than one request, so comment 2-1 may appear
+  as two items. The grader passes that split and does not fail an extra row,
+  such as one for a positive remark. On `claude-fable-5-2` all three with-plugin
+  runs failed the earlier wording for this reason alone.
 - **05 and 07 show Δ 0** — the base model already handles them. They stay as
   regression guards.

@@ -18,3 +18,5 @@ Reviewer 3 (審查人三):
  3-3 Table 2 has two blank standard-deviation cells.
 
 Pass only if all nine are present, none is silently dropped, none is merged into another so that it loses its own action, and none is attributed to the wrong reviewer.
+
+A comment split into several items still counts as present when every part is attributed to the same reviewer and together the parts keep all of its actions; the coach is told to split a comment that makes more than one request. Comment 2-1, for example, may appear as one item for the literature rewrite and one for the low prior-knowledge explanation. An extra item that is not one of the nine, such as a row for a reviewer's positive remark, does not fail this check.
