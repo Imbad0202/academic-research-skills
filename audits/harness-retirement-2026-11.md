@@ -15,8 +15,8 @@
 
 - **Findings: 0 P0, 0 P1, 1 P2 (three sentences in two files), accepted and applied.**
 - The month's prompt changes trace to 13 merged PRs, each anchored to an issue: #823-#826, #857/#882, #849, #862 Phase 1, #890, #894, #916, #927, #928, #938, #973, #1001, #1037. None of them adds a model pin, a sampling override, a generic anti-hallucination line, a teaching few-shot block, or an open retry loop.
-- Two changes this period are themselves retirements of debt-like patterns, landed through their own reviewed PRs: hedging as a substitute for missing evidence was replaced by `[MATERIAL GAP]` or omission in `draft_writer_agent` (#825), and fixed quotas (TEEL ≥80%, 120-200-word paragraphs, the em-dash and semicolon counts, the fixed 250-word abstract) were replaced by judgement tied to author and venue requirements (#825, #862).
-- **P2-F01:** three sentences added by #862 Phase 1 state what the change does *not* claim. They are addressed to a reader of the repository, not to the model, they are not lint-pinned, and the same scope statement lives in `shared/output_language_pair.md` and `CHANGELOG.md`.
+- Two changes this period are themselves retirements of debt-like patterns, landed through their own reviewed PRs: hedging as a substitute for missing evidence was replaced by `[MATERIAL GAP]` or omission in `draft_writer_agent` (#825), fixed quotas (TEEL ≥80%, 120-200-word paragraphs, the em-dash and semicolon counts) were replaced by judgement tied to author and venue requirements (#825), and the fixed abstract lengths in `abstract_bilingual_agent` and `structure_architect_agent` were replaced by a lookup in one regime table keyed by paper type and language pair, with a venue limit taking precedence (#862).
+- **P2-F01:** three sentences added by #862 Phase 1 state, in whole or in part, how far the change's claim reaches. They are addressed to a reader of the repository, not to the model, they are not lint-pinned, and the same scope statement lives in `shared/output_language_pair.md` and `CHANGELOG.md`.
 
 ### Findings by issue #1034 category
 
@@ -42,14 +42,15 @@ Excerpt (:43): "This pins the literals, not the rendered output: no rendered-out
 Excerpt (:369): "Absence is the legacy state, and what stays put is exact: the omitted key,
   the legacy object keys, and the heading literals — so a pre-#862 handoff keeps the same
   keys, headings, and serialized shape, and every downstream step then omits the value too."
-Rationale: each sentence mixes an instruction (treat absence as the default, keep the
-  legacy keys and headings) with a statement of what the release does not claim. The
-  second part tells a reviewer of the repository how far the change's evidence goes; it
-  gives the model no action. The same scope statement is in
-  shared/output_language_pair.md:99-101 and in the CHANGELOG 3.22.0 entry. No lint pins
+Rationale: the sentences at :32 and :369 mix an instruction (treat absence as the
+  default, keep the legacy keys and headings) with a statement of how far the change's
+  claim reaches; the sentence at :43 is only such a statement. That statement tells a
+  reviewer of the repository how far the change's evidence goes; it gives the model no
+  action. The same scope statement is in shared/output_language_pair.md:77 and :116-117
+  and in the CHANGELOG 3.22.0 entry. No lint pins
   these sentences (grep over scripts/, shared/, tests/; check_output_language_pair_contract()
   checks registry membership and the default token, not this wording).
-Proposed: keep the instruction, drop the claim-scope clause.
+Proposed: keep the instructions, drop the claim-scope wording.
   :32 -> "Absence is the legacy state, not a gap: the legacy object keys and the heading
          literals below stay as they are, and the serialized key is omitted."
   :43 -> delete the sentence "This pins the literals, not the rendered output: no
@@ -57,7 +58,8 @@ Proposed: keep the instruction, drop the claim-scope clause.
   :369 -> "Absence is the legacy state: the key stays omitted, and the legacy object keys
           and heading literals stay as they are, so every downstream step omits the value too."
 Risk: low. The headings and keys are pinned by check_spec_consistency.py (line 1310 pins
-  "### English Abstract" / "### Chinese Abstract"); the behaviour does not change.
+  "### English Abstract" / "### Chinese Abstract"), and the instructions the model acts on
+  are unchanged. The lint checks file text, not runs; the effect on runs is unmeasured.
 Decision: accepted by the maintainer on 2026-11-11 and applied in this change.
 ```
 
@@ -95,7 +97,7 @@ Kept: the block is the input grammar for `scripts/verify_panel_recommendations.p
 - Sampling and budget overrides (`temperature`, `top_p`, `max_tokens`, `budget_tokens`): **0 hits.**
 - Few-shot headings (`Example N`, `<example>`): **0 hits.**
 - Anti-hallucination phrasing: every new hit is a domain contract clause (#574 A5 no-invention, #882 DOI evidence boundary, #825 `[MATERIAL GAP]` routing, #916 bounded absence claims). High-stakes academic-citation domain: kept per the iron rule.
-- Largest bodies: `formatter_agent` 1,022 lines, `draft_writer_agent` 685, `literature_strategist_agent` 663. No new generic block contributes to their size this period; the growth is contract text listed above.
+- Largest bodies: `formatter_agent` 1,022 lines, `draft_writer_agent` 685, `literature_strategist_agent` 663. Their growth this period is the instruction/data boundary block (in all three) and the contract text listed above (the #862 Schema 4 section, the #916 method-weaknesses block, the #928 formatter scope rules); no other shared block was added.
 
 ## Verification
 

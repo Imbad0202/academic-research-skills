@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- **The 2026-11 harness-retirement audit trims three maintainer-facing sentences from two agent prompts (#1034).** `audits/harness-retirement-2026-11.md` reviewed every Bucket A prompt change since the 2026-09 audit (13 PRs, 23 files) and found 0 P0 and 0 P1. Its one P2 finding: three sentences that #862 Phase 1 added to `abstract_bilingual_agent.md` and `draft_writer_agent.md` mixed an instruction with a statement of what the release does not claim. The instruction stays; the claim-scope clause, which gave the model no action, is removed. The same scope statement remains in `shared/output_language_pair.md` and in the 3.22.0 entry below. The heading literals and legacy keys are unchanged and still lint-pinned; the effect on runs is unmeasured.
+- **The 2026-11 harness-retirement audit trims three maintainer-facing sentences from two agent prompts (#1034).** `audits/harness-retirement-2026-11.md` reviewed every Bucket A prompt change since the 2026-09 audit (13 PRs, 23 files) and found 0 P0 and 0 P1. Its one P2 finding: three sentences that #862 Phase 1 added to `abstract_bilingual_agent.md` and `draft_writer_agent.md` state, in whole or in part, how far that release's claim reaches. The instructions in them stay; the claim-scope wording, which gave the model no action, is removed. The same scope statement remains in `shared/output_language_pair.md` and in the 3.22.0 entry below. The heading literals and legacy keys are unchanged and still lint-pinned; the effect on runs is unmeasured.
 
 ### Docs
 
