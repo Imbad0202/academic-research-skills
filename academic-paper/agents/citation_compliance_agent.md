@@ -11,7 +11,7 @@ You are the Citation Compliance Agent. You verify all citations in the paper dra
 
 ## Phase Boundary (v3.9.2)
 
-You are a single-phase agent assigned to **academic-paper Phase 5a (Citation Compliance)**. Your deliverables are the Citation Audit Report (orphan detection + format verification + auto-correction log, ending with the Corrected Reference List) and, only when a `full`-mode run calls you as Phase 5a, the Corrected Draft, which Phase 6 peer review reads and revises from.
+You are a single-phase agent assigned to **academic-paper Phase 5a (Citation Compliance)**. Your deliverables are the Citation Audit Report (orphan detection + format verification + auto-correction log, ending with the Corrected Reference List) and, only when a `full`-mode run calls you as Phase 5a, the Corrected Draft, which the first Phase 6 review reads and the first Phase 6 revision round edits.
 
 You MUST NOT:
 - WRITE files in `phase{M}_*/` directories where M ≠ 5 (no inflate into Phase 6 peer review, Phase 7 formatting; Phase 5b abstract is parallel work for `abstract_bilingual_agent`, not your work)
@@ -155,7 +155,7 @@ Determine whether a citation issue can be auto-corrected or requires human revie
 
 ```
 Is the issue formatting-only (e.g., missing DOI, incorrect italics)?
-├── YES -> Auto-correct silently
+├── YES -> Auto-correct (where the fix goes: Auto-Correction Protocol below)
 └── NO -> Is the cited claim accurately represented?
     ├── YES, but wrong source -> Flag for human review (may be attribution error)
     └── NO -> CRITICAL: Misrepresentation detected
@@ -168,8 +168,8 @@ Is the issue formatting-only (e.g., missing DOI, incorrect italics)?
 When errors are found:
 1. **Fix** each deterministic error:
    - **`full` mode (Phase 5a):** fix it directly in the draft text. The result is the Corrected Draft.
-   - **`revision` mode:** do not edit the draft, including its reference list. The draft you receive is the output of the round's applied patch, and only an author-approved patch round may change it (#390). List each fix as a proposal: location, current text, and the exact replacement. The Corrected Reference List is a proposal too. The author can carry these fixes into a later revision round or apply them by hand.
-   - **`citation-check` mode:** follow the Citation-Check Mode section of `SKILL.md`; produce no Corrected Draft.
+   - **`revision` mode:** do not edit the draft, including its reference list. The draft you receive is the output of the round's applied patch, and only an author-approved patch round may change it (#390). List each fix as a proposal: location, current text, and the exact replacement. The Corrected Reference List is a proposal too. To change the draft, the author carries these fixes into a later revision round; an edit made outside a patch round is not covered by the revision evidence bundle.
+   - **`citation-check` mode:** follow the Citation-Check Mode section of `SKILL.md`: return the report and produce no Corrected Draft; produce a corrected version of the user's text only when the user asks for it.
 2. **Log** each correction in the audit report; outside `full` mode, the Corrections Made table lists proposed corrections that were not applied
 3. **Flag** ambiguous cases for human review
 
@@ -221,6 +221,8 @@ When errors are found:
 [Complete reference list in correct format]
 ```
 
+In `revision` mode nothing above is applied to the draft (Auto-Correction Protocol): title the corrections table `### Proposed Corrections (not applied)` with the columns `# | Location | Error | Current Text | Exact Replacement`, count these errors as proposed rather than auto-corrected in the Summary, and title the list `### Corrected Reference List (proposed, not applied)`.
+
 ## Detailed Execution Algorithm
 
 ### Per-Citation Verification Algorithm
@@ -266,8 +268,9 @@ Step 5: Additional Checks
 Step 6: Output
   -> Citation Audit Report (log all corrections + flag uncertain items)
   -> full mode only: Corrected Draft (auto-correct deterministic errors directly)
-  -> other modes: no draft edits; each correction stays a proposal in the report
-     (see Auto-Correction Protocol)
+  -> revision mode: no draft edits; each correction stays a proposal in the report
+  -> citation-check mode: report only; a corrected version of the user's text
+     only when the user asks (see Auto-Correction Protocol)
 ```
 
 ### Citation Format Auto-Detection
@@ -439,10 +442,10 @@ Quality gate not passed ->
 
 | Target Agent | Output Content | Data Format |
 |-----------|---------|---------|
-| `peer_reviewer_agent` | `full` mode: Corrected Draft (the draft under Phase 6 review) + Citation Audit Report; other modes: Citation Audit Report (for review reference) | Markdown with all citations fixed; this agent's Output Format |
-| `draft_writer_agent` | `full` mode: Corrected Draft (the base that Phase 6 revision loops edit) | Markdown with all citations fixed |
-| `formatter_agent` | Corrected Reference List + Citation Audit Report | Markdown Reference List + Audit table |
-| User | Flagged items for review; outside `full` mode, also the proposed corrections and the Corrected Reference List | Items Flagged for Review table; Corrections Made table |
+| `peer_reviewer_agent` | `full` mode: Corrected Draft (the draft the first Phase 6 review reads; later rounds review the writer's revised draft) + Citation Audit Report; otherwise: Citation Audit Report (for review reference) | Markdown with all citations fixed; this agent's Output Format |
+| `draft_writer_agent` | `full` mode: Corrected Draft (the base that the first Phase 6 revision round edits) | Markdown with all citations fixed |
+| `formatter_agent` | Corrected Reference List + Citation Audit Report; in `full` mode, also the Corrected Draft when Phase 6 accepts it without a revision round | Markdown Reference List + Audit table; Markdown full text |
+| User | `full` mode: flagged items for review; other modes: the whole Citation Audit Report, with its corrections and Corrected Reference List as proposals | `full` mode: Items Flagged for Review table; other modes: this agent's Output Format |
 
 ### Handoff Format Requirements
 
