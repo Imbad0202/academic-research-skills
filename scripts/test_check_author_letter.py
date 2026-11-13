@@ -138,14 +138,50 @@ def test_refs_outside_the_roadmap_tables_are_not_roadmap_items():
     assert cal.roadmap_refs(PACKAGE) == ["R1", "R2", "S1"]
 
 
-def test_a_letter_without_an_appendix_fails():
-    letter = LETTER.split("## 附錄")[0]
-    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+def test_a_letter_with_one_level_2_heading_has_no_appendix():
+    problems = cal.check("# 審查意見\n\n## 審查決定\n\n大幅修改。\n", PACKAGE, MANUSCRIPT)
     assert any(p.startswith("[AUTHOR-LETTER-APPENDIX]") for p in problems)
 
 
-def test_an_english_appendix_heading_is_read():
-    letter = LETTER.replace("## 附錄", "## Appendix")
+def test_a_letter_cut_before_its_appendix_fails():
+    letter = LETTER.split("## 附錄")[0]
+    assert cal.check(letter, PACKAGE, MANUSCRIPT)
+
+
+@pytest.mark.parametrize("heading", ["## Appendix", "## Apéndice", "## 附录", "## 부록"])
+def test_the_appendix_heading_can_be_in_any_language(heading):
+    letter = LETTER.replace("## 附錄", heading)
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+def test_a_quote_wrapped_onto_a_new_line_is_checked():
+    wrapped = LETTER.replace("「本研究以虛構的三所學校為例」", "「本研究以虛構的\n三所學校為例」")
+    assert cal.check(wrapped, PACKAGE, MANUSCRIPT) == []
+    absent = LETTER.replace("請說明三所學校怎麼選出", "「原稿沒有的第一行\n以及第二行」")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(absent, PACKAGE, MANUSCRIPT))
+
+
+def test_a_body_item_left_out_of_the_letter_fails():
+    letter = LETTER.replace("3. 〔§5〕政策建議和發現分開寫。\n", "")
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert "[AUTHOR-LETTER-MAPPING] item map item 3 is not a numbered item of the body" in problems
+
+
+def test_an_item_map_that_repeats_an_item_number_fails():
+    letter = LETTER.replace("| 2 | R2 |", "| 1 | R2 |")
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert "[AUTHOR-LETTER-MAPPING] item map item 1 appears more than once" in problems
+    assert "[AUTHOR-LETTER-MAPPING] body item 2 is not in the item map" in problems
+
+
+def test_a_row_with_two_refs_fails():
+    letter = LETTER.replace("| 3 | S1 |", "| 3 | S1 | R2 |")
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert any("needs one item number and one ref" in p for p in problems)
+
+
+def test_bulleted_questions_are_not_items():
+    letter = LETTER.replace("## 附錄", "## 請作者回答的問題\n\n- 第二年的樣本有沒有換人？\n\n## 附錄")
     assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
 
 
