@@ -342,3 +342,61 @@ def test_a_body_item_numbered_twice_fails():
 def test_a_numbered_item_in_the_appendix_fails():
     letter = LETTER.replace("### 項次對照", "### 各審查人摘要\n\n1. 審查人一\n\n### 項次對照")
     assert any("the appendix has a numbered item" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_case_must_match_in_a_quotation():
+    ms = MANUSCRIPT + "Each well held 5 mM glucose.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "“Each well held 5 mm glucose.”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, ms))
+
+
+def test_a_straight_and_a_curly_apostrophe_are_the_same_mark():
+    ms = MANUSCRIPT + "The patients' outcomes worsened.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "“The patients’ outcomes worsened.”")
+    assert cal.check(letter, PACKAGE, ms) == []
+
+
+@pytest.mark.parametrize("ms_text,quote", [("Add caféine to the cup.", "café"), ("An étude for piano.", "tude")])
+def test_word_boundaries_count_for_accented_letters(ms_text, quote):
+    letter = LETTER.replace("請說明三所學校怎麼選出", f"“{quote}”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT + ms_text + "\n"))
+
+
+def test_a_latin_term_beside_cjk_text_needs_no_boundary():
+    ms = MANUSCRIPT + "本研究以BMI指數衡量體型。\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "原稿的「BMI」")
+    assert cal.check(letter, PACKAGE, ms) == []
+
+
+ACCEPT_APPENDIX = ACCEPT + "\n## 附錄\n\n### 這份審查的限制\n\nAI 模擬。\n\n### 項次對照\n\n"
+
+
+def test_a_horizontal_rule_is_not_an_item_map_table():
+    problems = cal.check(ACCEPT_APPENDIX + "---\n", EMPTY_PACKAGE, MANUSCRIPT)
+    assert any("the item map has no table" in p for p in problems)
+
+
+def test_a_header_row_alone_is_not_a_table():
+    problems = cal.check(ACCEPT_APPENDIX + "| 項次 | 審查紀錄編號 |\n", EMPTY_PACKAGE, MANUSCRIPT)
+    assert any("the item map has no table" in p for p in problems)
+
+
+def test_a_row_without_a_ref_fails():
+    letter = ACCEPT_APPENDIX + "| 項次 | 審查紀錄編號 |\n|---|---|\n| 1 | — |\n"
+    problems = cal.check(letter, EMPTY_PACKAGE, MANUSCRIPT)
+    assert any("needs one item number and one ref" in p for p in problems)
+
+
+def test_a_table_without_outer_pipes_is_read():
+    table = "| 項次 | 審查紀錄編號 |\n|------|---------------|\n| 1 | R1 |\n| 2 | R2 |\n| 3 | S1 |\n"
+    bare = "項次 | 審查紀錄編號\n--- | ---\n1 | R1\n2 | R2\n3 | S1\n"
+    assert table in LETTER
+    assert cal.check(LETTER.replace(table, bare), PACKAGE, MANUSCRIPT) == []
+    package = PACKAGE.replace("| R1 | Describe how the schools were chosen | SC-1 |", "R1 | Describe how the schools were chosen | SC-1")
+    assert package != PACKAGE
+    assert cal.check(LETTER, package, MANUSCRIPT) == []
+
+
+def test_a_header_row_over_a_horizontal_rule_is_not_a_table():
+    problems = cal.check(ACCEPT_APPENDIX + "| 項次 | 審查紀錄編號 |\n---\n", EMPTY_PACKAGE, MANUSCRIPT)
+    assert any("the item map has no table" in p for p in problems)

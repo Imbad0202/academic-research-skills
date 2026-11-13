@@ -11,13 +11,14 @@ a revision item, so this script checks three things:
              quotation can wrap onto the next line inside a paragraph. ‘…’ is
              allowed only inside another quotation, because its closing mark
              is also the apostrophe (“the patients’ outcomes”); a ‘ outside a
-             quotation is a problem. Both sides are compared after
-             ``dispatch_panel_claim_audit._norm`` with double quotation marks
-             (" “ ” 「 」 『 』) removed and the space between two CJK characters
-             removed; apostrophes and single quotation marks stay, and a
-             quotation that starts or ends with a Latin letter or digit must
-             start or end at a word boundary of the manuscript, so
-             "significant" does not match inside "insignificant". Skipped,
+             quotation is a problem. Both sides are compared after NFC, with
+             whitespace runs made one space, double quotation marks
+             (" “ ” 「 」 『 』) removed, the space between two CJK characters
+             removed, and ‘ ’ read as '. Case, other marks, and digits must
+             match. A quotation that starts or ends with a letter or digit of
+             a script that puts spaces between words must start or end at a
+             word boundary of the manuscript, so "significant" does not match
+             inside "insignificant" nor "café" inside "caféine". Skipped,
              with a notice, when no manuscript file is given.
   ids        the whole letter, the appendix included, holds no machine line or
              internal id, and only the body has numbered items. The appendix is the letter's last level-2 heading, whatever
@@ -25,11 +26,12 @@ a revision item, so this script checks three things:
              searched for, because a manuscript location such as "Table S1"
              has the same form.
   item map   the item map is the appendix's last level-3 subsection and holds a
-             table, with no rows when there are no changes. Each of
-             its table rows that holds a transport ref has one item number and
-             one ref; the item numbers are the numbered items of the body, each
-             once; the refs are the rows of the Required and Suggested
-             Revisions tables of the package, each once.
+             table: a header row and a delimiter row, then no rows when there
+             are no changes. Outer pipes are optional. Each row of the table
+             has one item number and one ref; the item numbers are the
+             numbered items of the body, each once; the refs are the rows of
+             the Required and Suggested Revisions tables of the package, each
+             once.
 
 Exit 0 pass / 1 problems found / 2 missing or unreadable input.
 """
@@ -39,19 +41,16 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import unicodedata
 from pathlib import Path
-
-try:
-    from dispatch_panel_claim_audit import _norm
-except ImportError:  # pragma: no cover - dual-path import
-    from scripts.dispatch_panel_claim_audit import _norm
 
 # The reviewer claim check's quotation marks (audit_panel_claims._QUOTED),
 # read inside one paragraph. Single quotation marks are left out: ’ is also
 # the apostrophe, so a ‘…’ span has no reliable end (template Rule 4).
 _QUOTED = re.compile(r'"([^"]+)"|“([^”]+)”|「([^」]+)」|『([^』]+)』')
 _QUOTE_MARKS = str.maketrans("", "", "\"“”「」『』")
-_TABLE_RULE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$", re.MULTILINE)
+# A delimiter row of two or more columns; outer pipes are optional.
+_TABLE_RULE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$")
 _CJK_CHAR = "\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef"
 _CJK_GAP = re.compile(f"(?<=[{_CJK_CHAR}]) (?=[{_CJK_CHAR}])")
 _PARAGRAPH = re.compile(r"\n\s*\n")
@@ -115,23 +114,35 @@ def stray_single_quotes(text: str) -> int:
 
 
 def _squeeze(text: str) -> str:
-    """``_norm`` with quotation marks removed and no space between two CJK
-    characters; English words stay one space apart."""
-    flat = " ".join(_norm(text).translate(_QUOTE_MARKS).split())
+    """NFC, one space for each whitespace run, double quotation marks
+    removed, no space between two CJK characters, and ‘ ’ read as '. Case
+    stays: "5 mM" is not "5 mm"."""
+    text = unicodedata.normalize("NFC", text).replace("‘", "'").replace("’", "'")
+    flat = " ".join(text.translate(_QUOTE_MARKS).split())
     return _CJK_GAP.sub("", flat)
+
+
+def _wordish(ch: str) -> bool:
+    """A letter, digit, or combining mark of a script that puts spaces
+    between words; a CJK character is not, so a CJK quotation needs no
+    word boundary."""
+    if not ch or re.match(f"[{_CJK_CHAR}]", ch):
+        return False
+    return ch.isalnum() or unicodedata.category(ch).startswith("M")
 
 
 def _found(quote: str, haystack: str) -> bool:
     """``quote`` occurs in ``haystack``, and where it starts or ends with a
-    Latin letter or digit, the occurrence starts or ends at a word boundary."""
+    letter or digit of a spaced script, the occurrence starts or ends at a
+    word boundary."""
     if not quote:
         return True
     start = 0
     while (at := haystack.find(quote, start)) != -1:
         before = haystack[at - 1] if at else ""
         after = haystack[at + len(quote)] if at + len(quote) < len(haystack) else ""
-        head_ok = not (quote[0].isascii() and quote[0].isalnum() and before.isascii() and before.isalnum())
-        tail_ok = not (quote[-1].isascii() and quote[-1].isalnum() and after.isascii() and after.isalnum())
+        head_ok = not (_wordish(quote[0]) and _wordish(before))
+        tail_ok = not (_wordish(quote[-1]) and _wordish(after))
         if head_ok and tail_ok:
             return True
         start = at + 1
@@ -148,24 +159,35 @@ def _cells(line: str) -> list[str]:
     return [c.strip().strip("`*") for c in line.strip().strip("|").split("|")]
 
 
-def map_rows(text: str) -> tuple[list[tuple[str, str]], list[str]]:
-    """(item, ref) for each table row that holds a transport ref, and a
-    problem for each such row that does not have exactly one item number and
-    one ref."""
-    rows, problems = [], []
-    for line in text.splitlines():
-        if not line.lstrip().startswith("|"):
-            continue
+def table_rows(text: str) -> list[str] | None:
+    """The data rows of the first table in ``text``: a line with a pipe,
+    then a delimiter row, then the rows up to a blank line. None when
+    ``text`` has no such table."""
+    lines = text.splitlines()
+    for i in range(len(lines) - 1):
+        if "|" in lines[i] and _TABLE_RULE.match(lines[i + 1]):
+            rows = []
+            for line in lines[i + 2:]:
+                if not line.strip():
+                    break
+                rows.append(line)
+            return rows
+    return None
+
+
+def map_rows(rows: list[str]) -> tuple[list[tuple[str, str]], list[str]]:
+    """(item, ref) for each row of the item map, and a problem for each row
+    that does not have exactly one item number and one ref."""
+    pairs, problems = [], []
+    for line in rows:
         cells = _cells(line)
         refs = [c for c in cells if _REF.match(c)]
-        if not refs:
-            continue
         items = [c for c in cells if _ITEM.match(c)]
         if len(refs) != 1 or len(items) != 1:
             problems.append(f"[AUTHOR-LETTER-MAPPING] item map row needs one item number and one ref: {line.strip()[:60]!r}")
             continue
-        rows.append((items[0], refs[0]))
-    return rows, problems
+        pairs.append((items[0], refs[0]))
+    return pairs, problems
 
 
 def roadmap_refs(package: str) -> list[str]:
@@ -175,8 +197,8 @@ def roadmap_refs(package: str) -> list[str]:
         if _HEADING.match(line):
             inside = bool(_ROADMAP_HEADING.match(line))
             continue
-        if inside and line.lstrip().startswith("|"):
-            first = line.strip().strip("|").split("|")[0].strip().strip("`*")
+        if inside and "|" in line:
+            first = _cells(line)[0]
             if _REF.match(first):
                 refs.append(first)
     return refs
@@ -202,10 +224,11 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
             problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the letter matches {pattern.pattern!r}")
     if _NUMBERED.search(appendix):
         problems.append("[AUTHOR-LETTER-MAPPING] the appendix has a numbered item; only the changes are numbered")
-    mapping = item_map(appendix)
-    if appendix and mapping and not _TABLE_RULE.search(mapping):
-        problems.append("[AUTHOR-LETTER-APPENDIX] the item map has no table; with no changes it is a table with no rows")
-    rows, row_problems = map_rows(mapping)
+    table = table_rows(item_map(appendix))
+    if appendix and _LEVEL3.search(appendix) and table is None:
+        problems.append("[AUTHOR-LETTER-APPENDIX] the item map has no table (a header row and a delimiter row); "
+                        "with no changes it is a table with no rows")
+    rows, row_problems = map_rows(table or [])
     problems += row_problems
     mapped, items = [ref for _, ref in rows], [item for item, _ in rows]
     numbered = _NUMBERED.findall(body)
