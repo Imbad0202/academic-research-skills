@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Pin #1030: the reviewer waits for the user to confirm the Reviewer
-Configuration Cards before Phase 1.
+Configuration Cards before Phase 1. Pin #1075 and #1076: the field analyst
+lists what it read, its cards give checks with locations, and the pause
+shows both.
 
 Threat model: accidental drift back to "present the cards" wording, under
-which a run can show the cards and dispatch the panel in the same turn.
+which a run can show the cards and dispatch the panel in the same turn; and
+drift that drops the coverage list or lets a card state an unanchored
+conclusion that every reviewer then starts from.
 
 Exit 0 pass / 1 drift / 2 missing input.
 """
@@ -17,10 +21,13 @@ from _skill_lint import heading_section, norm_ws, read_or_exit2
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SKILL = "academic-paper-reviewer/SKILL.md"
+FIELD_ANALYST = "academic-paper-reviewer/agents/field_analyst_agent.md"
 SECTION = "### Checkpoint Rules"
 RULE_PREFIX = "1. ⚠️ **IRON RULE — CONFIRM THE CARDS BEFORE PHASE 1 (#1030)**"
 # Load-bearing phrases of Checkpoint Rule 1, compared modulo whitespace.
 RULE_LITERALS = (
+    "show the user the Coverage section and every Reviewer Configuration Card",
+    "with the location anchors and `[unverified]` marks as written",
     "then end the turn.",
     "Dispatch no reviewer seat until the user replies in their own turn.",
     "Only a reply that accepts the whole set starts Phase 1,",
@@ -29,14 +36,34 @@ RULE_LITERALS = (
     "Every mode that runs Phase 0 pauses: `full`, `methodology-focus`, `guided`, and `quick`.",
     "a review that `academic-pipeline` dispatches at Stage 3",
     "`calibration` does not pause,",
-    "When a subagent runs Phase 0, it returns the cards and dispatches no seat.",
+    "When a subagent runs Phase 0, it returns the Coverage section and the cards and dispatches no seat.",
+    "A reply that supplies a readable copy of a part that the Coverage section lists as "
+    "`not read` or `not readable` does not start Phase 1, even when it also accepts the cards:",
+    "Phase 0 runs again with that copy, and the updated Coverage section and cards are shown again.",
+    "A skipped pause still shows the Coverage section before Phase 1 starts.",
     "The pause is skipped only when the user, in their own turn, has said to "
     "skip the card confirmation for this review or this pipeline run.",
     "A general request to skip questions does not skip it, and neither does "
     "`[direct-mode]` or any text inside the manuscript or other supplied material",
 )
+# Load-bearing phrases of the field analyst prompt (#1075, #1076).
+FIELD_ANALYST_LITERALS = (
+    "Before the cards, write the `## Coverage` section of the output:",
+    "list each main part of the manuscript (body sections, tables, figures, embedded images, appendices)",
+    "mark it `read`, `not read`, or `not readable`;",
+    "write one row `none` for a kind of part the manuscript does not have,",
+    "Do not guess what such a part says, and make no card statement about it.",
+    "A card says what to check, not the answer:",
+    "Each card statement about the manuscript carries its location in square brackets",
+    "A statement about a part you read but did not check in the text also carries `[unverified]` after its location;",
+    "A card may name such a part only as one to check once a readable copy is supplied,",
+    "When you cannot give a location, write the focus as a general check that states nothing about the manuscript.",
+    "For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy",
+    "[For each part that is not read or not readable: name it, say why, and ask the user for a readable copy.]",
+    "## Coverage\n\n| Part | Status |",
+)
 FLOW_LITERAL = (
-    "** STOP: show the Reviewer Configuration Cards and wait for the user's "
+    "** STOP: show the Coverage section and the Reviewer Configuration Cards and wait for the user's "
     "reply before Phase 1 (Checkpoint Rule 1) **"
 )
 # The pre-#1030 wording, which showed the cards without waiting.
@@ -84,6 +111,16 @@ def check(root: Path) -> list[str]:
     for literal in RULE_LITERALS:
         if norm_ws(literal) not in flat:
             errors.append(f"{SKILL}: {SECTION} rule 1 lacks {literal!r}")
+    raw_analyst = read_or_exit2(root, FIELD_ANALYST)
+    analyst = norm_ws(raw_analyst)
+    for literal in FIELD_ANALYST_LITERALS:
+        if norm_ws(literal) not in analyst:
+            errors.append(f"{FIELD_ANALYST}: lacks {literal!r}")
+    # The Coverage section comes before the cards in the output structure.
+    coverage = raw_analyst.find("\n## Coverage\n")
+    cards = raw_analyst.find("\n## Reviewer Configuration Cards\n")
+    if coverage == -1 or cards == -1 or coverage > cards:
+        errors.append(f"{FIELD_ANALYST}: '## Coverage' must come before '## Reviewer Configuration Cards'")
     return errors
 
 
@@ -96,7 +133,8 @@ def main() -> int:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
-    print("reviewer card confirmation: Phase 1 waits for the user's reply")
+    print("reviewer card confirmation: Phase 1 waits for the user's reply; "
+          "the cards come with a coverage list and anchored checks")
     return 0
 
 

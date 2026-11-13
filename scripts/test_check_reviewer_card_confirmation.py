@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 
 from check_reviewer_card_confirmation import (
+    FIELD_ANALYST,
+    FIELD_ANALYST_LITERALS,
     FLOW_LITERAL,
     RETIRED,
     RULE_LITERALS,
@@ -32,16 +34,17 @@ def _run(root: Path) -> subprocess.CompletedProcess[str]:
 
 @pytest.fixture()
 def tree(tmp_path: Path) -> Path:
-    dst = tmp_path / SKILL
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(REPO_ROOT / SKILL, dst)
+    for rel in (SKILL, FIELD_ANALYST):
+        dst = tmp_path / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(REPO_ROOT / rel, dst)
     return tmp_path
 
 
-def _mutate(root: Path, old: str, new: str) -> None:
+def _mutate(root: Path, old: str, new: str, rel: str = SKILL) -> None:
     # Match across any whitespace run, as the lint does, so rewrapping a
     # pinned sentence does not break its mutation test.
-    path = root / SKILL
+    path = root / rel
     text = path.read_text(encoding="utf-8")
     pattern = r"\s+".join(re.escape(word) for word in old.split())
     mutated, count = re.subn(pattern, lambda _: new, text, count=1)
@@ -122,3 +125,31 @@ def test_literal_moved_out_of_rule_one_fails(tree: Path) -> None:
     result = _run(tree)
     assert result.returncode == 1
     assert "rule 1 lacks" in result.stderr
+
+
+@pytest.mark.parametrize("literal", FIELD_ANALYST_LITERALS)
+def test_each_field_analyst_literal_is_load_bearing(tree: Path, literal: str) -> None:
+    _mutate(tree, literal, "", rel=FIELD_ANALYST)
+    result = _run(tree)
+    assert result.returncode == 1
+    assert f"{FIELD_ANALYST}: lacks" in result.stderr
+
+
+def test_missing_field_analyst_is_exit_2(tree: Path) -> None:
+    (tree / FIELD_ANALYST).unlink()
+    assert _run(tree).returncode == 2
+
+
+def test_coverage_after_the_cards_fails(tree: Path) -> None:
+    path = tree / FIELD_ANALYST
+    text = path.read_text(encoding="utf-8")
+    start = text.index("## Coverage\n")
+    end = text.index("## Reviewer Configuration Cards\n")
+    block = text[start:end]
+    text = text[:start] + text[end:]
+    marker = "## Review Strategy Recommendations\n"
+    text = text.replace(marker, block + marker, 1)
+    path.write_text(text, encoding="utf-8")
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "must come before" in result.stderr
