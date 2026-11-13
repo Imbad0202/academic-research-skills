@@ -210,10 +210,14 @@ def test_the_skill_names_the_step_and_the_template():
     assert (REPO_ROOT / "academic-paper-reviewer" / "templates" / "author_letter_template.md").is_file()
 
 
-def test_a_nested_quotation_mark_does_not_fail_a_real_quote():
+def test_a_quotation_inside_a_quotation_fails():
+    # Template Rule 4: quote a shorter part without the inner marks instead.
     ms = MANUSCRIPT + "作者提出「雙軌制」架構。\nWe define \"burnout\" as exhaustion.\n"
-    letter = LETTER.replace("請說明三所學校怎麼選出", "原稿寫「提出『雙軌制』架構」與“We define \"burnout\" as exhaustion”")
-    assert cal.check(letter, PACKAGE, ms) == []
+    for quoted in ("原稿寫「提出『雙軌制』架構」", "“We define \"burnout\" as exhaustion”"):
+        letter = LETTER.replace("請說明三所學校怎麼選出", quoted)
+        assert any("without its pair" in p for p in cal.check(letter, PACKAGE, ms))
+    shorter = LETTER.replace("請說明三所學校怎麼選出", "原稿寫「架構」與“as exhaustion”")
+    assert cal.check(shorter, PACKAGE, ms) == []
 
 
 def test_single_quotation_marks_and_apostrophes_are_kept():
@@ -424,3 +428,36 @@ def test_a_number_wrapped_inside_a_paragraph_is_not_an_item():
 
 def test_a_paragraph_after_a_blank_line_ends_the_list():
     assert cal.numbered_items("1. a\n2. b\n\n文字\n3. c\n\n4. d\n") == ["1", "2", "4"]
+
+
+def test_an_unclosed_mark_inside_another_quotation_fails():
+    letter = LETTER.replace("本研究以虛構的三所學校為例", "本研究以“虛構的三所學校為例")
+    assert any("without its pair" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+@pytest.mark.parametrize("empty", ['""', "“”", "「」", "『』"])
+def test_an_empty_quotation_is_ignored(empty):
+    letter = LETTER.replace("請說明三所學校怎麼選出", f"請說明{empty}三所學校怎麼選出")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+def test_a_thai_quotation_needs_no_word_boundary():
+    ms = MANUSCRIPT + "ประเทศไทยมีประชากร\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "“ประเทศไทย”")
+    assert cal.check(letter, PACKAGE, ms) == []
+
+
+def test_an_indented_continuation_line_is_not_an_item():
+    assert cal.numbered_items("1. 資料涵蓋到\n   2023. 年為止。\n2. 說明抽樣方法。\n") == ["1", "2"]
+
+
+@pytest.mark.parametrize("table", ["| 項次 |\n|---|---|\n", "| 項次 | 審查紀錄編號 |\n|---|\n", "| 項次 | 審查紀錄編號 |\n|---|---|---|\n", "| 項次 | 審查紀錄編號 | 備註 |\n|---|---|---|\n"])
+def test_an_item_map_needs_exactly_two_columns(table):
+    problems = cal.check(ACCEPT_APPENDIX + table, EMPTY_PACKAGE, MANUSCRIPT)
+    assert any("the item map has no table" in p for p in problems)
+
+
+def test_a_ref_outside_the_second_column_fails():
+    letter = LETTER.replace("| 1 | R1 |", "| 1 | — | R1 |")
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert any("needs one item number and one ref" in p for p in problems)

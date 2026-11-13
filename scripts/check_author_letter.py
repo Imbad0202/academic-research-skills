@@ -19,20 +19,25 @@ a revision item, so this script checks three things:
              a script that puts spaces between words must start or end at a
              word boundary of the manuscript, so "significant" does not match
              inside "insignificant" nor "café" inside "caféine". A double
-             quotation mark left without its pair (unclosed, mismatched, or
-             nested) is a problem, because the text after it is not checked.
+             quotation mark left without its pair (unclosed or mismatched)
+             or inside another quotation is a problem, because the text
+             around it is not checked; an empty pair is ignored. Word
+             boundaries apply to Latin, Greek, and Cyrillic letters and
+             digits only.
              Skipped, with a notice, when no manuscript file is given.
   ids        the whole letter, the appendix included, holds no machine line or
              internal id, and only the body has numbered items. A number at
-             the start of a line is an item only where a Markdown list item
-             can start, so a paragraph that wraps before "2023." has none. The appendix is the letter's last level-2 heading, whatever
+             the very start of a line, with no indent, is an item only where
+             a Markdown list item can start, so a paragraph that wraps before
+             "2023." has none. The appendix is the letter's last level-2 heading, whatever
              language it is in. Bare transport refs (``R1``, ``S2``) are not
              searched for, because a manuscript location such as "Table S1"
              has the same form.
   item map   the item map is the appendix's last level-3 subsection and holds a
-             table: a header row and a delimiter row, then no rows when there
-             are no changes. Outer pipes are optional. Each row of the table
-             has one item number and one ref; the item numbers are the
+             two-column table: a header row and a delimiter row of two cells
+             each, then no rows when there are no changes. Outer pipes are
+             optional. Each row of the table is two cells, an item number and
+             then a ref; the item numbers are the
              numbered items of the body, each once; the refs are the rows of
              the Required and Suggested Revisions tables of the package, each
              once.
@@ -117,22 +122,32 @@ def stray_single_quotes(text: str) -> int:
     return count
 
 
+_DOUBLE_MARKS = "\"“”「」『』"
+_EMPTY_QUOTE = re.compile(r'""|“”|「」|『』')
+
+
 def unpaired_marks(text: str) -> int:
-    """How many double quotation marks are left outside every matched
-    quotation: an unclosed, mismatched (“…"), or nested same-mark quotation
-    leaves one, and its text would not be checked."""
+    """How many double quotation marks stand unpaired or inside a quotation.
+    An unclosed or mismatched (“…") mark leaves one outside every quotation,
+    and a mark inside a quotation is a nested quotation, which the template
+    does not allow; either way the text around it would not be checked. An
+    empty pair quotes nothing and is ignored."""
     count = 0
     for paragraph in _PARAGRAPH.split(text):
-        rest = _QUOTED.sub("", " ".join(paragraph.split()))
-        count += sum(rest.count(mark) for mark in "\"“”「」『』")
+        flat = _EMPTY_QUOTE.sub("", " ".join(paragraph.split()))
+        count += sum(_QUOTED.sub("", flat).count(mark) for mark in _DOUBLE_MARKS)
+        for match in _QUOTED.finditer(flat):
+            inner = next(g for g in match.groups() if g is not None)
+            count += sum(inner.count(mark) for mark in _DOUBLE_MARKS)
     return count
 
 
 def numbered_items(text: str) -> list[str]:
-    """The numbers of the numbered list items in ``text``. A number at the
-    start of a line counts only where a list item can start: at the top, after
-    a blank line or a heading, inside a list, or as 1 (a wrapped "...and
-    2023. However" inside a paragraph is not an item)."""
+    """The numbers of the numbered list items in ``text``. A number counts
+    only at the very start of a line, with no indent, and only where a list
+    item can start: at the top, after a blank line or a heading, inside a
+    list, or as 1. A wrapped "...and 2023. However" inside a paragraph, or an
+    indented continuation line of an item, is not an item."""
     items, in_list, can_start = [], False, True
     for line in text.splitlines():
         if not line.strip():
@@ -141,7 +156,7 @@ def numbered_items(text: str) -> list[str]:
         if _HEADING.match(line):
             in_list, can_start = False, True
             continue
-        match = _NUMBERED.match(line)
+        match = _NUMBERED.match(line) if line[:1].isdigit() else None
         if match and (can_start or in_list or match.group(1) == "1"):
             items.append(match.group(1))
             in_list = True
@@ -161,12 +176,16 @@ def _squeeze(text: str) -> str:
 
 
 def _wordish(ch: str) -> bool:
-    """A letter, digit, or combining mark of a script that puts spaces
-    between words; a CJK character is not, so a CJK quotation needs no
-    word boundary."""
-    if not ch or re.match(f"[{_CJK_CHAR}]", ch):
+    """A Latin, Greek, or Cyrillic letter, an ASCII digit, or a combining
+    mark: the characters of scripts that put spaces between words. Other
+    scripts (CJK, Thai) get no word-boundary check."""
+    if not ch:
         return False
-    return ch.isalnum() or unicodedata.category(ch).startswith("M")
+    if ch.isascii():
+        return ch.isalnum()
+    if unicodedata.category(ch).startswith("M"):
+        return True
+    return ch.isalpha() and unicodedata.name(ch, "").startswith(("LATIN ", "GREEK ", "CYRILLIC "))
 
 
 def _found(quote: str, haystack: str) -> bool:
@@ -198,12 +217,13 @@ def _cells(line: str) -> list[str]:
 
 
 def table_rows(text: str) -> list[str] | None:
-    """The data rows of the first table in ``text``: a line with a pipe,
-    then a delimiter row, then the rows up to a blank line. None when
-    ``text`` has no such table."""
+    """The data rows of the first two-column table in ``text``: a header row
+    of two cells, then a delimiter row of two cells, then the rows up to a
+    blank line. None when ``text`` has no such table."""
     lines = text.splitlines()
     for i in range(len(lines) - 1):
-        if "|" in lines[i] and _TABLE_RULE.match(lines[i + 1]):
+        if ("|" in lines[i] and len(_cells(lines[i])) == 2
+                and _TABLE_RULE.match(lines[i + 1]) and len(_cells(lines[i + 1])) == 2):
             rows = []
             for line in lines[i + 2:]:
                 if not line.strip():
@@ -215,16 +235,14 @@ def table_rows(text: str) -> list[str] | None:
 
 def map_rows(rows: list[str]) -> tuple[list[tuple[str, str]], list[str]]:
     """(item, ref) for each row of the item map, and a problem for each row
-    that does not have exactly one item number and one ref."""
+    that is not two cells: an item number, then a ref."""
     pairs, problems = [], []
     for line in rows:
         cells = _cells(line)
-        refs = [c for c in cells if _REF.match(c)]
-        items = [c for c in cells if _ITEM.match(c)]
-        if len(refs) != 1 or len(items) != 1:
+        if len(cells) != 2 or not _ITEM.match(cells[0]) or not _REF.match(cells[1]):
             problems.append(f"[AUTHOR-LETTER-MAPPING] item map row needs one item number and one ref: {line.strip()[:60]!r}")
             continue
-        pairs.append((items[0], refs[0]))
+        pairs.append((cells[0], cells[1]))
     return pairs, problems
 
 
