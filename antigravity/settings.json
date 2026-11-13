@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "read_url(api.crossref.org)",
+      "read_url(api.openalex.org)",
+      "read_url(api.semanticscholar.org)",
+      "read_url(export.arxiv.org)"
+    ]
+  }
+}
