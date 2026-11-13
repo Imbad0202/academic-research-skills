@@ -212,8 +212,30 @@ def test_the_skill_names_the_step_and_the_template():
 
 def test_a_nested_quotation_mark_does_not_fail_a_real_quote():
     ms = MANUSCRIPT + "作者提出「雙軌制」架構。\nWe define \"burnout\" as exhaustion.\n"
-    letter = LETTER.replace("請說明三所學校怎麼選出", "原稿寫「提出『雙軌制』架構」與“We define ‘burnout’ as exhaustion”")
+    letter = LETTER.replace("請說明三所學校怎麼選出", "原稿寫「提出『雙軌制』架構」與“We define \"burnout\" as exhaustion”")
     assert cal.check(letter, PACKAGE, ms) == []
+
+
+def test_single_quotation_marks_and_apostrophes_are_kept():
+    # ’ is kept, so a nested ‘…’ that the manuscript writes as "…" does not
+    # match: the letter must copy the quotation exactly or paraphrase it.
+    ms = MANUSCRIPT + "We define \"burnout\" as exhaustion.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "“We define ‘burnout’ as exhaustion”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, ms))
+
+
+def test_singular_and_plural_possessives_differ():
+    ms = MANUSCRIPT + "The patients’ records were reviewed.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "“The patient’s records were reviewed.”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, ms))
+
+
+def test_a_quote_must_start_at_a_word_boundary():
+    ms = MANUSCRIPT + "The study found an insignificant difference between groups.\n"
+    bad = LETTER.replace("請說明三所學校怎麼選出", "“significant difference between groups”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(bad, PACKAGE, ms))
+    good = LETTER.replace("請說明三所學校怎麼選出", "“an insignificant difference between groups”")
+    assert cal.check(good, PACKAGE, ms) == []
 
 
 def test_a_top_level_single_curly_quotation_fails():
@@ -258,8 +280,14 @@ def test_an_accept_letter_without_its_appendix_fails():
 
 
 def test_an_accept_letter_with_its_appendix_passes():
-    letter = ACCEPT + "\n## 附錄\n\n### 這份審查的限制\n\nAI 模擬。\n\n### 項次對照\n\n沒有修改項目。\n"
+    letter = ACCEPT + "\n## 附錄\n\n### 這份審查的限制\n\nAI 模擬。\n\n### 項次對照\n\n| 項次 | 審查紀錄編號 |\n|------|------------|\n"
     assert cal.check(letter, EMPTY_PACKAGE, MANUSCRIPT) == []
+
+
+def test_an_accept_letter_cut_before_its_item_map_fails():
+    letter = ACCEPT + "\n## 附錄\n\n### 這份審查的限制\n\nAI 模擬。\n"
+    problems = cal.check(letter, EMPTY_PACKAGE, MANUSCRIPT)
+    assert any("the item map has no table" in p for p in problems)
 
 
 def test_an_unclosed_quotation_mark_does_not_reach_the_next_paragraph():

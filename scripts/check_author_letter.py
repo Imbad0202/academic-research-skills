@@ -12,17 +12,20 @@ a revision item, so this script checks three things:
              allowed only inside another quotation, because its closing mark
              is also the apostrophe (“the patients’ outcomes”); a ‘ outside a
              quotation is a problem. Both sides are compared after
-             ``dispatch_panel_claim_audit._norm`` with quotation marks removed
-             and the space between two CJK characters removed, so a line break
-             or a nested quotation mark does not make a real quotation fail
-             and English word boundaries still count. Skipped, with a notice,
-             when no manuscript file is given.
+             ``dispatch_panel_claim_audit._norm`` with double quotation marks
+             (" “ ” 「 」 『 』) removed and the space between two CJK characters
+             removed; apostrophes and single quotation marks stay, and a
+             quotation that starts or ends with a Latin letter or digit must
+             start or end at a word boundary of the manuscript, so
+             "significant" does not match inside "insignificant". Skipped,
+             with a notice, when no manuscript file is given.
   ids        the whole letter, the appendix included, holds no machine line or
              internal id, and only the body has numbered items. The appendix is the letter's last level-2 heading, whatever
              language it is in. Bare transport refs (``R1``, ``S2``) are not
              searched for, because a manuscript location such as "Table S1"
              has the same form.
-  item map   the item map is the appendix's last level-3 subsection. Each of
+  item map   the item map is the appendix's last level-3 subsection and holds a
+             table, with no rows when there are no changes. Each of
              its table rows that holds a transport ref has one item number and
              one ref; the item numbers are the numbered items of the body, each
              once; the refs are the rows of the Required and Suggested
@@ -47,7 +50,8 @@ except ImportError:  # pragma: no cover - dual-path import
 # read inside one paragraph. Single quotation marks are left out: ’ is also
 # the apostrophe, so a ‘…’ span has no reliable end (template Rule 4).
 _QUOTED = re.compile(r'"([^"]+)"|“([^”]+)”|「([^」]+)」|『([^』]+)』')
-_QUOTE_MARKS = str.maketrans("", "", "\"'“”‘’「」『』")
+_QUOTE_MARKS = str.maketrans("", "", "\"“”「」『』")
+_TABLE_RULE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$", re.MULTILINE)
 _CJK_CHAR = "\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef"
 _CJK_GAP = re.compile(f"(?<=[{_CJK_CHAR}]) (?=[{_CJK_CHAR}])")
 _PARAGRAPH = re.compile(r"\n\s*\n")
@@ -117,6 +121,23 @@ def _squeeze(text: str) -> str:
     return _CJK_GAP.sub("", flat)
 
 
+def _found(quote: str, haystack: str) -> bool:
+    """``quote`` occurs in ``haystack``, and where it starts or ends with a
+    Latin letter or digit, the occurrence starts or ends at a word boundary."""
+    if not quote:
+        return True
+    start = 0
+    while (at := haystack.find(quote, start)) != -1:
+        before = haystack[at - 1] if at else ""
+        after = haystack[at + len(quote)] if at + len(quote) < len(haystack) else ""
+        head_ok = not (quote[0].isascii() and quote[0].isalnum() and before.isascii() and before.isalnum())
+        tail_ok = not (quote[-1].isascii() and quote[-1].isalnum() and after.isascii() and after.isalnum())
+        if head_ok and tail_ok:
+            return True
+        start = at + 1
+    return False
+
+
 def item_map(appendix: str) -> str:
     """The appendix's last level-3 subsection (the template's Item Map)."""
     starts = [m.start() for m in _LEVEL3.finditer(appendix)]
@@ -170,7 +191,7 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
     if manuscript is not None:
         haystack = _squeeze(manuscript)
         for quote in quotations(letter):
-            if _squeeze(quote) and _squeeze(quote) not in haystack:
+            if not _found(_squeeze(quote), haystack):
                 problems.append(f"[AUTHOR-LETTER-QUOTE] not in the manuscript: {quote[:40]!r}")
     if stray_single_quotes(letter):
         problems.append("[AUTHOR-LETTER-QUOTE] a ‘…’ quotation outside another quotation: use “…” or 「…」")
@@ -181,7 +202,10 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
             problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the letter matches {pattern.pattern!r}")
     if _NUMBERED.search(appendix):
         problems.append("[AUTHOR-LETTER-MAPPING] the appendix has a numbered item; only the changes are numbered")
-    rows, row_problems = map_rows(item_map(appendix))
+    mapping = item_map(appendix)
+    if appendix and mapping and not _TABLE_RULE.search(mapping):
+        problems.append("[AUTHOR-LETTER-APPENDIX] the item map has no table; with no changes it is a table with no rows")
+    rows, row_problems = map_rows(mapping)
     problems += row_problems
     mapped, items = [ref for _, ref in rows], [item for item, _ in rows]
     numbered = _NUMBERED.findall(body)
