@@ -247,6 +247,54 @@ def test_manuscript_12_word_shingle_leaks():
         )
 
 
+@pytest.mark.parametrize("trigger,short", [
+    # A trigger with CJK letters gets no length warning (#1077).
+    ("抽樣不清楚", False),
+    ("無對照組，樣本太小，統計錯誤。", False),
+    # 6 whitespace words: only the CJK letters keep this from being short.
+    ("The study fails to control 戶籍", False),
+    # Decomposed Hangul is a CJK letter only after NFC.
+    (__import__("unicodedata").normalize("NFD", "표본부족"), False),
+    ("標本不足・対照群欠如", False),
+    # Other text keeps the 8-word whitespace rule, unchanged.
+    ("the sample frame is never described here", True),
+    ("the sample frame is never described in the methods", False),
+    ("यह नमूना बहुत छोटा है", True),
+    # ・ alone is not a CJK letter, so this stays under the 8-word rule.
+    ("mean・SD・SE・CI・OR・HR", True),
+])
+def test_short_trigger_rule(trigger, short):
+    assert (phase._short_trigger(trigger) is not None) is short
+
+
+def test_a_cjk_trigger_gets_no_short_warning():
+    plan = parse_plan(
+        "methodology", {"D1": {"what_triggers_warn": "抽樣不清楚"}},
+    )
+    assert not any("D1 what_triggers_warn" in w for w in plan.warnings)
+
+
+def test_a_short_english_trigger_still_warns():
+    plan = parse_plan(
+        "methodology", {"D1": {"what_triggers_warn": "sampling is unclear"}},
+    )
+    assert any("D1 what_triggers_warn has fewer than 8 words" in w
+               for w in plan.warnings)
+
+
+def test_a_manuscript_shingle_in_compatibility_ideographs_leaks():
+    # #1074: U+FA08 is a compatibility form of 行. After NFC the manuscript
+    # shingle equals the standard text in Phase 1.
+    words = ["行政%d" % i for i in range(12)]
+    shared = " ".join(words)
+    with pytest.raises(phase.ConformanceError, match="MANUSCRIPT-LEAK"):
+        phase.check_manuscript_leakage(
+            phase1_text("methodology") + "\n" + shared,
+            shared.replace("行", "\ufa08"),
+            {"title": "Synthetic", "field": "t", "word_count": 30}, FULL,
+        )
+
+
 def test_metadata_title_shingle_is_exempt():
     title = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
     phase.check_manuscript_leakage(

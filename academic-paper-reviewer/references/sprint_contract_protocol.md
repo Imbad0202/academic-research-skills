@@ -65,7 +65,7 @@ Run these as `scripts/check_phase_conformance.py --contract <C> --role <dispatch
   this is a pointer commitment, not manuscript applicability. An unbound call
   instead emits exactly `criteria_binding_unavailable` and makes no venue-fit
   claim. Neither form adds an H2 or copies criterion prose.
-- `check_phase_conformance.py` searches every 12-word full-manuscript shingle against Phase 1 after whitespace normalization and case-folding. A hit fails unless it also occurs in the actual metadata-envelope values or the contract JSON. `--manuscript` and `--metadata` are mandatory, so this family cannot be skipped.
+- `check_phase_conformance.py` searches every 12-word full-manuscript shingle against Phase 1 after NFC, whitespace normalization, and case-folding. A hit fails unless it also occurs in the actual metadata-envelope values or the contract JSON. `--manuscript` and `--metadata` are mandatory, so this family cannot be skipped.
 
 Terminal Phase 1 structural preflight (mandatory). Silently inspect the exact text you are about to send:
 1. The only H2 sections are exactly one `## Contract Paraphrase` followed by exactly one `## Scoring Plan`. The paraphrase meets `measurement_procedure.paraphrase_minimum_dimensions`: `"all"` means one paragraph per contract dimension; integer `k` means at least `k` paragraphs tied to distinct dimensions.

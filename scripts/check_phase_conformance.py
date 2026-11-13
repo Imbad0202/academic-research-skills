@@ -300,7 +300,35 @@ class DissentParse:
 
 
 def _normalise(text: str) -> str:
-    return " ".join(text.casefold().split())
+    # NFC first (#1074): a CJK compatibility ideograph equals its standard
+    # character, so a copied sentence is not hidden by a stored variant form.
+    return " ".join(unicodedata.normalize("NFC", text).casefold().split())
+
+
+# #1077: Chinese and Japanese prose has no spaces between words, so a
+# whitespace "word" there can be a whole sentence.
+_CJK = re.compile(
+    "[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af"
+    "\uf900-\ufaff\U00020000-\U0003134f]"
+)
+
+
+def _cjk_letters(text: str) -> int:
+    """CJK letters in ``text``; the CJK ranges also hold punctuation (・)."""
+    return sum(1 for ch in _CJK.findall(text) if ch.isalnum())
+
+
+def _short_trigger(value: str) -> str | None:
+    """The PHASE1-TRIGGER-SHORT reason for ``value``, or None.
+
+    A trigger with CJK letters gets no length warning: a whitespace word
+    count does not measure CJK text, and the warning is advisory (#1077).
+    Other triggers keep the 8-word rule unchanged."""
+    if _cjk_letters(unicodedata.normalize("NFC", value)):
+        return None
+    if len(value.split()) < 8:
+        return "has fewer than 8 words"
+    return None
 
 
 def _is_dissent_field_shaped(line: str) -> bool:
@@ -1064,10 +1092,10 @@ def parse_phase1(
             "what_triggers_fatal",
         ):
             value = fields[field]
-            if value is not None and len(value.split()) < 8:
+            reason = None if value is None else _short_trigger(value)
+            if reason:
                 warnings.append(
-                    f"[PHASE1-TRIGGER-SHORT: {path}: {did} {field} "
-                    "has fewer than 8 words]"
+                    f"[PHASE1-TRIGGER-SHORT: {path}: {did} {field} {reason}]"
                 )
         commitments[did] = fields
     if set(commitments) != eligible:
