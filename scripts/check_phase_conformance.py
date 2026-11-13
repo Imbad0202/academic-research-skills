@@ -305,38 +305,6 @@ def _normalise(text: str) -> str:
     return " ".join(unicodedata.normalize("NFC", text).casefold().split())
 
 
-# #1077: Chinese and Japanese prose has no spaces between words, so a
-# whitespace "word" there can be a whole sentence. A CJK letter is a letter
-# that East Asian typography sets full-width or half-width (Unicode East
-# Asian Width W, F, or H): Han, kana, Bopomofo, and Hangul in every block
-# that the running Python knows, and full-width Latin letters too. Hangul
-# vowel and final jamo are narrow, so a Hangul letter also counts by name.
-def _is_cjk_letter(ch: str) -> bool:
-    return ch.isalpha() and (
-        unicodedata.east_asian_width(ch) in ("W", "F", "H")
-        or unicodedata.name(ch, "").startswith("HANGUL")
-    )
-
-
-def _cjk_letters(text: str) -> int:
-    """CJK letters in ``text`` after NFC, so decomposed Hangul counts as
-    syllables; marks such as 、 and ・ are not letters."""
-    return sum(1 for ch in unicodedata.normalize("NFC", text) if _is_cjk_letter(ch))
-
-
-def _short_trigger(value: str) -> str | None:
-    """The PHASE1-TRIGGER-SHORT reason for ``value``, or None.
-
-    A trigger with CJK letters gets no length warning: a whitespace word
-    count does not measure CJK text, and the warning is advisory (#1077).
-    Other triggers keep the 8-word rule unchanged."""
-    if _cjk_letters(value):
-        return None
-    if len(value.split()) < 8:
-        return "has fewer than 8 words"
-    return None
-
-
 def _is_dissent_field_shaped(line: str) -> bool:
     """True when a line spells a dissent field, canonically or decorated.
 
@@ -1098,10 +1066,10 @@ def parse_phase1(
             "what_triggers_fatal",
         ):
             value = fields[field]
-            reason = None if value is None else _short_trigger(value)
-            if reason:
+            if value is not None and len(value.split()) < 8:
                 warnings.append(
-                    f"[PHASE1-TRIGGER-SHORT: {path}: {did} {field} {reason}]"
+                    f"[PHASE1-TRIGGER-SHORT: {path}: {did} {field} "
+                    "has fewer than 8 words]"
                 )
         commitments[did] = fields
     if set(commitments) != eligible:
