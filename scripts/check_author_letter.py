@@ -15,9 +15,9 @@ a revision item, so this script checks three things:
              whitespace runs made one space, double quotation marks
              (" “ ” 「 」 『 』) removed, the space between two CJK characters
              removed, and ‘ ’ read as '. Case, other marks, and digits must
-             match. A quotation that starts or ends with a letter or digit of
-             a script that puts spaces between words must start or end at a
-             word boundary of the manuscript, so "significant" does not match
+             match. A quotation that starts or ends with a letter, digit, or
+             combining mark of a script that puts spaces between words must
+             start or end at a word boundary of the manuscript, so "significant" does not match
              inside "insignificant" nor "café" inside "caféine". A double
              quotation mark left without its pair (unclosed or mismatched)
              or inside another quotation is a problem, because the text
@@ -29,8 +29,8 @@ a revision item, so this script checks three things:
              internal id, and only the body has numbered items. A number at
              the very start of a line, with no indent, is an item only where
              a Markdown list item can start, so a paragraph that wraps before
-             "2023." has none. The appendix is the letter's last level-2 heading, whatever
-             language it is in. Bare transport refs (``R1``, ``S2``) are not
+             "2023." has none. The appendix is the letter's last level-2
+             heading, whatever language it is in. Bare transport refs (``R1``, ``S2``) are not
              searched for, because a manuscript location such as "Table S1"
              has the same form.
   item map   the item map is the appendix's last level-3 subsection and holds a
@@ -60,14 +60,19 @@ _QUOTED = re.compile(r'"([^"]+)"|“([^”]+)”|「([^」]+)」|『([^』]+)』
 _QUOTE_MARKS = str.maketrans("", "", "\"“”「」『』")
 # A delimiter row of two or more columns; outer pipes are optional.
 _TABLE_RULE = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$")
-_CJK_CHAR = "\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef"
+_HAN_KANA = ("\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef"
+             "\U00020000-\U0003134f")
+_CJK_CHAR = _HAN_KANA + "\uac00-\ud7af"
 _CJK_GAP = re.compile(f"(?<=[{_CJK_CHAR}]) (?=[{_CJK_CHAR}])")
+# A line break beside a Chinese or Japanese character adds no space: these
+# scripts wrap anywhere, including between a character and a digit.
+_HAN_BREAK = re.compile(f"(?<=[{_HAN_KANA}])[ \\t]*\\n\\s*|[ \\t]*\\n\\s*(?=[{_HAN_KANA}])")
 _PARAGRAPH = re.compile(r"\n\s*\n")
 _LEVEL3 = re.compile(r"^\s{0,3}###(?!#)\s+\S", re.MULTILINE)
 
 _LEVEL2 = re.compile(r"^\s{0,3}##(?!#)\s+\S", re.MULTILINE)
-# "1. " or "1) ", or a full-width "1、" / "1．" with or without a space.
-_NUMBERED = re.compile(r"^\s{0,3}([0-9]+)(?:[.)]\s|[、．](?![0-9]))", re.MULTILINE)
+# "1. " or "1) ", the Markdown forms; a full-width "1、" is not a list.
+_NUMBERED = re.compile(r"^\s{0,3}([0-9]+)[.)]\s", re.MULTILINE)
 _ITEM = re.compile(r"^[0-9]+$")
 _REF = re.compile(r"^[RS][0-9]+$")
 _ROADMAP_HEADING = re.compile(r"^\s{0,3}###\s+(?:Required|Suggested) Revisions\b")
@@ -105,11 +110,17 @@ def split_letter(letter: str) -> tuple[str, str]:
     return letter[:starts[-1]], letter[starts[-1]:]
 
 
+def _flatten(text: str) -> str:
+    """One line: a line break beside a Chinese or Japanese character goes,
+    and every other whitespace run is one space."""
+    return " ".join(_HAN_BREAK.sub("", text).split())
+
+
 def quotations(text: str) -> list[str]:
     """Quoted spans; a quotation can wrap onto the next line of its paragraph."""
     spans = []
     for paragraph in _PARAGRAPH.split(text):
-        flat = " ".join(paragraph.split())
+        flat = _flatten(paragraph)
         spans += [next(g for g in m.groups() if g is not None) for m in _QUOTED.finditer(flat)]
     return spans
 
@@ -118,7 +129,7 @@ def stray_single_quotes(text: str) -> int:
     """How many ‘ marks stand outside every other quotation."""
     count = 0
     for paragraph in _PARAGRAPH.split(text):
-        count += _QUOTED.sub("", " ".join(paragraph.split())).count("‘")
+        count += _QUOTED.sub("", _flatten(paragraph)).count("‘")
     return count
 
 
@@ -134,11 +145,15 @@ def unpaired_marks(text: str) -> int:
     empty pair quotes nothing and is ignored."""
     count = 0
     for paragraph in _PARAGRAPH.split(text):
-        flat = _EMPTY_QUOTE.sub("", " ".join(paragraph.split()))
+        flat = _EMPTY_QUOTE.sub("", _flatten(paragraph))
         count += sum(_QUOTED.sub("", flat).count(mark) for mark in _DOUBLE_MARKS)
         for match in _QUOTED.finditer(flat):
             inner = next(g for g in match.groups() if g is not None)
             count += sum(inner.count(mark) for mark in _DOUBLE_MARKS)
+            # Straight marks have no direction: "the "made up" result" pairs
+            # as "the " and " result", which start or end with a space.
+            if match.group(1) is not None and inner != inner.strip():
+                count += 1
     return count
 
 
@@ -171,7 +186,7 @@ def _squeeze(text: str) -> str:
     removed, no space between two CJK characters, and ‘ ’ read as '. Case
     stays: "5 mM" is not "5 mm"."""
     text = unicodedata.normalize("NFC", text).replace("‘", "'").replace("’", "'")
-    flat = " ".join(text.translate(_QUOTE_MARKS).split())
+    flat = _flatten(text.translate(_QUOTE_MARKS))
     return _CJK_GAP.sub("", flat)
 
 
@@ -190,7 +205,7 @@ def _wordish(ch: str) -> bool:
 
 def _found(quote: str, haystack: str) -> bool:
     """``quote`` occurs in ``haystack``, and where it starts or ends with a
-    letter or digit of a spaced script, the occurrence starts or ends at a
+    letter, digit, or combining mark of a spaced script, the occurrence starts or ends at a
     word boundary."""
     if not quote:
         return True
@@ -213,7 +228,11 @@ def item_map(appendix: str) -> str:
 
 
 def _cells(line: str) -> list[str]:
-    return [c.strip().strip("`*") for c in line.strip().strip("|").split("|")]
+    """The cells of a table row, with at most one outer pipe at each end."""
+    body = line.strip()
+    body = body[1:] if body.startswith("|") else body
+    body = body[:-1] if body.endswith("|") else body
+    return [c.strip().strip("`*") for c in body.split("|")]
 
 
 def table_rows(text: str) -> list[str] | None:

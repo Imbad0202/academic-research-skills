@@ -331,10 +331,11 @@ def test_a_circled_number_in_the_item_map_is_a_problem_not_a_crash():
     assert any("needs one item number and one ref" in p for p in problems)
 
 
-def test_full_width_numbering_without_a_space_is_read():
+def test_full_width_numbering_is_not_a_list_item():
+    # Markdown has no "3、" list; template Rule 3 asks for "3.".
     letter = LETTER.replace("3. 〔§5〕", "3、〔§5〕")
-    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
-    assert cal._NUMBERED.findall("2021、2022 年的資料") == []
+    assert "[AUTHOR-LETTER-MAPPING] item map item 3 is not a numbered item of the body" in cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert cal.numbered_items("請見附表\n1、附表 2\n") == []
 
 
 def test_a_body_item_numbered_twice_fails():
@@ -461,3 +462,22 @@ def test_a_ref_outside_the_second_column_fails():
     letter = LETTER.replace("| 1 | R1 |", "| 1 | — | R1 |")
     problems = cal.check(letter, PACKAGE, MANUSCRIPT)
     assert any("needs one item number and one ref" in p for p in problems)
+
+
+def test_straight_quotation_marks_nested_in_straight_ones_fail():
+    letter = LETTER.replace("請說明三所學校怎麼選出", 'The text states "the "made up" result"')
+    assert any("without its pair" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+@pytest.mark.parametrize("ms,quoted", [
+    ("本研究共納入\n120名受試者。", "「共納入120名受試者」"),
+    ("本研究共納入120名受試者。", "「共納入\n120名受試者」"),
+    ("作者訪談𠮷\n1號受試者。", "「訪談𠮷1號受試者」"),
+])
+def test_a_line_break_beside_a_chinese_character_adds_no_space(ms, quoted):
+    letter = LETTER.replace("請說明三所學校怎麼選出", quoted)
+    assert cal.check(letter, PACKAGE, MANUSCRIPT + ms + "\n") == []
+
+
+def test_a_cell_keeps_an_empty_first_column():
+    assert cal._cells("|| S1 | Fix Table S1 |") == ["", "S1", "Fix Table S1"]
