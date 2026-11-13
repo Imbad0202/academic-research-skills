@@ -1,0 +1,33 @@
+  2  read_file          {"Path": "~/.gemini/config/plugins/academic-research-skills/skills/deep-research/SKILL.md"}
+  4  read_file          {"Path": "<ARS_ROOT>/deep-research/SKILL.md", "StartLine": 1}
+  6  read_file          {"ByteOffset": 46080, "Path": "<ARS_ROOT>/deep-research/SKILL.md", "StartLine": 1}
+  8  read_file          {"Path": "<ARS_ROOT>/commands/ars-3w.md"}
+ 10  read_file          {"Path": "<ARS_ROOT>/MODE_REGISTRY.md", "StartLine": 1}
+ 12  read_file          {"Path": "<ARS_ROOT>/deep-research/agents/bibliography_agent.md", "StartLine": 1}
+ 13  read_file          {"Path": "<ARS_ROOT>/deep-research/agents/source_verification_agent.md", "StartLine": 1}
+ 14  read_file          {"Path": "<ARS_ROOT>/academic-paper-reviewer/references/review_criteria_framework.md", "StartLine": 1}
+ 16  read_file          {"Path": "<ARS_ROOT>/deep-research/references/semantic_scholar_api_protocol.md", "StartLine": 1}
+ 17  read_file          {"Path": "<ARS_ROOT>/deep-research/references/openalex_api_protocol.md", "StartLine": 1}
+ 18  read_file          {"Path": "<ARS_ROOT>/deep-research/references/crossref_api_protocol.md", "StartLine": 1}
+ 19  read_file          {"Path": "<ARS_ROOT>/deep-research/references/source_quality_hierarchy.md", "StartLine": 1}
+ 21  read_file          {"Path": "<ARS_ROOT>/deep-research/references/apa7_style_guide.md", "StartLine": 1}
+ 22  read_file          {"Path": "<ARS_ROOT>/deep-research/references/cross_agent_quality_definitions.md", "StartLine": 1}
+ 24  run_command        {"CommandLine": "ls -la <WORK>/run2"}
+ 26  search_web         {"query": "\"retrieval-augmented generation\" reduce hallucination large language models paper DOI arXiv"}
+ 27  search_web         {"query": "\"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks\" Lewis 2020 NeurIPS DOI"}
+ 28  search_web         {"query": "\"Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection\" Asai 2024 ICLR"}
+ 29  search_web         {"query": "\"Retrieval Augmentation Reduces Hallucination in Conversation\" Shuster 2021 EMNLP DOI"}
+ 31  run_command        {"CommandLine": "ls <ARS_ROOT>/scripts"}
+ 33  search_web         {"query": "\"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks\" abstract \"parametric memory\" \"non-parametric\" BART DPR FEVER Jeopardy"}
+ 34  search_web         {"query": "\"Retrieval Augmentation Reduces Hallucination in Conversation\" Shuster abstract Wizard of Wikipedia FiD RAG DPR hallucination human evaluation"}
+ 35  search_web         {"query": "\"Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection\" abstract reflection tokens PopQA BioASQ FactScore PubHealth"}
+ 36  search_web         {"query": "\"Corrective Retrieval Augmented Generation\" Yan 2024 arXiv \"In-Context Retrieval-Augmented Language Models\" Ram 2023 TACL DOI"}
+ 38  search_web         {"query": "site:semanticscholar.org \"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks\" \"Retrieval Augmentation Reduces Hallucination in Conversation\" \"Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection\""}
+ 39  search_web         {"query": "\"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks\" \"Jeopardy\" human evaluation factual specific percentage Lewis 2020"}
+ 40  search_web         {"query": "\"Retrieval Augmentation Reduces Hallucination in Conversation\" Shuster 2021 human evaluation percentage hallucination Wizard of Wikipedia FiD-RAG"}
+ 41  search_web         {"query": "\"Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection\" Asai 2024 PopQA FactScore PubHealth BioASQ numbers results"}
+ 43  run_command        {"CommandLine": "python3 -c '\nimport sys\nsys.path.insert(0, \"<ARS_ROOT>/scripts\")\nfrom openalex_client import OpenAlexClient, OpenAlexUnavailable\ntry:\n c = OpenAlexClient()\n res = c.title_search(\"Retrieval-Augmented Generation for Knowledge-Inte
+ 45  run_command        {"CommandLine": "python3 -c '\nimport sys\nsys.path.insert(0, \"<ARS_ROOT>/scripts\")\nfrom crossref_client import CrossrefClient\nfrom semantic_scholar_client import SemanticScholarClient\n\npapers = [\n (\"lewis2020rag\", \"Retrieval-Augmented Generati
+ 47  define_subagent    {"Description": "Systematic literature search and curation; identifies, annotates, and formats sources in APA 7.0 (ARS Phase 2 bibliography_agent)", "Name": "bibliography_agent"}
+ 48  define_subagent    {"Description": "Grades evidence, detects predatory publications, and fact-checks claims entering the research pipeline (ARS Phase 2 source_verification_agent)", "Name": "source_verification_agent"}
+ 56  manage_subagents   {"Action": "list"}
