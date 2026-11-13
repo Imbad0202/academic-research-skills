@@ -7,21 +7,23 @@ letter; ``templates/author_letter_template.md``). A rewrite can turn a
 paraphrase into a false quotation, carry a machine line into the body, or drop
 a revision item, so this script checks three things:
 
-  quotes     every span in quotation marks (the reviewer claim check's quote
-             grammar, read across line breaks) occurs in the manuscript,
-             after the same normalization (``dispatch_panel_claim_audit._norm``)
-             with whitespace removed, so a quotation wrapped onto a new line
-             still matches. Skipped, with a notice, when no manuscript file is
-             given.
+  quotes     every span in quotation marks occurs in the manuscript. A quotation
+             can wrap onto the next line inside a paragraph; an apostrophe
+             inside ‘…’ does not end it. Both sides are compared after
+             ``dispatch_panel_claim_audit._norm`` with whitespace and quotation
+             marks removed, so a line break or a nested quotation mark does not
+             make a real quotation fail. Skipped, with a notice, when no
+             manuscript file is given.
   body       the body, before the appendix, holds no machine line or internal
              id. The appendix is the letter's last level-2 heading, whatever
              language it is in. Bare transport refs (``R1``, ``S2``) are not
              searched for, because a manuscript location such as "Table S1"
              has the same form.
-  item map   each appendix table row that holds a transport ref has one item
-             number and one ref; the item numbers are the numbered items of
-             the body, each once; the refs are the must-fix and should-fix
-             rows of the package's Revision Roadmap, each once.
+  item map   the item map is the appendix's last level-3 subsection. Each of
+             its table rows that holds a transport ref has one item number and
+             one ref; the item numbers are the numbered items of the body, each
+             once; the refs are the rows of the Required and Suggested
+             Revisions tables of the package, each once.
 
 Exit 0 pass / 1 problems found / 2 missing or unreadable input.
 """
@@ -34,11 +36,18 @@ import sys
 from pathlib import Path
 
 try:
-    from audit_panel_claims import _QUOTED
     from dispatch_panel_claim_audit import _norm
 except ImportError:  # pragma: no cover - dual-path import
-    from scripts.audit_panel_claims import _QUOTED
     from scripts.dispatch_panel_claim_audit import _norm
+
+# The reviewer claim check's quotation marks (audit_panel_claims._QUOTED),
+# read inside one paragraph; a ’ followed by a letter is an apostrophe, not
+# the end of a ‘…’ quotation. Straight single quotes are left out, since they
+# also serve as apostrophes.
+_QUOTED = re.compile(r'"([^"]+)"|“([^”]+)”|‘((?:[^’]|’(?=\w))+)’|「([^」]+)」|『([^』]+)』')
+_QUOTE_MARKS = str.maketrans("", "", "\"'“”‘’「」『』")
+_PARAGRAPH = re.compile(r"\n\s*\n")
+_LEVEL3 = re.compile(r"^\s{0,3}###(?!#)\s+\S", re.MULTILINE)
 
 _LEVEL2 = re.compile(r"^\s{0,3}##(?!#)\s+\S", re.MULTILINE)
 _NUMBERED = re.compile(r"^\s{0,3}([0-9]+)[.)、．]\s", re.MULTILINE)
@@ -52,17 +61,18 @@ MACHINE_PATTERNS = (
     re.compile(r"fired_conditions\s*:"),
     re.compile(r"editorial_decision\s*="),
     re.compile(r"calibration_status\s*:"),
-    re.compile(r"\bNOT_CALIBRATED\b"),
-    re.compile(r"\b(?:must_fix|should_fix)\b"),
-    re.compile(r"(?<![A-Za-z0-9])REV-[0-9]+"),
-    re.compile(r"(?<![A-Za-z0-9])SC-[0-9]+"),
-    re.compile(r"(?<![A-Za-z0-9])(?:EIC|R[1-3]|DA)-W[0-9]+"),
-    re.compile(r"\[CONSENSUS-[0-9]\]"),
-    re.compile(r"\bDA-CRITICAL\b"),
+    # ASCII boundaries: a CJK letter beside an id is not a boundary for \b.
+    re.compile(r"(?<![A-Za-z0-9_])NOT_CALIBRATED(?![A-Za-z0-9_])"),
+    re.compile(r"(?<![A-Za-z0-9_])(?:must_fix|should_fix)(?![A-Za-z0-9_])"),
+    re.compile(r"(?<![A-Za-z0-9_])REV-[0-9]+"),
+    re.compile(r"(?<![A-Za-z0-9_])SC-[0-9]+"),
+    re.compile(r"(?<![A-Za-z0-9_])(?:EIC|R[1-3]|DA)-W[0-9]+"),
+    re.compile(r"\[CONSENSUS-[0-9]+\]"),
+    re.compile(r"(?<![A-Za-z0-9_])DA-CRITICAL(?![A-Za-z0-9_])"),
     re.compile(r"\[SEVERITY-SOURCE"),
     re.compile(r"Transport ref", re.IGNORECASE),
     re.compile(r"<!--"),
-    re.compile(r"^\s*```", re.MULTILINE),
+    re.compile(r"^\s*(?:```|~~~)", re.MULTILINE),
 )
 
 
@@ -77,13 +87,23 @@ def split_letter(letter: str) -> tuple[str, str]:
 
 
 def quotations(text: str) -> list[str]:
-    """Quoted spans, read across line breaks as the reviewer claim check does."""
-    flat = " ".join(text.split())
-    return [next(g for g in m.groups() if g is not None) for m in _QUOTED.finditer(flat)]
+    """Quoted spans; a quotation can wrap onto the next line of its paragraph."""
+    spans = []
+    for paragraph in _PARAGRAPH.split(text):
+        flat = " ".join(paragraph.split())
+        spans += [next(g for g in m.groups() if g is not None) for m in _QUOTED.finditer(flat)]
+    return spans
 
 
 def _squeeze(text: str) -> str:
-    return "".join(_norm(text).split())
+    """``_norm`` with whitespace and quotation marks removed."""
+    return "".join(_norm(text).split()).translate(_QUOTE_MARKS)
+
+
+def item_map(appendix: str) -> str:
+    """The appendix's last level-3 subsection (the template's Item Map)."""
+    starts = [m.start() for m in _LEVEL3.finditer(appendix)]
+    return appendix[starts[-1]:] if starts else appendix
 
 
 def _cells(line: str) -> list[str]:
@@ -137,7 +157,7 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
     for pattern in MACHINE_PATTERNS:
         if pattern.search(body):
             problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the body matches {pattern.pattern!r}")
-    rows, row_problems = map_rows(appendix)
+    rows, row_problems = map_rows(item_map(appendix))
     problems += row_problems
     mapped, items = [ref for _, ref in rows], [item for item, _ in rows]
     numbered = _NUMBERED.findall(body)

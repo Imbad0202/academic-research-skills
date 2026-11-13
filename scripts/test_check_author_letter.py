@@ -59,7 +59,7 @@ LETTER = """# 審查意見
 
 ### 項次對照
 
-| 項次 | Transport ref |
+| 項次 | 審查紀錄編號 |
 |------|---------------|
 | 1 | R1 |
 | 2 | R2 |
@@ -207,3 +207,37 @@ def test_the_skill_names_the_step_and_the_template():
     assert "### Author letter (#1078)" in skill
     assert "python3 scripts/check_author_letter.py --letter" in skill
     assert (REPO_ROOT / "academic-paper-reviewer" / "templates" / "author_letter_template.md").is_file()
+
+
+def test_a_nested_quotation_mark_does_not_fail_a_real_quote():
+    ms = MANUSCRIPT + "作者提出「雙軌制」架構。\nWe define \"burnout\" as exhaustion.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "原稿寫「提出『雙軌制』架構」與“define ‘burnout’ as exhaustion”")
+    assert cal.check(letter, PACKAGE, ms) == []
+
+
+def test_an_apostrophe_does_not_end_a_single_curly_quotation():
+    letter = LETTER.replace("請說明三所學校怎麼選出", "‘the author’s causal claim is proven’")
+    quotes = cal.quotations(letter)
+    assert "the author’s causal claim is proven" in quotes
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_an_unclosed_quotation_mark_does_not_reach_the_next_paragraph():
+    assert cal.quotations("他說“沒有結尾\n\n下一段「原稿」。") == ["原稿"]
+
+
+@pytest.mark.parametrize("line", [
+    "此為DA-CRITICAL問題",
+    "屬於must_fix項目",
+    "狀態NOT_CALIBRATED時",
+    "[CONSENSUS-10] 共識",
+    "~~~yaml",
+])
+def test_machine_ids_beside_cjk_text_and_other_forms_fail(line):
+    letter = LETTER.replace("## 建議修改", f"{line}\n\n## 建議修改")
+    assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_a_reviewer_table_before_the_item_map_is_not_the_item_map():
+    letter = LETTER.replace("### 項次對照", "### 各審查人摘要\n\n| 審查人 | 建議 |\n|---|---|\n| R1 | 大幅修改 |\n\n### 項次對照")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
