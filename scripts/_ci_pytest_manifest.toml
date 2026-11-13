@@ -759,3 +759,7 @@ path = "scripts/test_extract_panel_claims.py"
 [[pytest]]
 id = "1002-dispatch-panel-claim-audit"
 path = "scripts/test_dispatch_panel_claim_audit.py"
+
+[[pytest]]
+id = "1078-author-letter"
+path = "scripts/test_check_author_letter.py"

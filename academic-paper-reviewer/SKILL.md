@@ -248,6 +248,14 @@ The dispatching session adds the reviewer claim check to the Editorial Decision 
 
 No call that writes this round's decision, roadmap, or letter sees the report. Later readers of the letter see it but take nothing from it: it is an advisory check, not a reviewer finding, so no weakness, consensus item, revision, or roadmap entry comes from it, and it asks for no reply. The author decides what to do with a contradicted finding.
 
+### Author letter (#1078)
+
+The Editorial Decision Package is written for the checker and the later stages, and its machine lines and ids are hard for an author to read. After a `full` review's package is complete, with the acronym check attachment as its last write, the dispatching session writes a separate author letter from the finished package by `templates/author_letter_template.md`: the decision and its main reasons, strengths, every required and suggested change with its location, questions for the authors, and an appendix with how the review was run, its limits, the reviewer summaries, the advisory checks, and an item map from the letter's numbers to the roadmap's transport refs. The whole letter is in the user's language, with the template's headings in that language, and its body holds no machine line or internal id. The letter changes nothing in the package, and it adds no finding, drops none, and ranks none.
+
+The session saves the letter and the package to files and runs `python3 scripts/check_author_letter.py --letter <letter file> --package <package file> --manuscript <manuscript file>`. The script fails a quotation that is not in the manuscript, a machine line or internal id in the body, and an item map that does not list each roadmap row once. When it reports a problem, the session corrects the letter (a failed quotation becomes a paraphrase without quotation marks) and runs it once more; when the second run still reports a problem, the letter opens with one line that names each problem left. With no manuscript file, the session leaves out `--manuscript`, and the letter's Limits part says the quotation check did not run. The session shows the author letter first and the package after it.
+
+`scripts/check_panel_synthesis.py`, re-review, the revision coach, and `academic-pipeline` read the package; none of them reads the author letter.
+
 ### Review-target criteria binding (#684)
 
 When the caller supplies the author-confirmed #683 `ReviewTargetContext`, this
@@ -452,6 +460,7 @@ pointer; a changed target starts a new, explicitly non-comparable review id.
 |----------|---------|
 | `templates/peer_review_report_template.md` | Review report template used by each reviewer |
 | `templates/editorial_decision_template.md` | Editorial Decision Letter template (produced by `editorial_synthesizer_agent` in Phase 2 — not by the Journal-Fit Reviewer, #574 C2) |
+| `templates/author_letter_template.md` | Author letter template: the review rewritten for the author in the user's language, after the package is complete (dispatching session, `full` mode, #1078) |
 | `templates/revision_response_template.md` | Revision response template for authors (R->A->C format) |
 
 ---
