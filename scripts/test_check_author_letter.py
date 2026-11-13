@@ -400,3 +400,27 @@ def test_a_table_without_outer_pipes_is_read():
 def test_a_header_row_over_a_horizontal_rule_is_not_a_table():
     problems = cal.check(ACCEPT_APPENDIX + "| 項次 | 審查紀錄編號 |\n---\n", EMPTY_PACKAGE, MANUSCRIPT)
     assert any("the item map has no table" in p for p in problems)
+
+
+def test_a_narrow_delimiter_row_is_a_table():
+    letter = LETTER.replace("|------|---------------|", "| - | :- |")
+    assert letter != LETTER
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+@pytest.mark.parametrize("quoted", ["“本研究以三所學校為例\"", "「本研究以三所學校為例", "“本研究以“三所”學校為例”", "「本研究以「三所」學校為例」"])
+def test_an_unpaired_or_nested_quotation_mark_fails(quoted):
+    letter = LETTER.replace("請說明三所學校怎麼選出", quoted)
+    assert any("without its pair" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_a_number_wrapped_inside_a_paragraph_is_not_an_item():
+    letter = LETTER.replace("但還不能支持因果推論。", "但資料只涵蓋到\n2023. 年為止。")
+    assert letter != LETTER
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+    appendix = LETTER.replace("### 項次對照", "### 這份審查的限制\n\n本次只讀到\n2. 章為止。\n\n### 項次對照")
+    assert cal.check(appendix, PACKAGE, MANUSCRIPT) == []
+
+
+def test_a_paragraph_after_a_blank_line_ends_the_list():
+    assert cal.numbered_items("1. a\n2. b\n\n文字\n3. c\n\n4. d\n") == ["1", "2", "4"]

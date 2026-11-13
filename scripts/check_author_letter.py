@@ -18,10 +18,14 @@ a revision item, so this script checks three things:
              match. A quotation that starts or ends with a letter or digit of
              a script that puts spaces between words must start or end at a
              word boundary of the manuscript, so "significant" does not match
-             inside "insignificant" nor "café" inside "caféine". Skipped,
-             with a notice, when no manuscript file is given.
+             inside "insignificant" nor "café" inside "caféine". A double
+             quotation mark left without its pair (unclosed, mismatched, or
+             nested) is a problem, because the text after it is not checked.
+             Skipped, with a notice, when no manuscript file is given.
   ids        the whole letter, the appendix included, holds no machine line or
-             internal id, and only the body has numbered items. The appendix is the letter's last level-2 heading, whatever
+             internal id, and only the body has numbered items. A number at
+             the start of a line is an item only where a Markdown list item
+             can start, so a paragraph that wraps before "2023." has none. The appendix is the letter's last level-2 heading, whatever
              language it is in. Bare transport refs (``R1``, ``S2``) are not
              searched for, because a manuscript location such as "Table S1"
              has the same form.
@@ -50,7 +54,7 @@ from pathlib import Path
 _QUOTED = re.compile(r'"([^"]+)"|“([^”]+)”|「([^」]+)」|『([^』]+)』')
 _QUOTE_MARKS = str.maketrans("", "", "\"“”「」『』")
 # A delimiter row of two or more columns; outer pipes are optional.
-_TABLE_RULE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$")
+_TABLE_RULE = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$")
 _CJK_CHAR = "\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef"
 _CJK_GAP = re.compile(f"(?<=[{_CJK_CHAR}]) (?=[{_CJK_CHAR}])")
 _PARAGRAPH = re.compile(r"\n\s*\n")
@@ -111,6 +115,40 @@ def stray_single_quotes(text: str) -> int:
     for paragraph in _PARAGRAPH.split(text):
         count += _QUOTED.sub("", " ".join(paragraph.split())).count("‘")
     return count
+
+
+def unpaired_marks(text: str) -> int:
+    """How many double quotation marks are left outside every matched
+    quotation: an unclosed, mismatched (“…"), or nested same-mark quotation
+    leaves one, and its text would not be checked."""
+    count = 0
+    for paragraph in _PARAGRAPH.split(text):
+        rest = _QUOTED.sub("", " ".join(paragraph.split()))
+        count += sum(rest.count(mark) for mark in "\"“”「」『』")
+    return count
+
+
+def numbered_items(text: str) -> list[str]:
+    """The numbers of the numbered list items in ``text``. A number at the
+    start of a line counts only where a list item can start: at the top, after
+    a blank line or a heading, inside a list, or as 1 (a wrapped "...and
+    2023. However" inside a paragraph is not an item)."""
+    items, in_list, can_start = [], False, True
+    for line in text.splitlines():
+        if not line.strip():
+            can_start = True
+            continue
+        if _HEADING.match(line):
+            in_list, can_start = False, True
+            continue
+        match = _NUMBERED.match(line)
+        if match and (can_start or in_list or match.group(1) == "1"):
+            items.append(match.group(1))
+            in_list = True
+        elif can_start and not line.startswith((" ", "\t")):
+            in_list = False
+        can_start = False
+    return items
 
 
 def _squeeze(text: str) -> str:
@@ -215,6 +253,9 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
         for quote in quotations(letter):
             if not _found(_squeeze(quote), haystack):
                 problems.append(f"[AUTHOR-LETTER-QUOTE] not in the manuscript: {quote[:40]!r}")
+    if unpaired_marks(letter):
+        problems.append("[AUTHOR-LETTER-QUOTE] a quotation mark without its pair: close each quotation with the "
+                        "matching mark, and do not put quotation marks inside a quotation")
     if stray_single_quotes(letter):
         problems.append("[AUTHOR-LETTER-QUOTE] a ‘…’ quotation outside another quotation: use “…” or 「…」")
     # The whole letter, the appendix included (template Rule 3); bare
@@ -222,7 +263,7 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
     for pattern in MACHINE_PATTERNS:
         if pattern.search(letter):
             problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the letter matches {pattern.pattern!r}")
-    if _NUMBERED.search(appendix):
+    if numbered_items(appendix):
         problems.append("[AUTHOR-LETTER-MAPPING] the appendix has a numbered item; only the changes are numbered")
     table = table_rows(item_map(appendix))
     if appendix and _LEVEL3.search(appendix) and table is None:
@@ -231,7 +272,7 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
     rows, row_problems = map_rows(table or [])
     problems += row_problems
     mapped, items = [ref for _, ref in rows], [item for item, _ in rows]
-    numbered = _NUMBERED.findall(body)
+    numbered = numbered_items(body)
     for item in sorted(set(numbered) - set(items), key=int):
         problems.append(f"[AUTHOR-LETTER-MAPPING] body item {item} is not in the item map")
     for item in sorted(set(items) - set(numbered), key=int):
