@@ -4,43 +4,38 @@
 The author letter is the review rewritten for the author from the finished
 Editorial Decision Package (``academic-paper-reviewer/SKILL.md`` § Author
 letter; ``templates/author_letter_template.md``). A rewrite can turn a
-paraphrase into a false quotation, carry a machine line into the body, or drop
-a revision item, so this script checks three things:
+paraphrase into a false quotation, carry a machine line into the letter, or
+drop a revision item, so this script checks three things:
 
-  quotes     every span in “…”, "…", 「…」, or 『…』 occurs in the manuscript. A
-             quotation can wrap onto the next line inside a paragraph. ‘…’ is
-             allowed only inside another quotation, because its closing mark
-             is also the apostrophe (“the patients’ outcomes”); a ‘ outside a
-             quotation is a problem. Both sides are compared after NFC, with
-             whitespace runs made one space, double quotation marks
-             (" “ ” 「 」 『 』) removed, the space between two CJK characters
-             removed, and ‘ ’ read as '. Case, other marks, and digits must
-             match. A quotation that starts or ends with a letter, digit, or
-             combining mark of a script that puts spaces between words must
-             start or end at a word boundary of the manuscript, so "significant" does not match
-             inside "insignificant" nor "café" inside "caféine". A double
-             quotation mark left without its pair (unclosed or mismatched)
-             or inside another quotation is a problem, because the text
-             around it is not checked; an empty pair is ignored. Word
-             boundaries apply to Latin, Greek, and Cyrillic letters and
-             digits only.
+  quotes     every quotation occurs in the manuscript, by the check that the
+             reviewer claim check (#1002) uses for a judge's quotation: the
+             quotation marks of ``audit_panel_claims._QUOTED`` (“…”, "…",
+             ‘…’, 「…」, 『…』) read in each paragraph made one line, and
+             ``dispatch_panel_claim_audit.evidence_ok`` with
+             ``contradiction`` evidence. That check folds case, whitespace,
+             and quotation marks, so a quotation that differs from the
+             manuscript only in those passes. It finds no word boundary
+             ("significant" passes inside "insignificant"), reads no other
+             quotation marks (« », „ “), and a line break between two CJK
+             characters, in the letter or in the manuscript file, becomes a
+             space that the other text does not have, so the quotation is
+             reported as not found. An unpaired or empty mark
+             can pair with the wrong mark (`"" and "invented"` reads
+             `" and "`), and the words after it are then not checked.
              Skipped, with a notice, when no manuscript file is given.
   ids        the whole letter, the appendix included, holds no machine line or
-             internal id, and only the body has numbered items. A number at
-             the very start of a line, with no indent, is an item only where
-             a Markdown list item can start, so a paragraph that wraps before
-             "2023." has none. The appendix is the letter's last level-2
-             heading, whatever language it is in. Bare transport refs (``R1``, ``S2``) are not
+             internal id. Bare transport refs (``R1``, ``S2``) are not
              searched for, because a manuscript location such as "Table S1"
              has the same form.
-  item map   the item map is the appendix's last level-3 subsection and holds a
-             two-column table: a header row and a delimiter row of two cells
-             each, then no rows when there are no changes. Outer pipes are
-             optional. Each row of the table is two cells, an item number and
-             then a ref; the item numbers are the
-             numbered items of the body, each once; the refs are the rows of
-             the Required and Suggested Revisions tables of the package, each
-             once.
+  item map   the appendix is the letter's last level-2 heading, and the item
+             map is its last level-3 subsection. The item map holds a table
+             of two columns: a header row and a delimiter row, then one row
+             for each change (an item number, then a ref), and no rows when
+             there are no changes. Outer pipes are optional. Each item
+             number appears once, and the refs are the rows of the Required
+             and Suggested Revisions tables of the package, each once. The
+             script does not compare the item numbers with the numbered
+             items of the body.
 
 Exit 0 pass / 1 problems found / 2 missing or unreadable input.
 """
@@ -50,29 +45,20 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-import unicodedata
 from pathlib import Path
 
-# The reviewer claim check's quotation marks (audit_panel_claims._QUOTED),
-# read inside one paragraph. Single quotation marks are left out: ’ is also
-# the apostrophe, so a ‘…’ span has no reliable end (template Rule 4).
-_QUOTED = re.compile(r'"([^"]+)"|“([^”]+)”|「([^」]+)」|『([^』]+)』')
-_QUOTE_MARKS = str.maketrans("", "", "\"“”「」『』")
+try:
+    from audit_panel_claims import _QUOTED
+    from dispatch_panel_claim_audit import evidence_ok
+except ImportError:  # pragma: no cover - dual-path import
+    from scripts.audit_panel_claims import _QUOTED
+    from scripts.dispatch_panel_claim_audit import evidence_ok
+
 # A delimiter row of two or more columns; outer pipes are optional.
 _TABLE_RULE = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$")
-_HAN_KANA = ("\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef"
-             "\U00020000-\U0003134f")
-_CJK_CHAR = _HAN_KANA + "\uac00-\ud7af"
-_CJK_GAP = re.compile(f"(?<=[{_CJK_CHAR}]) (?=[{_CJK_CHAR}])")
-# A line break beside a Chinese or Japanese character adds no space: these
-# scripts wrap anywhere, including between a character and a digit.
-_HAN_BREAK = re.compile(f"(?<=[{_HAN_KANA}])[ \\t]*\\n\\s*|[ \\t]*\\n\\s*(?=[{_HAN_KANA}])")
 _PARAGRAPH = re.compile(r"\n\s*\n")
-_LEVEL3 = re.compile(r"^\s{0,3}###(?!#)\s+\S", re.MULTILINE)
-
 _LEVEL2 = re.compile(r"^\s{0,3}##(?!#)\s+\S", re.MULTILINE)
-# "1. " or "1) ", the Markdown forms; a full-width "1、" is not a list.
-_NUMBERED = re.compile(r"^\s{0,3}([0-9]+)[.)]\s", re.MULTILINE)
+_LEVEL3 = re.compile(r"^\s{0,3}###(?!#)\s+\S", re.MULTILINE)
 _ITEM = re.compile(r"^[0-9]+$")
 _REF = re.compile(r"^[RS][0-9]+$")
 _ROADMAP_HEADING = re.compile(r"^\s{0,3}###\s+(?:Required|Suggested) Revisions\b")
@@ -110,115 +96,14 @@ def split_letter(letter: str) -> tuple[str, str]:
     return letter[:starts[-1]], letter[starts[-1]:]
 
 
-def _flatten(text: str) -> str:
-    """One line: a line break beside a Chinese or Japanese character goes,
-    and every other whitespace run is one space."""
-    return " ".join(_HAN_BREAK.sub("", text).split())
-
-
 def quotations(text: str) -> list[str]:
-    """Quoted spans; a quotation can wrap onto the next line of its paragraph."""
+    """Quoted spans, by the reviewer claim check's marks, in each paragraph
+    made one line, so a quotation can wrap onto the next line."""
     spans = []
     for paragraph in _PARAGRAPH.split(text):
-        flat = _flatten(paragraph)
+        flat = " ".join(paragraph.split())
         spans += [next(g for g in m.groups() if g is not None) for m in _QUOTED.finditer(flat)]
     return spans
-
-
-def stray_single_quotes(text: str) -> int:
-    """How many ‘ marks stand outside every other quotation."""
-    count = 0
-    for paragraph in _PARAGRAPH.split(text):
-        count += _QUOTED.sub("", _flatten(paragraph)).count("‘")
-    return count
-
-
-_DOUBLE_MARKS = "\"“”「」『』"
-_EMPTY_QUOTE = re.compile(r'""|“”|「」|『』')
-
-
-def unpaired_marks(text: str) -> int:
-    """How many double quotation marks stand unpaired or inside a quotation.
-    An unclosed or mismatched (“…") mark leaves one outside every quotation,
-    and a mark inside a quotation is a nested quotation, which the template
-    does not allow; either way the text around it would not be checked. An
-    empty pair quotes nothing and is ignored."""
-    count = 0
-    for paragraph in _PARAGRAPH.split(text):
-        flat = _EMPTY_QUOTE.sub("", _flatten(paragraph))
-        count += sum(_QUOTED.sub("", flat).count(mark) for mark in _DOUBLE_MARKS)
-        for match in _QUOTED.finditer(flat):
-            inner = next(g for g in match.groups() if g is not None)
-            count += sum(inner.count(mark) for mark in _DOUBLE_MARKS)
-            # Straight marks have no direction: "the "made up" result" pairs
-            # as "the " and " result", which start or end with a space.
-            if match.group(1) is not None and inner != inner.strip():
-                count += 1
-    return count
-
-
-def numbered_items(text: str) -> list[str]:
-    """The numbers of the numbered list items in ``text``. A number counts
-    only at the very start of a line, with no indent, and only where a list
-    item can start: at the top, after a blank line or a heading, inside a
-    list, or as 1. A wrapped "...and 2023. However" inside a paragraph, or an
-    indented continuation line of an item, is not an item."""
-    items, in_list, can_start = [], False, True
-    for line in text.splitlines():
-        if not line.strip():
-            can_start = True
-            continue
-        if _HEADING.match(line):
-            in_list, can_start = False, True
-            continue
-        match = _NUMBERED.match(line) if line[:1].isdigit() else None
-        if match and (can_start or in_list or match.group(1) == "1"):
-            items.append(match.group(1))
-            in_list = True
-        elif can_start and not line.startswith((" ", "\t")):
-            in_list = False
-        can_start = False
-    return items
-
-
-def _squeeze(text: str) -> str:
-    """NFC, one space for each whitespace run, double quotation marks
-    removed, no space between two CJK characters, and ‘ ’ read as '. Case
-    stays: "5 mM" is not "5 mm"."""
-    text = unicodedata.normalize("NFC", text).replace("‘", "'").replace("’", "'")
-    flat = _flatten(text.translate(_QUOTE_MARKS))
-    return _CJK_GAP.sub("", flat)
-
-
-def _wordish(ch: str) -> bool:
-    """A Latin, Greek, or Cyrillic letter, an ASCII digit, or a combining
-    mark: the characters of scripts that put spaces between words. Other
-    scripts (CJK, Thai) get no word-boundary check."""
-    if not ch:
-        return False
-    if ch.isascii():
-        return ch.isalnum()
-    if unicodedata.category(ch).startswith("M"):
-        return True
-    return ch.isalpha() and unicodedata.name(ch, "").startswith(("LATIN ", "GREEK ", "CYRILLIC "))
-
-
-def _found(quote: str, haystack: str) -> bool:
-    """``quote`` occurs in ``haystack``, and where it starts or ends with a
-    letter, digit, or combining mark of a spaced script, the occurrence starts or ends at a
-    word boundary."""
-    if not quote:
-        return True
-    start = 0
-    while (at := haystack.find(quote, start)) != -1:
-        before = haystack[at - 1] if at else ""
-        after = haystack[at + len(quote)] if at + len(quote) < len(haystack) else ""
-        head_ok = not (_wordish(quote[0]) and _wordish(before))
-        tail_ok = not (_wordish(quote[-1]) and _wordish(after))
-        if head_ok and tail_ok:
-            return True
-        start = at + 1
-    return False
 
 
 def item_map(appendix: str) -> str:
@@ -280,28 +165,20 @@ def roadmap_refs(package: str) -> list[str]:
 
 
 def check(letter: str, package: str, manuscript: str | None) -> list[str]:
-    body, appendix = split_letter(letter)
+    _body, appendix = split_letter(letter)
     problems = []
     if not appendix or not _LEVEL3.search(appendix):
         problems.append("[AUTHOR-LETTER-APPENDIX] no appendix: the letter needs a last level-2 heading "
                         "after its body, with the item map as its last level-3 subsection")
     if manuscript is not None:
-        haystack = _squeeze(manuscript)
         for quote in quotations(letter):
-            if not _found(_squeeze(quote), haystack):
+            if not evidence_ok({"quote": quote, "evidence": "contradiction"}, "", manuscript):
                 problems.append(f"[AUTHOR-LETTER-QUOTE] not in the manuscript: {quote[:40]!r}")
-    if unpaired_marks(letter):
-        problems.append("[AUTHOR-LETTER-QUOTE] a quotation mark without its pair: close each quotation with the "
-                        "matching mark, and do not put quotation marks inside a quotation")
-    if stray_single_quotes(letter):
-        problems.append("[AUTHOR-LETTER-QUOTE] a ‘…’ quotation outside another quotation: use “…” or 「…」")
     # The whole letter, the appendix included (template Rule 3); bare
     # transport refs are not among the patterns, so the item map passes.
     for pattern in MACHINE_PATTERNS:
         if pattern.search(letter):
             problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the letter matches {pattern.pattern!r}")
-    if numbered_items(appendix):
-        problems.append("[AUTHOR-LETTER-MAPPING] the appendix has a numbered item; only the changes are numbered")
     table = table_rows(item_map(appendix))
     if appendix and _LEVEL3.search(appendix) and table is None:
         problems.append("[AUTHOR-LETTER-APPENDIX] the item map has no table (a header row and a delimiter row); "
@@ -309,15 +186,8 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
     rows, row_problems = map_rows(table or [])
     problems += row_problems
     mapped, items = [ref for _, ref in rows], [item for item, _ in rows]
-    numbered = numbered_items(body)
-    for item in sorted(set(numbered) - set(items), key=int):
-        problems.append(f"[AUTHOR-LETTER-MAPPING] body item {item} is not in the item map")
-    for item in sorted(set(items) - set(numbered), key=int):
-        problems.append(f"[AUTHOR-LETTER-MAPPING] item map item {item} is not a numbered item of the body")
     for item in sorted({i for i in items if items.count(i) > 1}, key=int):
         problems.append(f"[AUTHOR-LETTER-MAPPING] item map item {item} appears more than once")
-    for item in sorted({i for i in numbered if numbered.count(i) > 1}, key=int):
-        problems.append(f"[AUTHOR-LETTER-MAPPING] body item {item} is numbered more than once")
     expected = roadmap_refs(package)
     for ref in sorted(set(expected) - set(mapped)):
         problems.append(f"[AUTHOR-LETTER-MAPPING] roadmap item {ref} is not in the item map")

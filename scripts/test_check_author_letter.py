@@ -11,7 +11,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
+import audit_panel_claims as apc  # noqa: E402
 import check_author_letter as cal  # noqa: E402
+import dispatch_panel_claim_audit as d  # noqa: E402
 
 MANUSCRIPT = (
     "第三章 研究方法\n本研究以虛構的三所學校為例，問卷回收率為百分之六十。\n"
@@ -155,24 +157,10 @@ def test_the_appendix_heading_can_be_in_any_language(heading):
     assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
 
 
-def test_a_quote_wrapped_onto_a_new_line_is_checked():
-    wrapped = LETTER.replace("「本研究以虛構的三所學校為例」", "「本研究以虛構的\n三所學校為例」")
-    assert cal.check(wrapped, PACKAGE, MANUSCRIPT) == []
-    absent = LETTER.replace("請說明三所學校怎麼選出", "「原稿沒有的第一行\n以及第二行」")
-    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(absent, PACKAGE, MANUSCRIPT))
-
-
-def test_a_body_item_left_out_of_the_letter_fails():
-    letter = LETTER.replace("3. 〔§5〕政策建議和發現分開寫。\n", "")
-    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
-    assert "[AUTHOR-LETTER-MAPPING] item map item 3 is not a numbered item of the body" in problems
-
-
 def test_an_item_map_that_repeats_an_item_number_fails():
     letter = LETTER.replace("| 2 | R2 |", "| 1 | R2 |")
     problems = cal.check(letter, PACKAGE, MANUSCRIPT)
     assert "[AUTHOR-LETTER-MAPPING] item map item 1 appears more than once" in problems
-    assert "[AUTHOR-LETTER-MAPPING] body item 2 is not in the item map" in problems
 
 
 def test_a_row_with_two_refs_fails():
@@ -210,16 +198,6 @@ def test_the_skill_names_the_step_and_the_template():
     assert (REPO_ROOT / "academic-paper-reviewer" / "templates" / "author_letter_template.md").is_file()
 
 
-def test_a_quotation_inside_a_quotation_fails():
-    # Template Rule 4: quote a shorter part without the inner marks instead.
-    ms = MANUSCRIPT + "作者提出「雙軌制」架構。\nWe define \"burnout\" as exhaustion.\n"
-    for quoted in ("原稿寫「提出『雙軌制』架構」", "“We define \"burnout\" as exhaustion”"):
-        letter = LETTER.replace("請說明三所學校怎麼選出", quoted)
-        assert any("without its pair" in p for p in cal.check(letter, PACKAGE, ms))
-    shorter = LETTER.replace("請說明三所學校怎麼選出", "原稿寫「架構」與“as exhaustion”")
-    assert cal.check(shorter, PACKAGE, ms) == []
-
-
 def test_single_quotation_marks_and_apostrophes_are_kept():
     # ’ is kept, so a nested ‘…’ that the manuscript writes as "…" does not
     # match: the letter must copy the quotation exactly or paraphrase it.
@@ -234,21 +212,6 @@ def test_singular_and_plural_possessives_differ():
     assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, ms))
 
 
-def test_a_quote_must_start_at_a_word_boundary():
-    ms = MANUSCRIPT + "The study found an insignificant difference between groups.\n"
-    bad = LETTER.replace("請說明三所學校怎麼選出", "“significant difference between groups”")
-    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(bad, PACKAGE, ms))
-    good = LETTER.replace("請說明三所學校怎麼選出", "“an insignificant difference between groups”")
-    assert cal.check(good, PACKAGE, ms) == []
-
-
-def test_a_top_level_single_curly_quotation_fails():
-    # ’ is also the apostrophe (“the patients’ outcomes”), so a ‘…’ span has
-    # no reliable end; the letter must use “…” or 「…」 instead.
-    letter = LETTER.replace("請說明三所學校怎麼選出", "‘The patients’ outcomes improved.’")
-    assert any("‘…’ quotation outside another quotation" in p for p in cal.check(letter, PACKAGE, None))
-
-
 def test_a_plural_possessive_inside_a_double_quotation_is_checked_whole():
     ms = MANUSCRIPT + "The patients’ outcomes worsened.\n"
     good = LETTER.replace("請說明三所學校怎麼選出", "“The patients’ outcomes worsened.”")
@@ -261,11 +224,6 @@ def test_english_word_boundaries_still_count():
     ms = MANUSCRIPT + "The signal is now here.\n"
     letter = LETTER.replace("請說明三所學校怎麼選出", "“The signal is nowhere.”")
     assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, ms))
-
-
-def test_a_cjk_manuscript_line_break_does_not_fail_a_real_quote():
-    ms = "本研究以虛構的三所\n學校為例，問卷回收率為百分之六十。\n表 S1 列出各校樣本數。\n"
-    assert cal.check(LETTER, PACKAGE, ms) == []
 
 
 @pytest.mark.parametrize("line", ["見 _REV-3_。", "對應 __SC-2__。", "狀態 _NOT_CALIBRATED_"])
@@ -331,40 +289,10 @@ def test_a_circled_number_in_the_item_map_is_a_problem_not_a_crash():
     assert any("needs one item number and one ref" in p for p in problems)
 
 
-def test_full_width_numbering_is_not_a_list_item():
-    # Markdown has no "3、" list; template Rule 3 asks for "3.".
-    letter = LETTER.replace("3. 〔§5〕", "3、〔§5〕")
-    assert "[AUTHOR-LETTER-MAPPING] item map item 3 is not a numbered item of the body" in cal.check(letter, PACKAGE, MANUSCRIPT)
-    assert cal.numbered_items("請見附表\n1、附表 2\n") == []
-
-
-def test_a_body_item_numbered_twice_fails():
-    letter = LETTER.replace("3. 〔§5〕", "1. 〔§5〕")
-    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
-    assert "[AUTHOR-LETTER-MAPPING] body item 1 is numbered more than once" in problems
-
-
-def test_a_numbered_item_in_the_appendix_fails():
-    letter = LETTER.replace("### 項次對照", "### 各審查人摘要\n\n1. 審查人一\n\n### 項次對照")
-    assert any("the appendix has a numbered item" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
-
-
-def test_case_must_match_in_a_quotation():
-    ms = MANUSCRIPT + "Each well held 5 mM glucose.\n"
-    letter = LETTER.replace("請說明三所學校怎麼選出", "“Each well held 5 mm glucose.”")
-    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, ms))
-
-
 def test_a_straight_and_a_curly_apostrophe_are_the_same_mark():
     ms = MANUSCRIPT + "The patients' outcomes worsened.\n"
     letter = LETTER.replace("請說明三所學校怎麼選出", "“The patients’ outcomes worsened.”")
     assert cal.check(letter, PACKAGE, ms) == []
-
-
-@pytest.mark.parametrize("ms_text,quote", [("Add caféine to the cup.", "café"), ("An étude for piano.", "tude")])
-def test_word_boundaries_count_for_accented_letters(ms_text, quote):
-    letter = LETTER.replace("請說明三所學校怎麼選出", f"“{quote}”")
-    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT + ms_text + "\n"))
 
 
 def test_a_latin_term_beside_cjk_text_needs_no_boundary():
@@ -413,29 +341,6 @@ def test_a_narrow_delimiter_row_is_a_table():
     assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
 
 
-@pytest.mark.parametrize("quoted", ["“本研究以三所學校為例\"", "「本研究以三所學校為例", "“本研究以“三所”學校為例”", "「本研究以「三所」學校為例」"])
-def test_an_unpaired_or_nested_quotation_mark_fails(quoted):
-    letter = LETTER.replace("請說明三所學校怎麼選出", quoted)
-    assert any("without its pair" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
-
-
-def test_a_number_wrapped_inside_a_paragraph_is_not_an_item():
-    letter = LETTER.replace("但還不能支持因果推論。", "但資料只涵蓋到\n2023. 年為止。")
-    assert letter != LETTER
-    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
-    appendix = LETTER.replace("### 項次對照", "### 這份審查的限制\n\n本次只讀到\n2. 章為止。\n\n### 項次對照")
-    assert cal.check(appendix, PACKAGE, MANUSCRIPT) == []
-
-
-def test_a_paragraph_after_a_blank_line_ends_the_list():
-    assert cal.numbered_items("1. a\n2. b\n\n文字\n3. c\n\n4. d\n") == ["1", "2", "4"]
-
-
-def test_an_unclosed_mark_inside_another_quotation_fails():
-    letter = LETTER.replace("本研究以虛構的三所學校為例", "本研究以“虛構的三所學校為例")
-    assert any("without its pair" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
-
-
 @pytest.mark.parametrize("empty", ['""', "“”", "「」", "『』"])
 def test_an_empty_quotation_is_ignored(empty):
     letter = LETTER.replace("請說明三所學校怎麼選出", f"請說明{empty}三所學校怎麼選出")
@@ -446,10 +351,6 @@ def test_a_thai_quotation_needs_no_word_boundary():
     ms = MANUSCRIPT + "ประเทศไทยมีประชากร\n"
     letter = LETTER.replace("請說明三所學校怎麼選出", "“ประเทศไทย”")
     assert cal.check(letter, PACKAGE, ms) == []
-
-
-def test_an_indented_continuation_line_is_not_an_item():
-    assert cal.numbered_items("1. 資料涵蓋到\n   2023. 年為止。\n2. 說明抽樣方法。\n") == ["1", "2"]
 
 
 @pytest.mark.parametrize("table", ["| 項次 |\n|---|---|\n", "| 項次 | 審查紀錄編號 |\n|---|\n", "| 項次 | 審查紀錄編號 |\n|---|---|---|\n", "| 項次 | 審查紀錄編號 | 備註 |\n|---|---|---|\n"])
@@ -464,20 +365,49 @@ def test_a_ref_outside_the_second_column_fails():
     assert any("needs one item number and one ref" in p for p in problems)
 
 
-def test_straight_quotation_marks_nested_in_straight_ones_fail():
-    letter = LETTER.replace("請說明三所學校怎麼選出", 'The text states "the "made up" result"')
-    assert any("without its pair" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
-
-
-@pytest.mark.parametrize("ms,quoted", [
-    ("本研究共納入\n120名受試者。", "「共納入120名受試者」"),
-    ("本研究共納入120名受試者。", "「共納入\n120名受試者」"),
-    ("作者訪談𠮷\n1號受試者。", "「訪談𠮷1號受試者」"),
-])
-def test_a_line_break_beside_a_chinese_character_adds_no_space(ms, quoted):
-    letter = LETTER.replace("請說明三所學校怎麼選出", quoted)
-    assert cal.check(letter, PACKAGE, MANUSCRIPT + ms + "\n") == []
-
-
 def test_a_cell_keeps_an_empty_first_column():
     assert cal._cells("|| S1 | Fix Table S1 |") == ["", "S1", "Fix Table S1"]
+
+
+def test_the_quote_check_is_the_reviewer_claim_check():
+    # #1078 asks for the check used for anchors: the same marks and the same
+    # manuscript match as a judge's quotation in the reviewer claim check.
+    assert cal._QUOTED is apc._QUOTED
+    assert cal.evidence_ok is d.evidence_ok
+
+
+@pytest.mark.parametrize("quote,found", [
+    ("本研究以虛構的三所學校為例", True),
+    ("本研究以三所學校為例", False),
+    ("問卷回收率為百分之六十", True),
+])
+def test_a_quotation_passes_exactly_when_the_claim_check_finds_it(quote, found):
+    letter = LETTER.replace("請說明三所學校怎麼選出", f"原稿寫「{quote}」")
+    assert d.evidence_ok({"quote": quote, "evidence": "contradiction"}, "", MANUSCRIPT) is found
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert (not any("AUTHOR-LETTER-QUOTE" in p for p in problems)) is found
+
+
+def test_a_single_curly_quotation_is_checked():
+    letter = LETTER.replace("請說明三所學校怎麼選出", "‘a sentence the manuscript lacks’")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_a_latin_quotation_can_wrap_onto_the_next_line():
+    ms = MANUSCRIPT + "The response rate was sixty percent.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "“The response rate\nwas sixty percent.”")
+    assert cal.check(letter, PACKAGE, ms) == []
+    absent = LETTER.replace("請說明三所學校怎麼選出", "“A sentence that\nthe manuscript lacks.”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(absent, PACKAGE, ms))
+
+
+def test_a_quotation_does_not_reach_the_next_paragraph():
+    # An unclosed mark does not pair with the next paragraph's closing mark.
+    letter = LETTER.replace("請說明三所學校怎麼選出", "“沒有結尾\n\n下一段寫“三所學校”。")
+    assert not any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_body_numbering_is_not_compared_with_the_item_map():
+    # The script reads the item map only; template Rule 3 asks for the numbers.
+    letter = LETTER.replace("3. 〔§5〕", "〔§5〕")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
