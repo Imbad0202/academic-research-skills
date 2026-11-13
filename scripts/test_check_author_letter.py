@@ -79,15 +79,15 @@ def test_a_quote_not_in_the_manuscript_fails():
     assert [p for p in problems if p.startswith("[AUTHOR-LETTER-QUOTE]")]
 
 
-@pytest.mark.parametrize("marks", [("“", "”"), ('"', '"'), ("『", "』"), ("「", "」")])
+@pytest.mark.parametrize("marks", [("“", "”"), ('"', '"'), ("‘", "’"), ("『", "』"), ("「", "」")])
 def test_every_quote_mark_is_checked(marks):
     letter = LETTER.replace("請說明", f"請說明{marks[0]}沒有這句話{marks[1]}")
     assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
 
 
 def test_a_quote_in_the_appendix_is_checked_too():
-    letter = LETTER + "\n### 各審查人摘要\n\n審查人 1 認為「抽樣沒有分層」。\n"
-    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+    letter = LETTER.replace("### 項次對照", "### 各審查人摘要\n\n審查人 1 認為「抽樣沒有分層」。\n\n### 項次對照")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == ["[AUTHOR-LETTER-QUOTE] not in the manuscript: '抽樣沒有分層'"]
 
 
 def test_without_a_manuscript_the_quote_check_is_skipped():
@@ -220,7 +220,7 @@ def test_a_plural_possessive_inside_a_double_quotation_is_checked_whole():
     assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(bad, PACKAGE, ms))
 
 
-def test_english_word_boundaries_still_count():
+def test_a_missing_space_between_english_words_fails():
     ms = MANUSCRIPT + "The signal is now here.\n"
     letter = LETTER.replace("請說明三所學校怎麼選出", "“The signal is nowhere.”")
     assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, ms))
@@ -250,10 +250,6 @@ def test_an_accept_letter_cut_before_its_item_map_fails():
     letter = ACCEPT + "\n## 附錄\n\n### 這份審查的限制\n\nAI 模擬。\n"
     problems = cal.check(letter, EMPTY_PACKAGE, MANUSCRIPT)
     assert any("the item map has no table" in p for p in problems)
-
-
-def test_an_unclosed_quotation_mark_does_not_reach_the_next_paragraph():
-    assert cal.quotations("他說“沒有結尾\n\n下一段「原稿」。") == ["原稿"]
 
 
 @pytest.mark.parametrize("line", [
@@ -295,7 +291,7 @@ def test_a_straight_and_a_curly_apostrophe_are_the_same_mark():
     assert cal.check(letter, PACKAGE, ms) == []
 
 
-def test_a_latin_term_beside_cjk_text_needs_no_boundary():
+def test_a_latin_term_beside_cjk_text_is_found():
     ms = MANUSCRIPT + "本研究以BMI指數衡量體型。\n"
     letter = LETTER.replace("請說明三所學校怎麼選出", "原稿的「BMI」")
     assert cal.check(letter, PACKAGE, ms) == []
@@ -341,13 +337,13 @@ def test_a_narrow_delimiter_row_is_a_table():
     assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
 
 
-@pytest.mark.parametrize("empty", ['""', "“”", "「」", "『』"])
-def test_an_empty_quotation_is_ignored(empty):
+@pytest.mark.parametrize("empty", ['""', "“”", "‘’", "「」", "『』"])
+def test_a_standalone_empty_quotation_is_not_checked(empty):
     letter = LETTER.replace("請說明三所學校怎麼選出", f"請說明{empty}三所學校怎麼選出")
     assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
 
 
-def test_a_thai_quotation_needs_no_word_boundary():
+def test_a_thai_quotation_is_found():
     ms = MANUSCRIPT + "ประเทศไทยมีประชากร\n"
     letter = LETTER.replace("請說明三所學校怎麼選出", "“ประเทศไทย”")
     assert cal.check(letter, PACKAGE, ms) == []
@@ -388,23 +384,12 @@ def test_a_quotation_passes_exactly_when_the_claim_check_finds_it(quote, found):
     assert (not any("AUTHOR-LETTER-QUOTE" in p for p in problems)) is found
 
 
-def test_a_single_curly_quotation_is_checked():
-    letter = LETTER.replace("請說明三所學校怎麼選出", "‘a sentence the manuscript lacks’")
-    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
-
-
 def test_a_latin_quotation_can_wrap_onto_the_next_line():
     ms = MANUSCRIPT + "The response rate was sixty percent.\n"
     letter = LETTER.replace("請說明三所學校怎麼選出", "“The response rate\nwas sixty percent.”")
     assert cal.check(letter, PACKAGE, ms) == []
     absent = LETTER.replace("請說明三所學校怎麼選出", "“A sentence that\nthe manuscript lacks.”")
     assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(absent, PACKAGE, ms))
-
-
-def test_a_quotation_does_not_reach_the_next_paragraph():
-    # An unclosed mark does not pair with the next paragraph's closing mark.
-    letter = LETTER.replace("請說明三所學校怎麼選出", "“沒有結尾\n\n下一段寫“三所學校”。")
-    assert not any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
 
 
 def test_body_numbering_is_not_compared_with_the_item_map():
@@ -483,3 +468,20 @@ def test_an_empty_heading_line_is_no_heading():
     # "##" alone does not join the next line into a heading.
     letter = LETTER.replace("## 附錄\n", "## 附錄\n\n##\n附錄說明\n")
     assert cal.split_letter(letter)[1].startswith("## 附錄")
+
+
+@pytest.mark.parametrize("text,spans", [
+    # The same kind of mark on both sides of a blank line does not pair.
+    ('他說"沒有結尾\n\n下一段寫"原稿"。', ["原稿"]),
+    ("他說“沒有結尾\n\n下一段寫結尾”。", []),
+    ("他說“沒有結尾\n下一段寫結尾”。", ["沒有結尾 下一段寫結尾"]),
+])
+def test_an_unclosed_mark_does_not_reach_the_next_paragraph(text, spans):
+    assert cal.quotations(text) == spans
+
+
+def test_the_next_paragraph_is_still_checked_after_an_unclosed_mark():
+    for opener in ('"', "“"):
+        closer = opener if opener == '"' else "”"
+        letter = LETTER.replace("請說明三所學校怎麼選出", f"{opener}沒有結尾\n\n下一段寫{opener}原稿沒有這句{closer}。")
+        assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
