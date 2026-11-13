@@ -435,6 +435,8 @@ def test_a_quotation_wrapped_inside_a_blockquote_is_read_whole():
     ms = MANUSCRIPT + "The response rate was sixty percent.\n"
     letter = LETTER.replace("請說明三所學校怎麼選出", "請看：\n\n> “The response rate\n> was sixty percent.”\n")
     assert cal.check(letter, PACKAGE, ms) == []
+    absent = LETTER.replace("請說明三所學校怎麼選出", "請看：\n\n> “A sentence that\n> the manuscript lacks.”\n")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(absent, PACKAGE, ms))
 
 
 def test_an_unclosed_mark_stays_in_its_list_item():
@@ -481,10 +483,14 @@ def test_an_unclosed_mark_does_not_reach_the_next_paragraph(text, spans):
 
 
 def test_the_next_paragraph_is_still_checked_after_an_unclosed_mark():
-    for opener in ('"', "“"):
-        closer = opener if opener == '"' else "”"
-        letter = LETTER.replace("請說明三所學校怎麼選出", f"{opener}沒有結尾\n\n下一段寫{opener}原稿沒有這句{closer}。")
-        assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+    # Without the paragraph split, the first two marks would pair across the
+    # blank line on text the manuscript holds, and the invented phrase after
+    # them would go unchecked.
+    ms = MANUSCRIPT + "The response rate was sixty percent.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", 'The "response\n\nrate "invented phrase" was sixty percent.')
+    assert cal.check(letter, PACKAGE, ms) == ["[AUTHOR-LETTER-QUOTE] not in the manuscript: 'invented phrase'"]
+    curly = LETTER.replace("請說明三所學校怎麼選出", "他說“沒有結尾\n\n下一段寫結尾”。")
+    assert cal.check(curly, PACKAGE, MANUSCRIPT) == []
 
 
 @pytest.mark.parametrize("line", [
@@ -519,3 +525,8 @@ def test_a_blank_blockquote_line_ends_the_paragraph():
 def test_a_fence_inside_a_blockquote_fails():
     letter = LETTER.replace("## 建議修改", "> ~~~text\n> 補充說明\n> ~~~\n\n## 建議修改")
     assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+@pytest.mark.parametrize("empty", ["##   \n附錄說明\n", "###\n補充說明\n", "###   \n補充說明\n"])
+def test_an_empty_heading_with_spaces_is_no_heading(empty):
+    assert cal.check(LETTER + "\n" + empty, PACKAGE, MANUSCRIPT) == []
