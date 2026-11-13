@@ -256,6 +256,8 @@ def test_manuscript_12_word_shingle_leaks():
     # Decomposed Hangul is a CJK letter only after NFC.
     (__import__("unicodedata").normalize("NFD", "표본부족"), False),
     ("標本不足・対照群欠如", False),
+    # Half-width katakana is Japanese too.
+    ("ｻﾝﾌﾟﾙｻｲｽﾞｶﾞｷｼﾞｭﾝﾆﾐﾀﾅｲ", False),
     # Other text keeps the 8-word whitespace rule, unchanged.
     ("the sample frame is never described here", True),
     ("the sample frame is never described in the methods", False),
@@ -272,6 +274,10 @@ def test_a_cjk_trigger_gets_no_short_warning():
         "methodology", {"D1": {"what_triggers_warn": "抽樣不清楚"}},
     )
     assert not any("D1 what_triggers_warn" in w for w in plan.warnings)
+
+
+def test_decomposed_hangul_counts_as_cjk_letters():
+    assert phase._cjk_letters(__import__("unicodedata").normalize("NFD", "표본")) == 2
 
 
 def test_a_short_english_trigger_still_warns():
