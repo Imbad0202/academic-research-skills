@@ -48,7 +48,10 @@ FIELD_ANALYST_LITERALS = (
     "Do not guess what such a part says, and make no card statement about it.",
     "A card says what to check, not the answer:",
     "Each card statement about the manuscript carries its location in square brackets",
-    "A statement you did not check in the text carries `[unverified]` instead.",
+    "A statement you did not check in the text also carries `[unverified]` after its location.",
+    "When you cannot give a location, write the focus as a general check that states nothing about the manuscript.",
+    "For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy.",
+    "[For each part that is not read or not readable: name it, say why, and ask the user for a readable copy.]",
     "## Coverage\n\n| Part | Status |",
 )
 FLOW_LITERAL = (

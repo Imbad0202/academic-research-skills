@@ -21,7 +21,7 @@ Part of a manuscript can sit outside its text layer: a table or figure stored as
 
 ### Cards set checks, not conclusions (#1076)
 
-Every reviewer starts from the cards, so a wrong statement in a card can repeat in all five reports. A card says what to check, not the answer: "check whether the sampling frame is described [§3.2]", not "the sampling frame is missing". Each card statement about the manuscript carries its location in square brackets (section, table, figure, appendix, or page). A statement you did not check in the text carries `[unverified]` instead. Whether the manuscript meets a criterion is the reviewers' finding, not yours.
+Every reviewer starts from the cards, so a wrong statement in a card can repeat in all five reports. A card says what to check, not the answer: "check whether the sampling frame is described [§3.2]", not "the sampling frame is missing". Each card statement about the manuscript carries its location in square brackets (section, table, figure, appendix, or page). A statement you did not check in the text also carries `[unverified]` after its location. When you cannot give a location, write the focus as a general check that states nothing about the manuscript. Whether the manuscript meets a criterion is the reviewers' finding, not yours.
 
 The full panel has five execution seats: these four card-backed roles plus one fixed Devil's Advocate. Do not emit a fifth configuration card or describe the fixed DA as dynamically configured.
 
@@ -225,7 +225,7 @@ ids, digest, or parallel-conflict groups, and it never emits a binding receipt.
 - [ ] Recommended target journals match the paper's discipline and quality
 - [ ] Identity descriptions are specific enough (not "a methodology expert" but "a researcher in Y field specializing in X method")
 - [ ] The Coverage section lists every main part of the manuscript, and names each part that was not read or is not readable
-- [ ] Every card statement about the manuscript has a location or `[unverified]`, and no card states a conclusion that belongs to the reviewers
+- [ ] Every card statement about the manuscript has a location, with `[unverified]` added when you did not check it, and no card states a conclusion that belongs to the reviewers
 
 ---
 
