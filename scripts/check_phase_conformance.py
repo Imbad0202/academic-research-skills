@@ -306,33 +306,22 @@ def _normalise(text: str) -> str:
 
 
 # #1077: Chinese and Japanese prose has no spaces between words, so a
-# whitespace "word" there can be a whole sentence. The blocks of Han
-# ideographs, kana, Bopomofo, and Hangul, with their extensions and
-# half-width forms; _cjk_letters keeps only the letters in them.
-_CJK = re.compile(
-    "["
-    "\u1100-\u11ff"            # Hangul Jamo
-    "\u3040-\u30ff"            # Hiragana, Katakana
-    "\u3100-\u318f"            # Bopomofo, Hangul Compatibility Jamo
-    "\u31a0-\u31bf"            # Bopomofo Extended
-    "\u31f0-\u31ff"            # Katakana Phonetic Extensions
-    "\u3400-\u4dbf"            # CJK Extension A
-    "\u4e00-\u9fff"            # CJK Unified Ideographs
-    "\ua960-\ua97f"            # Hangul Jamo Extended-A
-    "\uac00-\ud7ff"            # Hangul Syllables, Jamo Extended-B
-    "\uf900-\ufaff"            # CJK Compatibility Ideographs
-    "\uff66-\uffdc"            # half-width Katakana and Hangul
-    "\U0001b000-\U0001b16f"    # Kana Supplement and Extended
-    "\U00020000-\U000323af"    # CJK Extensions B to H, Compatibility Supplement
-    "]"
-)
+# whitespace "word" there can be a whole sentence. A CJK letter is a letter
+# that East Asian typography sets full-width or half-width (Unicode East
+# Asian Width W, F, or H): Han, kana, Bopomofo, and Hangul in every block
+# that the running Python knows, and full-width Latin letters too. Hangul
+# vowel and final jamo are narrow, so a Hangul letter also counts by name.
+def _is_cjk_letter(ch: str) -> bool:
+    return ch.isalpha() and (
+        unicodedata.east_asian_width(ch) in ("W", "F", "H")
+        or unicodedata.name(ch, "").startswith("HANGUL")
+    )
 
 
 def _cjk_letters(text: str) -> int:
-    """CJK letters in ``text`` after NFC, so decomposed Hangul counts; the
-    CJK ranges also hold punctuation (・)."""
-    return sum(1 for ch in _CJK.findall(unicodedata.normalize("NFC", text))
-               if ch.isalnum())
+    """CJK letters in ``text`` after NFC, so decomposed Hangul counts as
+    syllables; marks such as 、 and ・ are not letters."""
+    return sum(1 for ch in unicodedata.normalize("NFC", text) if _is_cjk_letter(ch))
 
 
 def _short_trigger(value: str) -> str | None:

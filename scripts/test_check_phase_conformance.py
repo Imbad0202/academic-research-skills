@@ -253,7 +253,7 @@ def test_manuscript_12_word_shingle_leaks():
     ("無對照組，樣本太小，統計錯誤。", False),
     # 6 whitespace words: only the CJK letters keep this from being short.
     ("The study fails to control 戶籍", False),
-    # Decomposed Hangul is a CJK letter only after NFC.
+    # Decomposed Hangul (NFD) also gets no length warning.
     (__import__("unicodedata").normalize("NFD", "표본부족"), False),
     ("標本不足・対照群欠如", False),
     # Half-width katakana is Japanese too.
@@ -277,14 +277,29 @@ def test_a_cjk_trigger_gets_no_short_warning():
 
 
 @pytest.mark.parametrize("letter", [
-    "\u1100", "\u3131", "\ua960", "\ud7b0", "\uffa1",   # Hangul jamo forms
-    "\u3105", "\u31a0",                                # Bopomofo
-    "\u31f0", "\U0001b001", "\uff76",                    # kana
-    "\u3400", "\u4e00", "\uf967", "\U00020bb7",          # Han
+    "\u3042", "\u30a2", "\uff76", "\uff9e", "\u31f0",            # kana
+    "\U0001aff0", "\U0001b001", "\U0001b150",                     # kana supplements
+    "\u3005", "\u3006", "\u3031",                                # iteration and closing marks
+    "\u3105", "\u31a0",                                          # Bopomofo
+    "\uac00", "\u1100", "\u1161", "\u11a8", "\u3131",            # Hangul syllable and jamo
+    "\ua960", "\ud7b0", "\ud7cb", "\uffa1",                       # Hangul extensions, half-width
+    "\u4e00", "\u3400", "\ufa11", "\U00020bb7", "\U0002a700",     # Han
+    "\U00030000", "\U0002f800",                                  # Han extension G, supplement
 ])
 def test_every_cjk_letter_block_counts(letter):
     assert phase._cjk_letters(letter) == 1
     assert phase._short_trigger(letter + " a b") is None
+
+
+@pytest.mark.parametrize("char", ["a", "\u03b1", "\u0434", "\u092f", "\u0e01", "\u30fb", "\u3001", "\u3007", "\uff11"])
+def test_other_characters_are_not_cjk_letters(char):
+    # Latin, Greek, Cyrillic, Devanagari, Thai, marks, and digits.
+    assert phase._cjk_letters(char) == 0
+
+
+def test_a_full_width_latin_letter_counts_as_cjk():
+    # The accepted cost of the width rule: Ａ is set full-width.
+    assert phase._cjk_letters("\uff21") == 1
 
 
 def test_decomposed_hangul_counts_as_cjk_letters():
