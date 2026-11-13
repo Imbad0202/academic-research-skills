@@ -39,6 +39,7 @@ RULE_LITERALS = (
     "When a subagent runs Phase 0, it returns the Coverage section and the cards and dispatches no seat.",
     "A reply that supplies a readable copy of a part that the Coverage section lists as "
     "`not read` or `not readable` does not start Phase 1, even when it also accepts the cards:",
+    "Phase 0 runs again with that copy, and the updated Coverage section and cards are shown again.",
     "A skipped pause still shows the Coverage section before Phase 1 starts.",
     "The pause is skipped only when the user, in their own turn, has said to "
     "skip the card confirmation for this review or this pipeline run.",
