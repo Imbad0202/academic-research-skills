@@ -17,8 +17,8 @@ a revision item, so this script checks three things:
              or a nested quotation mark does not make a real quotation fail
              and English word boundaries still count. Skipped, with a notice,
              when no manuscript file is given.
-  body       the body, before the appendix, holds no machine line or internal
-             id. The appendix is the letter's last level-2 heading, whatever
+  ids        the whole letter, the appendix included, holds no machine line or
+             internal id, and only the body has numbered items. The appendix is the letter's last level-2 heading, whatever
              language it is in. Bare transport refs (``R1``, ``S2``) are not
              searched for, because a manuscript location such as "Table S1"
              has the same form.
@@ -54,7 +54,9 @@ _PARAGRAPH = re.compile(r"\n\s*\n")
 _LEVEL3 = re.compile(r"^\s{0,3}###(?!#)\s+\S", re.MULTILINE)
 
 _LEVEL2 = re.compile(r"^\s{0,3}##(?!#)\s+\S", re.MULTILINE)
-_NUMBERED = re.compile(r"^\s{0,3}([0-9]+)[.)、．]\s", re.MULTILINE)
+# "1. " or "1) ", or a full-width "1、" / "1．" with or without a space.
+_NUMBERED = re.compile(r"^\s{0,3}([0-9]+)(?:[.)]\s|[、．](?![0-9]))", re.MULTILINE)
+_ITEM = re.compile(r"^[0-9]+$")
 _REF = re.compile(r"^[RS][0-9]+$")
 _ROADMAP_HEADING = re.compile(r"^\s{0,3}###\s+(?:Required|Suggested) Revisions\b")
 _HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
@@ -75,7 +77,7 @@ MACHINE_PATTERNS = (
     re.compile(r"\[CONSENSUS-[0-9]+\]"),
     re.compile(r"(?<![A-Za-z0-9])DA-CRITICAL(?![A-Za-z0-9])"),
     re.compile(r"\[SEVERITY-SOURCE"),
-    re.compile(r"Transport ref", re.IGNORECASE),
+    re.compile(r"(?<![A-Za-z0-9])Transport refs?(?![A-Za-z0-9])", re.IGNORECASE),
     re.compile(r"<!--"),
     re.compile(r"^\s*(?:```|~~~)", re.MULTILINE),
 )
@@ -137,7 +139,7 @@ def map_rows(text: str) -> tuple[list[tuple[str, str]], list[str]]:
         refs = [c for c in cells if _REF.match(c)]
         if not refs:
             continue
-        items = [c for c in cells if c.isdigit()]
+        items = [c for c in cells if _ITEM.match(c)]
         if len(refs) != 1 or len(items) != 1:
             problems.append(f"[AUTHOR-LETTER-MAPPING] item map row needs one item number and one ref: {line.strip()[:60]!r}")
             continue
@@ -172,9 +174,13 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
                 problems.append(f"[AUTHOR-LETTER-QUOTE] not in the manuscript: {quote[:40]!r}")
     if stray_single_quotes(letter):
         problems.append("[AUTHOR-LETTER-QUOTE] a ‘…’ quotation outside another quotation: use “…” or 「…」")
+    # The whole letter, the appendix included (template Rule 3); bare
+    # transport refs are not among the patterns, so the item map passes.
     for pattern in MACHINE_PATTERNS:
-        if pattern.search(body):
-            problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the body matches {pattern.pattern!r}")
+        if pattern.search(letter):
+            problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the letter matches {pattern.pattern!r}")
+    if _NUMBERED.search(appendix):
+        problems.append("[AUTHOR-LETTER-MAPPING] the appendix has a numbered item; only the changes are numbered")
     rows, row_problems = map_rows(item_map(appendix))
     problems += row_problems
     mapped, items = [ref for _, ref in rows], [item for item, _ in rows]

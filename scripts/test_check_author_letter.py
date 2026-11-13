@@ -144,8 +144,9 @@ def test_a_letter_with_one_level_2_heading_has_no_appendix():
 
 
 def test_a_letter_cut_before_its_appendix_fails():
+    # The last level-2 section, 建議修改, has no item map subsection.
     letter = LETTER.split("## 附錄")[0]
-    assert cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert any(p.startswith("[AUTHOR-LETTER-APPENDIX]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
 
 
 @pytest.mark.parametrize("heading", ["## Appendix", "## Apéndice", "## 附录", "## 부록"])
@@ -280,3 +281,36 @@ def test_machine_ids_beside_cjk_text_and_other_forms_fail(line):
 def test_a_reviewer_table_before_the_item_map_is_not_the_item_map():
     letter = LETTER.replace("### 項次對照", "### 各審查人摘要\n\n| 審查人 | 建議 |\n|---|---|\n| R1 | 大幅修改 |\n\n### 項次對照")
     assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+def test_transport_reform_is_ordinary_english():
+    letter = LETTER.replace("政策建議和發現分開寫。", "政策建議和發現分開寫，包括 public transport reform 的部分。")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+def test_an_id_in_the_appendix_fails_too():
+    letter = LETTER.replace("### 項次對照", "### 輔助檢查\n\n- 對應 REV-2。\n\n### 項次對照")
+    assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_a_circled_number_in_the_item_map_is_a_problem_not_a_crash():
+    letter = LETTER.replace("| 3 | S1 |", "| ③ | S1 |")
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert any("needs one item number and one ref" in p for p in problems)
+
+
+def test_full_width_numbering_without_a_space_is_read():
+    letter = LETTER.replace("3. 〔§5〕", "3、〔§5〕")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+    assert cal._NUMBERED.findall("2021、2022 年的資料") == []
+
+
+def test_a_body_item_numbered_twice_fails():
+    letter = LETTER.replace("3. 〔§5〕", "1. 〔§5〕")
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert "[AUTHOR-LETTER-MAPPING] body item 1 is numbered more than once" in problems
+
+
+def test_a_numbered_item_in_the_appendix_fails():
+    letter = LETTER.replace("### 項次對照", "### 各審查人摘要\n\n1. 審查人一\n\n### 項次對照")
+    assert any("the appendix has a numbered item" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
