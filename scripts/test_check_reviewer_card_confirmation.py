@@ -138,3 +138,18 @@ def test_each_field_analyst_literal_is_load_bearing(tree: Path, literal: str) ->
 def test_missing_field_analyst_is_exit_2(tree: Path) -> None:
     (tree / FIELD_ANALYST).unlink()
     assert _run(tree).returncode == 2
+
+
+def test_coverage_after_the_cards_fails(tree: Path) -> None:
+    path = tree / FIELD_ANALYST
+    text = path.read_text(encoding="utf-8")
+    start = text.index("## Coverage\n")
+    end = text.index("## Reviewer Configuration Cards\n")
+    block = text[start:end]
+    text = text[:start] + text[end:]
+    marker = "## Review Strategy Recommendations\n"
+    text = text.replace(marker, block + marker, 1)
+    path.write_text(text, encoding="utf-8")
+    result = _run(tree)
+    assert result.returncode == 1
+    assert "must come before" in result.stderr

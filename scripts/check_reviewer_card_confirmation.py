@@ -27,6 +27,7 @@ RULE_PREFIX = "1. ⚠️ **IRON RULE — CONFIRM THE CARDS BEFORE PHASE 1 (#1030
 # Load-bearing phrases of Checkpoint Rule 1, compared modulo whitespace.
 RULE_LITERALS = (
     "show the user the Coverage section and every Reviewer Configuration Card",
+    "with the location anchors and `[unverified]` marks as written",
     "then end the turn.",
     "Dispatch no reviewer seat until the user replies in their own turn.",
     "Only a reply that accepts the whole set starts Phase 1,",
@@ -47,14 +48,16 @@ RULE_LITERALS = (
 # Load-bearing phrases of the field analyst prompt (#1075, #1076).
 FIELD_ANALYST_LITERALS = (
     "Before the cards, write the `## Coverage` section of the output:",
-    "mark it `read`, `not read`, or `not readable`.",
+    "list each main part of the manuscript (body sections, tables, figures, embedded images, appendices)",
+    "mark it `read`, `not read`, or `not readable`;",
+    "write one row `none` for a kind of part the manuscript does not have,",
     "Do not guess what such a part says, and make no card statement about it.",
     "A card says what to check, not the answer:",
     "Each card statement about the manuscript carries its location in square brackets",
     "A statement about a part you read but did not check in the text also carries `[unverified]` after its location;",
     "A card may name such a part only as one to check once a readable copy is supplied,",
     "When you cannot give a location, write the focus as a general check that states nothing about the manuscript.",
-    "For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy.",
+    "For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy",
     "[For each part that is not read or not readable: name it, say why, and ask the user for a readable copy.]",
     "## Coverage\n\n| Part | Status |",
 )
@@ -107,10 +110,16 @@ def check(root: Path) -> list[str]:
     for literal in RULE_LITERALS:
         if norm_ws(literal) not in flat:
             errors.append(f"{SKILL}: {SECTION} rule 1 lacks {literal!r}")
-    analyst = norm_ws(read_or_exit2(root, FIELD_ANALYST))
+    raw_analyst = read_or_exit2(root, FIELD_ANALYST)
+    analyst = norm_ws(raw_analyst)
     for literal in FIELD_ANALYST_LITERALS:
         if norm_ws(literal) not in analyst:
             errors.append(f"{FIELD_ANALYST}: lacks {literal!r}")
+    # The Coverage section comes before the cards in the output structure.
+    coverage = raw_analyst.find("\n## Coverage\n")
+    cards = raw_analyst.find("\n## Reviewer Configuration Cards\n")
+    if coverage == -1 or cards == -1 or coverage > cards:
+        errors.append(f"{FIELD_ANALYST}: '## Coverage' must come before '## Reviewer Configuration Cards'")
     return errors
 
 

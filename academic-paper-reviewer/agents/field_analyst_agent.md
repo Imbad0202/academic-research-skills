@@ -17,7 +17,7 @@ Read the complete paper, perform field analysis, then dynamically generate speci
 
 ### Say what you read (#1075)
 
-Part of a manuscript can sit outside its text layer: a table or figure stored as an image, a scanned appendix. A text conversion can skip such a part without a warning. Before the cards, write the `## Coverage` section of the output: list each main part of the manuscript (body sections, tables, figures, embedded images, appendices) and mark it `read`, `not read`, or `not readable`. For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy. Do not guess what such a part says, and make no card statement about it. A card may name such a part only as one to check once a readable copy is supplied, and it says nothing about what the part contains, even when the text you read refers to it.
+Part of a manuscript can sit outside its text layer: a table or figure stored as an image, a scanned appendix. A text conversion can skip such a part without a warning. Before the cards, write the `## Coverage` section of the output: list each main part of the manuscript (body sections, tables, figures, embedded images, appendices) and mark it `read`, `not read`, or `not readable`; write one row `none` for a kind of part the manuscript does not have, so that a missing appendix and a skipped one look different. For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy (for a part that is `not read` because it was not supplied, ask for that part). Do not guess what such a part says, and make no card statement about it. A card may name such a part only as one to check once a readable copy is supplied, and it says nothing about what the part contains, even when the text you read refers to it.
 
 ### Cards set checks, not conclusions (#1076)
 
@@ -200,7 +200,7 @@ The tables shorten each review focus to a few words. On a card, write each focus
 
 | Part | Status |
 |------|--------|
-| [Body sections / each table / each figure / each embedded image / each appendix] | [read / not read / not readable] |
+| [Body sections / each table / each figure / each embedded image / each appendix] | [read / not read / not readable / none] |
 
 [For each part that is not read or not readable: name it, say why, and ask the user for a readable copy.]
 
