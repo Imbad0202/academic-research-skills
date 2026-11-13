@@ -411,3 +411,36 @@ def test_body_numbering_is_not_compared_with_the_item_map():
     # The script reads the item map only; template Rule 3 asks for the numbers.
     letter = LETTER.replace("3. 〔§5〕", "〔§5〕")
     assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+@pytest.mark.parametrize("line", [
+    "**dimension_verdicts**: D1=pass",
+    "`fired_conditions`: F2",
+    "__calibration_status__: x",
+    "**editorial_decision**=major",
+])
+def test_a_machine_field_in_emphasis_or_code_fails(line):
+    letter = LETTER.replace("## 建議修改", f"{line}\n\n## 建議修改")
+    assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_a_second_table_in_the_item_map_fails():
+    letter = LETTER + "\n| 項次 | 審查紀錄編號 |\n|---|---|\n| 4 | S2 |\n"
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert "[AUTHOR-LETTER-MAPPING] the item map has a table row outside its one table" in problems
+
+
+def test_a_stray_row_after_the_item_map_table_fails():
+    letter = LETTER + "\n| 4 | S2 |\n"
+    problems = cal.check(letter, PACKAGE, MANUSCRIPT)
+    assert "[AUTHOR-LETTER-MAPPING] the item map has a table row outside its one table" in problems
+
+
+def test_corner_brackets_are_kept_by_the_match():
+    # The claim check removes only double quotation marks, so 「」 stays.
+    # Template Rule 4 asks for no inner marks; this pins only the match.
+    ms = MANUSCRIPT + "作者提出「雙軌制」架構。\n"
+    good = LETTER.replace("請說明三所學校怎麼選出", "“作者提出「雙軌制」架構”")
+    assert cal.check(good, PACKAGE, ms) == []
+    bad = LETTER.replace("請說明三所學校怎麼選出", "“作者提出雙軌制架構”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(bad, PACKAGE, ms))

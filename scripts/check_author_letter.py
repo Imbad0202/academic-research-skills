@@ -12,9 +12,11 @@ drop a revision item, so this script checks three things:
              quotation marks of ``audit_panel_claims._QUOTED`` (“…”, "…",
              ‘…’, 「…」, 『…』) read in each paragraph made one line, and
              ``dispatch_panel_claim_audit.evidence_ok`` with
-             ``contradiction`` evidence. That check folds case, whitespace,
-             and quotation marks, so a quotation that differs from the
-             manuscript only in those passes. It finds no word boundary
+             ``contradiction`` evidence. That check applies NFC, folds
+             case, makes each whitespace run one space, removes the double
+             quotation marks " “ ”, and reads ‘ ’ as '; it keeps 「」, 『』,
+             and every other mark. A quotation that differs from the
+             manuscript only in what it folds passes. It finds no word boundary
              ("significant" passes inside "insignificant"), reads no other
              quotation marks (« », „ “), and a line break between two CJK
              characters, in the letter or in the manuscript file, becomes a
@@ -28,8 +30,8 @@ drop a revision item, so this script checks three things:
              searched for, because a manuscript location such as "Table S1"
              has the same form.
   item map   the appendix is the letter's last level-2 heading, and the item
-             map is its last level-3 subsection. The item map holds a table
-             of two columns: a header row and a delimiter row, then one row
+             map is its last level-3 subsection. The item map holds one table
+             of two columns, and no other line with a pipe: a header row and a delimiter row, then one row
              for each change (an item number, then a ref), and no rows when
              there are no changes. Outer pipes are optional. Each item
              number appears once, and the refs are the rows of the Required
@@ -65,11 +67,12 @@ _ROADMAP_HEADING = re.compile(r"^\s{0,3}###\s+(?:Required|Suggested) Revisions\b
 _HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
 # Machine lines and internal ids of the package that belong only in the audit
 # record (#1078 Rule 3 of the template).
+# A field name may stand in Markdown emphasis or code (**name**:, `name`:).
 MACHINE_PATTERNS = (
-    re.compile(r"dimension_verdicts\s*:"),
-    re.compile(r"fired_conditions\s*:"),
-    re.compile(r"editorial_decision\s*="),
-    re.compile(r"calibration_status\s*:"),
+    re.compile(r"dimension_verdicts[*_`]*\s*:"),
+    re.compile(r"fired_conditions[*_`]*\s*:"),
+    re.compile(r"editorial_decision[*_`]*\s*="),
+    re.compile(r"calibration_status[*_`]*\s*:"),
     # ASCII boundaries: a CJK letter beside an id is not a boundary for \b.
     # An underscore may be Markdown emphasis (_REV-3_), so it is a boundary.
     re.compile(r"(?<![A-Za-z0-9])NOT_CALIBRATED(?![A-Za-z0-9])"),
@@ -185,6 +188,10 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
                         "with no changes it is a table with no rows")
     rows, row_problems = map_rows(table or [])
     problems += row_problems
+    # The item map holds one table: a second table or a stray row would go
+    # unchecked, so every line with a pipe must belong to the table.
+    if table is not None and sum("|" in line for line in item_map(appendix).splitlines()) > len(table) + 2:
+        problems.append("[AUTHOR-LETTER-MAPPING] the item map has a table row outside its one table")
     mapped, items = [ref for _, ref in rows], [item for item, _ in rows]
     for item in sorted({i for i in items if items.count(i) > 1}, key=int):
         problems.append(f"[AUTHOR-LETTER-MAPPING] item map item {item} appears more than once")
