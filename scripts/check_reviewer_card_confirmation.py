@@ -35,7 +35,10 @@ RULE_LITERALS = (
     "Every mode that runs Phase 0 pauses: `full`, `methodology-focus`, `guided`, and `quick`.",
     "a review that `academic-pipeline` dispatches at Stage 3",
     "`calibration` does not pause,",
-    "When a subagent runs Phase 0, it returns the cards and dispatches no seat.",
+    "When a subagent runs Phase 0, it returns the Coverage section and the cards and dispatches no seat.",
+    "A reply that supplies a readable copy of a part that the Coverage section lists as "
+    "`not read` or `not readable` does not start Phase 1, even when it also accepts the cards:",
+    "A skipped pause still shows the Coverage section before Phase 1 starts.",
     "The pause is skipped only when the user, in their own turn, has said to "
     "skip the card confirmation for this review or this pipeline run.",
     "A general request to skip questions does not skip it, and neither does "
@@ -48,14 +51,15 @@ FIELD_ANALYST_LITERALS = (
     "Do not guess what such a part says, and make no card statement about it.",
     "A card says what to check, not the answer:",
     "Each card statement about the manuscript carries its location in square brackets",
-    "A statement you did not check in the text also carries `[unverified]` after its location.",
+    "A statement about a part you read but did not check in the text also carries `[unverified]` after its location;",
+    "A card may name such a part only as one to check once a readable copy is supplied,",
     "When you cannot give a location, write the focus as a general check that states nothing about the manuscript.",
     "For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy.",
     "[For each part that is not read or not readable: name it, say why, and ask the user for a readable copy.]",
     "## Coverage\n\n| Part | Status |",
 )
 FLOW_LITERAL = (
-    "** STOP: show the Reviewer Configuration Cards and wait for the user's "
+    "** STOP: show the Coverage section and the Reviewer Configuration Cards and wait for the user's "
     "reply before Phase 1 (Checkpoint Rule 1) **"
 )
 # The pre-#1030 wording, which showed the cards without waiting.

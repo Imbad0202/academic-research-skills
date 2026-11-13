@@ -17,11 +17,11 @@ Read the complete paper, perform field analysis, then dynamically generate speci
 
 ### Say what you read (#1075)
 
-Part of a manuscript can sit outside its text layer: a table or figure stored as an image, a scanned appendix. A text conversion can skip such a part without a warning. Before the cards, write the `## Coverage` section of the output: list each main part of the manuscript (body sections, tables, figures, embedded images, appendices) and mark it `read`, `not read`, or `not readable`. For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy. Do not guess what such a part says, and make no card statement about it.
+Part of a manuscript can sit outside its text layer: a table or figure stored as an image, a scanned appendix. A text conversion can skip such a part without a warning. Before the cards, write the `## Coverage` section of the output: list each main part of the manuscript (body sections, tables, figures, embedded images, appendices) and mark it `read`, `not read`, or `not readable`. For each part that is `not read` or `not readable`, name it, say why, and ask the user for a readable copy. Do not guess what such a part says, and make no card statement about it. A card may name such a part only as one to check once a readable copy is supplied, and it says nothing about what the part contains, even when the text you read refers to it.
 
 ### Cards set checks, not conclusions (#1076)
 
-Every reviewer starts from the cards, so a wrong statement in a card can repeat in all five reports. A card says what to check, not the answer: "check whether the sampling frame is described [§3.2]", not "the sampling frame is missing". Each card statement about the manuscript carries its location in square brackets (section, table, figure, appendix, or page). A statement you did not check in the text also carries `[unverified]` after its location. When you cannot give a location, write the focus as a general check that states nothing about the manuscript. Whether the manuscript meets a criterion is the reviewers' finding, not yours.
+Every reviewer starts from the cards, so a wrong statement in a card can repeat in all five reports. A card says what to check, not the answer: "check whether the sampling frame is described [§3.2]", not "the sampling frame is missing". Each card statement about the manuscript carries its location in square brackets (section, table, figure, appendix, or page). A statement about a part you read but did not check in the text also carries `[unverified]` after its location; `[unverified]` is not a substitute for a location you can find. When you cannot give a location, write the focus as a general check that states nothing about the manuscript. Whether the manuscript meets a criterion is the reviewers' finding, not yours.
 
 The full panel has five execution seats: these four card-backed roles plus one fixed Devil's Advocate. Do not emit a fifth configuration card or describe the fixed DA as dynamically configured.
 
@@ -145,6 +145,8 @@ ids, digest, or parallel-conflict groups, and it never emits a binding receipt.
 
 ### Dynamic Configuration Examples
 
+The tables shorten each review focus to a few words. On a card, write each focus as a check with its location (#1076).
+
 **Example 1: "Impact of AI on Higher Education Quality Assurance"**
 
 | Reviewer | Identity | Review Focus |
@@ -224,7 +226,8 @@ ids, digest, or parallel-conflict groups, and it never emits a binding receipt.
 - [ ] Reviewer 3's angle is truly different from the other 2 (not just "broader" but a specific different disciplinary perspective)
 - [ ] Recommended target journals match the paper's discipline and quality
 - [ ] Identity descriptions are specific enough (not "a methodology expert" but "a researcher in Y field specializing in X method")
-- [ ] The Coverage section lists every main part of the manuscript, and names each part that was not read or is not readable
+- [ ] The Coverage section lists every main part of the manuscript, and for each part that was not read or is not readable, names it, says why, and asks for a readable copy
+- [ ] No card says what a part that was not read or is not readable contains
 - [ ] Every card statement about the manuscript has a location, with `[unverified]` added when you did not check it, and no card states a conclusion that belongs to the reviewers
 
 ---
@@ -233,7 +236,7 @@ ids, digest, or parallel-conflict groups, and it never emits a binding receipt.
 
 ### 1. Highly cross-disciplinary papers
 - When the paper involves 3+ disciplines, Reviewer 2 focuses on the most core discipline, Reviewer 3 covers the remaining cross-disciplinary perspectives
-- Explicitly note in the Configuration Card "this paper is highly cross-disciplinary, the disciplinary coverage strategy across reviewers is as follows..."
+- Explicitly note in the Review Strategy Recommendations "this paper is highly cross-disciplinary, the disciplinary coverage strategy across reviewers is as follows...", with the sections that show each discipline
 
 ### 2. Pure theoretical / philosophical papers
 - Reviewer 1's role adjusts from "methodology" to "argumentation logic and philosophical method"
