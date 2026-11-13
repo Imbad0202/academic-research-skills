@@ -211,15 +211,54 @@ def test_the_skill_names_the_step_and_the_template():
 
 def test_a_nested_quotation_mark_does_not_fail_a_real_quote():
     ms = MANUSCRIPT + "作者提出「雙軌制」架構。\nWe define \"burnout\" as exhaustion.\n"
-    letter = LETTER.replace("請說明三所學校怎麼選出", "原稿寫「提出『雙軌制』架構」與“define ‘burnout’ as exhaustion”")
+    letter = LETTER.replace("請說明三所學校怎麼選出", "原稿寫「提出『雙軌制』架構」與“We define ‘burnout’ as exhaustion”")
     assert cal.check(letter, PACKAGE, ms) == []
 
 
-def test_an_apostrophe_does_not_end_a_single_curly_quotation():
-    letter = LETTER.replace("請說明三所學校怎麼選出", "‘the author’s causal claim is proven’")
-    quotes = cal.quotations(letter)
-    assert "the author’s causal claim is proven" in quotes
-    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+def test_a_top_level_single_curly_quotation_fails():
+    # ’ is also the apostrophe (“the patients’ outcomes”), so a ‘…’ span has
+    # no reliable end; the letter must use “…” or 「…」 instead.
+    letter = LETTER.replace("請說明三所學校怎麼選出", "‘The patients’ outcomes improved.’")
+    assert any("‘…’ quotation outside another quotation" in p for p in cal.check(letter, PACKAGE, None))
+
+
+def test_a_plural_possessive_inside_a_double_quotation_is_checked_whole():
+    ms = MANUSCRIPT + "The patients’ outcomes worsened.\n"
+    good = LETTER.replace("請說明三所學校怎麼選出", "“The patients’ outcomes worsened.”")
+    assert cal.check(good, PACKAGE, ms) == []
+    bad = LETTER.replace("請說明三所學校怎麼選出", "“The patients’ outcomes improved.”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(bad, PACKAGE, ms))
+
+
+def test_english_word_boundaries_still_count():
+    ms = MANUSCRIPT + "The signal is now here.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "“The signal is nowhere.”")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, ms))
+
+
+def test_a_cjk_manuscript_line_break_does_not_fail_a_real_quote():
+    ms = "本研究以虛構的三所\n學校為例，問卷回收率為百分之六十。\n表 S1 列出各校樣本數。\n"
+    assert cal.check(LETTER, PACKAGE, ms) == []
+
+
+@pytest.mark.parametrize("line", ["見 _REV-3_。", "對應 __SC-2__。", "狀態 _NOT_CALIBRATED_"])
+def test_an_id_in_markdown_emphasis_fails(line):
+    letter = LETTER.replace("## 建議修改", f"{line}\n\n## 建議修改")
+    assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+EMPTY_PACKAGE = "# Editorial Decision Package\n\n### Required Revisions (Must Fix)\n\n### Suggested Revisions (Should Fix)\n"
+ACCEPT = "# 審查意見\n\n## 審查決定\n\n接受。\n\n## 必須修改\n\n無。\n\n## 請作者回答的問題\n\n無。\n"
+
+
+def test_an_accept_letter_without_its_appendix_fails():
+    problems = cal.check(ACCEPT, EMPTY_PACKAGE, MANUSCRIPT)
+    assert any(p.startswith("[AUTHOR-LETTER-APPENDIX]") for p in problems)
+
+
+def test_an_accept_letter_with_its_appendix_passes():
+    letter = ACCEPT + "\n## 附錄\n\n### 這份審查的限制\n\nAI 模擬。\n\n### 項次對照\n\n沒有修改項目。\n"
+    assert cal.check(letter, EMPTY_PACKAGE, MANUSCRIPT) == []
 
 
 def test_an_unclosed_quotation_mark_does_not_reach_the_next_paragraph():

@@ -7,13 +7,16 @@ letter; ``templates/author_letter_template.md``). A rewrite can turn a
 paraphrase into a false quotation, carry a machine line into the body, or drop
 a revision item, so this script checks three things:
 
-  quotes     every span in quotation marks occurs in the manuscript. A quotation
-             can wrap onto the next line inside a paragraph; an apostrophe
-             inside ‘…’ does not end it. Both sides are compared after
-             ``dispatch_panel_claim_audit._norm`` with whitespace and quotation
-             marks removed, so a line break or a nested quotation mark does not
-             make a real quotation fail. Skipped, with a notice, when no
-             manuscript file is given.
+  quotes     every span in “…”, "…", 「…」, or 『…』 occurs in the manuscript. A
+             quotation can wrap onto the next line inside a paragraph. ‘…’ is
+             allowed only inside another quotation, because its closing mark
+             is also the apostrophe (“the patients’ outcomes”); a ‘ outside a
+             quotation is a problem. Both sides are compared after
+             ``dispatch_panel_claim_audit._norm`` with quotation marks removed
+             and the space between two CJK characters removed, so a line break
+             or a nested quotation mark does not make a real quotation fail
+             and English word boundaries still count. Skipped, with a notice,
+             when no manuscript file is given.
   body       the body, before the appendix, holds no machine line or internal
              id. The appendix is the letter's last level-2 heading, whatever
              language it is in. Bare transport refs (``R1``, ``S2``) are not
@@ -41,11 +44,12 @@ except ImportError:  # pragma: no cover - dual-path import
     from scripts.dispatch_panel_claim_audit import _norm
 
 # The reviewer claim check's quotation marks (audit_panel_claims._QUOTED),
-# read inside one paragraph; a ’ followed by a letter is an apostrophe, not
-# the end of a ‘…’ quotation. Straight single quotes are left out, since they
-# also serve as apostrophes.
-_QUOTED = re.compile(r'"([^"]+)"|“([^”]+)”|‘((?:[^’]|’(?=\w))+)’|「([^」]+)」|『([^』]+)』')
+# read inside one paragraph. Single quotation marks are left out: ’ is also
+# the apostrophe, so a ‘…’ span has no reliable end (template Rule 4).
+_QUOTED = re.compile(r'"([^"]+)"|“([^”]+)”|「([^」]+)」|『([^』]+)』')
 _QUOTE_MARKS = str.maketrans("", "", "\"'“”‘’「」『』")
+_CJK_CHAR = "\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef"
+_CJK_GAP = re.compile(f"(?<=[{_CJK_CHAR}]) (?=[{_CJK_CHAR}])")
 _PARAGRAPH = re.compile(r"\n\s*\n")
 _LEVEL3 = re.compile(r"^\s{0,3}###(?!#)\s+\S", re.MULTILINE)
 
@@ -62,13 +66,14 @@ MACHINE_PATTERNS = (
     re.compile(r"editorial_decision\s*="),
     re.compile(r"calibration_status\s*:"),
     # ASCII boundaries: a CJK letter beside an id is not a boundary for \b.
-    re.compile(r"(?<![A-Za-z0-9_])NOT_CALIBRATED(?![A-Za-z0-9_])"),
-    re.compile(r"(?<![A-Za-z0-9_])(?:must_fix|should_fix)(?![A-Za-z0-9_])"),
-    re.compile(r"(?<![A-Za-z0-9_])REV-[0-9]+"),
-    re.compile(r"(?<![A-Za-z0-9_])SC-[0-9]+"),
-    re.compile(r"(?<![A-Za-z0-9_])(?:EIC|R[1-3]|DA)-W[0-9]+"),
+    # An underscore may be Markdown emphasis (_REV-3_), so it is a boundary.
+    re.compile(r"(?<![A-Za-z0-9])NOT_CALIBRATED(?![A-Za-z0-9])"),
+    re.compile(r"(?<![A-Za-z0-9])(?:must_fix|should_fix)(?![A-Za-z0-9])"),
+    re.compile(r"(?<![A-Za-z0-9])REV-[0-9]+"),
+    re.compile(r"(?<![A-Za-z0-9])SC-[0-9]+"),
+    re.compile(r"(?<![A-Za-z0-9])(?:EIC|R[1-3]|DA)-W[0-9]+"),
     re.compile(r"\[CONSENSUS-[0-9]+\]"),
-    re.compile(r"(?<![A-Za-z0-9_])DA-CRITICAL(?![A-Za-z0-9_])"),
+    re.compile(r"(?<![A-Za-z0-9])DA-CRITICAL(?![A-Za-z0-9])"),
     re.compile(r"\[SEVERITY-SOURCE"),
     re.compile(r"Transport ref", re.IGNORECASE),
     re.compile(r"<!--"),
@@ -95,15 +100,25 @@ def quotations(text: str) -> list[str]:
     return spans
 
 
+def stray_single_quotes(text: str) -> int:
+    """How many ‘ marks stand outside every other quotation."""
+    count = 0
+    for paragraph in _PARAGRAPH.split(text):
+        count += _QUOTED.sub("", " ".join(paragraph.split())).count("‘")
+    return count
+
+
 def _squeeze(text: str) -> str:
-    """``_norm`` with whitespace and quotation marks removed."""
-    return "".join(_norm(text).split()).translate(_QUOTE_MARKS)
+    """``_norm`` with quotation marks removed and no space between two CJK
+    characters; English words stay one space apart."""
+    flat = " ".join(_norm(text).translate(_QUOTE_MARKS).split())
+    return _CJK_GAP.sub("", flat)
 
 
 def item_map(appendix: str) -> str:
     """The appendix's last level-3 subsection (the template's Item Map)."""
     starts = [m.start() for m in _LEVEL3.finditer(appendix)]
-    return appendix[starts[-1]:] if starts else appendix
+    return appendix[starts[-1]:] if starts else ""
 
 
 def _cells(line: str) -> list[str]:
@@ -147,13 +162,16 @@ def roadmap_refs(package: str) -> list[str]:
 def check(letter: str, package: str, manuscript: str | None) -> list[str]:
     body, appendix = split_letter(letter)
     problems = []
-    if not appendix:
-        problems.append("[AUTHOR-LETTER-APPENDIX] no appendix: the letter needs a last level-2 heading after its body")
+    if not appendix or not _LEVEL3.search(appendix):
+        problems.append("[AUTHOR-LETTER-APPENDIX] no appendix: the letter needs a last level-2 heading "
+                        "after its body, with the item map as its last level-3 subsection")
     if manuscript is not None:
         haystack = _squeeze(manuscript)
         for quote in quotations(letter):
             if _squeeze(quote) and _squeeze(quote) not in haystack:
                 problems.append(f"[AUTHOR-LETTER-QUOTE] not in the manuscript: {quote[:40]!r}")
+    if stray_single_quotes(letter):
+        problems.append("[AUTHOR-LETTER-QUOTE] a ‘…’ quotation outside another quotation: use “…” or 「…」")
     for pattern in MACHINE_PATTERNS:
         if pattern.search(body):
             problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the body matches {pattern.pattern!r}")
