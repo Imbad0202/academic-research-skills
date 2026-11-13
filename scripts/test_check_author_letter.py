@@ -249,7 +249,7 @@ def test_an_accept_letter_with_its_appendix_passes():
 def test_an_accept_letter_cut_before_its_item_map_fails():
     letter = ACCEPT + "\n## 附錄\n\n### 這份審查的限制\n\nAI 模擬。\n"
     problems = cal.check(letter, EMPTY_PACKAGE, MANUSCRIPT)
-    assert any("the item map has no table" in p for p in problems)
+    assert any("the item map has no two-column table" in p for p in problems)
 
 
 @pytest.mark.parametrize("line", [
@@ -302,12 +302,12 @@ ACCEPT_APPENDIX = ACCEPT + "\n## 附錄\n\n### 這份審查的限制\n\nAI 模�
 
 def test_a_horizontal_rule_is_not_an_item_map_table():
     problems = cal.check(ACCEPT_APPENDIX + "---\n", EMPTY_PACKAGE, MANUSCRIPT)
-    assert any("the item map has no table" in p for p in problems)
+    assert any("the item map has no two-column table" in p for p in problems)
 
 
 def test_a_header_row_alone_is_not_a_table():
     problems = cal.check(ACCEPT_APPENDIX + "| 項次 | 審查紀錄編號 |\n", EMPTY_PACKAGE, MANUSCRIPT)
-    assert any("the item map has no table" in p for p in problems)
+    assert any("the item map has no two-column table" in p for p in problems)
 
 
 def test_a_row_without_a_ref_fails():
@@ -328,7 +328,7 @@ def test_a_table_without_outer_pipes_is_read():
 
 def test_a_header_row_over_a_horizontal_rule_is_not_a_table():
     problems = cal.check(ACCEPT_APPENDIX + "| 項次 | 審查紀錄編號 |\n---\n", EMPTY_PACKAGE, MANUSCRIPT)
-    assert any("the item map has no table" in p for p in problems)
+    assert any("the item map has no two-column table" in p for p in problems)
 
 
 def test_a_narrow_delimiter_row_is_a_table():
@@ -352,7 +352,7 @@ def test_a_thai_quotation_is_found():
 @pytest.mark.parametrize("table", ["| 項次 |\n|---|---|\n", "| 項次 | 審查紀錄編號 |\n|---|\n", "| 項次 | 審查紀錄編號 |\n|---|---|---|\n", "| 項次 | 審查紀錄編號 | 備註 |\n|---|---|---|\n"])
 def test_an_item_map_needs_exactly_two_columns(table):
     problems = cal.check(ACCEPT_APPENDIX + table, EMPTY_PACKAGE, MANUSCRIPT)
-    assert any("the item map has no table" in p for p in problems)
+    assert any("the item map has no two-column table" in p for p in problems)
 
 
 def test_a_ref_outside_the_second_column_fails():
@@ -485,3 +485,37 @@ def test_the_next_paragraph_is_still_checked_after_an_unclosed_mark():
         closer = opener if opener == '"' else "”"
         letter = LETTER.replace("請說明三所學校怎麼選出", f"{opener}沒有結尾\n\n下一段寫{opener}原稿沒有這句{closer}。")
         assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+@pytest.mark.parametrize("line", [
+    "` dimension_verdicts `: D1=pass",
+    "- **editorial_decision**: Major Revision",
+    "校準狀態見 `calibration_status`。",
+    "| fired_conditions | F2 |",
+])
+def test_a_machine_field_name_counts_wherever_it_stands(line):
+    letter = LETTER.replace("## 建議修改", f"{line}\n\n## 建議修改")
+    assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_a_code_cell_with_spaces_is_read():
+    letter = LETTER.replace("| 1 | R1 |", "| ` 1 ` | ` R1 ` |")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+@pytest.mark.parametrize("prefix", ["> > ", "    > ", "\t> "])
+def test_a_quotation_in_a_nested_or_indented_blockquote_is_read_whole(prefix):
+    ms = MANUSCRIPT + "The response rate was sixty percent.\n"
+    good = LETTER.replace("請說明三所學校怎麼選出", f"請看：\n\n{prefix}“The response rate\n{prefix}was sixty percent.”\n")
+    assert cal.check(good, PACKAGE, ms) == []
+    bad = LETTER.replace("請說明三所學校怎麼選出", f"請看：\n\n{prefix}“The response rate\n{prefix}was ninety percent.”\n")
+    assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(bad, PACKAGE, ms))
+
+
+def test_a_blank_blockquote_line_ends_the_paragraph():
+    assert cal.quotations('> 他說"沒有結尾\n>\n> 下一段寫"原稿"。') == ["原稿"]
+
+
+def test_a_fence_inside_a_blockquote_fails():
+    letter = LETTER.replace("## 建議修改", "> ~~~text\n> 補充說明\n> ~~~\n\n## 建議修改")
+    assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))

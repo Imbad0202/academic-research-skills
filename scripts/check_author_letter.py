@@ -62,7 +62,8 @@ _TABLE_RULE = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$")
 _PARAGRAPH = re.compile(r"\n\s*\n")
 # A list item or a blockquote mark at the start of a line.
 _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|[0-9]+[.)])[ \t]")
-_BLOCKQUOTE = re.compile(r"^[ \t]{0,3}>[ \t]?")
+# Every blockquote mark at the start of a line, nested or indented.
+_BLOCKQUOTE = re.compile(r"^(?:[ \t]*>[ \t]?)+", re.MULTILINE)
 _LEVEL2 = re.compile(r"^[ \t]{0,3}##(?!#)[ \t]+\S", re.MULTILINE)
 _LEVEL3 = re.compile(r"^[ \t]{0,3}###(?!#)[ \t]+\S", re.MULTILINE)
 _ITEM = re.compile(r"^[1-9][0-9]*$")
@@ -71,12 +72,11 @@ _ROADMAP_HEADING = re.compile(r"^[ \t]{0,3}###[ \t]+(?:Required|Suggested) Revis
 _HEADING = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]")
 # Machine lines and internal ids of the package that belong only in the audit
 # record (#1078 Rule 3 of the template).
-# A field name may stand in Markdown emphasis or code (**name**:, `name`:).
+# A field name counts wherever it stands, in Markdown emphasis or code too:
+# no author letter has a reason to write it.
 MACHINE_PATTERNS = (
-    re.compile(r"dimension_verdicts[*_`]*\s*:"),
-    re.compile(r"fired_conditions[*_`]*\s*:"),
-    re.compile(r"editorial_decision[*_`]*\s*="),
-    re.compile(r"calibration_status[*_`]*\s*:"),
+    re.compile(r"(?<![A-Za-z0-9])(?:dimension_verdicts|fired_conditions"
+               r"|editorial_decision|calibration_status)(?![A-Za-z0-9])"),
     # ASCII boundaries: a CJK letter beside an id is not a boundary for \b.
     # An underscore may be Markdown emphasis (_REV-3_), so it is a boundary.
     re.compile(r"(?<![A-Za-z0-9])NOT_CALIBRATED(?![A-Za-z0-9])"),
@@ -107,10 +107,9 @@ def _blocks(text: str) -> list[str]:
     """Paragraphs and list items, with blockquote marks removed, so a
     quotation can wrap onto the next line of its block but no further."""
     blocks = []
-    for paragraph in _PARAGRAPH.split(text):
-        lines = [_BLOCKQUOTE.sub("", line) for line in paragraph.splitlines()]
+    for paragraph in _PARAGRAPH.split(_BLOCKQUOTE.sub("", text)):
         current = []
-        for line in lines:
+        for line in paragraph.splitlines():
             if _LIST_ITEM.match(line) and current:
                 blocks.append("\n".join(current))
                 current = []
@@ -140,7 +139,7 @@ def _cells(line: str) -> list[str]:
     body = line.strip()
     body = body[1:] if body.startswith("|") else body
     body = body[:-1] if body.endswith("|") else body
-    return [c.strip().strip("`*_") for c in body.split("|")]
+    return [c.strip(" \t`*_") for c in body.split("|")]
 
 
 def table_rows(text: str) -> list[str] | None:
@@ -199,12 +198,14 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
                 problems.append(f"[AUTHOR-LETTER-QUOTE] not in the manuscript: {quote[:40]!r}")
     # The whole letter, the appendix included (template Rule 3); bare
     # transport refs are not among the patterns, so the item map passes.
+    # Blockquote marks removed too, so a fence inside a blockquote counts.
+    unquoted = _BLOCKQUOTE.sub("", letter)
     for pattern in MACHINE_PATTERNS:
-        if (hit := pattern.search(letter)):
+        if (hit := pattern.search(letter) or pattern.search(unquoted)):
             problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the letter holds {hit.group(0).strip()!r}")
     table = table_rows(item_map(appendix))
     if appendix and _LEVEL3.search(appendix) and table is None:
-        problems.append("[AUTHOR-LETTER-APPENDIX] the item map has no table (a header row and a delimiter row); "
+        problems.append("[AUTHOR-LETTER-APPENDIX] the item map has no two-column table (a header row and a delimiter row of two cells); "
                         "with no changes it is a table with no rows")
     rows, row_problems = map_rows(table or [])
     problems += row_problems
