@@ -276,6 +276,17 @@ def test_a_cjk_trigger_gets_no_short_warning():
     assert not any("D1 what_triggers_warn" in w for w in plan.warnings)
 
 
+@pytest.mark.parametrize("letter", [
+    "\u1100", "\u3131", "\ua960", "\ud7b0", "\uffa1",   # Hangul jamo forms
+    "\u3105", "\u31a0",                                # Bopomofo
+    "\u31f0", "\U0001b001", "\uff76",                    # kana
+    "\u3400", "\u4e00", "\uf967", "\U00020bb7",          # Han
+])
+def test_every_cjk_letter_block_counts(letter):
+    assert phase._cjk_letters(letter) == 1
+    assert phase._short_trigger(letter + " a b") is None
+
+
 def test_decomposed_hangul_counts_as_cjk_letters():
     assert phase._cjk_letters(__import__("unicodedata").normalize("NFD", "표본")) == 2
 

@@ -306,11 +306,25 @@ def _normalise(text: str) -> str:
 
 
 # #1077: Chinese and Japanese prose has no spaces between words, so a
-# whitespace "word" there can be a whole sentence. Half-width katakana
-# (U+FF66-U+FF9F) is Japanese too.
+# whitespace "word" there can be a whole sentence. The blocks of Han
+# ideographs, kana, Bopomofo, and Hangul, with their extensions and
+# half-width forms; _cjk_letters keeps only the letters in them.
 _CJK = re.compile(
-    "[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af"
-    "\uf900-\ufaff\uff66-\uff9f\U00020000-\U0003134f]"
+    "["
+    "\u1100-\u11ff"            # Hangul Jamo
+    "\u3040-\u30ff"            # Hiragana, Katakana
+    "\u3100-\u318f"            # Bopomofo, Hangul Compatibility Jamo
+    "\u31a0-\u31bf"            # Bopomofo Extended
+    "\u31f0-\u31ff"            # Katakana Phonetic Extensions
+    "\u3400-\u4dbf"            # CJK Extension A
+    "\u4e00-\u9fff"            # CJK Unified Ideographs
+    "\ua960-\ua97f"            # Hangul Jamo Extended-A
+    "\uac00-\ud7ff"            # Hangul Syllables, Jamo Extended-B
+    "\uf900-\ufaff"            # CJK Compatibility Ideographs
+    "\uff66-\uffdc"            # half-width Katakana and Hangul
+    "\U0001b000-\U0001b16f"    # Kana Supplement and Extended
+    "\U00020000-\U000323af"    # CJK Extensions B to H, Compatibility Supplement
+    "]"
 )
 
 
