@@ -444,3 +444,42 @@ def test_corner_brackets_are_kept_by_the_match():
     assert cal.check(good, PACKAGE, ms) == []
     bad = LETTER.replace("請說明三所學校怎麼選出", "“作者提出雙軌制架構”")
     assert any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(bad, PACKAGE, ms))
+
+
+def test_a_quotation_wrapped_inside_a_blockquote_is_read_whole():
+    ms = MANUSCRIPT + "The response rate was sixty percent.\n"
+    letter = LETTER.replace("請說明三所學校怎麼選出", "請看：\n\n> “The response rate\n> was sixty percent.”\n")
+    assert cal.check(letter, PACKAGE, ms) == []
+
+
+def test_an_unclosed_mark_stays_in_its_list_item():
+    letter = LETTER.replace("## 建議修改", "- 他說“沒有結尾\n- 原稿寫“三所學校”。\n\n## 建議修改")
+    assert not any("AUTHOR-LETTER-QUOTE" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+@pytest.mark.parametrize("line", ["見（CONSENSUS-2）", "【CONSENSUS-3】", "SEVERITY-SOURCE: R2"])
+def test_tags_without_square_brackets_fail(line):
+    letter = LETTER.replace("## 建議修改", f"{line}\n\n## 建議修改")
+    assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_a_machine_line_problem_names_the_text_found():
+    letter = LETTER.replace("## 建議修改", "見 REV-3。\n\n## 建議修改")
+    assert "[AUTHOR-LETTER-MACHINE-LINE] the letter holds 'REV-3'" in cal.check(letter, PACKAGE, MANUSCRIPT)
+
+
+@pytest.mark.parametrize("item", ["0", "01"])
+def test_an_item_number_starts_at_1_without_a_leading_zero(item):
+    letter = LETTER.replace("| 1 | R1 |", f"| {item} | R1 |")
+    assert any("needs one item number and one ref" in p for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+def test_an_emphasised_cell_is_read():
+    letter = LETTER.replace("| 1 | R1 |", "| _1_ | _R1_ |")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+def test_an_empty_heading_line_is_no_heading():
+    # "##" alone does not join the next line into a heading.
+    letter = LETTER.replace("## 附錄\n", "## 附錄\n\n##\n附錄說明\n")
+    assert cal.split_letter(letter)[1].startswith("## 附錄")

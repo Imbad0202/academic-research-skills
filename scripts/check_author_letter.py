@@ -10,7 +10,8 @@ drop a revision item, so this script checks three things:
   quotes     every quotation occurs in the manuscript, by the check that the
              reviewer claim check (#1002) uses for a judge's quotation: the
              quotation marks of ``audit_panel_claims._QUOTED`` (“…”, "…",
-             ‘…’, 「…」, 『…』) read in each paragraph made one line, and
+             ‘…’, 「…」, 『…』) read in each paragraph or list item made one
+             line, with blockquote marks removed, and
              ``dispatch_panel_claim_audit.evidence_ok`` with
              ``contradiction`` evidence. That check applies NFC, folds
              case, makes each whitespace run one space, removes the double
@@ -25,14 +26,14 @@ drop a revision item, so this script checks three things:
              can pair with the wrong mark (`"" and "invented"` reads
              `" and "`), and the words after it are then not checked.
              Skipped, with a notice, when no manuscript file is given.
-  ids        the whole letter, the appendix included, holds no machine line or
-             internal id. Bare transport refs (``R1``, ``S2``) are not
+  ids        the whole letter, the appendix included, holds no machine line,
+             internal id, HTML comment, or fenced code block. Bare transport refs (``R1``, ``S2``) are not
              searched for, because a manuscript location such as "Table S1"
              has the same form.
   item map   the appendix is the letter's last level-2 heading, and the item
              map is its last level-3 subsection. The item map holds one table
              of two columns, and no other line with a pipe: a header row and a delimiter row, then one row
-             for each change (an item number, then a ref), and no rows when
+             for each change (an item number from 1, then a ref), and no rows when
              there are no changes. Outer pipes are optional. Each item
              number appears once, and the refs are the rows of the Required
              and Suggested Revisions tables of the package, each once. The
@@ -59,12 +60,15 @@ except ImportError:  # pragma: no cover - dual-path import
 # A delimiter row of two or more columns; outer pipes are optional.
 _TABLE_RULE = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$")
 _PARAGRAPH = re.compile(r"\n\s*\n")
-_LEVEL2 = re.compile(r"^\s{0,3}##(?!#)\s+\S", re.MULTILINE)
-_LEVEL3 = re.compile(r"^\s{0,3}###(?!#)\s+\S", re.MULTILINE)
-_ITEM = re.compile(r"^[0-9]+$")
+# A list item or a blockquote mark at the start of a line.
+_LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|[0-9]+[.)])[ \t]")
+_BLOCKQUOTE = re.compile(r"^[ \t]{0,3}>[ \t]?")
+_LEVEL2 = re.compile(r"^[ \t]{0,3}##(?!#)[ \t]+\S", re.MULTILINE)
+_LEVEL3 = re.compile(r"^[ \t]{0,3}###(?!#)[ \t]+\S", re.MULTILINE)
+_ITEM = re.compile(r"^[1-9][0-9]*$")
 _REF = re.compile(r"^[RS][0-9]+$")
-_ROADMAP_HEADING = re.compile(r"^\s{0,3}###\s+(?:Required|Suggested) Revisions\b")
-_HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
+_ROADMAP_HEADING = re.compile(r"^[ \t]{0,3}###[ \t]+(?:Required|Suggested) Revisions\b")
+_HEADING = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]")
 # Machine lines and internal ids of the package that belong only in the audit
 # record (#1078 Rule 3 of the template).
 # A field name may stand in Markdown emphasis or code (**name**:, `name`:).
@@ -80,9 +84,9 @@ MACHINE_PATTERNS = (
     re.compile(r"(?<![A-Za-z0-9])REV-[0-9]+"),
     re.compile(r"(?<![A-Za-z0-9])SC-[0-9]+"),
     re.compile(r"(?<![A-Za-z0-9])(?:EIC|R[1-3]|DA)-W[0-9]+"),
-    re.compile(r"\[CONSENSUS-[0-9]+\]"),
+    re.compile(r"(?<![A-Za-z0-9])CONSENSUS-[0-9]+"),
     re.compile(r"(?<![A-Za-z0-9])DA-CRITICAL(?![A-Za-z0-9])"),
-    re.compile(r"\[SEVERITY-SOURCE"),
+    re.compile(r"(?<![A-Za-z0-9])SEVERITY-SOURCE(?![A-Za-z0-9])"),
     re.compile(r"(?<![A-Za-z0-9])Transport refs?(?![A-Za-z0-9])", re.IGNORECASE),
     re.compile(r"<!--"),
     re.compile(r"^\s*(?:```|~~~)", re.MULTILINE),
@@ -99,12 +103,28 @@ def split_letter(letter: str) -> tuple[str, str]:
     return letter[:starts[-1]], letter[starts[-1]:]
 
 
+def _blocks(text: str) -> list[str]:
+    """Paragraphs and list items, with blockquote marks removed, so a
+    quotation can wrap onto the next line of its block but no further."""
+    blocks = []
+    for paragraph in _PARAGRAPH.split(text):
+        lines = [_BLOCKQUOTE.sub("", line) for line in paragraph.splitlines()]
+        current = []
+        for line in lines:
+            if _LIST_ITEM.match(line) and current:
+                blocks.append("\n".join(current))
+                current = []
+            current.append(line)
+        blocks.append("\n".join(current))
+    return blocks
+
+
 def quotations(text: str) -> list[str]:
     """Quoted spans, by the reviewer claim check's marks, in each paragraph
-    made one line, so a quotation can wrap onto the next line."""
+    or list item made one line, so a quotation can wrap onto the next line."""
     spans = []
-    for paragraph in _PARAGRAPH.split(text):
-        flat = " ".join(paragraph.split())
+    for block in _blocks(text):
+        flat = " ".join(block.split())
         spans += [next(g for g in m.groups() if g is not None) for m in _QUOTED.finditer(flat)]
     return spans
 
@@ -120,7 +140,7 @@ def _cells(line: str) -> list[str]:
     body = line.strip()
     body = body[1:] if body.startswith("|") else body
     body = body[:-1] if body.endswith("|") else body
-    return [c.strip().strip("`*") for c in body.split("|")]
+    return [c.strip().strip("`*_") for c in body.split("|")]
 
 
 def table_rows(text: str) -> list[str] | None:
@@ -180,8 +200,8 @@ def check(letter: str, package: str, manuscript: str | None) -> list[str]:
     # The whole letter, the appendix included (template Rule 3); bare
     # transport refs are not among the patterns, so the item map passes.
     for pattern in MACHINE_PATTERNS:
-        if pattern.search(letter):
-            problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the letter matches {pattern.pattern!r}")
+        if (hit := pattern.search(letter)):
+            problems.append(f"[AUTHOR-LETTER-MACHINE-LINE] the letter holds {hit.group(0).strip()!r}")
     table = table_rows(item_map(appendix))
     if appendix and _LEVEL3.search(appendix) and table is None:
         problems.append("[AUTHOR-LETTER-APPENDIX] the item map has no table (a header row and a delimiter row); "
