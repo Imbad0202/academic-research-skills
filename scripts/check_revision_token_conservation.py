@@ -73,15 +73,29 @@ NUMBER_RE = re.compile(
     rf"(?:(?<=[\s(\[=:,;])|^)-?{_MANTISSA}{_EXPONENT}%?"
     rf"|(?<![A-Za-z\d.]){_MANTISSA}{_EXPONENT}%?"
 )
-SQUARE_CITATION_RE = re.compile(r"\[(?:\d+[-,;\s]*)+\]")
+# A digit, then any digits and separators, up to `]`. The older form
+# `\[(?:\d+[-,;\s]*)+\]` matched the same strings but could split one digit
+# run in many ways, so `[` plus a long digit run with no `]` backtracked
+# exponentially (found while fixing #1088).
+SQUARE_CITATION_RE = re.compile(r"\[\d[\d,;\s-]*\]")
 # Parenthetical author-year: `(Li & Chen, 2023)`. Also capture an optional
 # NARRATIVE author phrase immediately preceding a bare `(year)` —
 # `Smith (2020)`, `Okonkwo and Vidal (2021)`, `Al-Masri et al. (2019)` — so a
 # `Smith`→`Jones` swap that keeps the same year and the same ref marker still
 # surfaces as a citation delta. The author phrase is capitalized-word runs
 # joined by `&` / `and` / `et al.`; the year alone is the parenthetical form.
+# A long capital run with no year after it (`"A" * 40`) used to backtrack
+# exponentially (#1088). Two guards stop that. On a scan from the start of
+# the text, which is how this checker calls it, they change no match:
+# - each author word ends where the word ends (`(?![\w'’-])`), so the regex
+#   cannot split one capitalized word into several shorter words;
+# - the phrase does not start right after a capital letter (`(?<![A-Z])`).
+#   A match from there would also start at that capital, which the scan
+#   reaches first, so a start there can only fail after reading to the end
+#   of the run. A scan that starts after that capital (`finditer(s, pos)`)
+#   can lose the match, so do not pass `pos`.
 _NARRATIVE_AUTHOR = (
-    r"(?:[A-Z][\w'’-]+(?:\s+(?:&|and|et\s+al\.?)\s*)?)+"
+    r"(?<![A-Z])(?:[A-Z][\w'’-]+(?![\w'’-])(?:\s+(?:&|and|et\s+al\.?)\s*)?)+"
     r"(?:\s+et\s+al\.?)?\s+"
 )
 AUTHOR_YEAR_RE = re.compile(
