@@ -310,7 +310,7 @@ def test_a_manuscript_shingle_in_compatibility_ideographs_leaks():
 
 
 _META = {"title": "Synthetic", "field": "t", "word_count": 30}
-_HAN = "研究結果顯示學生在課程中的參與程度與學習成效之間具有顯著正相關並且"  # 34 Han letters
+_HAN = "研究結果顯示學生在課程中的參與程度與學習成效之間具有顯著正相關並且"  # 33 Han letters
 _HIRA = "わたしたちはまいにちあさはやくおきてがっこうへいきます"  # 27 hiragana
 _KATA = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒ"  # 27 katakana
 _TWELVE = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
@@ -345,6 +345,33 @@ def test_a_mixed_han_kana_and_latin_copy_leaks():
     assert phase._points(copied) == 24
     assert _leaks("Plan: " + copied, "Intro. " + copied + " end.")
     assert not _leaks("Plan: " + copied[:-1], "Intro. " + copied + " end.")
+
+
+def test_a_window_that_jumps_from_23_to_25_points_still_finds_the_copy():
+    # 1 Han letter + 12 words: the window from 註 holds 25 points, and the
+    # next window, the 12 words alone, is the copy.
+    assert _leaks(_TWELVE, "註：" + _TWELVE + " end")
+    odd = "AIGC 的 " + " ".join(_TWELVE.split()[:11])  # 2 + 1 + 22 = 25 points
+    assert _leaks("Plan: " + odd, "前言。" + odd + " end")
+    assert not _leaks("Plan: " + odd.rsplit(" ", 1)[0], "前言。" + odd + " end")
+
+
+def test_a_lone_mark_beside_a_han_letter_is_still_cut_in_the_leak_check():
+    assert phase._tokens("「字」 — ok", keep_marks=True) == ["字", "—", "ok"]
+    # The comma between two Han letters is no token, so a copy that drops
+    # it still matches, and two full stops add no points to 20 letters.
+    assert _leaks(_HAN[:12] + " " + _HAN[12:24],
+                  "前言。" + _HAN[:12] + "，" + _HAN[12:24] + "。")
+    assert not _leaks("結論。" + _HAN[:20] + "。", "前言。" + _HAN[:20] + "。")
+
+
+def test_a_cjk_copy_inside_a_contract_string_is_exempt():
+    contract = json.loads(json.dumps(FULL))
+    contract["note"] = _HAN[:12] + "\n" + _HAN[12:26]
+    phase.check_manuscript_leakage(
+        phase1_text("methodology") + "\n" + _HAN[:26],
+        "前言。" + _HAN[:26] + "。", _META, contract,
+    )
 
 
 def test_a_cjk_copy_inside_the_title_value_is_exempt():

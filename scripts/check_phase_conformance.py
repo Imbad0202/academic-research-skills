@@ -1232,6 +1232,11 @@ def check_manuscript_leakage(
     exemption_haystacks.append(_joined(json.dumps(
         contract, ensure_ascii=False, sort_keys=True
     )))
+    # Each contract string too: json.dumps() writes a line break as the two
+    # characters \\n, which would split a contract sentence from its copy.
+    exemption_haystacks += [
+        _joined(value) for value in _flatten_metadata_values(contract)
+    ]
     for shingle in _shingles(_leak_tokens(manuscript_text)):
         if shingle not in phase1_norm:
             continue
