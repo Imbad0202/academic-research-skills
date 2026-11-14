@@ -143,7 +143,7 @@ Based on verdict, provide specific revision requirements:
 ```
 Round 1: Full review -> feedback -> Draft Writer revises
 Round 2 (if needed): Focused re-review of revised sections only
-Max 2 rounds: Remaining issues -> Acknowledged Limitations section
+Max 2 revision rounds: see "Loop End States" for each way the loop ends
 ```
 
 ### Re-Review Criteria
@@ -314,15 +314,17 @@ Each Issue includes Estimated Effort:
 ```
 Round 1:
   INPUT: Initial Peer Review Report
-  -> draft_writer_agent handles all Critical + Major issues
-  -> Produces Revision Log
+  -> the author triages each Issue (will_address / wont_address)
+  -> draft_writer_agent edits only the will_address items
+  -> Produces Revision Log (format: draft_writer_agent § Revision Log Format)
   -> Submits Revised Draft + Revision Log
 
 Round 2 (re-review):
   INPUT: Revised Draft + Revision Log + Round 1 Report
   PROCESS:
-    1. Check each "Resolved" item in Revision Log
+    1. Check each will_address row of the Revision Log against its Action Taken
        -> Confirm genuinely resolved (not just superficial changes)
+       -> A wont_address row stays an unresolved Issue; do not count it as resolved
     2. Check whether revisions introduced new issues
     3. Reassess affected criteria against current evidence
     4. Update dimension judgements and explain any verdict change
@@ -331,6 +333,7 @@ Round 2 (re-review):
   Decision:
   ├── All applicable decision-bearing criteria met -> Accept (can proceed to Phase 7)
   ├── Only limited, non-core repairable issues remain -> Minor Revision
+  │     (draft_writer_agent makes the last allowed revision; no review follows it)
   ├── Substantial but repairable decision-bearing issues remain -> Major Revision
   └── A fundamental unrepairable criterion failure remains -> Reject
 
@@ -349,16 +352,36 @@ Step 1: Root Cause Analysis
   ├── Writing quality problem (register, logic) -> suggest rewriting section by section
   └── Originality problem (insufficient contribution) -> suggest repositioning research contribution
 
-Step 2: Provide user with 3 options
-  Option A: Accept current state -> write all unresolved Issues into
-            "Acknowledged Limitations" -> proceed to Phase 7
+Step 2: Provide user with the options below
+  Option A: Accept current state -> draft_writer_agent adds an
+            "Acknowledged Limitations" section that lists every unresolved
+            Issue (the user's Option A choice authorizes this one edit only)
+            -> that draft goes to the Phase 7 confirmation stop
+            (SKILL.md Checkpoint Rule 6)
+            Not offered while a Critical Issue remains (Checkpoint Rule 4);
+            the user can still ask for early formatting
   Option B: Expanded revision -> return to specified Phase and redo
             (estimate additional workload: Moderate / Significant / Major Rework)
   Option C: Terminate workflow -> save existing draft and all Review Reports
-            -> user decides next steps independently
+            -> user decides next steps independently; Phase 7 does not run
 
 Step 3: Regardless of user's choice, record in the final section of Review Report
 ```
+
+### Loop End States (#1087)
+
+Each way the revision loop ends has one next step. `academic-paper/SKILL.md` Checkpoint Rules 4 and 6 state the same rules.
+
+| End state | Next step |
+|---|---|
+| Accept (any round) | Phase 7 starts without a stop |
+| Round 2 Minor Revision | `draft_writer_agent` makes the last allowed revision; no review follows it; Phase 7 starts after the user confirms it at the stop |
+| Round 2 Major Revision or Reject, Option A | Only when no Critical Issue remains: `draft_writer_agent` adds the "Acknowledged Limitations" section; Phase 7 starts after the user confirms it at the stop |
+| Round 2 Major Revision or Reject, Option B | Return to the phase the option names |
+| Round 2 Major Revision or Reject, Option C | The workflow ends; Phase 7 does not run |
+| Early formatting (the user asks for Phase 7 before an Accept) | Phase 7 starts after the user confirms it at the stop |
+
+The stop is the one that `formatter_agent` shows before it formats, with the draft's Review Status (`formatter_agent` § Review Status); do not ask the user this yourself. If the user declines, the workflow ends as Option C does.
 
 ## Quality Gates
 
@@ -430,14 +453,14 @@ Quality gate not passed ->
 | Target Agent | Output Content | Data Format |
 |-----------|---------|---------|
 | `draft_writer_agent` | Peer Review Report + Revision Instructions | This agent's Output Format |
-| `formatter_agent` | Final verdict = Accept -> green light signal | Verdict field |
+| `formatter_agent` | Last verdict and its round; with an Accept, also the Final Counts. Phase 7 starts on an Accept, otherwise only after the user confirms it (Loop End States) | Verdict field + Final Counts |
 | User | Complete Review Report | Readable structured report |
 
 ### Handoff Format Requirements
 
 - **Output to draft_writer_agent**: Each Issue must include `Section` (precise to section number) so draft_writer can directly locate the edit point
 - **Round 2 receiving Revised Draft**: Must also receive Revision Log to track which Issues have been addressed
-- **Accept verdict output to formatter_agent**: Include final confirmed Word Count and Citation Count; formatter uses these for Final Quality Checklist
+- **Output to formatter_agent**: Give the last verdict and its round. With an Accept, also give the Final Counts of the accepted draft: body word count (counted per `shared/references/word_count_conventions.md`), in-text citation count, and reference-list entry count. The formatter uses them as the input counts in its Final Quality Checklist. When the draft that goes to Phase 7 has no Accept (Loop End States), give no counts; the formatter counts that draft itself
 
 ## Quality Criteria
 
