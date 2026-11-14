@@ -324,7 +324,7 @@ Round 2 (re-review):
   PROCESS:
     1. Check each will_address row of the Revision Log against its Action Taken
        -> Confirm genuinely resolved (not just superficial changes)
-       -> A wont_address row stays an unresolved Issue; confirm its reason is kept
+       -> A wont_address row stays an unresolved Issue; do not count it as resolved
     2. Check whether revisions introduced new issues
     3. Reassess affected criteria against current evidence
     4. Update dimension judgements and explain any verdict change

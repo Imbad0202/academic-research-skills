@@ -204,7 +204,7 @@ alignment and do not silently reconstruct a target from model memory.
 1. ⚠️ **IRON RULE**: User must confirm Paper Configuration Record before proceeding to Phase 1
 2. **Phase 2 -> 3**: User must approve outline (can request restructuring)
 3. ⚠️ **IRON RULE**: Max 2 revision loops; unresolved items -> "Acknowledged Limitations" (when the user picks Option A; see rule 6)
-4. **Peer Review** Critical-severity issues block progression to Phase 7. While a Critical issue remains, `peer_reviewer_agent` does not offer Option A; formatting that draft is early formatting (rule 6)
+4. **Peer Review** Critical-severity issues block progression to Phase 7 through an Accept or Option A. While a Critical issue remains, `peer_reviewer_agent` does not offer Option A; the user can still ask for early formatting, and Phase 7 then follows rule 6
 5. User can skip Phase 1 (literature) if providing own sources
 6. **Phase 6 -> 7** (`full` mode, #1087): Phase 7 starts without a stop when peer review gave an Accept verdict for the draft that goes to Phase 7. In every other case Phase 7 starts only after the user confirms it at a stop that shows the draft's Review Status (`formatter_agent` § Review Status). The cases are:
    - **Last allowed revision**: after a Round 2 Minor Revision verdict, `draft_writer_agent` makes the second and last revision, and no review follows it.
@@ -628,7 +628,7 @@ Explicit prohibitions to prevent common failure modes:
 ### Peer Review
 14. **Five criterion-bound dimensions** — Originality, Methodological Rigor, Evidence Sufficiency, Argument Coherence, and Writing Quality; report categorical judgements with evidence and no numerical aggregation
 15. **Actionable feedback** — every criticism must include a specific suggestion
-16. **Max 2 revision rounds** — unresolved items become Acknowledged Limitations
+16. **Max 2 revision rounds** — when the user picks Option A, unresolved items become Acknowledged Limitations (Checkpoint Rule 6)
 
 ### Mandatory Inclusions
 ⚠️ **IRON RULE**: Every paper MUST include: Data Availability Statement, Ethics Declaration, Author Contributions (CRediT), Conflict of Interest Statement, Funding Acknowledgment.

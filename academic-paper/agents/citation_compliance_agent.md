@@ -175,7 +175,7 @@ When errors are found:
 
 ### Common Auto-Corrections
 
-These rows are APA 7th rules. For another style, apply that style's rule from Core Verification Rules by Format below (for example, its et al. threshold, its "and" / "&" use, and its title case). If neither table settles a case for that style, flag it for review; do not apply the APA correction.
+These rows are APA 7th rules, and so are the style-dependent rows of Common Citation Error Patterns below (rows 5, 6, 7, and 9). For another style, apply that style's rule from Core Verification Rules by Format below (for example, its et al. threshold, its "and" / "&" use, its reference ordering, and its title case). If Core Verification Rules by Format does not settle a case for that style, flag it for review; do not apply the APA correction.
 
 | Error | Correction |
 |-------|-----------|
@@ -242,6 +242,14 @@ Step 1: Build Citation Index
       - Per entry: {author, year, page?, location (section+paragraph), type (narrative/parenthetical)}
   1.2 Scan Reference List, extract all entries -> Build RefList[]
       - Per entry: {authors[], year, title, source, doi?, url?, entry_type}
+  1.3 IF the Annotated Bibliography is present:
+        FOR each item in RefList:
+          FIND its Annotated Bibliography entry
+          IF found and details differ -> correct the entry from the Bibliography,
+                                         as the Auto-Correction Protocol allows in this mode,
+                                         and do the same to its in-text citations
+          IF not found -> flag for review ("not in Annotated Bibliography")
+        Run Step 2 on the corrected entries
 
 Step 2: Cross-Check (Zero Orphan Check)
   FOR each item in InTextList:
@@ -251,11 +259,6 @@ Step 2: Cross-Check (Zero Orphan Check)
   FOR each item in RefList:
     SEARCH InTextList for matching (author + year)
     IF not found -> flag as "orphan reference"
-  IF the Annotated Bibliography is present:
-    FOR each item in RefList:
-      COMPARE with its Annotated Bibliography entry
-      IF details differ -> correct from the Bibliography, as the
-                           Auto-Correction Protocol allows in this mode
 
 Step 3: Format Compliance Check
   FOR each item in InTextList:
@@ -455,7 +458,7 @@ Quality gate not passed ->
 |-----------|---------|---------|
 | `peer_reviewer_agent` | `full` mode: Corrected Draft (the draft the first Phase 6 review reads; later rounds review the writer's revised draft) + Citation Audit Report; otherwise: Citation Audit Report (for review reference) | Markdown with all citations fixed; this agent's Output Format |
 | `draft_writer_agent` | `full` mode: Corrected Draft (the base that the first Phase 6 revision round edits) | Markdown with all citations fixed |
-| `formatter_agent` | Corrected Reference List + Citation Audit Report; in `full` mode, also the Corrected Draft when Phase 6 accepts it without a revision round | Markdown Reference List + Audit table; Markdown full text |
+| `formatter_agent` | Corrected Reference List + Citation Audit Report; in `full` mode, also the Corrected Draft when it goes to Phase 7 without a revision round: Phase 6 accepts it, or the user confirms early formatting before any revision round (`formatter_agent` § Review Status) | Markdown Reference List + Audit table; Markdown full text |
 | User | `full` mode: flagged items for review; `revision` mode: the whole Citation Audit Report, with its corrections and Corrected Reference List as proposals; `citation-check` mode: the deliverable that the Citation-Check Mode section of `SKILL.md` defines, plus a corrected version of the user's text only when the user asks | `full` mode: Items Flagged for Review table; `revision` mode: this agent's Output Format, with the revision-mode headings; `citation-check` mode: this agent's Output Format |
 
 ### Handoff Format Requirements

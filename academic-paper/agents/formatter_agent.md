@@ -521,8 +521,11 @@ This section applies to `academic-paper` `full` mode. It does not apply to `form
 - `Accepted in Round N`
 - `Revised after the last review (Round 2 Minor Revision); not re-reviewed`
 - `Option A after Round 2 (<verdict>): unresolved items listed in Acknowledged Limitations`
-- `Formatted early at the user's request: last verdict <verdict> in Round N`
+- `Formatted early at the user's request: Round N verdict <verdict> on this draft`
+- `Formatted early at the user's request: revised after the Round N verdict <verdict>; not re-reviewed`
 - `Formatted early at the user's request: no review has read this draft`
+
+For early formatting, pick the line by the draft you receive: the draft that the last review read, a revision of it that no review read, or a draft that no review read at all.
 
 Do not call a draft "passed peer review" unless its line is `Accepted in Round N`.
 
