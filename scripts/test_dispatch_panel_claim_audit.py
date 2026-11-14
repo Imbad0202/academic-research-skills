@@ -325,6 +325,21 @@ def test_evidence_is_checked_against_the_manuscript_and_the_claim():
     assert not d.evidence_ok({"evidence": "absent_quotation", "quote": "attrition of 12"}, claim, ms)
 
 
+def test_cjk_compatibility_ideographs_match_their_standard_characters():
+    # #1074: U+F967 and U+FA08 are compatibility forms of 不 and 行. A
+    # manuscript may store them; a judge or reviewer writes the standard form.
+    ms = "我們不知道這行不行。"
+    q = "我們不知道這行不行"
+    assert d.evidence_ok({"quote": q, "evidence": "contradiction"}, "x", ms)
+    assert not d.evidence_ok({"quote": q, "evidence": "absent_quotation"}, "reviewer wrote: " + q, ms)
+    assert d._norm(ms) == d._norm("我們不知道這行不行。")
+
+
+def test_norm_leaves_full_width_letters_alone():
+    # NFC, not NFKC (#1074 decision): full-width letters stay distinct.
+    assert d._norm("ＡＢＣ") != d._norm("ABC")
+
+
 @pytest.mark.parametrize("rows,flag", [
     ([None, {"verdict": "true"}], "missing"),
     ([{"verdict": "true"}, {"verdict": "not_verifiable"}], "false"),

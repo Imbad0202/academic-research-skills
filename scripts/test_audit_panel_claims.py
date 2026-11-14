@@ -285,3 +285,8 @@ def test_a_quotation_that_wraps_onto_the_next_line_is_quoted():
     claim = "Small sample\n**Evidence Anchor**: §3 “We used convenience\nsampling.”"
     assert apc._quoted_in_claim("We used convenience sampling.", claim)
     assert not apc._quoted_in_claim("Small sample", claim)
+
+
+def test_a_quote_in_compatibility_ideographs_is_read_as_quoted():
+    # #1074: the claim quotes 「…」 with U+F967 for 不; the standard form matches.
+    assert apc._quoted_in_claim("這行不行", "原文寫「這行不行」。")

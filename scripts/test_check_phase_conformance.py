@@ -247,6 +247,19 @@ def test_manuscript_12_word_shingle_leaks():
         )
 
 
+def test_a_manuscript_shingle_in_compatibility_ideographs_leaks():
+    # #1074: U+FA08 is a compatibility form of 行. After NFC the manuscript
+    # shingle equals the standard text in Phase 1.
+    words = ["行政%d" % i for i in range(12)]
+    shared = " ".join(words)
+    with pytest.raises(phase.ConformanceError, match="MANUSCRIPT-LEAK"):
+        phase.check_manuscript_leakage(
+            phase1_text("methodology") + "\n" + shared,
+            shared.replace("行", "\ufa08"),
+            {"title": "Synthetic", "field": "t", "word_count": 30}, FULL,
+        )
+
+
 def test_metadata_title_shingle_is_exempt():
     title = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
     phase.check_manuscript_leakage(

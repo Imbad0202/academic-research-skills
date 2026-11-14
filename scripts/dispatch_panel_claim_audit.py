@@ -54,6 +54,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
@@ -227,7 +228,13 @@ def _template(name: str) -> str:
 
 
 def _norm(text: str) -> str:
-    return " ".join(str(text).replace("“", '"').replace("”", '"')
+    # NFC first (#1074): most CJK compatibility ideographs (U+F900-U+FAFF)
+    # have a canonical decomposition to a standard character, so after NFC
+    # they compare equal to the character a judge or reviewer writes. The
+    # twelve with no decomposition, such as U+FA11, stay as they are. NFC,
+    # not NFKC: full-width letters and digits stay distinct.
+    text = unicodedata.normalize("NFC", str(text))
+    return " ".join(text.replace("“", '"').replace("”", '"')
                     .replace("‘", "'").replace("’", "'").replace('"', "").split()).casefold()
 
 

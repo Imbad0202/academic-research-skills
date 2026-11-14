@@ -300,7 +300,9 @@ class DissentParse:
 
 
 def _normalise(text: str) -> str:
-    return " ".join(text.casefold().split())
+    # NFC first (#1074): a CJK compatibility ideograph equals its standard
+    # character, so a copied sentence is not hidden by a stored variant form.
+    return " ".join(unicodedata.normalize("NFC", text).casefold().split())
 
 
 def _is_dissent_field_shaped(line: str) -> bool:
