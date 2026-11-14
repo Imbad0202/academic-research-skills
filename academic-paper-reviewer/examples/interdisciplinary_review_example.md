@@ -2,6 +2,8 @@
 
 This example demonstrates how `academic-paper-reviewer` configures reviewer roles and handles inter-disciplinary tensions when faced with a highly cross-disciplinary paper. It simulates the review of a paper titled "Using Machine Learning to Predict University Closure Risk in Taiwan: An Institutional Research Data Approach."
 
+The author confirmed the target journal in this example, so the Field Analysis Report copies that target and names no other journal (#1080). Without a confirmed target, the report states `criteria_binding_unavailable` and names no journal or venue.
+
 ---
 
 ## Simulated Paper Abstract
@@ -35,15 +37,13 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 | Secondary Disciplines | Education Policy, Financial Management, Institutional Research (IR) |
 | Research Paradigm | Quantitative — Predictive modeling |
 | Methodology Type | Statistical Modeling / Machine Learning (Classification) |
-| Target Journal Tier | *Education and Information Technologies*; track: none given; article type: research article (author-confirmed target) |
+| Target Journal Tier | *Education and Information Technologies*; track: none given; article type: research article |
 | Paper Maturity | Pre-submission — Complete structure, analysis completed |
 
 #### Target Journal
 - **Venue**: *Education and Information Technologies*
 - **Track**: none given
 - **Article type**: research article
-
-The author confirmed this target, so the analysis lists no other journal (#1080). Without a confirmed target, this section states `criteria_binding_unavailable` and names no journal.
 
 #### Reviewer Configuration Cards
 

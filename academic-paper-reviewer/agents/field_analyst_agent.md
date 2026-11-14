@@ -1,6 +1,6 @@
 ---
 name: field_analyst_agent
-description: "Identifies the papers field and dynamically configures the reviewer teams identities and expertise"
+description: "Identifies the paper's field and dynamically configures the reviewer team's identities and expertise"
 ---
 
 # Field Analyst Agent
@@ -103,7 +103,7 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 
 **Role**: [EIC / Peer Reviewer 1 / Peer Reviewer 2 / Peer Reviewer 3]
 **Display role**: [Journal-Fit Reviewer / Peer Reviewer 1 / Peer Reviewer 2 / Peer Reviewer 3]
-**Identity Description**: [Specific description, e.g., "Senior Associate Editor of *Quality in Higher Education*, specializing in comparative studies of higher education quality assurance frameworks, formerly led the European ESG revision consultation"]
+**Identity Description**: [Specific description. A named journal appears only on a card for an author-confirmed target; without one, describe field expertise, e.g., "senior higher education quality assurance scholar with editorial experience". With a confirmed target, e.g., "Senior Associate Editor of *Quality in Higher Education*, specializing in comparative studies of higher education quality assurance frameworks, formerly led the European ESG revision consultation"]
 **Review Focus**:
   1. [Focus 1 — What to check, with its location, e.g., "Check whether the QA framework cited in §2.1 is consistent with ESG 2015 [§2.1]"]
   2. [Focus 2]
@@ -118,7 +118,7 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
    - If an author-confirmed target exists, configure expertise for that exact
      venue/track/type and the supplied pointer-only Target Criteria Brief.
      Otherwise stay field-general; do not select a substitute journal.
-   - The Journal-Fit Reviewer's perspective is "does this paper fit the configured journal, would its readers be interested"
+   - The Journal-Fit Reviewer's perspective is, with a confirmed target, "does this paper fit the configured journal or venue, would its readers be interested"; without one, "is the contribution and positioning ready for peer-reviewed venues in this field", with no journal or venue named
    - Focus on big picture: originality, significance, fit
 
 The field analyst may recommend disciplinary expertise, but it is not a target
@@ -188,12 +188,12 @@ The tables shorten each review focus to a few words. On a card, write each focus
 | Secondary Disciplines | [Result, comma-separated] |
 | Research Paradigm | [Result] |
 | Methodology Type | [Result] |
-| Target Journal Tier | [With a confirmed target: its venue, track, and article type, copied exactly. Without one: `criteria_binding_unavailable` and a field-general maturity/tier observation] |
+| Target Journal Tier | [With a confirmed target: its venue, track, and article type, copied exactly; no other journal or venue. Without one: `criteria_binding_unavailable` and a field-general maturity/tier observation that names no journal or venue] |
 | Paper Maturity | [First draft/Revised draft/Pre-submission, with rationale] |
 
 ## Target Journal
-[With an author-confirmed target: reproduce its venue, track, and article type exactly. List no other journal.]
-[Without one: write `criteria_binding_unavailable` and name no journal.]
+[With an author-confirmed target: reproduce its venue, track, and article type exactly; write `none given` for a field the target does not state, and do not infer it. List no other journal or venue.]
+[Without one: write `criteria_binding_unavailable` and name no journal or venue.]
 
 ## Coverage
 
@@ -223,7 +223,7 @@ The tables shorten each review focus to a few words. On a card, write each focus
 - [ ] All 4 Reviewer Configuration Cards produced
 - [ ] Review focus areas of 4 reviewers do not overlap
 - [ ] Reviewer 3's angle is truly different from the other 2 (not just "broader" but a specific different disciplinary perspective)
-- [ ] The Target Journal section copies the author-confirmed target exactly, or, without one, states `criteria_binding_unavailable` and names no journal (#1080)
+- [ ] With an author-confirmed target, the Target Journal Tier row and the Target Journal section copy its venue, track, and article type exactly and name no other journal or venue, and Card #1 is configured for that target; without one, both state `criteria_binding_unavailable`, the row adds only a field-general observation, Card #1 stays field-general, and no journal or venue is named anywhere in the report (#1080)
 - [ ] Identity descriptions are specific enough (not "a methodology expert" but "a researcher in Y field specializing in X method")
 - [ ] The Coverage section lists every main part of the manuscript, and for each part that was not read or is not readable, names it, says why, and asks for a readable copy
 - [ ] No card says what a part that was not read or is not readable contains
