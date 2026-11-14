@@ -138,10 +138,14 @@ class CitationExtractionTests(unittest.TestCase):
         # narrative-author part split one word into many shorter words and
         # backtrack exponentially (n=32 took 0.75 s; each 2 more letters took
         # about 2.6 times longer). Run in a child process so a regression
-        # fails on the timeout instead of hanging the suite.
+        # fails on the timeout instead of hanging the suite. n=200000 also
+        # catches a loss of the `(?<![A-Z])` guard: without it the scan
+        # restarts at each capital and takes minutes, against about 10 ms.
         code = (
+            "import sys\n"
+            f"sys.path.insert(0, {str(REPO_ROOT)!r})\n"
             "from scripts.check_revision_token_conservation import AUTHOR_YEAR_RE as R\n"
-            "for n in (40, 400, 5000):\n"
+            "for n in (40, 400, 200000):\n"
             "    for tail in (' x', ' (x)', ' and x', '-x'):\n"
             "        assert not list(R.finditer('A' * n + tail))\n"
             "    assert [m.group(0) for m in R.finditer('A' * n + ' (2020)')] == ['A' * n + ' (2020)']\n"
@@ -154,6 +158,35 @@ class CitationExtractionTests(unittest.TestCase):
             timeout=20,
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_long_digit_run_does_not_stall_the_square_citation_pattern(self):
+        # Found while fixing #1088: `[` plus a long digit run with no `]` made
+        # the old square-citation pattern split the run in many ways
+        # (22 digits took 0.14 s, each 2 more about 4 times longer).
+        code = (
+            "import sys\n"
+            f"sys.path.insert(0, {str(REPO_ROOT)!r})\n"
+            "from scripts.check_revision_token_conservation import SQUARE_CITATION_RE as R\n"
+            "for n in (40, 200000):\n"
+            "    assert not list(R.finditer('[' + '1' * n + 'x'))\n"
+            "    assert [m.group(0) for m in R.finditer('[' + '1' * n + ']')] == ['[' + '1' * n + ']']\n"
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_square_citation_pattern_keeps_existing_tokens(self):
+        tokens = extract_citation_tokens(
+            "Shown in [17], [1, 2], [3-5; 8], [4, ] and [ 9]; not [a1] or [1a]."
+        )
+        self.assertEqual(
+            dict(tokens), {"[17]": 1, "[1, 2]": 1, "[3-5; 8]": 1, "[4, ]": 1}
+        )
 
     def test_author_word_boundary_keeps_existing_tokens(self):
         # The #1088 guards remove only alternative parses; these tokens are
