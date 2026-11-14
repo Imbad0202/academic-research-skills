@@ -232,6 +232,12 @@ def test_tokens_split_han_and_kana_letters_only():
     assert phase._points("用 AIGC 寫的") == 5
 
 
+def test_tokens_split_hiragana_and_katakana_each_letter():
+    assert phase._tokens("ひらがな") == ["ひ", "ら", "が", "な"]
+    assert phase._tokens("カタカナ") == ["カ", "タ", "カ", "ナ"]
+    assert phase._points("ok ひらがな カタカナ") == 10
+
+
 def test_tokens_apply_nfkc_and_keep_combining_marks():
     assert phase._tokens("ＡＢＣ \uf967 ｶﾞ") == ["abc", "不", "ガ"]
     assert phase._tokens("ดี字") == ["ดี", "字"]
@@ -301,6 +307,69 @@ def test_a_manuscript_shingle_in_compatibility_ideographs_leaks():
             shared.replace("行", "\ufa08"),
             {"title": "Synthetic", "field": "t", "word_count": 30}, FULL,
         )
+
+
+_META = {"title": "Synthetic", "field": "t", "word_count": 30}
+_HAN = "研究結果顯示學生在課程中的參與程度與學習成效之間具有顯著正相關並且"  # 34 Han letters
+_HIRA = "わたしたちはまいにちあさはやくおきてがっこうへいきます"  # 27 hiragana
+_KATA = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒ"  # 27 katakana
+
+
+def _leaks(phase1_extra, manuscript, metadata=_META):
+    try:
+        phase.check_manuscript_leakage(
+            phase1_text("methodology") + "\n" + phase1_extra,
+            manuscript, metadata, FULL,
+        )
+    except phase.ConformanceError as exc:
+        assert "MANUSCRIPT-LEAK" in str(exc)
+        return True
+    return False
+
+
+@pytest.mark.parametrize("script", [_HAN, _HIRA, _KATA])
+def test_twenty_four_han_or_kana_letters_copied_into_phase1_leak(script):
+    # #1077: 24 letters are 24 points, the length of 12 English words.
+    assert _leaks("計畫：" + script[:24] + "。", "前言。" + script + "。")
+
+
+@pytest.mark.parametrize("script", [_HAN, _HIRA, _KATA])
+def test_twenty_three_han_or_kana_letters_do_not_leak(script):
+    assert not _leaks("計畫：" + script[:23] + "。", "前言。" + script + "。")
+
+
+def test_a_mixed_han_kana_and_latin_copy_leaks():
+    # 4 Latin words (8 points) + 4 kana (4) + 12 Han (12) = 24 points.
+    copied = "the AIGC tool usage について" + "研究結果顯示學生在課程中"
+    assert phase._points(copied) == 24
+    assert _leaks("Plan: " + copied, "Intro. " + copied + " end.")
+    assert not _leaks("Plan: " + copied[:-1], "Intro. " + copied + " end.")
+
+
+def test_a_cjk_copy_inside_the_title_value_is_exempt():
+    title = _HAN[:26]
+    metadata = {"title": title, "field": "t", "word_count": 30}
+    assert not _leaks(title, title + "。正文從這裡開始。", metadata)
+
+
+def test_english_twelve_words_still_leak_and_eleven_do_not():
+    words = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu".split()
+    manuscript = " ".join(words) + " nu xi"
+    assert _leaks(" ".join(words), manuscript)
+    assert not _leaks(" ".join(words[:11]), manuscript)
+
+
+def test_english_punctuation_is_cut_only_beside_a_han_letter():
+    # "ok?的" gives the token "ok"; "ok? 的" keeps "ok?" (#1077 decision).
+    tail = "研究結果顯示學生在課程中的參與程度與學習成效"  # 22 Han letters
+    assert _leaks("ok" + tail, "前言 ok?" + tail)
+    assert not _leaks("ok " + tail, "前言 ok? " + tail)
+
+
+def test_a_lone_dash_does_not_break_an_english_copy():
+    words = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
+    with_dash = words.replace("epsilon", "epsilon —")
+    assert _leaks(words, with_dash + " nu")
 
 
 def test_metadata_title_shingle_is_exempt():

@@ -310,11 +310,13 @@ def _normalise(text: str) -> str:
 # #1077: Chinese and Japanese prose puts no spaces between words, so a
 # whitespace split gives one "word" for a whole sentence. _tokens() makes
 # each Han, Hiragana, or Katakana letter its own token (Unicode Script data,
-# see gen_unspaced_scripts.py) and counts it as half a word. It applies NFKC,
-# not the NFC of _normalise(), so half-width kana and full-width letters
-# count as their usual forms.
+# see gen_unspaced_scripts.py) and counts it as half a word. Here a "Han or
+# kana letter" is any letter or number in the table, such as 〇 or ー. It
+# applies NFKC, not the NFC of _normalise(), so half-width kana and
+# full-width letters count as their usual forms.
 _UNSPACED_STARTS = [first for first, _ in unspaced.RANGES]
 TRIGGER_POINTS = 16        # 8 words; a word is 2 points, a Han or kana letter 1
+SHINGLE_POINTS = 24        # 12 words, or 24 Han or kana letters
 
 
 def _is_unspaced(ch: str) -> bool:
@@ -330,8 +332,10 @@ def _tokens(text: str) -> list[str]:
     Each Han, Hiragana, or Katakana letter is one token. Other text splits on
     whitespace and at those letters, and punctuation or symbols next to such
     a letter are cut off, so a CJK comma does not stick to the next Latin
-    word; a combining mark stays with its letter. A token with no letter or
-    digit, such as a lone dash, is dropped."""
+    word. A combining mark stays with the letter before it when that letter
+    is not Han or kana; one right after a Han or kana letter that NFKC does
+    not compose, such as U+309A after セ, is dropped. A token with no letter
+    or digit, such as a lone dash, is dropped."""
     tokens = []
 
     def flush(run: str, after: bool, before: bool) -> None:
@@ -1188,27 +1192,46 @@ def validate_metadata_envelope(metadata) -> None:
         )
 
 
+def _joined(text: str) -> str:
+    """``text`` as its _tokens() joined by single spaces."""
+    return " ".join(_tokens(text))
+
+
+def _shingles(tokens: list[str]):
+    """Each run of tokens that starts at a token and ends once it holds
+    SHINGLE_POINTS points (#1077): 12 words, 24 Han or kana letters, or a
+    mix. The last runs, which cannot reach that length, are not yielded."""
+    end, points = 0, 0
+    for start in range(len(tokens)):
+        while end < len(tokens) and points < SHINGLE_POINTS:
+            points += _weight(tokens[end])
+            end += 1
+        if points < SHINGLE_POINTS:
+            return
+        yield " ".join(tokens[start:end])
+        points -= _weight(tokens[start])
+
+
 def check_manuscript_leakage(
     phase1_text: str, manuscript_text: str, metadata: dict, contract: dict
 ) -> None:
     validate_metadata_envelope(metadata)
-    phase1_norm = _normalise(phase1_text)
-    words = _normalise(manuscript_text).split()
+    phase1_norm = _joined(phase1_text)
     exemption_haystacks = [
-        _normalise(value) for value in _flatten_metadata_values(metadata)
+        _joined(value) for value in _flatten_metadata_values(metadata)
     ]
-    exemption_haystacks.append(_normalise(json.dumps(
+    exemption_haystacks.append(_joined(json.dumps(
         contract, ensure_ascii=False, sort_keys=True
     )))
-    for index in range(max(0, len(words) - 11)):
-        shingle = " ".join(words[index:index + 12])
+    for shingle in _shingles(_tokens(manuscript_text)):
         if shingle not in phase1_norm:
             continue
         if any(shingle in haystack for haystack in exemption_haystacks):
             continue
         raise ConformanceError(
-            "[PHASE1-MANUSCRIPT-LEAK: 12-word manuscript shingle appears "
-            "in Phase 1 outside metadata/contract exemptions]"
+            "[PHASE1-MANUSCRIPT-LEAK: 24-point manuscript shingle (12 words; "
+            "a Han or kana letter counts as half a word) appears in Phase 1 "
+            "outside metadata/contract exemptions]"
         )
 
 
