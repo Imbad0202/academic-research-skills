@@ -249,9 +249,11 @@ Step 1: Build Citation Index
                                          as the Auto-Correction Protocol allows in this mode,
                                          and do the same to its in-text citations
           IF not found -> flag for review ("not in Annotated Bibliography")
-        In `full` mode, run Step 2 on the corrected entries. In other modes these
-        corrections stay proposals: run Step 2 on the entries as they are, and note
-        each orphan result that a proposed correction would change
+        When the corrections are applied (`full` mode, or a corrected version of the
+        user's text that the user asked for in `citation-check` mode), run Step 2 on
+        the corrected entries. When they stay proposals (`revision` mode, or a
+        report-only `citation-check`), run Step 2 on the entries as they are, and
+        note each orphan result that a proposed correction would change
 
 Step 2: Cross-Check (Zero Orphan Check)
   FOR each item in InTextList:
@@ -268,12 +270,13 @@ Step 3: Format Compliance Check
     IF violation found -> auto-correct if rule is deterministic
                        -> flag for review if ambiguous
 
-Step 4: DOI/URL Check
+Step 4: DOI/URL Check (by selected_style; see DOI format in Core Verification Rules by Format)
   FOR each item in RefList:
     IF doi exists -> verify format (https://doi.org/xxxxx)
-    IF doi missing -> flag "missing DOI"
+    IF doi missing -> flag "missing DOI" only when selected_style requires a DOI
+                      or expects one when available
     IF url exists -> check completeness
-    CHECK no trailing period after DOI/URL
+    IF selected_style is APA 7th -> CHECK no trailing period after DOI/URL
 
 Step 5: Additional Checks
   5.1 Self-citation ratio
