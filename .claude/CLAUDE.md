@@ -9,8 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.24.2 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.24.3 | Full pipeline orchestrator | (coordinates all above) |
 | `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
+
+## v3.24.3 Key Additions (an author letter in the user's language + a field analyst that names no unconfirmed journal + Phase 1 checks that count Chinese and Japanese text)
+
+- **A `full` review also writes the author a letter in the user's language (#1078).** It sits beside the Editorial Decision Package, which does not change. `scripts/check_author_letter.py` fails a quotation in the supported quotation marks that it cannot find in the manuscript, a machine line or internal id in the letter, and an item map that does not list each roadmap row once. Prompt-level; the effect on readability is unmeasured.
+- **The field analyst shows what it read, writes card checks rather than conclusions, and names a target only when the author has confirmed one.** A Coverage section comes before the Reviewer Configuration Cards (#1075). The cards give checks with manuscript locations rather than conclusions, with `[unverified]` on a statement the analyst did not check (#1076). The analysis recommends no journal or other venue: with a confirmed target it copies the venue, track, and article type, and without one it states `criteria_binding_unavailable` (#1080). Prompt-level; the effect on runs is unmeasured.
+- **The Phase 1 checks count Chinese and Japanese text (#1077).** A Han or kana letter is 1 point and a word is 2, so `[PHASE1-TRIGGER-SHORT]` measures a short Chinese or Japanese trigger, and the manuscript-leak check finds a copied Chinese or Japanese passage in 24-point shingles, still exempt when it also occurs in a metadata-envelope value or the contract. Korean keeps the whitespace count. For text with no Han or kana letter after NFKC, both checks now run NFKC first, and the trigger count also stops counting a lone mark as a word. The leak check has synthetic tests only; no rate on real reviews is measured.
+- **Smaller changes.** The reviewer claim check applies NFC before it matches a quotation (#1074). `citation_compliance_agent` edits the paper draft only in `full` mode, where its Corrected Draft now goes to Phase 6, and returns proposals in `revision` mode (#1068); its Phase Boundary block names both outputs (#1067); standalone citation-check returns a report and rewrites the user's text only on request (#1062). The Zotero and Obsidian adapters send an item or note that fails the schema or a type check to the rejection log instead of writing it to the passport or stopping the run; a Zotero `date` or `issued` that holds a number (such as `"date": 2024`) is now rejected; all three adapters, `folder_scan.py` included, now need `jsonschema`; no real Zotero export or Obsidian vault was run (#1055, #1056, #1058, #1059). Claude Fable 5.2 is a supported session model, with a system-card audit and a routing smoke test but no full pipeline run or reviewer calibration (#1063). A harness-retirement audit trims three sentences (#1034), and `THIRD_PARTY.md` corrects the md-to-word row (#1073, by @ls-open). The prompt-level changes are unmeasured.
 
 ## v3.24.2 Key Additions (an honest null for experiment locks + repro_lock alignment + a corrected sr-screener methods sentence)
 
@@ -448,7 +455,7 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
-- **Suite version**: 3.24.2 (per CHANGELOG.md)
-- **Last Updated**: 2026-11-06
+- **Suite version**: 3.24.3 (per CHANGELOG.md)
+- **Last Updated**: 2026-11-14
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0

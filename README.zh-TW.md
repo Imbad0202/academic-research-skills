@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.24.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.2)
+[![Version](https://img.shields.io/badge/version-v3.24.3-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.3)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -278,7 +278,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 
 7 個 Agent 的多視角審查，採 **逐準則、證據錨定的敘事判斷**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 與 Schema 6 package 一律為 `NOT_CALIBRATED`；完整 calibration 可產生有界候選 profile，但尚未接上 live review。不得以固定總分對照接受、小修、大修或退稿。第一輪審查面板 vs. 契約治理再審派送的分界：見 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.24.2)
+### Academic Pipeline (v3.24.3)
 
 10 階段調度器，含誠信驗證、兩階段審查、蘇格拉底指導、協作品質評估。Pipeline 規則（由 agent 依流程遵守，不是執行期保證）：每個階段都需使用者確認 checkpoint；誠信驗證（Stage 2.5 + 4.5）為 MANDATORY 且沒有不留紀錄的繞過路徑（所有覆寫都須記錄使用者理由、供 Stage 6 使用）；R&R 追溯矩陣（Schema 11）把每一項審查意見對應到作者的修訂宣稱，並記錄複審是否驗證通過。v3.4 新增 Compliance Agent（PRISMA-trAIce + RAISE）於 Stage 2.5 / 4.5。v3.5 新增 **協作深度觀察員**（`collaboration_depth_agent`，僅諮詢性質、永不阻擋流程）於每一次 FULL/SLIM checkpoint 與 pipeline 完成時。MANDATORY 誠信閘門（2.5 / 4.5）明確跳過觀察員，避免稀釋合規檢查。理論基礎：Wang & Zhang (2026), IJETHE 23:11。逐階段矩陣（agent、產出物、閘門）：見 ARCHITECTURE.md §3。
 
@@ -350,6 +350,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 這裡只列最近三個版本。完整更新紀錄在英文版 [CHANGELOG.md](CHANGELOG.md)。到 v3.21.2 為止的繁體中文版本摘要已凍結存放於 [docs/changelog-archive/zh-TW.md](docs/changelog-archive/zh-TW.md)，之後不再更新。
 
+### v3.24.3（2026-11-14）— 以使用者語言寫給作者的信、不點名未經確認期刊的領域分析，以及會計算中日文的 Phase 1 檢查
+
+> **審查、引用與轉接器修復，加上一項新的審查產出；沒有新 skill 或模式，提示層的改動未經量測：**`full` 審查現在除了 Editorial Decision Package，也會用使用者的語言寫一封給作者的信。`scripts/check_author_letter.py` 在三種情況會判定失敗：用支援的引號標出的引文在稿件裡找不到、信中留有給程式讀的行或內部編號，以及項目對照表沒有把 roadmap 的每一列各列一次（#1078）。領域分析會在 Reviewer Configuration Cards 之前列出讀過哪些內容（#1075），卡片寫的是附稿件位置的待查項目，不是結論（#1076）；它不再推薦投稿期刊或其他發表場所，只在作者確認過目標時才寫出目標（#1080）。Phase 1 的檢查把一個漢字或假名算 1 點、一個詞算 2 點，所以短的中日文觸發條件也能量測；抄稿檢查也能找出從稿件抄來、達 24 點的中日文段落，但同一段若也出現在 metadata-envelope 的值或 contract 裡就不算（#1077）。韓文仍照空白計算。對 NFKC 之後沒有漢字或假名的文字，兩項檢查現在都先做 NFKC，觸發條件的計數也不再把 `—` 這類單獨符號算成一個詞。抄稿檢查只有合成資料測試，也沒有在真實審查上量測任何比率。審查意見查核在比對引文前會先做 NFC（#1074）。`citation_compliance_agent` 只在 `full` 模式修改論文稿件，它的 Corrected Draft 現在會送進 Phase 6；在 `revision` 模式則提出修改建議（#1068）。它的 Phase Boundary 段落寫明它的兩項產出（#1067）；單獨使用的 citation-check 會回傳報告，只在使用者要求時才改寫使用者的文字（#1062）。Zotero 與 Obsidian 轉接器遇到不符 schema 或型別錯誤的項目或筆記，會送進 rejection log，不再寫進 passport，也不再讓整批中斷；Zotero 的 `date` 或 `issued` 若是數字（例如 `"date": 2024`）現在會被拒收，三個轉接器（含 `folder_scan.py`）現在都需要 `jsonschema`。這些改動沒有用真實的 Zotero 匯出檔或 Obsidian 筆記庫跑過（#1055、#1056、#1058、#1059）。Claude Fable 5.2 成為支援的 session 模型；它做過 system card 稽核與路由冒煙測試，但沒有完整的 pipeline 執行，也沒有審查校準（#1063）。
+
 ### v3.24.2（2026-11-06）— 實驗可如實表示沒有 lock 值、repro_lock 規則對齊，以及 sr-screener 方法段落更正
 
 > **修復與文件；沒有新 skill 或模式，提示層的改動未經量測：**`experiment_provenance[]` 的條目現在可以如實表示沒有可填的 lock 值，寫法是 `repro_lock: null` 加上 `repro_lock_reason`（#1049）。問卷或沒有使用 LLM 的分析，以前只能填佔位值才能通過。舊版 ARS 不接受這個寫法，所以用這個寫法的 passport 需要這一版。`check_repro_lock.py` 現在會擋下違反欄位型別或值規則的必填值，例如 `null` 的 model id；`cross_model.secondary_model_id` 仍可為 `null`。`planned_vs_executed[].value` 只收數字或文字，所以有些以前通過的 passport 現在會失敗（#1050）。`sr-screener` 的方法段落不再說審查代理只能讀記錄檔：工具清單拿掉的是網路與寫入權限，只讀指定檔案是一項指示（#1039）。SETUP 記錄了兩次檢查：上傳的 skill 在對話中重試後派出內建子代理；多代理階段仍未測試（#1040）。
@@ -357,8 +361,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.24.1（2026-11-02）— 從 claude.ai 帳號市集安裝 plugin、審稿前確認設定卡，以及巴西葡萄牙文 README
 
 > **claude.ai 與 Claude Desktop 的安裝修復；沒有新 skill 或模式：**ARS 現在可以從 claude.ai 帳號市集安裝。這一版之前，這種安裝方式下，五個核心 skill 全都無法載入（#1035），而且四個 plugin 代理程式的名稱含底線，claude.ai 不收（#1037）。在 Claude Desktop 上，一般對話裡有一個 skill 與 `/ars-lit-review` 實際執行；專案對話直接派工給 plugin 代理程式 `synthesis-agent`；資料夾工作時出現 SessionStart 開場訊息。寫入範圍防護、工具白名單與完整 pipeline 在 claude.ai 與 Claude Desktop 上尚未測試。審稿時現在會等使用者確認 Reviewer Configuration Cards（#1030），README 也新增巴西葡萄牙文版（#1032）。
-
-### v3.24.0（2026-10-27）— 審查小組建議文獻與審查意見的參考檢查、write-scope guard 啟動器改為單一行程，以及誠信檢查規則修復
-
-> **兩項審查參考檢查與數項修復；沒有新 skill，這兩項檢查在真實審查上的準確度尚未量測：**v3.24.0 在 Editorial Decision Letter 加上兩份附件。第一份即時查詢 Reviewer 2 與 Reviewer 3 推薦的每一篇著作，查詢範圍是引用驗證閘門使用的四個索引，只回報有沒有這筆紀錄，不判斷該著作是否支持推薦理由（#1001）。第二份把每一項 weakness，以及 Devil's Advocate 每一列 CRITICAL 或 MAJOR 意見，拿掉審稿人席位標籤後交給 session 模型的一個 subagent，由它判斷稿件是否與該意見矛盾。只有判定者的引文通過腳本對稿件的比對檢查，附件才列為矛盾；其他判定為錯誤的意見列為未確認（#1002）。這項檢查預設開啟，設定 `ARS_PANEL_CLAIM_CHECK=0` 可以關閉。兩份附件都不影響審查決定、修訂路線圖或複審標準。第二項檢查上線前，一項預先登記的 held-out 稽核檢查了 805 則審查小組意見，估計錯誤意見的比例介於 1.5% 到 12.9%；Claude Opus 5.5 與 Claude Fable 5.1 擔任判定者時都通過了它的對照關卡。write-scope guard 的啟動器每次工具呼叫只啟動一個 Python 行程，原本是三個，Windows 上 AppXSvc 的記憶體洩漏預計因此降為原來的三分之一左右，但 Windows 上的實際行為尚未測試（#1015）；guard 的程式註解也寫明它檢查哪些工具名稱（#1022）。三條誠信檢查規則在 Stage 5 入口、報告有效期限與 Stage 4′ 三點上取得一致（#1011），啟動通知也改為只在有新版時顯示（#1027）。#1015、#1022 與 #1027 由外部使用者回報。
-

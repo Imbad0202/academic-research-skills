@@ -1,6 +1,6 @@
 # Claude Code 向け Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.24.2-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.2)
+[![Version](https://img.shields.io/badge/version-v3.24.3-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.3)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -268,7 +268,7 @@ You: "status"
 
 基準ごとの証拠に紐づく **ナラティブ判断** を行う 7 エージェントの多視点レビュー。モード: full、re-review、quick、methodology-focus、guided、calibration。現在の live review と Schema 6 package は常に `NOT_CALIBRATED` で、full calibration は有界な候補 profile のみを生成し、live review への適用は未実装です。固定総得点を Accept / Minor Revision / Major Revision / Reject に対応させません。初回レビューパネル vs. 契約管理された再レビューディスパッチの境界: ARCHITECTURE.md §3 Stage 3 / Stage 3' を参照。
 
-### Academic Pipeline（v3.24.2）
+### Academic Pipeline（v3.24.3）
 
 整合性検証、二段階レビュー、ソクラテス式コーチング、コラボレーション評価を持つ 10 ステージのオーケストレーター。パイプラインのルール（エージェントが従うプロトコルであり、実行時の保証ではない）: 各ステージにユーザー確認チェックポイントが必要。整合性検証（Stage 2.5 + 4.5）は MANDATORY であり、記録されないバイパス経路は存在しない（すべてのオーバーライドは Stage 6 のためにユーザーの理由の記録を要する）。R&R Traceability Matrix（Schema 11）は各査読コメントを著者の改訂主張に対応づけ、再審査でそれが検証されたかどうかを記録する。v3.4 は Stage 2.5 / 4.5 に Compliance Agent（PRISMA-trAIce + RAISE）を追加した。v3.5 はすべての FULL/SLIM チェックポイントとパイプライン完了時に **Collaboration Depth Observer**（`collaboration_depth_agent`、advisory のみ — 決してブロックしない）を追加する。MANDATORY 整合性ゲート（2.5 / 4.5）は、コンプライアンスチェックが希薄化されないよう observer を明示的にスキップする。Wang & Zhang（2026）, IJETHE 23:11 に基づく。エージェント、成果物、ゲートを含むステージごとのマトリクス: ARCHITECTURE.md §3 を参照。
 
@@ -357,6 +357,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 ここには直近 3 リリースのみを掲載しています。完全な更新履歴は英語版の [CHANGELOG.md](CHANGELOG.md) を参照してください。v3.21.2 までの日本語版リリース要約は [docs/changelog-archive/ja-JP.md](docs/changelog-archive/ja-JP.md) に凍結保存され、以後更新されません。
 
+### v3.24.3 (2026-11-14) — ユーザーの言語で書く著者宛ての手紙、確認されていない誌名を挙げない分野分析、中国語と日本語を数える Phase 1 チェック
+
+> **レビュー、引用、アダプターの修正と、レビューの新しい出力 1 つ。新しい skill やモードはなし、プロンプトレベルの変更は未測定:** `full` レビューは Editorial Decision Package に加えて、ユーザーの言語で著者宛ての手紙も書くようになりました。`scripts/check_author_letter.py` は、サポート対象の引用符で示した引用文が原稿に見つからない場合、手紙に機械用の行や内部 ID が残っている場合、項目の対応表が roadmap の各行をちょうど 1 回ずつ載せていない場合に失敗します（#1078）。分野分析は読んだ内容を Reviewer Configuration Cards の前に挙げ（#1075）、カードには結論ではなく、原稿の位置を付けた確認項目を書きます（#1076）。投稿先の雑誌やその他の発表媒体は推薦しなくなり、著者が確認した投稿先がある場合にだけそれを書きます（#1080）。Phase 1 のチェックは漢字か仮名 1 文字を 1 点、単語 1 つを 2 点と数えるので、短い中国語・日本語のトリガーも測れるようになりました。原稿漏洩チェックは、原稿から写した 24 点分の中国語・日本語の文章を見つけます。ただし、同じ文章が metadata-envelope の値や contract にもある場合は対象外です（#1077）。韓国語は引き続き空白で数えます。NFKC の後に漢字も仮名もない文章では、両方のチェックが先に NFKC を適用するようになり、トリガーの数え方では `—` のような単独の記号を単語として数えなくなりました。原稿漏洩チェックのテストは合成データのみで、実際のレビューではどの率も測定していません。レビュアーの指摘チェックは、引用文を照合する前に NFC を適用します（#1074）。`citation_compliance_agent` は `full` モードでのみ論文の原稿を編集し、その Corrected Draft が Phase 6 に渡るようになりました。`revision` モードでは修正案を返します（#1068）。このエージェントの Phase Boundary ブロックは、自身の 2 つの出力を明記します（#1067）。単独の citation-check はレポートを返し、ユーザーの文章を書き直すのは求められたときだけです（#1062）。Zotero と Obsidian のアダプターは、schema や型のチェックに通らない項目やノートを、passport に書いたり実行を止めたりせず、rejection log に送ります。数値の Zotero `date` や `issued`（例: `"date": 2024`）は受け付けなくなり、`folder_scan.py` を含む 3 つのアダプターすべてに `jsonschema` が必要になりました。実際の Zotero のエクスポートや Obsidian の vault では実行していません（#1055、#1056、#1058、#1059）。Claude Fable 5.2 がサポート対象のセッションモデルになりました。system card の監査とルーティングのスモークテストは済んでいますが、パイプライン全体の実行やレビュアーの較正は行っていません（#1063）。
+
 ### v3.24.2 (2026-11-06) — 実験が lock 値なしを正直に示せるように、repro_lock の整合、sr-screener の方法の記述の修正
 
 > **修正とドキュメント、新しい skill やモードはなし、プロンプトレベルの変更は未測定:** `experiment_provenance[]` のエントリは、正直に書ける lock 値がないことを `repro_lock: null` と `repro_lock_reason` で示せるようになりました（#1049）。これまで、アンケートや LLM を使わない分析はプレースホルダーを入れないと通りませんでした。以前の ARS はこの書き方を受け付けないため、これを使う passport にはこのリリースが必要です。`check_repro_lock.py` は、null の model id のように、フィールドの型や値のルールに反する必須値で失敗するようになりました。`cross_model.secondary_model_id` は引き続き null にできます。`planned_vs_executed[].value` は数値か文字列のみを受け付けるため、以前は通った passport の一部が失敗するようになります（#1050）。`sr-screener` の方法の記述は、レビュアーがレコードファイルしか読めないとは書かなくなりました。ツールリストが外すのはウェブと書き込みの権限で、指定されたファイルだけを読むのは指示です（#1039）。SETUP には、アップロードした skill が会話の中で再試行の後に組み込みのサブエージェントをディスパッチした 2 回の確認結果を記録しました。マルチエージェントのステージは未検証のままです（#1040）。
@@ -364,8 +368,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.24.1 (2026-11-02) — claude.ai アカウントマーケットプレイスからの plugin インストール、レビュー前の設定カード確認、ブラジルポルトガル語 README
 
 > **claude.ai と Claude Desktop のインストール修正、新しい skill やモードはなし:** ARS は claude.ai のアカウントマーケットプレイスからインストールできるようになりました。このリリースより前は、この方法では 5 つのコア skill が 1 つも読み込まれず（#1035）、4 つの plugin エージェントは名前に下線を含むため claude.ai に取り込まれませんでした（#1037）。Claude Desktop では、通常のチャットで skill 1 つと `/ars-lit-review` が動作し、プロジェクトのセッションは plugin エージェント `synthesis-agent` に直接ディスパッチし、フォルダでの作業では SessionStart の起動通知が表示されました。write-scope ガード、ツールの許可リスト、パイプライン全体の実行は claude.ai と Claude Desktop では未検証です。レビューは Reviewer Configuration Cards をユーザーが確認するまで待つようになり（#1030）、README にブラジルポルトガル語版が加わりました（#1032）。
-
-### v3.24.0 (2026-10-27) — パネルが推薦する文献と指摘の参考チェック、1 プロセスで動くガード起動、整合性ルールの修正
-
-> **レビュー用の参考チェック 2 つと修正、新しい skill はなく、実際のレビューでのチェック精度は未測定:** v3.24.0 は Editorial Decision Letter に 2 つの添付を加えます。1 つ目は、Reviewer 2 と Reviewer 3 が推薦する各文献を引用検証ゲートの 4 つのインデックスでその場で検索し、レコードが存在するかどうかを報告します。文献が推薦を裏付けるかどうかは判断しません（#1001）。2 つ目は、各 weakness と Devil's Advocate の CRITICAL または MAJOR の各行を、席のラベルを外してセッションモデルの subagent に送り、原稿がその指摘と矛盾するかを判定させます。判定者の引用がスクリプトによる原稿との照合を通過した場合にのみ矛盾として載せ、それ以外の誤り判定は未確認として載せます（#1002）。既定で有効で、`ARS_PANEL_CLAIM_CHECK=0` で無効にできます。どちらの添付も、判定、改訂ロードマップ、再審査基準には使われません。2 つ目のチェックの公開前に、事前登録した held-out 監査がパネルの 805 件の主張を調べ、誤った主張の割合を 1.5% から 12.9% の範囲と推定しました。Claude Opus 5.5 と Claude Fable 5.1 は判定者としてその対照ゲートを通過しました。write-scope ガードの起動スクリプトは、ツール呼び出しごとに Python プロセスを 3 つではなく 1 つだけ起動するようになり、Windows の AppXSvc のリークは約 3 分の 1 になる見込みですが、Windows での実際の挙動は未検証です（#1015）。ガードのコード注記は、どのツール名を検査するかを明記しました（#1022）。整合性チェックの 3 つのルールは、Stage 5 への入り方、レポートの有効期限、Stage 4′ について一致しました（#1011）。起動通知は更新があるときだけ表示されます（#1027）。#1015、#1022、#1027 は外部ユーザーの報告です。
-
