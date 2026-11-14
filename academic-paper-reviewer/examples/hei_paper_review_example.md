@@ -2,6 +2,8 @@
 
 This example demonstrates the complete Phase 0-2 workflow of `academic-paper-reviewer`, simulating the review of a paper titled "Impact of Declining Birth Rates on Management Strategies of Taiwan's Private Universities: A Multiple Case Study."
 
+The author confirmed the target journal in this example, so the Field Analysis Report copies that target and names no other journal or venue as a submission target, a recommendation, a tier benchmark, or a reviewer affiliation (#1080). Without a confirmed target, the Field Analysis Report states `criteria_binding_unavailable` and names no journal or venue in any of those roles.
+
 ---
 
 ## Simulated Paper Abstract
@@ -13,6 +15,8 @@ This example demonstrates the complete Phase 0-2 workflow of `academic-paper-rev
 > **Keywords**: declining birth rate, private universities, management strategy, multiple case study, Taiwan higher education
 >
 > **Full text approximately 12,000 words, 67 references cited**
+>
+> **Review target (confirmed by the author)**: *Higher Education*; track: none given; article type: research article
 
 ---
 
@@ -34,13 +38,13 @@ This example demonstrates the complete Phase 0-2 workflow of `academic-paper-rev
 | Secondary Disciplines | Strategic Management, Education Policy, Demography |
 | Research Paradigm | Qualitative |
 | Methodology Type | Multiple Case Study |
-| Target Journal Tier | Q2 — Above-average paper quality, complete case study design, but limited international generalizability |
+| Target Journal Tier | *Higher Education*; track: none given; article type: research article |
 | Paper Maturity | Revised draft — Complete structure, but some arguments could be further refined |
 
-#### Recommended Target Journals (Top 3)
-1. **Studies in Higher Education** — Top journal in higher education, accepts qualitative research, but requires stronger theoretical contribution
-2. **Higher Education** — Accepts diverse methodologies and regional studies, broad international readership
-3. **Higher Education Policy** — Policy-oriented, suitable for Taiwan higher education policy topics
+#### Target Journal
+- **Venue**: *Higher Education*
+- **Track**: none given
+- **Article type**: research article
 
 #### Reviewer Configuration Cards
 
