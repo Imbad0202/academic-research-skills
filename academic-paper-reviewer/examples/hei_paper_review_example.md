@@ -2,7 +2,7 @@
 
 This example demonstrates the complete Phase 0-2 workflow of `academic-paper-reviewer`, simulating the review of a paper titled "Impact of Declining Birth Rates on Management Strategies of Taiwan's Private Universities: A Multiple Case Study."
 
-The author confirmed the target journal in this example, so the Field Analysis Report copies that target and names no other journal (#1080). Without a confirmed target, the report states `criteria_binding_unavailable` and names no journal or venue.
+The author confirmed the target journal in this example, so the Field Analysis Report copies that target and names no other journal or venue (#1080). Without a confirmed target, the report states `criteria_binding_unavailable` and names no journal or venue.
 
 ---
 
