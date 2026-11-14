@@ -328,18 +328,23 @@ def _tokens(text: str) -> list[str]:
     """``text`` as tokens, after NFKC and case-folding.
 
     Each Han, Hiragana, or Katakana letter is one token. Other text splits on
-    whitespace and at those letters, and marks next to such a letter are cut
-    off, so a CJK comma does not stick to the next Latin word. A token with
-    no letter or digit, such as a lone dash, is dropped."""
+    whitespace and at those letters, and punctuation or symbols next to such
+    a letter are cut off, so a CJK comma does not stick to the next Latin
+    word; a combining mark stays with its letter. A token with no letter or
+    digit, such as a lone dash, is dropped."""
     tokens = []
 
     def flush(run: str, after: bool, before: bool) -> None:
         # Keep the run from its first to its last letter or digit, but cut
-        # marks only on a side that touches a Han or kana letter.
+        # marks only on a side that touches a Han or kana letter, and keep
+        # the combining marks (Thai vowels, Devanagari signs) after it.
         keep = [i for i, c in enumerate(run) if c.isalnum()]
-        if keep:
-            tokens.append(run[keep[0] if after else 0:
-                              keep[-1] + 1 if before else len(run)])
+        if not keep:
+            return
+        end = keep[-1] + 1 if before else len(run)
+        while end < len(run) and unicodedata.category(run[end])[0] == "M":
+            end += 1
+        tokens.append(run[keep[0] if after else 0:end])
 
     for chunk in unicodedata.normalize("NFKC", text).casefold().split():
         run, after = "", False

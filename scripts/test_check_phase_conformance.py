@@ -209,9 +209,10 @@ def _short_warned(value: str) -> bool:
     ("一二三四五六七八九十一二三四五", True),         # 15 letters
     ("一二三四五六七八九十一二三四五六", False),       # 16 letters = 8 words
     ("AIGC 使用率低於三成", True),                      # 2 + 7 points
-    ("評分が三点未満のときはブロックとする", False),    # kana count, ー too
-    ("評価ー", True),
-    ("\uf967行於三分", True),                          # U+F967 counts as 不
+    ("評分が三点未満のときはブロックとする", False),    # kana count
+    ("一二三四五六七八九十一二三四五ー", False),       # ー is a kana letter
+    ("一二三四五六七八九十一二三四ー", True),          # 15 points
+    ("ｶﾞ" * 8, True),                                  # NFKC: 8 letters, not 16
     # Spaced scripts keep the word count.
     ("평가 점수가 세 점 미만이면 이번 결정을 차단한다", False),
     ("세 점 미만", True),
@@ -229,6 +230,13 @@ def test_tokens_split_han_and_kana_letters_only():
     assert phase._tokens("用 AIGC 寫的「報告」，ok?") == [
         "用", "aigc", "寫", "的", "報", "告", "ok?"]
     assert phase._points("用 AIGC 寫的") == 5
+
+
+def test_tokens_apply_nfkc_and_keep_combining_marks():
+    assert phase._tokens("ＡＢＣ \uf967 ｶﾞ") == ["abc", "不", "ガ"]
+    assert phase._tokens("ดี字") == ["ดี", "字"]
+    assert phase._tokens("n\u0304語") == ["n\u0304", "語"]
+    assert phase._tokens("ok?」的") == ["ok", "的"]
 
 
 @pytest.mark.parametrize(

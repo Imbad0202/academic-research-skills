@@ -3,7 +3,7 @@
 
 Chinese and Japanese prose puts no spaces between words, so a whitespace
 split cannot count its words (#1077). The checkers count each Han,
-Hiragana, or Katakana letter as one unit instead. Python's unicodedata has
+Hiragana, or Katakana letter or number as one unit instead. Python's unicodedata has
 no Script property, so this generator builds the table from three UCD files
 of one Unicode version:
 
@@ -18,7 +18,8 @@ Usage:
   python scripts/gen_unspaced_scripts.py --ucd DIR            # write the table
   python scripts/gen_unspaced_scripts.py --ucd DIR --check    # exit 1 on drift
 
-Get the files from https://www.unicode.org/Public/<version>/ucd/.
+DIR is the UCD folder from https://www.unicode.org/Public/<version>/ucd/
+(DerivedGeneralCategory.txt is read from DIR/extracted/ when it is not in DIR).
 """
 from __future__ import annotations
 
@@ -47,8 +48,10 @@ def _records(text: str):
         if not data:
             continue
         field, value = (part.strip() for part in data.split(";", 1))
-        first, _, last = field.partition("..")
-        yield int(first, 16), int(last or first, 16), value
+        first, dots, last = field.partition("..")
+        if not value:
+            raise UcdError(f"no value on line: {line!r}")
+        yield int(first, 16), int(last if dots else first, 16), value
 
 
 def _version(name: str, text: str) -> str:
@@ -76,11 +79,11 @@ def build(sources: dict[str, str]) -> tuple[str, list[tuple[int, int]]]:
     points = [
         cp
         for first, last, category in _records(sources["DerivedGeneralCategory.txt"])
-        if category[0] in "LN"
+        if category.startswith(("L", "N"))
         for cp in range(first, last + 1)
         if by_extension.get(cp, cp in by_script)
     ]
-    points.sort()
+    points = sorted(set(points))
     ranges: list[tuple[int, int]] = []
     for cp in points:
         if ranges and cp == ranges[-1][1] + 1:
@@ -123,7 +126,10 @@ def main(argv: list[str] | None = None) -> int:
     sources, digests = {}, {}
     try:
         for name in SOURCE_FILES:
-            data = (args.ucd / name).read_bytes()
+            path = args.ucd / name
+            if not path.exists():
+                path = args.ucd / "extracted" / name
+            data = path.read_bytes()
             digests[name] = hashlib.sha256(data).hexdigest()
             sources[name] = data.decode("utf-8")
         text = render(*build(sources), digests)
@@ -136,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"gen_unspaced_scripts: {args.output} is out of date", file=sys.stderr)
             return 1
         return 0
-    args.output.write_text(text, encoding="utf-8")
+    args.output.write_text(text, encoding="utf-8", newline="\n")
     return 0
 
 

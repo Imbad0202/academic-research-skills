@@ -92,6 +92,23 @@ def test_build_uses_extensions_and_letter_categories():
     assert ranges == [(0x30FC, 0x30FC), (0x4E00, 0x4E02)]
 
 
+def test_build_keeps_numbers_and_each_wanted_script():
+    _, ranges = gen.build(_ucd(
+        scripts=("3007 ; Han\n3041 ; Hiragana\n30A1 ; Katakana\n"
+                 "FF9E ; Common\n0030 ; Common\n"),
+        extensions="FF9E ; Kana\n",
+        categories="3007 ; Nl\n3041 ; Lo\n30A1 ; Lo\nFF9E ; Lm\n0030 ; Nd\n",
+    ))
+    assert ranges == [(0x3007, 0x3007), (0x3041, 0x3041),
+                      (0x30A1, 0x30A1), (0xFF9E, 0xFF9E)]
+
+
+@pytest.mark.parametrize("line", ["4E00.. ; Lo\n", "4E00 ;\n", "4E00\n"])
+def test_build_refuses_malformed_lines(line):
+    with pytest.raises((gen.UcdError, ValueError)):
+        gen.build(_ucd(scripts="4E00 ; Han\n", categories=line))
+
+
 def test_an_extension_list_replaces_the_script():
     _, ranges = gen.build(_ucd(
         scripts="4E00 ; Han\n", extensions="4E00 ; Yiii\n",
@@ -121,6 +138,18 @@ def test_check_mode_reports_drift(tmp_path):
                    encoding="utf-8")
     assert gen.main(["--ucd", str(tmp_path), "--output", str(out),
                      "--check"]) == 1
+
+
+def test_reads_the_official_folder_layout(tmp_path):
+    files = _ucd(scripts="4E00 ; Han\n", categories="4E00 ; Lo\n")
+    (tmp_path / "extracted").mkdir()
+    for name, text in files.items():
+        folder = tmp_path / "extracted" if name.startswith("Derived") else tmp_path
+        (folder / name).write_text(text, encoding="utf-8")
+    out = tmp_path / "table.py"
+    assert gen.main(["--ucd", str(tmp_path), "--output", str(out)]) == 0
+    assert "(0x4E00, 0x4E00)," in out.read_bytes().decode("utf-8")
+    assert b"\r\n" not in out.read_bytes()
 
 
 def test_missing_file_is_a_usage_error(tmp_path):
