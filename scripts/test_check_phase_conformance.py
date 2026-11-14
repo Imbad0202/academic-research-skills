@@ -196,6 +196,49 @@ def test_short_trigger_is_advisory_not_failure():
     )
 
 
+def _short_warned(value: str) -> bool:
+    plan = parse_plan("methodology", {"D1": {"what_triggers_warn": value}})
+    return any("D1 what_triggers_warn" in warning and "TRIGGER-SHORT" in warning
+               for warning in plan.warnings)
+
+
+@pytest.mark.parametrize(("value", "warned"), [
+    # #1077: a Chinese or Japanese trigger is counted, not split on spaces.
+    ("任一面向分數低於三分時，判定為擋下並要求作者補件", False),
+    ("低於三分", True),
+    ("一二三四五六七八九十一二三四五", True),         # 15 letters
+    ("一二三四五六七八九十一二三四五六", False),       # 16 letters = 8 words
+    ("AIGC 使用率低於三成", True),                      # 2 + 7 points
+    ("評分が三点未満のときはブロックとする", False),    # kana count
+    ("一二三四五六七八九十一二三四五ー", False),       # ー is a kana letter
+    ("一二三四五六七八九十一二三四ー", True),          # 15 points
+    ("ｶﾞ" * 8, True),                                  # NFKC: 8 letters, not 16
+    # Spaced scripts keep the word count.
+    ("평가 점수가 세 점 미만이면 이번 결정을 차단한다", False),
+    ("세 점 미만", True),
+    ("ꀀꀁ ꀂ ꀃ ꀄ ꀅ ꀆ ꀇ ꀈ", False),                    # Yi: 8 words
+    # A lone mark is no word; full-width letters equal half-width ones.
+    ("any score below three — blocks the decision", True),       # 7 words
+    ("any score below three — blocks the final decision", False),
+    ("ａｎｙ ｓｃｏｒｅ ｂｅｌｏｗ ｔｈｒｅｅ ｂｌｏｃｋｓ ｔｈｅ ｆｉｎａｌ ｄｅｃｉｓｉｏｎ", False),
+])
+def test_short_trigger_counts_han_and_kana_letters(value, warned):
+    assert _short_warned(value) is warned
+
+
+def test_tokens_split_han_and_kana_letters_only():
+    assert phase._tokens("用 AIGC 寫的「報告」，ok?") == [
+        "用", "aigc", "寫", "的", "報", "告", "ok?"]
+    assert phase._points("用 AIGC 寫的") == 5
+
+
+def test_tokens_apply_nfkc_and_keep_combining_marks():
+    assert phase._tokens("ＡＢＣ \uf967 ｶﾞ") == ["abc", "不", "ガ"]
+    assert phase._tokens("ดี字") == ["ดี", "字"]
+    assert phase._tokens("n\u0304語") == ["n\u0304", "語"]
+    assert phase._tokens("ok?」的") == ["ok", "的"]
+
+
 @pytest.mark.parametrize(
     "mutation",
     [
