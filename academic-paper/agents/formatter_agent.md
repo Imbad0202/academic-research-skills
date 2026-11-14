@@ -510,6 +510,24 @@ NOT a refusal rule: this agent stays stamp-only (Invariant 13) — it never re-r
 
 **When this section gets written (the one sanctioned post-Phase-7 action):** the verifier runs AFTER this agent's main Phase-7 pass, so the section is appended in a SECOND, append-only dispatch — the orchestrator re-invokes this agent once the verifier has written its report (with `policy_slug` populated), and this agent transcribes the findings into `provenance_summary.md`. This re-entry is NOT a content revision (no manuscript bytes change — the format-only boundary holds) and NOT policy evaluation (the orchestrator already decided terminality); it is advisory transcription from the report. The append cannot stale the report it feeds on: `provenance_summary.md` is excluded from the report's `package_fingerprint` precisely for this reason.
 
+## Review Status (#1087)
+
+This section applies to `academic-paper` `full` mode. It does not apply to `format-convert` mode, to the standalone `disclosure` mode, or to `academic-pipeline` Stage 5, where the Stage 5 entry gate holds the user's confirmation.
+
+**Start condition.** Start Phase 7 without a stop when `peer_reviewer_agent` gave an Accept verdict for the draft you receive. Otherwise, before you format, show the user the Review Status line below and ask whether to format the draft in that state. Start only after the user confirms it. If the user declines, stop and format nothing. The cases are in `peer_reviewer_agent` § Loop End States and `academic-paper/SKILL.md` Checkpoint Rule 6; Option C ends the workflow, and you do not run.
+
+**Review Status line.** Write exactly one of these in the `Review Status` row of Format Specifications Applied, and use the same line at the stop:
+
+- `Accepted in Round N`
+- `Revised after the last review (Round 2 Minor Revision); not re-reviewed`
+- `Option A after Round 2 (<verdict>): unresolved items listed in Acknowledged Limitations`
+- `Formatted early at the user's request: last verdict <verdict> in Round N`
+- `Formatted early at the user's request: no review has read this draft`
+
+Do not call a draft "passed peer review" unless its line is `Accepted in Round N`.
+
+**Counts.** With an Accept, use the reviewer's Final Counts (body word count, in-text citation count, reference-list entry count) as the input counts in the Final Quality Checklist. Otherwise, count the draft you receive yourself, per `shared/references/word_count_conventions.md`, and state in the Final Quality Checklist that the counts are your own.
+
 ## Output Format
 
 ```markdown
@@ -529,6 +547,7 @@ NOT a refusal rule: this agent stays stamp-only (Invariant 13) — it never re-r
 |------|-------|
 | Citation Style | [APA 7th / Chicago / MLA / IEEE / Vancouver] |
 | Target Journal | [name or "General"] |
+| Review Status | [one Review Status line; `full` mode only] |
 | Word Count | [N] words |
 | Language | [EN / zh-TW / Bilingual] |
 
@@ -990,11 +1009,11 @@ Quality gate not passed ->
 
 | Source Agent | Received Content | Data Format |
 |-----------|---------|---------|
-| `draft_writer_agent` | Final Reviewed Draft: the version peer review accepted — the writer's latest revision, or, when Phase 6 accepted without a revision round, the Corrected Draft from `citation_compliance_agent` | Markdown full text (passed peer review) |
-| `citation_compliance_agent` | Corrected Reference List + Citation Audit Report (the Corrected Draft arrives as the Final Reviewed Draft only when Phase 6 accepted it without a revision round) | Markdown Reference List + Audit table |
+| `draft_writer_agent` | Final Reviewed Draft: the draft that goes to Phase 7 — the version peer review accepted (the writer's latest revision, or, when Phase 6 accepted without a revision round, the Corrected Draft from `citation_compliance_agent`); without an Accept, the latest draft the user confirmed at the stop, including the "Acknowledged Limitations" section after Option A (§ Review Status) | Markdown full text; its Review Status line says whether it passed peer review |
+| `citation_compliance_agent` | Corrected Reference List + Citation Audit Report (the Corrected Draft arrives as the Final Reviewed Draft only when Phase 6 accepted it without a revision round, or when the user asks for early formatting before any revision round) | Markdown Reference List + Audit table |
 | `abstract_bilingual_agent` | Bilingual Abstracts + Keywords | Markdown (EN + zh-TW) |
 | `intake_agent` | Paper Configuration Record | Markdown table (output_format, target_journal, language) |
-| `peer_reviewer_agent` | Final Verdict (Accept) | Verdict confirmation |
+| `peer_reviewer_agent` | Last verdict and its round; with an Accept, also the Final Counts | Verdict field + Final Counts |
 
 ### Output Destinations
 
@@ -1008,7 +1027,7 @@ Quality gate not passed ->
 
 - **Receiving citation_compliance_agent's Corrected Reference List**: Must be the final version; formatter does not modify citation content, only performs format conversion
 - **Receiving abstract_bilingual_agent's Abstracts**: EN and zh-TW abstracts are inserted as independent blocks; content is not modified
-- **Final Reviewed Draft status confirmation**: Phase 7 must start only after peer_reviewer_agent gives an Accept verdict (unless user explicitly requests early formatting)
+- **Final Reviewed Draft status confirmation**: in `full` mode, Phase 7 starts without a stop after an Accept verdict for the draft you receive. Without one, it starts only after the user confirms it at the stop (last allowed revision, Option A, or early formatting; § Review Status). Option C ends the workflow, and you do not run
 
 ## Quality Criteria
 

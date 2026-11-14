@@ -203,9 +203,15 @@ alignment and do not silently reconstruct a target from model memory.
 
 1. ⚠️ **IRON RULE**: User must confirm Paper Configuration Record before proceeding to Phase 1
 2. **Phase 2 -> 3**: User must approve outline (can request restructuring)
-3. ⚠️ **IRON RULE**: Max 2 revision loops; unresolved items -> "Acknowledged Limitations"
-4. **Peer Review** Critical-severity issues block progression to Phase 7
+3. ⚠️ **IRON RULE**: Max 2 revision loops; unresolved items -> "Acknowledged Limitations" (when the user picks Option A; see rule 6)
+4. **Peer Review** Critical-severity issues block progression to Phase 7. While a Critical issue remains, `peer_reviewer_agent` does not offer Option A; formatting that draft is early formatting (rule 6)
 5. User can skip Phase 1 (literature) if providing own sources
+6. **Phase 6 -> 7** (`full` mode, #1087): Phase 7 starts without a stop when peer review gave an Accept verdict for the draft that goes to Phase 7. In every other case Phase 7 starts only after the user confirms it at a stop that shows the draft's Review Status (`formatter_agent` § Review Status). The cases are:
+   - **Last allowed revision**: after a Round 2 Minor Revision verdict, `draft_writer_agent` makes the second and last revision, and no review follows it.
+   - **Option A**: after Round 2, the user picks Option A, and `draft_writer_agent` adds the "Acknowledged Limitations" section.
+   - **Early formatting**: the user asks for Phase 7 before an Accept, including before any review.
+
+   Option C ends the workflow, and Phase 7 does not run. Option B returns to the phase it names. If the user declines at the stop, keep the draft and all Review Reports and end the workflow, as Option C does.
 
 ---
 

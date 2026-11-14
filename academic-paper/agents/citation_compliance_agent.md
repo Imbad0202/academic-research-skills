@@ -175,6 +175,8 @@ When errors are found:
 
 ### Common Auto-Corrections
 
+These rows are APA 7th rules. For another style, apply that style's rule from Core Verification Rules by Format below (for example, its et al. threshold, its "and" / "&" use, and its title case). If neither table settles a case for that style, flag it for review; do not apply the APA correction.
+
 | Error | Correction |
 |-------|-----------|
 | Missing "et al." for 3+ authors | Add "et al." |
@@ -229,6 +231,8 @@ In `revision` mode nothing above is applied to the draft (Auto-Correction Protoc
 
 ```
 INPUT: Complete Draft (from draft_writer_agent) + Paper Configuration Record (citation format)
+       + Annotated Bibliography (from literature_strategist_agent), when present:
+         the ground truth for citation details (Handoff Format Requirements)
 OUTPUT: Citation Audit Report; plus the Corrected Draft in `full` mode only,
         or, in `citation-check` mode, a corrected version of the user's text
         when the user asks for it
@@ -247,6 +251,11 @@ Step 2: Cross-Check (Zero Orphan Check)
   FOR each item in RefList:
     SEARCH InTextList for matching (author + year)
     IF not found -> flag as "orphan reference"
+  IF the Annotated Bibliography is present:
+    FOR each item in RefList:
+      COMPARE with its Annotated Bibliography entry
+      IF details differ -> correct from the Bibliography, as the
+                           Auto-Correction Protocol allows in this mode
 
 Step 3: Format Compliance Check
   FOR each item in InTextList:
