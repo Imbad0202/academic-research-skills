@@ -11,6 +11,7 @@ Exit 0 pass, 2 contract/infra failure, 3 reviewer conformance failure.
 from __future__ import annotations
 
 import argparse
+import bisect
 import html
 import json
 import re
@@ -21,6 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _unspaced_scripts as unspaced  # noqa: E402
 import check_panel_synthesis as panel  # noqa: E402
 import recompute_receipts as recompute  # noqa: E402
 
@@ -304,6 +306,62 @@ def _normalise(text: str) -> str:
     # character, so a copied sentence is not hidden by a stored variant form.
     return " ".join(unicodedata.normalize("NFC", text).casefold().split())
 
+
+# #1077: Chinese and Japanese prose puts no spaces between words, so a
+# whitespace split gives one "word" for a whole sentence. _tokens() makes
+# each Han, Hiragana, or Katakana letter its own token (Unicode Script data,
+# see gen_unspaced_scripts.py) and counts it as half a word. It applies NFKC,
+# not the NFC of _normalise(), so half-width kana and full-width letters
+# count as their usual forms.
+_UNSPACED_STARTS = [first for first, _ in unspaced.RANGES]
+TRIGGER_POINTS = 16        # 8 words; a word is 2 points, a Han or kana letter 1
+
+
+def _is_unspaced(ch: str) -> bool:
+    """True when ``ch`` is a Han, Hiragana, or Katakana letter or number."""
+    cp = ord(ch)
+    at = bisect.bisect_right(_UNSPACED_STARTS, cp) - 1
+    return at >= 0 and cp <= unspaced.RANGES[at][1]
+
+
+def _tokens(text: str) -> list[str]:
+    """``text`` as tokens, after NFKC and case-folding.
+
+    Each Han, Hiragana, or Katakana letter is one token. Other text splits on
+    whitespace and at those letters, and marks next to such a letter are cut
+    off, so a CJK comma does not stick to the next Latin word. A token with
+    no letter or digit, such as a lone dash, is dropped."""
+    tokens = []
+
+    def flush(run: str, after: bool, before: bool) -> None:
+        # Keep the run from its first to its last letter or digit, but cut
+        # marks only on a side that touches a Han or kana letter.
+        keep = [i for i, c in enumerate(run) if c.isalnum()]
+        if keep:
+            tokens.append(run[keep[0] if after else 0:
+                              keep[-1] + 1 if before else len(run)])
+
+    for chunk in unicodedata.normalize("NFKC", text).casefold().split():
+        run, after = "", False
+        for ch in chunk:
+            if _is_unspaced(ch):
+                flush(run, after, True)
+                tokens.append(ch)
+                run, after = "", True
+            else:
+                run += ch
+        flush(run, after, False)
+    return tokens
+
+
+def _weight(token: str) -> int:
+    """2 points for a token, 1 for a Han or kana letter."""
+    return 1 if len(token) == 1 and _is_unspaced(token) else 2
+
+
+def _points(text: str) -> int:
+    """Length of ``text`` in points; 16 points are 8 words."""
+    return sum(map(_weight, _tokens(text)))
 
 def _is_dissent_field_shaped(line: str) -> bool:
     """True when a line spells a dissent field, canonically or decorated.
@@ -1066,10 +1124,11 @@ def parse_phase1(
             "what_triggers_fatal",
         ):
             value = fields[field]
-            if value is not None and len(value.split()) < 8:
+            if value is not None and _points(value) < TRIGGER_POINTS:
                 warnings.append(
                     f"[PHASE1-TRIGGER-SHORT: {path}: {did} {field} "
-                    "has fewer than 8 words]"
+                    "has fewer than 8 words (a Han or kana letter "
+                    "counts as half a word)]"
                 )
         commitments[did] = fields
     if set(commitments) != eligible:
