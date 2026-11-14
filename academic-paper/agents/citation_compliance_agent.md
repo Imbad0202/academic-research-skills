@@ -66,8 +66,8 @@ Reference: `references/citation_format_switcher.md`
 The selected style decides every format check in this file:
 
 1. A form that this file gives without naming a style is the APA 7th form, for example "et al." from three authors, "&", `https://doi.org/`, no period after a DOI, sentence case, or a year in the in-text citation. Apply it only when the selected style is APA 7th.
-2. For another style, take the rule from Core Verification Rules by Format. Where that table has no row for the case, take the rule from `references/citation_format_switcher.md`.
-3. Where the table says "Not settled", or neither file settles the case, flag the item for review. Do not apply the APA form, do not change the reference, and do not count the item as a format error.
+2. For another style, apply a rule only where a cell of Core Verification Rules by Format states one. Only such a rule can lead to an auto-correction or a counted format error.
+3. Where the cell says "Not settled (guides show X)", flag a reference that differs from X for review. Where the table has no row for the case, you may flag a reference that differs from the form `references/citation_format_switcher.md` shows; that file is a guide, not a settled rule. Where the cell says "Not settled" alone, do not check that item, and say once in the report which items were not checked for the style. In each of these cases, do not apply the APA form, do not change the reference, and do not count a format error.
 4. A missing DOI is an APA 7th auto-correction (add it if findable). In another style, list a missing DOI under Items Flagged for Review as a suggestion to add it; it is not a format error.
 
 ## Verification Checklist
@@ -78,7 +78,7 @@ The selected style decides every format check in this file:
 For each in-text citation:
   ✓ Appears in reference list (matched by the selected style's in-text match key)
   ✓ Author name(s) match exactly, where the in-text citation names authors
-  ✓ Year matches exactly, in author-date styles (APA, Chicago author-date)
+  ✓ Year matches exactly, where the in-text citation or note gives a year
   ✓ "et al." used at the selected style's threshold (Core Verification Rules by Format)
 
 For each reference list entry:
@@ -109,7 +109,7 @@ These are the APA 7th forms. For another style, follow the Style Scope Rule.
 - [ ] No period after DOI/URL
 - [ ] Journal titles in Title Case and italicized
 - [ ] Article titles in sentence case
-- [ ] Issue number included when journal paginates by issue
+- [ ] Issue number included whenever the journal has one
 - [ ] Edition noted for books (2nd ed.)
 
 ### 3. DOI/URL Verification
@@ -118,7 +118,9 @@ For each reference, by the selected style (Style Scope Rule; the DOI rows of Cor
 - [ ] DOI included if available. A missing DOI is an auto-correction only in APA 7th; in another style it is a suggestion (Style Scope Rule, item 4)
 - [ ] DOI in the selected style's DOI form (APA 7th: https://doi.org/xxxxx, not dx.doi.org)
 - [ ] URL for web sources is complete
-- [ ] The ending after the DOI/URL follows the selected style (APA 7th: no period). Where the table says "Not settled", flag for review and do not change it
+- [ ] The ending after the DOI/URL follows the selected style (APA 7th: no period)
+
+For a cell that says "Not settled", follow the Style Scope Rule, item 3: flag or skip, never change.
 - [ ] Access or retrieval date follows the selected style (APA 7th: only for content that may change)
 
 **Evidence boundary:** distinguish visible DOI syntax from resolution and source identity.
@@ -166,7 +168,8 @@ Determine whether a citation issue can be auto-corrected or requires human revie
 
 ```
 Is the issue formatting-only (e.g., a DOI not in the selected style's form, incorrect italics)?
-├── YES -> Auto-correct (where the fix goes: Auto-Correction Protocol below)
+├── YES, and the Style Scope Rule settles the form -> Auto-correct (where the fix goes: Auto-Correction Protocol below)
+├── YES, but the form is not settled for the style -> Flag for review (Style Scope Rule, item 3)
 └── NO -> Is the cited claim accurately represented?
     ├── YES, but wrong source -> Flag for human review (may be attribution error)
     └── NO -> CRITICAL: Misrepresentation detected
@@ -186,7 +189,7 @@ When errors are found:
 
 ### Common Auto-Corrections
 
-These rows are APA 7th rules. For another style, apply that style's rule as the Style Scope Rule directs, for example its et al. threshold, its reference list ordering, its title case, and its DOI form.
+These rows are APA 7th rules. For another style, apply that style's rule as the Style Scope Rule directs, for example its et al. threshold, its reference list ordering, and its title case; a form that the rule does not settle, such as a non-APA DOI form, is flagged, not corrected.
 
 | Error | Correction |
 |-------|-----------|
@@ -250,8 +253,9 @@ OUTPUT: Citation Audit Report; plus the Corrected Draft in `full` mode only,
 
 Step 1: Build Citation Index
   1.1 Scan full text, extract all in-text citations -> Build InTextList[]
-      - Per entry: {author?, year?, number?, page?, location (section+paragraph), type (narrative/parenthetical)}
-        (MLA, IEEE, and Vancouver in-text citations carry no year; IEEE and Vancouver carry a number)
+      - Per entry: {author?, year?, title?, number?, page?, location (section+paragraph), type (narrative/parenthetical/note)}
+        (MLA, IEEE, Vancouver, and Chicago short notes carry no year; IEEE and Vancouver carry a number;
+         MLA and Chicago notes can carry a short title)
   1.2 Scan Reference List, extract all entries -> Build RefList[]
       - Per entry: {number?, authors[], year, title, source, doi?, url?, entry_type}
   1.3 IF the Annotated Bibliography is present:
@@ -278,10 +282,10 @@ Step 2: Cross-Check (Zero Orphan Check)
     IF not found -> flag as "orphan reference"
 
 Step 3: Format Compliance Check
-  FOR each item in InTextList:
+  FOR each item in InTextList and in RefList:
     APPLY format_rules[selected_style] -> check each formatting rule
-    IF violation found -> auto-correct if rule is deterministic
-                       -> flag for review if ambiguous
+    IF violation found -> auto-correct if rule is deterministic and settled (Style Scope Rule)
+                       -> flag for review if ambiguous or not settled
 
 Step 4: DOI/URL Check (Style Scope Rule; the DOI rows of Core Verification Rules by Format)
   FOR each item in RefList:
@@ -290,14 +294,15 @@ Step 4: DOI/URL Check (Style Scope Rule; the DOI rows of Core Verification Rules
                       another style: a suggestion under Items Flagged for Review,
                       not a format error
     IF url exists -> check completeness
-    CHECK the ending after the DOI/URL against the selected style;
-      where the table says "Not settled", flag for review and do not change it
+    CHECK the ending after the DOI/URL against the selected style
+    (a "Not settled" cell: flag or skip as the Style Scope Rule, item 3, says; never change)
 
 Step 5: Additional Checks
   5.1 Self-citation ratio
   5.2 Source currency distribution
   5.3 Citation density per paragraph
-  5.4 Correct use of "et al." at the selected style's threshold
+  5.4 Correct use of "et al." in in-text citations, at the selected style's in-text threshold;
+      do not shorten a reference-list author field unless the table gives a reference-list rule
 
 Step 6: Output
   -> Citation Audit Report (log all corrections + flag uncertain items)
@@ -314,7 +319,7 @@ When no citation format is specified, identify it from the in-text form, confirm
 | In-text signature | Reference-list confirmation | Format |
 |---|---|---|
 | `(Author, Year)` | hanging indent, DOI as URL, sentence-case titles | APA |
-| `(Author, Year)` or footnotes | Author-Date + Reference List, or footnotes + Bibliography | Chicago |
+| `(Author Year)`, no comma before the year, or footnotes | Author-Date + Reference List, or footnotes + Bibliography | Chicago |
 | `(Author Page)`, no year | Works Cited, containers model | MLA |
 | numbered `[N]` | numbered list, conference proceedings common | IEEE |
 | superscript number | numbered, superscript, medical journals common | Vancouver |
@@ -326,19 +331,19 @@ If the format cannot be determined, ask the user; if the user does not respond, 
 | Check Item | APA 7th | Chicago 17th | MLA 9th | IEEE | Vancouver |
 |--------|---------|-------------|---------|------|-----------|
 | In-text format | (Author, Year) | Footnote or (Author Year) | (Author Page) | [N] | N (superscript) |
-| Multiple author threshold | 3+ -> et al. | 4+ -> et al. | 3+ -> et al. | 3+ -> et al. | 7+ -> et al. |
+| et al. threshold | In-text: 3+ -> et al. | In-text: 4+ -> et al. | In-text: 3+ -> et al. | In-text: numbers only; reference list: Not settled | In-text: numbers only; reference list: Not settled (guides show the first 6 + et al. for 7+) |
 | In-text match key | Author + year | Author-date: author + year; Notes: the note's author + title | Author (+ short title when the author has several works) | Number | Number |
 | Ref list ordering | Alphabetical for Latin-script names; Chinese venue/locale rule below | Alphabetical | Alphabetical | Order of appearance | Order of appearance |
-| DOI | Include when available | Include when available; a URL when there is no DOI | Include when available | Include when available | Not settled |
+| DOI | Include when available | Include when available | Include when available | Include when available | Not settled |
 | DOI form | https://doi.org/10.xxxx | Not settled (guides show https://doi.org/10.xxxx) | Not settled (guides show https://doi.org/10.xxxx) | Not settled (guides show doi: 10.xxxx) | Not settled (guides show doi:10.xxxx) |
 | Ending after DOI/URL | No period | Not settled (guides show a period) | Not settled | Not settled (guides show a period) | Not settled |
-
-"Not settled (guides show …)" gives the form that `references/citation_format_switcher.md` and secondary style guides show; it has not been checked against the style manual. Report a reference that differs from it under Items Flagged for Review, with the form the guides show; do not change the reference or count it as a format error (Style Scope Rule, item 3).
 | Title case | Sentence case (articles) | Title Case (book titles) | Title Case | Sentence case | Sentence case |
+
+"Not settled (guides show …)" gives the form that `references/citation_format_switcher.md` and secondary style guides show; it has not been checked against the style manual. The DOI row says only whether to include a DOI: a missing DOI outside APA 7th is a suggestion (Style Scope Rule, item 4). How to treat a "Not settled" cell: Style Scope Rule, item 3.
 
 ### Common Citation Error Patterns
 
-Apply a row only when the selected style has that rule (Style Scope Rule). Rows 5, 6, 7, 9, and 10 are APA 7th rules. Row 1 applies only to author-date styles (APA, Chicago author-date); MLA, IEEE, and Vancouver in-text citations carry no year. Row 2 applies where Chinese Citation Special Checks apply. Row 3 uses the selected style's DOI form.
+Apply a row only when the selected style has that rule (Style Scope Rule). Rows 5, 6, 7, 9, and 10 are APA 7th rules. Row 1 applies only to author-date styles (APA, Chicago author-date); MLA, IEEE, and Vancouver in-text citations carry no year. Row 2 applies where Chinese Citation Special Checks apply. Row 3 uses the selected style's DOI form. Row 8 looks for the selected style's page locator (APA 7th: p./pp.; Chicago author-date and MLA give the page number alone, as in (Smith 2024, 45) and (Smith 45)).
 
 | # | Error Pattern | Detection Rule | Auto-correctable? |
 |---|---------|---------|----------|
@@ -349,7 +354,7 @@ Apply a row only when the selected style has that rule (Style Scope Rule). Rows 
 | 5 | et al. on first citation | APA 7th uses et al. from first citation (correct) | Old APA 6th requires full list on first use -> remind |
 | 6 | & vs and mixed use | Parenthetical uses "and", Narrative uses "&" | Yes -> swap |
 | 7 | Wrong multi-source ordering | (B, 2024; A, 2023) | Yes -> reorder alphabetically |
-| 8 | Direct quote missing page number | Quoted text but no p./pp. | Flag -> user to provide |
+| 8 | Direct quote missing page number | Quoted text but no page locator in the selected style's form | Flag -> user to provide |
 | 9 | Title Case error | Article title uses Title Case (APA requires sentence case) | Yes (auto-convert) |
 | 10 | Period after DOI | https://doi.org/xxxxx. | Yes -> remove period |
 
@@ -388,7 +393,7 @@ Step 1: Build Comparison Matrix
 
 Step 2: Cross-Check Consistency
   FOR each matched pair:
-    COMPARE author spelling (InText vs Ref) -> flag mismatch
+    COMPARE author spelling (InText vs Ref), where the in-text citation names authors -> flag mismatch
     COMPARE year (InText vs Ref), in author-date styles -> flag mismatch
     IF APA 7 and Ref has 3+ authors -> verify InText abbreviates from first use
       ("et al." / Chinese 「等」 or 「等人」), unless names are needed to disambiguate
@@ -439,7 +444,7 @@ Quality gate not passed ->
 ├── Many missing DOIs ->
 │   Handling: Flag only, do not block workflow (some older literature genuinely has no DOI)
 └── Chinese-English mixed format conflict ->
-    Handling: Unify per apa7_chinese_citation_guide.md
+    Handling: APA 7th: unify per apa7_chinese_citation_guide.md; another style: flag for review
 ```
 
 ## Edge Case Handling
@@ -457,7 +462,7 @@ Quality gate not passed ->
 | Issue | Handling |
 |------|---------|
 | Draft citation formats extremely chaotic (multiple formats mixed) | First unify and identify target format -> full conversion -> then check one by one |
-| In-text citations use non-standard format (e.g., name only without year in an author-date style) | Try matching from RefList -> add year -> if no match then flag. MLA, IEEE, and Vancouver in-text citations carry no year; do not add one |
+| In-text citations use non-standard format (e.g., name only without year in an author-date style) | Author-date styles: try matching from RefList -> add year -> if no match then flag. MLA, IEEE, Vancouver, and Chicago notes: do not add a year |
 | Reference List entries incomplete (missing title or journal) | Flag as "incomplete entry", list missing fields |
 
 ### Paper Type Adjustments
@@ -467,7 +472,7 @@ Quality gate not passed ->
 | Theoretical | Tolerate higher proportion of classic literature (>10 year old sources can reach 40%) |
 | Case study | Tolerate gray literature (policy documents, institutional reports) with non-standard citation formats |
 | Policy brief | Tolerate government reports without DOI; checking URL validity is more important |
-| Chinese paper | Enable Chinese citation special checks; check Chinese and English references separately for ordering |
+| Chinese paper | APA 7th: enable Chinese citation special checks and check Chinese and English references separately for ordering. Another style: use that style's ordering (IEEE and Vancouver: order of appearance) and flag Chinese-name questions for review |
 
 ## Collaboration Rules with Other Agents
 
@@ -490,7 +495,7 @@ Quality gate not passed ->
 
 ### Handoff Format Requirements
 
-- **Receiving draft_writer_agent's Draft**: Reference List must exist as an independent section (`## References`)
+- **Receiving draft_writer_agent's Draft**: Reference List must exist as an independent section under the selected style's title (`## References`; MLA: `## Works Cited`; Chicago notes-bibliography: `## Bibliography`)
 - **Output to formatter_agent**: Corrected Reference List must already be sorted by target format (APA = the venue/locale ordering rule above; Chicago = alphabetical; MLA = alphabetical; IEEE/Vancouver = order of appearance)
 - **Cross-verification with literature_strategist_agent**: Each source in the Annotated Bibliography is the ground truth. If citation information in the Draft differs from the Bibliography -> correct using Bibliography as authoritative source
 
