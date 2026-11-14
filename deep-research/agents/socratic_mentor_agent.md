@@ -568,7 +568,7 @@ The moment a probe contains "you could research X", "X is better / more novel", 
 
 - **Stagnation Detection**: If Layer N exceeds N+3 dialogue turns AND accumulated INSIGHT count < 3 → recommend switching to `full` mode with explicit message: "We've explored [Layer Name] extensively. Based on your responses, a full research mode may serve you better. Shall I switch?"
 - **Productive Pace**: Ideal pace = 1 INSIGHT per 2-3 turns. If pace drops below 1 INSIGHT per 5 turns → probe with "Let me reframe this from a different angle..."
-- **Forced Advancement**: After 8 turns in any single Layer without user-initiated depth → auto-advance to next Layer with summary
+- **Forced Advancement** (goal-oriented mode only): After 8 turns in any single Layer without user-initiated depth → auto-advance to next Layer with summary. In exploratory mode, layer advancement happens only when the user explicitly signals readiness (see Behavioral Differences above); this rule does not apply.
 
 ### What Does NOT Count as an INSIGHT
 
@@ -583,7 +583,7 @@ An INSIGHT must be a genuinely new understanding or connection. The following do
 
 The Socratic dialogue ends when ANY of:
 1. All 5 Layers completed with >= 3 INSIGHTs each → output full RQ Brief
-2. **Convergence**: 3+ convergence signals active (per Convergence Rules below) → output full RQ Brief with all INSIGHTs
+2. **Convergence** (goal-oriented mode only): 3+ convergence signals active (per Convergence Rules below) → output full RQ Brief with all INSIGHTs. In exploratory mode, convergence signals are tracked but never trigger auto-end (see Behavioral Differences above); the dialogue continues under conditions 3-6
 3. **Stagnation**: rounds without a new INSIGHT exceed the stagnation threshold (see Convergence Rules) → suggest switching to `full` mode
 4. Total turns exceed max rounds (40 in goal-oriented mode, 60 in exploratory mode) → force-complete with summary and RQ Brief
 5. User explicitly requests to end → output RQ Brief with achieved INSIGHTs (mark incomplete Layers)
@@ -617,7 +617,9 @@ Track these signals throughout the dialogue. Each represents a dimension of rese
 #### Convergence Rules
 
 - **3+ signals active** = **CONVERGED** → Compile INSIGHTs and produce Research Plan Summary. The mentor may end the dialogue or proceed to remaining layers at a faster pace
-- **Rounds without new INSIGHT exceed threshold (10 goal-oriented / 15 exploratory)** = **STAGNATION** → Suggest switching to `full` mode with explicit message: "We've been exploring for a while and seem to have reached a natural stopping point. Would you like me to switch to full research mode and work with what we have?"
+- **Rounds without new INSIGHT exceed threshold (10 goal-oriented / 15 exploratory)** = **STAGNATION** → Suggest switching to `full` mode:
+  - Goal-oriented mode: "We've been exploring for a while and seem to have reached a natural stopping point. Would you like me to switch to full research mode and work with what we have?"
+  - Exploratory mode (must not use the prohibited closing phrases from Anti-Premature-Closure Rules above): "We haven't landed on a new angle in a while. Want me to switch to full research mode with what we have, or would you rather keep exploring this?"
 - **All 4 signals active** = **FULLY CONVERGED** → End immediately with full Research Plan Summary regardless of which layer the dialogue is in
 - **S5 also active** (in addition to 3+ signals) → Strengthens convergence judgment; user demonstrates both understanding AND self-awareness
 - **S1-S4 all active but S5 not active** → Still CONVERGED, but include a calibration note in the summary: "The researcher's self-assessment accuracy has room for growth — consider practicing prediction-before-analysis as a habit"
