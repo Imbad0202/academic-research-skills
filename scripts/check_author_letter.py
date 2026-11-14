@@ -60,7 +60,7 @@ except ImportError:  # pragma: no cover - dual-path import
 # A delimiter row of two or more columns; outer pipes are optional.
 _TABLE_RULE = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$")
 _PARAGRAPH = re.compile(r"\n\s*\n")
-# A list item or a blockquote mark at the start of a line.
+# A list item mark at the start of a line.
 _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|[0-9]+[.)])[ \t]")
 # Every blockquote mark at the start of a line, nested or indented.
 _BLOCKQUOTE = re.compile(r"^(?:[ \t]*>[ \t]?)+", re.MULTILINE)
@@ -139,7 +139,17 @@ def _cells(line: str) -> list[str]:
     body = line.strip()
     body = body[1:] if body.startswith("|") else body
     body = body[:-1] if body.endswith("|") else body
-    return [c.strip(" \t`*_") for c in body.split("|")]
+    return [_trim(c) for c in body.split("|")]
+
+
+def _trim(cell: str) -> str:
+    """``cell`` without the whitespace (Unicode spaces included) and the
+    `` ` ``, ``*``, and ``_`` marks at its ends, in any order."""
+    while True:
+        trimmed = cell.strip().strip("`*_")
+        if trimmed == cell:
+            return cell
+        cell = trimmed
 
 
 def table_rows(text: str) -> list[str] | None:

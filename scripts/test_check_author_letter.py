@@ -186,9 +186,28 @@ def test_the_cli_exit_codes(tmp_path, capsys):
     assert "QUOTE-CHECK-NOT-RUN" in capsys.readouterr().out
     paths["letter"].write_text(LETTER.replace("| 3 | S1 |\n", ""), encoding="utf-8")
     assert cal.main(args) == 1
+    out = capsys.readouterr().out
+    assert "[AUTHOR-LETTER-MAPPING] roadmap item S1 is not in the item map" in out
+    assert "PASS" not in out
     with pytest.raises(SystemExit) as exc:
         cal.main(["--letter", str(tmp_path / "missing.md"), "--package", str(paths["package"])])
     assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("make", [
+    lambda d: d / "missing.md",                                   # no such file
+    lambda d: d,                                                  # a directory
+    lambda d: (d / "ms.pdf").write_bytes(b"%PDF-1.4\n\xff\xfe") and d / "ms.pdf",  # not UTF-8
+])
+def test_an_unreadable_manuscript_exits_2(tmp_path, capsys, make):
+    letter, package = tmp_path / "letter.md", tmp_path / "package.md"
+    letter.write_text(LETTER, encoding="utf-8")
+    package.write_text(PACKAGE, encoding="utf-8")
+    manuscript = make(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        cal.main(["--letter", str(letter), "--package", str(package), "--manuscript", str(manuscript)])
+    assert exc.value.code == 2
+    assert "cannot read the manuscript" in capsys.readouterr().err
 
 
 def test_the_skill_names_the_step_and_the_template():
@@ -502,6 +521,24 @@ def test_the_next_paragraph_is_still_checked_after_an_unclosed_mark():
 def test_a_machine_field_name_counts_wherever_it_stands(line):
     letter = LETTER.replace("## 建議修改", f"{line}\n\n## 建議修改")
     assert any(p.startswith("[AUTHOR-LETTER-MACHINE-LINE]") for p in cal.check(letter, PACKAGE, MANUSCRIPT))
+
+
+@pytest.mark.parametrize("space", ["\u00a0", "\u3000", "\u00a0`\u3000"])
+def test_a_cell_padded_with_unicode_spaces_is_read(space):
+    end = space[::-1]
+    letter = LETTER.replace("| 1 | R1 |", f"|{space}1{end}|{space}R1{end}|")
+    assert cal.check(letter, PACKAGE, MANUSCRIPT) == []
+
+
+def test_a_package_ref_padded_with_unicode_spaces_is_read():
+    package = PACKAGE.replace("| R1 |", "|\u3000R1\u00a0|", 1)
+    assert cal.roadmap_refs(package) == cal.roadmap_refs(PACKAGE)
+
+
+def test_an_unclosed_straight_mark_stays_in_its_list_item():
+    assert cal.quotations('- 他說"沒有結尾\n- 下一項寫"原稿"。') == ["原稿"]
+    letter = LETTER.replace("## 建議修改", '- The "response\n- rate "invented phrase" was high.\n\n## 建議修改')
+    assert "[AUTHOR-LETTER-QUOTE] not in the manuscript: 'invented phrase'" in cal.check(letter, PACKAGE, MANUSCRIPT)
 
 
 def test_a_code_cell_with_spaces_is_read():
