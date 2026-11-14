@@ -152,6 +152,31 @@ def test_reads_the_official_folder_layout(tmp_path):
     assert b"\r\n" not in out.read_bytes()
 
 
+def test_an_unwritable_output_is_a_usage_error(tmp_path):
+    for name, text in _ucd(scripts="4E00 ; Han\n",
+                           categories="4E00 ; Lo\n").items():
+        (tmp_path / name).write_text(text, encoding="utf-8")
+    folder = tmp_path / "out"
+    folder.mkdir()
+    assert gen.main(["--ucd", str(tmp_path), "--output", str(folder)]) == 2
+    assert gen.main(["--ucd", str(tmp_path), "--output", str(folder),
+                     "--check"]) == 2
+    bad = tmp_path / "bad.py"
+    bad.write_bytes(b"\xff\xfe")
+    assert gen.main(["--ucd", str(tmp_path), "--output", str(bad),
+                     "--check"]) == 2
+
+
+def test_help_works_under_python_oo():
+    import subprocess, sys
+    from pathlib import Path
+    script = Path(gen.__file__)
+    result = subprocess.run([sys.executable, "-OO", str(script), "--help"],
+                            capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    assert "Unicode Character Database" in result.stdout
+
+
 def test_missing_file_is_a_usage_error(tmp_path):
     assert gen.main(["--ucd", str(tmp_path), "--output",
                      str(tmp_path / "t.py")]) == 2

@@ -11,8 +11,9 @@ of one Unicode version:
 
 A code point is in the table when its Script_Extensions holds Han, Hiragana,
 or Katakana and its General_Category is a letter (L*) or a number (N*).
-Script_Extensions covers marks such as the prolonged sound mark U+30FC, whose
-Script is Common. Punctuation, symbols, and radicals are left out.
+Script_Extensions also brings in characters whose Script is Common, such as
+the prolonged sound mark U+30FC, a modifier letter (Lm). Combining marks (M*),
+punctuation, symbols, and radicals are left out.
 
 Usage:
   python scripts/gen_unspaced_scripts.py --ucd DIR            # write the table
@@ -116,7 +117,10 @@ def render(version: str, ranges: list[tuple[int, int]],
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # __doc__ is None under python -OO.
+    parser = argparse.ArgumentParser(
+        description="Write scripts/_unspaced_scripts.py from the Unicode "
+                    "Character Database.")
     parser.add_argument("--ucd", type=Path, required=True,
                         help="folder that holds the three UCD files")
     parser.add_argument("--output", type=Path, default=OUTPUT)
@@ -133,16 +137,16 @@ def main(argv: list[str] | None = None) -> int:
             digests[name] = hashlib.sha256(data).hexdigest()
             sources[name] = data.decode("utf-8")
         text = render(*build(sources), digests)
+        if not args.check:
+            args.output.write_text(text, encoding="utf-8", newline="\n")
+        elif (not args.output.exists()
+              or args.output.read_text(encoding="utf-8") != text):
+            print(f"gen_unspaced_scripts: {args.output} is out of date",
+                  file=sys.stderr)
+            return 1
     except (OSError, ValueError, UcdError) as exc:
         print(f"gen_unspaced_scripts: {exc}", file=sys.stderr)
         return 2
-    if args.check:
-        current = args.output.read_text(encoding="utf-8") if args.output.exists() else ""
-        if current != text:
-            print(f"gen_unspaced_scripts: {args.output} is out of date", file=sys.stderr)
-            return 1
-        return 0
-    args.output.write_text(text, encoding="utf-8", newline="\n")
     return 0
 
 
