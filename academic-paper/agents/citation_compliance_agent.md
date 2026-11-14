@@ -175,7 +175,7 @@ When errors are found:
 
 ### Common Auto-Corrections
 
-These rows are APA 7th rules, and so are the style-dependent rows of Common Citation Error Patterns below (rows 5, 6, 7, and 9). For another style, apply that style's rule from Core Verification Rules by Format below (for example, its et al. threshold, its "and" / "&" use, its reference ordering, and its title case). If Core Verification Rules by Format does not settle a case for that style, flag it for review; do not apply the APA correction.
+These rows are APA 7th rules. The rows of Common Citation Error Patterns below apply only when the selected style has that rule (see the note above that table). For another style, apply that style's rule from Core Verification Rules by Format below (for example, its et al. threshold, its reference list ordering, and its title case). If Core Verification Rules by Format does not settle a case for that style, flag it for review; do not apply the APA correction.
 
 | Error | Correction |
 |-------|-----------|
@@ -249,7 +249,9 @@ Step 1: Build Citation Index
                                          as the Auto-Correction Protocol allows in this mode,
                                          and do the same to its in-text citations
           IF not found -> flag for review ("not in Annotated Bibliography")
-        Run Step 2 on the corrected entries
+        In `full` mode, run Step 2 on the corrected entries. In other modes these
+        corrections stay proposals: run Step 2 on the entries as they are, and note
+        each orphan result that a proposed correction would change
 
 Step 2: Cross-Check (Zero Orphan Check)
   FOR each item in InTextList:
@@ -312,6 +314,8 @@ If the format cannot be determined, ask the user; if the user does not respond, 
 | Title case | Sentence case (articles) | Title Case (book titles) | Title Case | Sentence case | Sentence case |
 
 ### Common Citation Error Patterns
+
+Apply a row only when the selected style has that rule. Rows 5, 6, 7, 9, and 10 are APA 7th rules. Row 1 applies only to author-date styles (APA, Chicago author-date); MLA, IEEE, and Vancouver in-text citations carry no year. For another style, follow the guard under Common Auto-Corrections above.
 
 | # | Error Pattern | Detection Rule | Auto-correctable? |
 |---|---------|---------|----------|

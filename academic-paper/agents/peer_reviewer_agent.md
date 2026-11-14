@@ -381,7 +381,7 @@ Each way the revision loop ends has one next step. `academic-paper/SKILL.md` Che
 | Round 2 Major Revision or Reject, Option C | The workflow ends; Phase 7 does not run |
 | Early formatting (the user asks for Phase 7 before an Accept) | Phase 7 starts after the user confirms it at the stop |
 
-At the stop, the user sees the draft's Review Status (`formatter_agent` § Review Status). If the user declines, the workflow ends as Option C does.
+The stop is the one that `formatter_agent` shows before it formats, with the draft's Review Status (`formatter_agent` § Review Status); do not ask the user this yourself. If the user declines, the workflow ends as Option C does.
 
 ## Quality Gates
 

@@ -514,7 +514,7 @@ NOT a refusal rule: this agent stays stamp-only (Invariant 13) — it never re-r
 
 This section applies to `academic-paper` `full` mode. It does not apply to `format-convert` mode, to the standalone `disclosure` mode, or to `academic-pipeline` Stage 5, where the Stage 5 entry gate holds the user's confirmation.
 
-**Start condition.** Start Phase 7 without a stop when `peer_reviewer_agent` gave an Accept verdict for the draft you receive. Otherwise, before you format, show the user the Review Status line below and ask whether to format the draft in that state. Start only after the user confirms it. If the user declines, stop and format nothing. The cases are in `peer_reviewer_agent` § Loop End States and `academic-paper/SKILL.md` Checkpoint Rule 6; Option C ends the workflow, and you do not run.
+**Start condition.** Start Phase 7 without a stop when `peer_reviewer_agent` gave an Accept verdict for the draft you receive. Otherwise, before you format, show the user the Review Status line below and ask whether to format the draft in that state. This is the one confirmation stop for the Phase 6 -> 7 step; no other agent asks it first. Start only after the user confirms it. If the user declines, stop and format nothing. The cases are in `peer_reviewer_agent` § Loop End States and `academic-paper/SKILL.md` Checkpoint Rule 6; Option C ends the workflow, and you do not run.
 
 **Review Status line.** Write exactly one of these in the `Review Status` row of Format Specifications Applied, and use the same line at the stop:
 
@@ -1012,7 +1012,7 @@ Quality gate not passed ->
 
 | Source Agent | Received Content | Data Format |
 |-----------|---------|---------|
-| `draft_writer_agent` | Final Reviewed Draft: the draft that goes to Phase 7 — the version peer review accepted (the writer's latest revision, or, when Phase 6 accepted without a revision round, the Corrected Draft from `citation_compliance_agent`); without an Accept, the latest draft the user confirmed at the stop, including the "Acknowledged Limitations" section after Option A (§ Review Status) | Markdown full text; its Review Status line says whether it passed peer review |
+| `draft_writer_agent` | Final Reviewed Draft: the draft that goes to Phase 7 — the version peer review accepted (the writer's latest revision, or, when Phase 6 accepted without a revision round, the Corrected Draft from `citation_compliance_agent`); without an Accept, the latest draft, including the "Acknowledged Limitations" section after Option A, which you format only after the user confirms it at your stop (§ Review Status) | Markdown full text; its Review Status line says whether it passed peer review |
 | `citation_compliance_agent` | Corrected Reference List + Citation Audit Report (the Corrected Draft arrives as the Final Reviewed Draft only when Phase 6 accepted it without a revision round, or when the user asks for early formatting before any revision round) | Markdown Reference List + Audit table |
 | `abstract_bilingual_agent` | Bilingual Abstracts + Keywords | Markdown (EN + zh-TW) |
 | `intake_agent` | Paper Configuration Record | Markdown table (output_format, target_journal, language) |
@@ -1030,7 +1030,7 @@ Quality gate not passed ->
 
 - **Receiving citation_compliance_agent's Corrected Reference List**: Must be the final version; formatter does not modify citation content, only performs format conversion
 - **Receiving abstract_bilingual_agent's Abstracts**: EN and zh-TW abstracts are inserted as independent blocks; content is not modified
-- **Final Reviewed Draft status confirmation**: in `full` mode, Phase 7 starts without a stop after an Accept verdict for the draft you receive. Without one, it starts only after the user confirms it at the stop (last allowed revision, Option A, or early formatting; § Review Status). Option C ends the workflow, and you do not run
+- **Final Reviewed Draft status confirmation**: in `full` mode, Phase 7 starts without a stop after an Accept verdict for the draft you receive. Without one, it starts only after the user confirms it at your stop (last allowed revision, Option A, or early formatting; § Review Status). Option C ends the workflow, and you do not run
 
 ## Quality Criteria
 
