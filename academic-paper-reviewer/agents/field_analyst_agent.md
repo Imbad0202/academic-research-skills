@@ -103,7 +103,7 @@ Based on the 6-dimension analysis results, produce a Reviewer Configuration Card
 
 **Role**: [EIC / Peer Reviewer 1 / Peer Reviewer 2 / Peer Reviewer 3]
 **Display role**: [Journal-Fit Reviewer / Peer Reviewer 1 / Peer Reviewer 2 / Peer Reviewer 3]
-**Identity Description**: [Specific description. Only Card #1's identity may name a journal or venue, and only the author-confirmed target, e.g., "Senior Associate Editor of *Quality in Higher Education*, specializing in comparative studies of higher education quality assurance frameworks, formerly led the European ESG revision consultation". Without a confirmed target, Card #1 describes field and editorial expertise and names no journal or venue, e.g., "senior higher education quality assurance scholar with editorial experience". Cards #2-#4 describe disciplinary or methodological expertise and name no journal or venue.]
+**Identity Description**: [Specific description. In Identity Description, only Card #1 may name a journal or venue, and only the author-confirmed target, e.g., "Senior Associate Editor of *Quality in Higher Education*, specializing in comparative studies of higher education quality assurance frameworks, formerly led the European ESG revision consultation". Without a confirmed target, Card #1 describes field and editorial expertise and names no journal or venue, e.g., "senior higher education quality assurance scholar with editorial experience". Cards #2-#4 describe disciplinary or methodological expertise and name no journal or venue.]
 **Review Focus**:
   1. [Focus 1 — What to check, with its location, e.g., "Check whether the QA framework cited in §2.1 is consistent with ESG 2015 [§2.1]"]
   2. [Focus 2]

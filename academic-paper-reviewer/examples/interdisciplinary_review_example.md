@@ -2,7 +2,7 @@
 
 This example demonstrates how `academic-paper-reviewer` configures reviewer roles and handles inter-disciplinary tensions when faced with a highly cross-disciplinary paper. It simulates the review of a paper titled "Using Machine Learning to Predict University Closure Risk in Taiwan: An Institutional Research Data Approach."
 
-The author confirmed the target journal in this example, so the Field Analysis Report copies that target and names no other journal or venue as a submission target, a recommendation, a tier benchmark, or a reviewer affiliation (#1080). Without a confirmed target, the Field Analysis Report states `criteria_binding_unavailable` and names no journal or venue in any of those roles. A journal named in the manuscript's title or cited as research material is not a target.
+The author confirmed the target journal in this example, so the Field Analysis Report copies that target and names no other journal or venue as a submission target, a recommendation, a tier benchmark, or a reviewer affiliation (#1080). Without a confirmed target, the Field Analysis Report states `criteria_binding_unavailable` and names no journal or venue in any of those roles.
 
 ---
 
