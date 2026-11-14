@@ -13,6 +13,8 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 > **Keywords**: machine learning, university closure, risk prediction, institutional research, Taiwan higher education
 >
 > **Full text approximately 8,500 words, 52 references cited**
+>
+> **Review target (confirmed by the author)**: *Education and Information Technologies*; track: none given; article type: research article
 
 ---
 
@@ -33,13 +35,15 @@ This example demonstrates how `academic-paper-reviewer` configures reviewer role
 | Secondary Disciplines | Education Policy, Financial Management, Institutional Research (IR) |
 | Research Paradigm | Quantitative — Predictive modeling |
 | Methodology Type | Statistical Modeling / Machine Learning (Classification) |
-| Target Journal Tier | Q2-Q3 — Cross-disciplinary papers may not be "specialized" enough in either field |
+| Target Journal Tier | *Education and Information Technologies*; track: none given; article type: research article (author-confirmed target) |
 | Paper Maturity | Pre-submission — Complete structure, analysis completed |
 
-#### Recommended Target Journals (Top 3)
-1. **Studies in Higher Education** — If the higher education theoretical framework is strengthened, targeting educational policy contribution
-2. **Education and Information Technologies** — Educational technology oriented, accepts ML application research
-3. **Journal of Higher Education Policy and Management** — Policy management oriented, accepts quantitative research
+#### Target Journal
+- **Venue**: *Education and Information Technologies*
+- **Track**: none given
+- **Article type**: research article
+
+The author confirmed this target, so the analysis lists no other journal (#1080). Without a confirmed target, this section states `criteria_binding_unavailable` and names no journal.
 
 #### Reviewer Configuration Cards
 

@@ -145,9 +145,9 @@ ids, digest, or parallel-conflict groups, and it never emits a binding receipt.
 
 ### Dynamic Configuration Examples
 
-The tables shorten each review focus to a few words. On a card, write each focus as a check with its location (#1076).
+The tables shorten each review focus to a few words. On a card, write each focus as a check with its location (#1076). Both examples are runs in which the author confirmed the journal that the Journal-Fit Reviewer names (#1080); without a confirmed target, that reviewer stays field-general.
 
-**Example 1: "Impact of AI on Higher Education Quality Assurance"**
+**Example 1: "Impact of AI on Higher Education Quality Assurance"** (author-confirmed target: *Quality in Higher Education*)
 
 | Reviewer | Identity | Review Focus |
 |----------|----------|-------------|
@@ -156,7 +156,7 @@ The tables shorten each review focus to a few words. On a card, write each focus
 | R2 | Higher education policy scholar, comparative education background | QA framework citation accuracy, policy context |
 | R3 | AI ethics researcher, information science background | Algorithm bias, data privacy, feasibility of technical claims |
 
-**Example 2: "Impact of Declining Birth Rates on Management Strategies of Taiwan's Private Universities"**
+**Example 2: "Impact of Declining Birth Rates on Management Strategies of Taiwan's Private Universities"** (author-confirmed target: *Studies in Higher Education*)
 
 | Reviewer | Identity | Review Focus |
 |----------|----------|-------------|
@@ -188,13 +188,12 @@ The tables shorten each review focus to a few words. On a card, write each focus
 | Secondary Disciplines | [Result, comma-separated] |
 | Research Paradigm | [Result] |
 | Methodology Type | [Result] |
-| Target Journal Tier | [Q1/Q2/Q3/Q4, with rationale] |
+| Target Journal Tier | [With a confirmed target: its venue, track, and article type, copied exactly. Without one: `criteria_binding_unavailable` and a field-general maturity/tier observation] |
 | Paper Maturity | [First draft/Revised draft/Pre-submission, with rationale] |
 
-## Recommended Target Journals (Top 3)
-1. [Journal name] — [Rationale]
-2. [Journal name] — [Rationale]
-3. [Journal name] — [Rationale]
+## Target Journal
+[With an author-confirmed target: reproduce its venue, track, and article type exactly. List no other journal.]
+[Without one: write `criteria_binding_unavailable` and name no journal.]
 
 ## Coverage
 
@@ -224,7 +223,7 @@ The tables shorten each review focus to a few words. On a card, write each focus
 - [ ] All 4 Reviewer Configuration Cards produced
 - [ ] Review focus areas of 4 reviewers do not overlap
 - [ ] Reviewer 3's angle is truly different from the other 2 (not just "broader" but a specific different disciplinary perspective)
-- [ ] Recommended target journals match the paper's discipline and quality
+- [ ] The Target Journal section copies the author-confirmed target exactly, or, without one, states `criteria_binding_unavailable` and names no journal (#1080)
 - [ ] Identity descriptions are specific enough (not "a methodology expert" but "a researcher in Y field specializing in X method")
 - [ ] The Coverage section lists every main part of the manuscript, and for each part that was not read or is not readable, names it, says why, and asks for a readable copy
 - [ ] No card says what a part that was not read or is not readable contains
