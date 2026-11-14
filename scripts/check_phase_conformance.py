@@ -303,7 +303,7 @@ class DissentParse:
 
 def _normalise(text: str) -> str:
     # NFC first (#1074): a CJK compatibility ideograph equals its standard
-    # character, so a copied sentence is not hidden by a stored variant form.
+    # character, so a trigger is not split from its copy by a variant form.
     return " ".join(unicodedata.normalize("NFC", text).casefold().split())
 
 
@@ -326,7 +326,7 @@ def _is_unspaced(ch: str) -> bool:
     return at >= 0 and cp <= unspaced.RANGES[at][1]
 
 
-def _tokens(text: str) -> list[str]:
+def _tokens(text: str, keep_marks: bool = False) -> list[str]:
     """``text`` as tokens, after NFKC and case-folding.
 
     Each Han, Hiragana, or Katakana letter is one token. Other text splits on
@@ -335,7 +335,9 @@ def _tokens(text: str) -> list[str]:
     word. A combining mark stays with the letter before it when that letter
     is not Han or kana; one right after a Han or kana letter that NFKC does
     not compose, such as U+309A after セ, is dropped. A token with no letter
-    or digit, such as a lone dash, is dropped."""
+    or digit, such as a lone dash, is dropped, unless ``keep_marks`` is set
+    and it touches no Han or kana letter: the leak check keeps it as a word,
+    as the whitespace split did, so a copied table row still matches."""
     tokens = []
 
     def flush(run: str, after: bool, before: bool) -> None:
@@ -344,6 +346,8 @@ def _tokens(text: str) -> list[str]:
         # the combining marks (Thai vowels, Devanagari signs) after it.
         keep = [i for i, c in enumerate(run) if c.isalnum()]
         if not keep:
+            if keep_marks and run and not (after or before):
+                tokens.append(run)
             return
         end = keep[-1] + 1 if before else len(run)
         while end < len(run) and unicodedata.category(run[end])[0] == "M":
@@ -1192,9 +1196,14 @@ def validate_metadata_envelope(metadata) -> None:
         )
 
 
+def _leak_tokens(text: str) -> list[str]:
+    """_tokens() for the leak check, which keeps lone marks as words."""
+    return _tokens(text, keep_marks=True)
+
+
 def _joined(text: str) -> str:
-    """``text`` as its _tokens() joined by single spaces."""
-    return " ".join(_tokens(text))
+    """``text`` as its leak-check tokens joined by single spaces."""
+    return " ".join(_leak_tokens(text))
 
 
 def _shingles(tokens: list[str]):
@@ -1223,7 +1232,7 @@ def check_manuscript_leakage(
     exemption_haystacks.append(_joined(json.dumps(
         contract, ensure_ascii=False, sort_keys=True
     )))
-    for shingle in _shingles(_tokens(manuscript_text)):
+    for shingle in _shingles(_leak_tokens(manuscript_text)):
         if shingle not in phase1_norm:
             continue
         if any(shingle in haystack for haystack in exemption_haystacks):

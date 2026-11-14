@@ -137,15 +137,13 @@ def main(argv: list[str] | None = None) -> int:
             digests[name] = hashlib.sha256(data).hexdigest()
             sources[name] = data.decode("utf-8")
         text = render(*build(sources), digests)
-        if args.check:
-            current = (args.output.read_text(encoding="utf-8")
-                       if args.output.exists() else "")
-            if current != text:
-                print(f"gen_unspaced_scripts: {args.output} is out of date",
-                      file=sys.stderr)
-                return 1
-            return 0
-        args.output.write_text(text, encoding="utf-8", newline="\n")
+        if not args.check:
+            args.output.write_text(text, encoding="utf-8", newline="\n")
+        elif (not args.output.exists()
+              or args.output.read_text(encoding="utf-8") != text):
+            print(f"gen_unspaced_scripts: {args.output} is out of date",
+                  file=sys.stderr)
+            return 1
     except (OSError, ValueError, UcdError) as exc:
         print(f"gen_unspaced_scripts: {exc}", file=sys.stderr)
         return 2

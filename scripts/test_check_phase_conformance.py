@@ -313,6 +313,7 @@ _META = {"title": "Synthetic", "field": "t", "word_count": 30}
 _HAN = "研究結果顯示學生在課程中的參與程度與學習成效之間具有顯著正相關並且"  # 34 Han letters
 _HIRA = "わたしたちはまいにちあさはやくおきてがっこうへいきます"  # 27 hiragana
 _KATA = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒ"  # 27 katakana
+_TWELVE = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
 
 
 def _leaks(phase1_extra, manuscript, metadata=_META):
@@ -348,15 +349,12 @@ def test_a_mixed_han_kana_and_latin_copy_leaks():
 
 def test_a_cjk_copy_inside_the_title_value_is_exempt():
     title = _HAN[:26]
-    metadata = {"title": title, "field": "t", "word_count": 30}
-    assert not _leaks(title, title + "。正文從這裡開始。", metadata)
+    assert not _leaks(title, title + "。正文從這裡開始。", {**_META, "title": title})
 
 
-def test_english_twelve_words_still_leak_and_eleven_do_not():
-    words = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu".split()
-    manuscript = " ".join(words) + " nu xi"
-    assert _leaks(" ".join(words), manuscript)
-    assert not _leaks(" ".join(words[:11]), manuscript)
+def test_english_eleven_words_do_not_leak():
+    words = _TWELVE.split()
+    assert not _leaks(" ".join(words[:11]), _TWELVE + " nu xi")
 
 
 def test_english_punctuation_is_cut_only_beside_a_han_letter():
@@ -366,10 +364,19 @@ def test_english_punctuation_is_cut_only_beside_a_han_letter():
     assert not _leaks("ok " + tail, "前言 ok? " + tail)
 
 
-def test_a_lone_dash_does_not_break_an_english_copy():
-    words = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
-    with_dash = words.replace("epsilon", "epsilon —")
-    assert _leaks(words, with_dash + " nu")
+def test_a_lone_mark_is_still_a_word_in_the_leak_check():
+    # #1077: the leak check keeps a mark that touches no Han or kana letter
+    # as a word, as the whitespace split did, so English is unchanged.
+    row = "| Dashboard sessions | 14.6 | 9.1 | 0 | 48 |"
+    assert _leaks(row, "Results.\n" + row + "\nEnd.")
+    with_dash = _TWELVE.replace("epsilon", "epsilon —")
+    assert not _leaks(_TWELVE, with_dash + " nu")
+    assert _leaks(with_dash, with_dash + " nu")
+
+
+def test_a_trigger_in_compatibility_ideographs_matches_its_standard_form():
+    # #1074: _normalise() applies NFC; U+FA08 is a compatibility form of 行.
+    assert phase._normalise("\ufa08政") == phase._normalise("行政")
 
 
 def test_metadata_title_shingle_is_exempt():
