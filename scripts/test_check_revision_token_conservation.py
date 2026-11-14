@@ -133,6 +133,48 @@ class CitationExtractionTests(unittest.TestCase):
         tokens = extract_citation_tokens("As Okonkwo and Vidal (2021) showed,")
         self.assertIn("Okonkwo and Vidal (2021)", dict(tokens))
 
+    def test_long_capital_run_does_not_stall_the_author_year_pattern(self):
+        # #1088: a long run of capitals with no year after it made the
+        # narrative-author part split one word into many shorter words and
+        # backtrack exponentially (n=32 took 0.75 s; each 2 more letters took
+        # about 2.6 times longer). Run in a child process so a regression
+        # fails on the timeout instead of hanging the suite.
+        code = (
+            "from scripts.check_revision_token_conservation import AUTHOR_YEAR_RE as R\n"
+            "for n in (40, 400, 5000):\n"
+            "    for tail in (' x', ' (x)', ' and x', '-x'):\n"
+            "        assert not list(R.finditer('A' * n + tail))\n"
+            "    assert [m.group(0) for m in R.finditer('A' * n + ' (2020)')] == ['A' * n + ' (2020)']\n"
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_author_word_boundary_keeps_existing_tokens(self):
+        # The #1088 guards remove only alternative parses; these tokens are
+        # the ones the pattern produced before the change.
+        tokens = extract_citation_tokens(
+            "Al-Masri et al. (2019) and O'Brien & Li (2020) agree; "
+            "deVries (2021) and al-Masri (2018) differ; "
+            "NASA (2017) and _Smith_ (2016) too."
+        )
+        self.assertEqual(
+            dict(tokens),
+            {
+                "Al-Masri et al. (2019)": 1,
+                "O'Brien & Li (2020)": 1,
+                "Vries (2021)": 1,
+                "Masri (2018)": 1,
+                "NASA (2017)": 1,
+                "Smith_ (2016)": 1,
+            },
+        )
+
     def test_resolved_ref_marker_keys_on_slug(self):
         # The finalizer resolves <!--ref:slug--> into 0/1/2-status-token forms
         # (<!--ref:slug ok-->, <!--ref:slug LOW-WARN CONTAMINATED-PREPRINT-->,
