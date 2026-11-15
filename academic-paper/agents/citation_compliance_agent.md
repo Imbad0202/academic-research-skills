@@ -412,7 +412,7 @@ Every other format check. Compare the item with the form in the table below. Whe
 | Check Item | Chicago 17th | MLA 9th | IEEE | Vancouver |
 |---|---|---|---|---|
 | In-text format | Footnote, or (Author Year) in author-date | (Author Page), or the author named in the sentence and the page in parentheses | [N] | Superscript N |
-| In-text match key | Author-date: author + year. Notes: author + short title (the title when there is no author); Ibid., or a note that gives only the author and page, points to the source of the note just before it when that note cites the same author. Flag a note that cannot be matched this way for review; do not count it as an orphan | Author, plus a short title when the author has several works (the title when there is no author) | Number | Number |
+| In-text match key | Author-date: author + year. Notes: author + short title (the title when there is no author); Ibid. points to the source of the note just before it; a note that gives only an author and page points to that source when the note before it cites the same author. Flag a note that cannot be matched this way for review; do not count it as an orphan | Author, plus a short title when the author has several works (the title when there is no author) | Number | Number |
 | et al. | In text: 4+ authors | In text: 3+ authors | — | Reference list: the first 6 + et al. for 7+ |
 | Reference list title | Bibliography (notes) or References (author-date) | Works Cited | References | References |
 | Reference list order | Alphabetical | Alphabetical | Order of first citation | Order of first citation |
