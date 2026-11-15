@@ -397,11 +397,11 @@ When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, this secti
 - The Evidence boundary under DOI/URL Verification.
 - Step 5.1 to 5.3 (self-citation ratio, source currency, citation density) and Self-Plagiarism Detection.
 - The Retraction Watch Protocol's checks. Its Options A to C (remove, keep with a note) are suggestions for the author under Items Flagged for Review; do not remove a citation or add a note yourself.
-- A note that cannot be matched (see the match key below) stays unresolved. A reference it may point to is not counted as an orphan until the note is resolved, and the orphan gates of the Quality Gates do not pass while a note stays unresolved.
+- A note that cites no source is not a citation. A citation note whose key cannot be resolved by the match key below (for example, an author-and-page note after a note on a different author, or an Ibid. without a single preceding source) is flagged for review and not counted as an orphan, and a reference it may point to is not counted as an orphan either. A note whose key resolves but has no reference list entry is an orphan citation, as Step 2 says.
 
 ### What you may correct
 
-1. **Structure.** Renumber IEEE and Vancouver references in order of first citation, and change the in-text numbers to match; number an uncited reference after the cited ones and flag it. Do not renumber while an in-text number has no matching reference; flag the numbering for review instead. In Chicago and MLA, put the Latin-script entries in alphabetical order, and do not reorder Chinese entries; flag an ordering question for review.
+1. **Structure.** In Chicago and MLA, put the Latin-script entries in alphabetical order, and do not reorder Chinese entries; flag an ordering question for review. In IEEE and Vancouver, do not renumber; flag a reference list that is not in order of first citation.
 2. **Content details, from the Annotated Bibliography (Step 1.3).** Correct a detail only when its value differs: a different author, year, title word, volume, page range, or DOI string. Keep the author's way of writing the same value, such as initials for a full name, et al. for a full author list, `doi:` for `https://doi.org/`, `123-45` for `123-145`, or a different capitalization, punctuation, italics, or order of elements; flag it if it differs from the guide form. A DOI that the draft leaves out is a suggestion, not a correction.
 
 Where each correction goes depends on the mode (Auto-Correction Protocol). In `revision` mode the corrections stay proposals, as the note under Output Format says.
@@ -415,9 +415,9 @@ Every other format check. Compare the item with the form in the table below. Whe
 | Check Item | Chicago 17th | MLA 9th | IEEE | Vancouver |
 |---|---|---|---|---|
 | In-text format | Footnote, or (Author Year) or Author (Year) in author-date | (Author Page), or the author named in the sentence and the page in parentheses | [N] | Superscript N |
-| In-text match key | Author-date: author + year. Notes: author + short title (the title when there is no author); Ibid. points to the source of the note just before it; a note that gives only an author and page points to that source when the note before it cites the same author. Flag a note that cannot be matched this way for review; do not count it as an orphan | Author, plus a short title when the author has several works (the title when there is no author) | Number | Number |
+| In-text match key | Author-date: author + year. Notes: author + short title (the title when there is no author); Ibid. points to the source of the note just before it; a note that gives only an author and page points to that source when the note before it cites the same author. Flag a citation note whose key cannot be resolved this way for review; do not count it as an orphan | Author, plus a short title when the author has several works (the title when there is no author) | Number | Number |
 | et al. | In text: 4+ authors | In text: 3+ authors | — | Reference list: the first 6 + et al. for 7+ |
-| Reference list title | Bibliography (notes) or References (author-date) | Works Cited | References | References |
+| Reference list title | Bibliography (notes), or References or Reference List (author-date) | Works Cited | References | References |
 | Reference list order | Alphabetical | Alphabetical | Order of first citation | Order of first citation |
 | DOI | Include when available | Include when available | Include when available | Include when available |
 | DOI form | https://doi.org/10.xxxx | https://doi.org/10.xxxx | doi: 10.xxxx | doi:10.xxxx |
