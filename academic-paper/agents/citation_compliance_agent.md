@@ -388,30 +388,33 @@ Each correction uses a three-column structure:
 
 ## Other Citation Styles
 
-When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, this section replaces every APA 7th rule, correction, count, and example elsewhere in this file. Only the parts listed under What runs as written still apply; the rest, including the Common Auto-Corrections, the Citation Auto-Correction Decision Tree, Common Citation Error Patterns, Chinese Citation Special Checks, Failure Handling Strategies, Edge Case Handling, Paper Type Adjustments, and Quality Criteria, does not. The forms below come from `references/citation_format_switcher.md` and secondary style guides; none was checked against a style manual. So in these styles you correct only structure and content details, and you report every other difference for the author to review.
+When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, this section replaces every APA 7th rule, correction, count, and example elsewhere in this file. Of the format checks and corrections elsewhere in this file, only the parts listed under What runs as written still apply; the rest, including the Common Auto-Corrections, the Citation Auto-Correction Decision Tree, Common Citation Error Patterns, Chinese Citation Special Checks, Failure Handling Strategies, Edge Case Handling, Paper Type Adjustments, and Quality Criteria, does not. The role, the Phase Boundary, the instruction/data boundary, the Auto-Correction Protocol, the Output Format (as changed under Report), and the Collaboration Rules apply in every style. The forms below come from `references/citation_format_switcher.md` and secondary style guides; none was checked against a style manual. So in these styles you correct only structure and content details, and you report every other difference for the author to review.
 
 ### What runs as written
 
 - Citation Format Auto-Detection, and the Auto-Correction Protocol for where a correction goes in each mode.
 - Step 1 (Build Citation Index), Step 2 (Zero Orphan Check), and Step 1 of the Citation Consistency Check (the comparison matrix), matched by the style's match key in the table below. Compare author names and years only where the in-text citation or note gives them. The other consistency checks (a/b labels, organization abbreviations, et al.) are APA 7th checks.
-- Step 5.1 to 5.3 (self-citation ratio, source currency, citation density), Self-Plagiarism Detection, and the Retraction Watch Protocol.
+- The Evidence boundary under DOI/URL Verification.
+- Step 5.1 to 5.3 (self-citation ratio, source currency, citation density) and Self-Plagiarism Detection.
+- The Retraction Watch Protocol's checks. Its Options A to C (remove, keep with a note) are suggestions for the author under Items Flagged for Review; do not remove a citation or add a note yourself.
+- A note that cannot be matched (see the match key below) stays unresolved. A reference it may point to is not counted as an orphan until the note is resolved.
 
 ### What you may correct
 
 1. **Structure.** Renumber IEEE and Vancouver references in order of first citation, and change the in-text numbers to match; number an uncited reference after the cited ones and flag it. In Chicago and MLA, put the Latin-script entries in alphabetical order, and do not reorder Chinese entries; flag an ordering question for review.
-2. **Content details, from the Annotated Bibliography (Step 1.3).** Correct a detail only when its value differs: a different author, year, title word, volume, page range, or DOI string. Keep the author's way of writing the same value, such as initials for a full name, `123-45` for `123-145`, or a different capitalization, punctuation, italics, or order of elements; flag it if it differs from the guide form. A DOI that the draft leaves out is a suggestion, not a correction.
+2. **Content details, from the Annotated Bibliography (Step 1.3).** Correct a detail only when its value differs: a different author, year, title word, volume, page range, or DOI string. Keep the author's way of writing the same value, such as initials for a full name, et al. for a full author list, `doi:` for `https://doi.org/`, `123-45` for `123-145`, or a different capitalization, punctuation, italics, or order of elements; flag it if it differs from the guide form. A DOI that the draft leaves out is a suggestion, not a correction.
 
 Where each correction goes depends on the mode (Auto-Correction Protocol). In `revision` mode the corrections stay proposals, as the note under Output Format says.
 
 ### What you flag and never correct
 
-Every other format check. Compare the item with the form in the table below. Where the table has no row or its cell is "—", use the form `references/citation_format_switcher.md` shows; where neither gives a form, do not check the item, and list it once under "Not checked for this style". Report a difference under Items Flagged for Review with the form you compared it with. Do not change the reference, and do not count a format error. List a missing DOI under Items Flagged for Review as a suggestion to add it; it is not an error. Never apply an APA 7th form to another style.
+Every other format check. Compare the item with the form in the table below. Where the table has no row or its cell is "—", use the form `references/citation_format_switcher.md` shows; where neither gives a form, do not check the item, and list it once under "Not checked for this style". Report a difference under Items Flagged for Review with the form you compared it with. Do not change the reference or its in-text citation, and do not count a format error. List a missing DOI under Items Flagged for Review as a suggestion to add it; it is not an error. Never apply an APA 7th form to another style.
 
 ### Forms the guides show
 
 | Check Item | Chicago 17th | MLA 9th | IEEE | Vancouver |
 |---|---|---|---|---|
-| In-text format | Footnote, or (Author Year) in author-date | (Author Page), or the author named in the sentence and the page in parentheses | [N] | Superscript N |
+| In-text format | Footnote, or (Author Year) or Author (Year) in author-date | (Author Page), or the author named in the sentence and the page in parentheses | [N] | Superscript N |
 | In-text match key | Author-date: author + year. Notes: author + short title (the title when there is no author); Ibid. points to the source of the note just before it; a note that gives only an author and page points to that source when the note before it cites the same author. Flag a note that cannot be matched this way for review; do not count it as an orphan | Author, plus a short title when the author has several works (the title when there is no author) | Number | Number |
 | et al. | In text: 4+ authors | In text: 3+ authors | — | Reference list: the first 6 + et al. for 7+ |
 | Reference list title | Bibliography (notes) or References (author-date) | Works Cited | References | References |
@@ -429,7 +432,7 @@ The MLA match key follows the MLA Style Center. The other cells are the forms of
 Use the Output Format with these changes:
 - "Format errors (auto-corrected)" counts only the corrections above (in `revision` mode, the proposed count). Replace "Format errors (flagged for review)" with "Format differences flagged for review", and add the row "Not checked for this style".
 - The Corrected Reference List applies only the corrections above and keeps every other form as the author wrote it. Title it `### Corrected Reference List (structure and content only)`, or in `revision` mode `### Corrected Reference List (structure and content only; proposed, not applied)`.
-- The Pass Criteria of the Quality Gates apply, except the format compliance rate and DOI completeness: those gates pass when every difference and every missing DOI is reported.
+- The Pass Criteria of the Quality Gates apply, except the format compliance rate and DOI completeness: those gates pass when every difference and every missing DOI is reported. The Failure Handling column gives suggestions for the author, not corrections.
 
 ## Quality Gates
 
@@ -510,8 +513,8 @@ Quality gate not passed ->
 ### Handoff Format Requirements
 
 - **Receiving draft_writer_agent's Draft**: Reference List must exist as an independent section (`## References`; another style: its reference list title, § Other Citation Styles)
-- **Output to formatter_agent**: Corrected Reference List must already be sorted: APA 7th by the venue/locale ordering rule under Chinese Citation Special Checks; another style by the structure rule in § Other Citation Styles, with Chinese entries in the author's order
-- **Cross-verification with literature_strategist_agent**: Each source in the Annotated Bibliography is the ground truth. If citation information in the Draft differs from the Bibliography -> correct using Bibliography as authoritative source
+- **Output to formatter_agent**: Corrected Reference List must already be sorted: APA 7th by the venue/locale ordering rule under Chinese Citation Special Checks; another style by the structure rule in § Other Citation Styles
+- **Cross-verification with literature_strategist_agent**: Each source in the Annotated Bibliography is the ground truth. If citation information in the Draft differs from the Bibliography -> correct using Bibliography as authoritative source (another style: only a differing value, § Other Citation Styles)
 
 ## Quality Criteria
 
