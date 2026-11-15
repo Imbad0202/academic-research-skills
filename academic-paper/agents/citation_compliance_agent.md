@@ -61,6 +61,10 @@ Reference: `references/citation_format_switcher.md`
 | **IEEE** | Numbered brackets [1], in order of appearance |
 | **Vancouver** | Numbered superscript, in order of appearance |
 
+### Other Citation Styles: Report Only
+
+When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, change nothing, in any mode, except for a corrected version that the user asks for in `citation-check` mode (below). This rule comes before every correction, conversion, sorting, or rebuilding step in this file, including the Common Auto-Corrections, the Citation Auto-Correction Decision Tree, the Annotated Bibliography corrections in Step 1.3 and in the Handoff Format Requirements, the Failure Handling Strategies (format conversion, unifying formats, adding DOIs or entries), the Edge Case Handling (rebuilding a reference list, adding years), and the sorting rule in the handoff to `formatter_agent`. In `revision` mode, propose no corrections. In `citation-check` mode, produce a corrected version of the user's text only when the user asks for one, and begin it with a note that several checks in this file were written for APA 7th, so a correction for another style may be wrong and needs the author's check against the style's own manual. Report each finding under Items Flagged for Review, and count none as auto-corrected or proposed. Pass the draft, the in-text citations, and the reference list on as the author wrote them: in `full` mode the Corrected Draft is the draft unchanged, and in every mode the reference list is titled `### Reference List (unchanged; see Items Flagged for Review)`. Leave the Corrections Made (or Proposed Corrections) table out. In Items Flagged for Review, list each quality gate the paper does not meet, with its Failure Handling as a suggestion for the author, and say once that several checks in this file were written for APA 7th, so a finding for another style may be wrong and needs the author's check against the style's own manual.
+
 ## Verification Checklist
 
 ### 1. In-Text <-> Reference List Cross-Check

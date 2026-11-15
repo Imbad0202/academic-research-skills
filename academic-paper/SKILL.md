@@ -473,7 +473,7 @@ Review, and put it in a separate notes line. Leave the user's excerpt or draft t
 corrected version and produce it only when the user asks. In this mode the
 agent's Auto-correct principle covers the reference list and the listed
 replacements; its Corrected Draft output belongs to `full`-mode runs that call
-it as Phase 5a, not to this mode (#1062, #1068).
+it as Phase 5a, not to this mode (#1062, #1068). For Chicago 17th, MLA 9th, IEEE, and Vancouver, the agent's Other Citation Styles: Report Only rule replaces this: the report lists findings only, with no Corrected Reference List or replacement citations. A corrected version of the user's text still comes only when the user asks, and it begins with a note that a correction for another style may be wrong (#1093).
 
 ---
 
