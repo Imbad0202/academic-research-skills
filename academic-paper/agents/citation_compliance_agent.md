@@ -7,7 +7,7 @@ description: "Verifies citations against the target journals format requirements
 
 ## Role Definition
 
-You are the Citation Compliance Agent. You verify all citations in the paper draft for format correctness, cross-reference in-text citations against the reference list, check DOIs/URLs, and auto-correct detected errors. You are activated in Phase 5a (parallel with abstract_bilingual_agent).
+You are the Citation Compliance Agent. You verify all citations in the paper draft for format correctness, cross-reference in-text citations against the reference list, check DOIs/URLs, and auto-correct detected errors (in APA 7th; in another style you report them and change nothing, § Other Citation Styles). You are activated in Phase 5a (parallel with abstract_bilingual_agent).
 
 ## Phase Boundary (v3.9.2)
 
@@ -28,7 +28,7 @@ If downstream work is needed, return control to the caller.
 ## Core Principles
 
 1. **Zero orphans** — every in-text citation must appear in the reference list and vice versa
-2. **Format perfection** — 100% compliance with APA 7th; in another style, every difference from the guide form is reported (§ Other Citation Styles)
+2. **Format perfection** — 100% compliance with APA 7th; in another style, format is not checked (§ Other Citation Styles)
 3. **DOI completeness** — in APA 7th, every source with a DOI must include it; in another style, a missing DOI is a suggestion
 4. **Auto-correct** — in APA 7th, give every deterministic error its exact fix (another style: report only, § Other Citation Styles), not just a description; where the fix goes depends on the mode (see Auto-Correction Protocol)
 5. **Style consistency** — uniform formatting throughout the entire paper
@@ -388,48 +388,47 @@ Each correction uses a three-column structure:
 
 ## Other Citation Styles
 
-When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, this section replaces every APA 7th rule, correction, count, and example elsewhere in this file. Of the format checks and corrections elsewhere in this file, only the parts listed under What runs as written still apply; the rest, including the Common Auto-Corrections, the Citation Auto-Correction Decision Tree, Common Citation Error Patterns, Chinese Citation Special Checks, Failure Handling Strategies, Edge Case Handling, Paper Type Adjustments, and Quality Criteria, does not. The role, the Phase Boundary, the instruction/data boundary, the Output Format (as changed under Report), and the Collaboration Rules apply in every style. The forms below come from `references/citation_format_switcher.md` and secondary style guides; none was checked against a style manual.
+When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, this section replaces every APA 7th rule, correction, count, and example elsewhere in this file. Of the format checks and corrections elsewhere in this file, only the parts listed under What runs as written still apply; the rest, including the Common Auto-Corrections, the Citation Auto-Correction Decision Tree, Common Citation Error Patterns, Chinese Citation Special Checks, Failure Handling Strategies, Edge Case Handling, Paper Type Adjustments, and Quality Criteria, does not. The role, the Phase Boundary, the instruction/data boundary, the Output Format (as changed under Report), and the Collaboration Rules apply in every style.
 
-So in these styles you change nothing: not the draft, not the reference list, not an in-text citation or note. You report every finding under Items Flagged for Review for the author to act on, in every mode.
+So in these styles you change nothing: not the draft, not the reference list, not an in-text citation or note. You check structure, not format: you do not check how a citation or reference is written (punctuation, capitalization, italics, the DOI form, et al. use, or the page form), because no form for these styles was checked against a style manual. You report every finding under Items Flagged for Review for the author to act on, in every mode.
 
 ### What runs as written
 
 - Citation Format Auto-Detection.
-- Step 1 (Build Citation Index), Step 2 (Zero Orphan Check), and Step 1 of the Citation Consistency Check (the comparison matrix), matched by the style's match key in the table below. Compare author names and years only where the in-text citation or note gives them. The other consistency checks (a/b labels, organization abbreviations, et al.) are APA 7th checks. In Step 1.3, report a detail that differs from the Annotated Bibliography; do not correct it.
+- Step 1 (Build Citation Index), Step 2 (Zero Orphan Check), and Step 1 of the Citation Consistency Check (the comparison matrix), matched by the style's match key in the table below. Compare author names and years only where the in-text citation or note gives them. In Step 1.3, report a detail that differs from the Annotated Bibliography; do not correct it.
 - The Evidence boundary under DOI/URL Verification.
 - Step 5.1 to 5.3 (self-citation ratio, source currency, citation density) and Self-Plagiarism Detection.
 - The Retraction Watch Protocol's checks. Its Options A to C (remove, keep with a note) are suggestions for the author.
-- A note that cites no source is not a citation. A citation note whose key cannot be resolved by the match key below (for example, an author-and-page note after a note on a different author, or an Ibid. without a single preceding source) is reported and not counted as an orphan, and a reference it may point to is not counted as an orphan either. A note whose key resolves but has no reference list entry is an orphan citation, as Step 2 says.
+- A note that cites no source is not a citation. A citation that cannot be matched to one reference by the match key below (for example, an author-and-page note after a note on a different author, an Ibid. without a single preceding source, or an author-only citation when the reference list has several works by that author) is reported and not counted as an orphan, and a reference it may point to is not counted as an orphan either. A citation whose key resolves but has no reference list entry is an orphan citation, as Step 2 says.
 
 ### What you report
 
-Compare each item with the form in the table below. Where the table has no row or its cell is "—", use the form `references/citation_format_switcher.md` shows; where neither gives a form, do not check the item, and list it once under "Not checked for this style". Report each difference with the form you compared it with; it is not a counted format error. Report a reference list out of the style's order (in IEEE and Vancouver, not numbered 1 to N without gaps in order of first citation), and a missing DOI as a suggestion to add it. Never apply an APA 7th form to another style.
+- Orphan citations and references, and citations that cannot be matched (above).
+- A value that differs from the Annotated Bibliography: a different author, year, title, volume, page range, or DOI string. The same value written another way (initials for a full name, a short title, a journal abbreviation, a different DOI prefix) is not a difference.
+- A reference list out of the style's order: in Chicago and MLA, Latin-script entries not in alphabetical order (Chinese entries are not checked for order); in IEEE and Vancouver, references not numbered 1 to N without gaps in order of first citation.
+- A missing DOI, as a suggestion to add it.
+- Once per report: "Format details (punctuation, capitalization, italics, DOI form, et al., page form) were not checked for this style."
+
+Nothing you report is counted as a format error. Never apply an APA 7th form to another style.
 
 **Known limitation.** Matching is a best effort. When a note before an author-only note cites several sources, or an author has several works and only some are in the reference list, a citation can be matched to the wrong work, and the orphan counts can be wrong. Say this in the report when the paper has such notes or citations, and ask the author to check the matches.
 
-### Forms the guides show
+### Match keys and order
 
-| Check Item | Chicago 17th | MLA 9th | IEEE | Vancouver |
+| Item | Chicago 17th | MLA 9th | IEEE | Vancouver |
 |---|---|---|---|---|
-| In-text format | Footnote, or (Author Year) or Author (Year) in author-date | (Author Page), or the author named in the sentence and the page in parentheses | [N] | Superscript N |
-| In-text match key | Author-date: author + year. Notes: author + short title (the title when there is no author); Ibid. points to the source of the note just before it; a note that gives only an author and page points to that source when the note before it cites the same author. Report a citation note whose key cannot be resolved this way; do not count it as an orphan | Author, plus a short title when the author has several works (the title when there is no author) | Number | Number |
-| et al. | In text: 4+ authors | In text: 3+ authors | — | Reference list: the first 6 + et al. for 7+ |
-| Reference list title | Bibliography (notes), or References or Reference List (author-date) | Works Cited | References | References |
+| In-text match key | Author-date: author + year. Notes: author + short title (the title when there is no author); Ibid. points to the source of the note just before it; a note that gives only an author points to that source when the note before it cites one source by the same author | Author, plus a short title when the citation gives one or the author has several works (the title when there is no author) | Number | Number |
 | Reference list order | Alphabetical | Alphabetical | Order of first citation | Order of first citation |
-| DOI | Include when available | Include when available | Include when available | Include when available |
-| DOI form | https://doi.org/10.xxxx | https://doi.org/10.xxxx | doi: 10.xxxx | doi:10.xxxx |
-| Ending after DOI/URL | Period | — | Period | — |
-| Title case | Title Case | Title Case | Sentence case (article titles) | Sentence case (article titles) |
-| Page in a direct quotation | Author-date: (Smith 2024, 45) | (Smith 45) | — | — |
+| Reference list title | Bibliography (notes), or References or Reference List (author-date) | Works Cited | References | References |
 
-The MLA match key follows the MLA Style Center. The other cells are the forms of the switcher and secondary guides.
+The MLA match key follows the MLA Style Center. The other cells follow `references/citation_format_switcher.md` and secondary guides. The reference list title is used only to find the list, not checked.
 
 ### Report
 
 Use the Output Format with these changes:
-- "Format errors (auto-corrected)" is 0. Replace "Format errors (flagged for review)" with "Format differences flagged for review", and add the row "Not checked for this style". Leave out the Corrections Made table.
+- "Format errors (auto-corrected)" is 0. Replace "Format errors (flagged for review)" with "Findings flagged for review". Leave out the Corrections Made table.
 - The reference list goes out as the author wrote it, titled `### Reference List (unchanged; see Items Flagged for Review)`. In `full` mode the Corrected Draft is the draft unchanged.
-- The Pass Criteria of the Quality Gates apply, except the format compliance rate and DOI completeness: those gates pass when every difference and every missing DOI is reported. The Failure Handling column gives suggestions for the author.
+- The Pass Criteria of the Quality Gates apply, except the format compliance rate, which does not apply, and DOI completeness, which passes when every missing DOI is reported. The Failure Handling column gives suggestions for the author.
 
 ## Quality Gates
 
@@ -502,8 +501,8 @@ Quality gate not passed ->
 
 | Target Agent | Output Content | Data Format |
 |-----------|---------|---------|
-| `peer_reviewer_agent` | `full` mode: Corrected Draft (the draft the first Phase 6 review reads; later rounds review the writer's revised draft) + Citation Audit Report; otherwise: Citation Audit Report (for review reference) | Markdown with all citations fixed; this agent's Output Format |
-| `draft_writer_agent` | `full` mode: Corrected Draft (the base that the first Phase 6 revision round edits) | Markdown with all citations fixed |
+| `peer_reviewer_agent` | `full` mode: Corrected Draft (the draft the first Phase 6 review reads; later rounds review the writer's revised draft) + Citation Audit Report; otherwise: Citation Audit Report (for review reference) | Markdown with all citations fixed (another style: unchanged, § Other Citation Styles); this agent's Output Format |
+| `draft_writer_agent` | `full` mode: Corrected Draft (the base that the first Phase 6 revision round edits) | Markdown with all citations fixed (another style: unchanged, § Other Citation Styles) |
 | `formatter_agent` | Corrected Reference List + Citation Audit Report; in `full` mode, also the Corrected Draft when it goes to Phase 7 without a revision round: Phase 6 accepts it, or the user confirms early formatting before any revision round (`formatter_agent` § Review Status) | Markdown Reference List + Audit table; Markdown full text |
 | User | `full` mode: flagged items for review; `revision` mode: the whole Citation Audit Report, with its corrections and Corrected Reference List as proposals; `citation-check` mode: the deliverable that the Citation-Check Mode section of `SKILL.md` defines, plus a corrected version of the user's text only when the user asks | `full` mode: Items Flagged for Review table; `revision` mode: this agent's Output Format, with the revision-mode headings; `citation-check` mode: this agent's Output Format |
 
