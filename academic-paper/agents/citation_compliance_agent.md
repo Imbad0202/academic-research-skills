@@ -403,7 +403,7 @@ So in these styles you change nothing: not the draft, not the reference list, no
 
 ### What you report
 
-Compare each item with the form in the table below. Where the table has no row or its cell is "—", use the form `references/citation_format_switcher.md` shows; where neither gives a form, do not check the item, and list it once under "Not checked for this style". Report each difference with the form you compared it with; it is not a counted format error. Report a reference list out of the style's order (in IEEE and Vancouver, not in order of first citation), and a missing DOI as a suggestion to add it. Never apply an APA 7th form to another style.
+Compare each item with the form in the table below. Where the table has no row or its cell is "—", use the form `references/citation_format_switcher.md` shows; where neither gives a form, do not check the item, and list it once under "Not checked for this style". Report each difference with the form you compared it with; it is not a counted format error. Report a reference list out of the style's order (in IEEE and Vancouver, not numbered 1 to N without gaps in order of first citation), and a missing DOI as a suggestion to add it. Never apply an APA 7th form to another style.
 
 **Known limitation.** Matching is a best effort. When a note before an author-only note cites several sources, or an author has several works and only some are in the reference list, a citation can be matched to the wrong work, and the orphan counts can be wrong. Say this in the report when the paper has such notes or citations, and ask the author to check the matches.
 
