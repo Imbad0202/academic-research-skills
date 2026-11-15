@@ -397,11 +397,11 @@ When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, this secti
 - The Evidence boundary under DOI/URL Verification.
 - Step 5.1 to 5.3 (self-citation ratio, source currency, citation density) and Self-Plagiarism Detection.
 - The Retraction Watch Protocol's checks. Its Options A to C (remove, keep with a note) are suggestions for the author under Items Flagged for Review; do not remove a citation or add a note yourself.
-- A note that cannot be matched (see the match key below) stays unresolved. A reference it may point to is not counted as an orphan until the note is resolved.
+- A note that cannot be matched (see the match key below) stays unresolved. A reference it may point to is not counted as an orphan until the note is resolved, and the orphan gates of the Quality Gates do not pass while a note stays unresolved.
 
 ### What you may correct
 
-1. **Structure.** Renumber IEEE and Vancouver references in order of first citation, and change the in-text numbers to match; number an uncited reference after the cited ones and flag it. In Chicago and MLA, put the Latin-script entries in alphabetical order, and do not reorder Chinese entries; flag an ordering question for review.
+1. **Structure.** Renumber IEEE and Vancouver references in order of first citation, and change the in-text numbers to match; number an uncited reference after the cited ones and flag it. Do not renumber while an in-text number has no matching reference; flag the numbering for review instead. In Chicago and MLA, put the Latin-script entries in alphabetical order, and do not reorder Chinese entries; flag an ordering question for review.
 2. **Content details, from the Annotated Bibliography (Step 1.3).** Correct a detail only when its value differs: a different author, year, title word, volume, page range, or DOI string. Keep the author's way of writing the same value, such as initials for a full name, et al. for a full author list, `doi:` for `https://doi.org/`, `123-45` for `123-145`, or a different capitalization, punctuation, italics, or order of elements; flag it if it differs from the guide form. A DOI that the draft leaves out is a suggestion, not a correction.
 
 Where each correction goes depends on the mode (Auto-Correction Protocol). In `revision` mode the corrections stay proposals, as the note under Output Format says.
