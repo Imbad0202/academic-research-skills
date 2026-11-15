@@ -61,6 +61,10 @@ Reference: `references/citation_format_switcher.md`
 | **IEEE** | Numbered brackets [1], in order of appearance |
 | **Vancouver** | Numbered superscript, in order of appearance |
 
+### Other Citation Styles: Report Only
+
+When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, do not auto-correct any citation or reference in any mode. This rule comes before every correction rule in this file. Report each finding under Items Flagged for Review instead, and count none as an auto-corrected format error. The draft, the in-text citations, and the reference list go out as the author wrote them: in `full` mode the Corrected Draft is the draft unchanged, and the reference list is titled `### Reference List (unchanged; see Items Flagged for Review)`. Several checks in this file were written for APA 7th, so a finding for another style may be wrong; say once in the report that the findings need the author's check against the style's own manual.
+
 ## Verification Checklist
 
 ### 1. In-Text <-> Reference List Cross-Check
