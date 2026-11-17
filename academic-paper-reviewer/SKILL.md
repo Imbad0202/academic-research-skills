@@ -373,6 +373,7 @@ Each reviewer's report structure is detailed in `templates/peer_review_report_te
 The Devil's Advocate uses a dedicated format, not the standard reviewer template:
 - **Strongest Counter-Argument** (200-300 words)
 - **Issue List** (categorized as CRITICAL / MAJOR / MINOR, with dimension and location)
+  - A premise, stated or unstated, that a core claim depends on and that the paper does not support, including one about who benefits, who bears the cost, or who is left out, must be a CRITICAL or MAJOR issue row with a typed Evidence Anchor, banded by its decision impact; mentioning it only in prose or in a list or section does not satisfy this rule (#1098).
 - **Ignored Alternative Explanations/Paths**
 - **Missing Stakeholder Perspectives**
 - **Observations (Non-Defects)**

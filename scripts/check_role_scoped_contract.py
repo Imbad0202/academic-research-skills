@@ -51,7 +51,7 @@ SHIPPED_EXAMPLES = (
     "academic-paper-reviewer/examples/interdisciplinary_review_example.md",
 )
 SHIPPED_EXAMPLE_ANCHOR_COUNTS = {
-    SHIPPED_EXAMPLES[0]: 10,
+    SHIPPED_EXAMPLES[0]: 14,  # #1098 adds the SC-3 case: 2 seat anchors + 2 inventory anchors
     SHIPPED_EXAMPLES[1]: 38,
     SHIPPED_EXAMPLES[2]: 38,
 }

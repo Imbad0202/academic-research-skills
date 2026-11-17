@@ -1,6 +1,6 @@
 # Example: Sub-Claim Decomposition in Editorial Synthesis (§F.3.2 partial-evidence trap)
 
-This example shows the editorial synthesizer's Step 1 → Step 2 → Step 5 flow on a **compound weakness** — the case the §F.3.2 partial-evidence trap exists to catch — and contrasts the old bundle-level aggregation (which buries a minority sub-claim) with the sub-claim decomposition introduced for [#214](https://github.com/Imbad0202/academic-research-skills/issues/214).
+This example shows the editorial synthesizer's Step 1 → Step 2 → Step 5 flow on a **compound weakness** — the case the §F.3.2 partial-evidence trap exists to catch — and contrasts the old bundle-level aggregation (which buries a minority sub-claim) with the sub-claim decomposition introduced for [#214](https://github.com/Imbad0202/academic-research-skills/issues/214). A later section shows a single-reviewer finding that a DA issue row also reports ([#1098](https://github.com/Imbad0202/academic-research-skills/issues/1098)); it stops at Step 2.
 
 It is a focused illustration of one weakness bundle, not a full Phase 0–2 walkthrough (see `hei_paper_review_example.md` for that).
 
@@ -71,10 +71,31 @@ Each item carries its `sub_claim_id`, traces back to the Step 1b inventory, and 
 
 ---
 
-## What this example demonstrates (acceptance for #214)
+## A third sub-claim: one seat plus a DA issue row (#1098)
+
+The same paper ends with a funding recommendation built on the pooled model. R3 and the DA speak to a premise of that recommendation:
+
+- **R3 (Cross-disciplinary), Severity: Minor, Confidence 2** (anchor: `absence: §6 Implications — expected who bears the cost of the funding rule; checked §5 Discussion, §6 Implications`; competence: adjacent — policy implications, not funding design): "The recommendation assumes every site gains from the pooled rule. Small sites, which the pooled model underweights, may lose funding, and the paper does not discuss them."
+- **DA, MAJOR row, Confidence 4** (competence: core — adversarial challenge of the argument's premises; Dimension: 7 Stakeholder Blind Spots; anchor: `absence: §6 Implications — expected the effect of the rule on small sites; checked §4 Results, §6 Implications`): the recommendation depends on the assumption that all sites benefit, and the paper gives no evidence for it.
+
+| sub_claim_id | parent_weakness | reviewer_id | position | evidence_pointer | severity | confidence |
+|--------------|-----------------|-------------|----------|------------------|----------|------------|
+| SC-3 | Funding premise | R3 | raised | `absence: §6 Implications — expected who bears the cost of the funding rule; checked §5 Discussion, §6 Implications` | minor | 2 |
+| SC-3 | Funding premise | R1 | not-mentioned | — | — | — |
+| SC-3 | Funding premise | R2 | not-mentioned | — | — | — |
+| SC-3 | Funding premise | EIC | not-mentioned | — | — | — |
+| SC-3 | Funding premise | DA | raised | `absence: §6 Implications — expected the effect of the rule on small sites; checked §4 Results, §6 Implications` | major | 4 |
+
+- **SC-3 (funding premise unsupported):** `agree = 1` (R3 raised), `conflict = 0`, `silent = 3` (R1, R2, EIC) → a **single-reviewer finding, DA-corroborated**. The DA row is not a vote, so `agree` stays 1 and the denominator stays 4. The finding is evaluated against its criterion and the anchors of both rows. R3's minor and the DA's major are shown side by side; the gap is not a `disputed` position, because the DA is not one of the 4.
+- The label shows that the DA also raised the sub-claim. It does not show independent judgement: the seats can share one model, and peer-output blinding does not prove independent errors.
+
+---
+
+## What this example demonstrates (acceptance for #214 and #1098)
 
 - **Step 1b inventory** with `sub_claim` as the primary key, alongside the retained Step 1a summary matrix.
 - **Per-sub-claim consensus** in Step 2, with `not-mentioned` correctly excluded from both consensus and SPLIT counting.
 - **SPLIT bound respected** — no arbitration is triggered absent an explicit conflicting position (the parenthetical shows what *would* trigger one).
 - **Revision Roadmap at sub-claim granularity** — the compound weakness yields two correctly-prioritized, traceable items instead of one.
+- **DA-corroborated label (#1098)** — a single-reviewer finding that a DA issue row also reports keeps `agree = 1` and the denominator of 4, and shows both rows and both severities.
 - DA-CRITICAL flow and the v3.6.2 sprint-contract arithmetic path are untouched (neither appears in this general-protocol example).

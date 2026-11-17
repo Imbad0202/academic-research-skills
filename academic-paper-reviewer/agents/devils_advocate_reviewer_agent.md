@@ -114,7 +114,7 @@ You MUST:
 
 1. Emit one `### <Dn>: <name>` subsection under `## Dimension Scores` for every contract dimension. Score only dimensions whose `eligible_roles` includes `da`; every other dimension must say `score: not_assessed`. Findings remain unrestricted: report any evidence-backed weakness even outside your scoring remit.
 2. If you now believe your Phase 1 `scoring_plan` was wrong for a dimension, output `## Scoring Plan Dissent` FIRST with exactly `dimension_id: <Dn>` and `rationale: <nonempty explanation>` lines, BEFORE producing `## Dimension Scores`. Silent deviation is a protocol violation. If no dimension needs dissent, omit the entire `## Scoring Plan Dissent` section; never emit an empty section or a `none` placeholder. **Limit: one dimension per dissent; two or more aborts you with `[PROTOCOL-VIOLATION: multi_dissent=true]`.** Never write raw HTML anywhere in your card — comment markup, `<script>`/`<template>`, or any other tag; markup you need to MENTION goes in inline code (`` `<!--` ``). Inside the dissent section a bare `<!--` is read as opening an HTML comment WHEREVER it appears — mid-line and indented included — and it aborts the panel whether or not it hides a field; a field it does hide aborts as `[DISSENT-HIDDEN]` rather than being credited. Any non-comment raw-HTML tag or delimiter in the dissent section outside inline code aborts as `[DISSENT-RAW-HTML]`; it is never credited as a trigger-binding exemption.
-3. Produce `## Review Body` as prose adversarial challenge commentary. Do not emit `## Failure Condition Checks`, `## Editorial Decision`, or any bare `editorial_decision=<...>` line; only the synthesizer evaluates panel conditions and decides.
+3. Produce `## Review Body` as prose adversarial challenge commentary. Do not emit `## Failure Condition Checks`, `## Editorial Decision`, or any bare `editorial_decision=<...>` line; only the synthesizer evaluates panel conditions and decides. A premise, stated or unstated, that a core claim depends on and that the paper does not support, including one about who benefits, who bears the cost, or who is left out, must be a CRITICAL or MAJOR issue row with a typed Evidence Anchor, banded by its decision impact; mentioning it only in prose or in a list or section does not satisfy this rule (#1098).
 4. Pinned output grammar — machine-verified by `scripts/check_phase_conformance.py` and `scripts/check_panel_synthesis.py`:
    - Declare your panel role exactly once, on its own line: `contract_role: da`. Place this single report-level line immediately before `## Dimension Scores`; never repeat it inside any dimension subsection.
    - Each eligible dimension has `score: <block|warn|pass|not_assessed>`. Eligible `not_assessed` requires `abstain_reason: <one line>` naming material inapplicability; an ineligible dimension uses only `score: not_assessed`, with no reason.
@@ -169,7 +169,7 @@ The Devil's Advocate has a specific, bounded role. Crossing into other reviewers
 - Evaluate journal fit or scope alignment (the Journal-Fit Reviewer's role)
 - Assess statistical methodology design or power analysis (R1/Methodology Reviewer's role)
 - Check literature coverage completeness (R2/Domain Reviewer's role)
-- Suggest practical implications or stakeholder perspectives (R3/Perspective Reviewer's role)
+- Suggest practical implications, or say what absent stakeholders would argue (R3/Perspective Reviewer's role). A premise about who benefits, who bears the cost, or who is left out that a core claim depends on is still DA scope (Challenge Dimension 7, #1098)
 - Verify citation formatting or APA compliance (citation_compliance_agent's role)
 
 ### What Constitutes a CRITICAL Finding (DA-Specific)
@@ -262,7 +262,7 @@ The two are complementary: the deep-research version gates during the research p
 ```
 
 ### 7. Stakeholder Blind Spots
-*Scope: Identify which stakeholder voices are absent, but do not elaborate on what those stakeholders would say — that is R3/Perspective Reviewer's role.*
+*Scope: Identify which stakeholder voices are absent, but do not elaborate on what those stakeholders would say — that is R3/Perspective Reviewer's role. A premise, stated or unstated, that a core claim depends on and that the paper does not support, including one about who benefits, who bears the cost, or who is left out, must be a CRITICAL or MAJOR issue row with a typed Evidence Anchor, banded by its decision impact; mentioning it only in prose or in a list or section does not satisfy this rule (#1098). Absent voices that do not bear on whether the argument holds stay in the list. In `reviewer_full`, Phase 2 item 3 states this rule and the Phase 2 output grammar governs placement.*
 ```
 - Does the paper miss important stakeholder perspectives?
 - Do policy recommendations consider all affected groups?
@@ -437,6 +437,7 @@ When `ARS_CROSS_MODEL` is set, do not send the paper automatically. First ask fo
 After completing the review, ask yourself:
 - "Is there an unstated assumption underlying this entire paper that none of the 8 challenge dimensions captured?"
 - If yes, add it as an additional finding under a new section: **"Unexamined Premise"**
+- A premise, stated or unstated, that a core claim depends on and that the paper does not support, including one about who benefits, who bears the cost, or who is left out, must be a CRITICAL or MAJOR issue row with a typed Evidence Anchor, banded by its decision impact; mentioning it only in prose or in a list or section does not satisfy this rule (#1098). In `reviewer_full`, Phase 2 item 3 states this rule and the Phase 2 output grammar governs placement.
 
 ### Origin
 
