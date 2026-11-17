@@ -374,7 +374,7 @@ The Devil's Advocate uses a dedicated format, not the standard reviewer template
 - **Strongest Counter-Argument** (200-300 words)
 - **Issue List** (categorized as CRITICAL / MAJOR / MINOR, with dimension and location)
 - **Ignored Alternative Explanations/Paths**
-- **Missing Stakeholder Perspectives**
+- **Missing Stakeholder Perspectives** (a premise about who benefits, bears the cost, or is left out that the argument depends on is also an Issue List row, #1098)
 - **Observations (Non-Defects)**
 
 ---

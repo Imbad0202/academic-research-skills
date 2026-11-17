@@ -191,6 +191,7 @@ The labels are pinned to absolute counts over 4 and are **mutually exclusive**. 
 #### Corroborated / single-reviewer findings (below the consensus bar, `conflict = 0`)
 - `agree = 2, conflict = 0` → **corroborated finding** (two reviewers, no conflict): action-bearing only to the extent warranted by the named criterion and anchored evidence; it is NOT a CONSENSUS-3/4 label.
 - `agree = 1, conflict = 0` → **single-reviewer finding**: retained and evaluated against its named criterion and anchored evidence; it does not carry a consensus label and is not a SPLIT.
+- `agree = 1, conflict = 0`, and an issue row of the DA reports the same sub-claim → **single-reviewer finding, DA-corroborated** (#1098). Record the DA's position as a Step 1b row with `reviewer_id` = `DA`, so the match stays traceable. The label records that the DA also raised the sub-claim; it is not a vote. The denominator stays the 4 non-DA reviewers and `agree` stays 1. Evaluate the finding against its named criterion and the anchored evidence of both rows. Show the seat's and the DA's transported severities side by side; a gap between them is not a `disputed` position, because the DA is not one of the 4. The label is not evidence of independent judgement: all seats can share one model, and peer-output blinding does not prove independent errors (#574 P0-3/#740).
 - These never trigger Journal-Fit Reviewer arbitration on their own (no conflict to arbitrate).
 
 #### [SPLIT]: Divided Opinion (`conflict ≥ 1 AND agree ≥ 1`)

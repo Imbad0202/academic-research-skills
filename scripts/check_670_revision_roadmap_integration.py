@@ -74,6 +74,11 @@ RUNTIME_HASHES = {
 # Re-pinned for #1001 (domain and perspective reviewers repeat the works they
 # recommend in a `yaml suggested-references` block for a post-decision lookup;
 # no finding, score, or detection rule changes).
+# Re-pinned for #1098 (a detection-rule change in devils_advocate: a premise
+# about who benefits, bears the cost, or is left out that the argument depends
+# on is now reported as a CRITICAL or MAJOR issue row, from Challenge Dimension 7
+# and Frame-Lock Detection, not only in the bullet sections; no score or
+# output-grammar change).
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
         "9690e570d081bfcdef6da23fb93064af4028c9d6b766fcbcf0cf0981463d492f",
@@ -84,7 +89,7 @@ DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
         "a99386515c1e9e5b73e91f3f9cd62f6ec3660f03e229371ad53531fa165cf007",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
-        "a3ddde4c1e26e9e8603f71e47b3afb0c83131e0428b84048c0c3e634f19e5b5c",
+        "f5d1f97bf3232ee5eff1c30e3b5cd4ba33c56738faedee18344f92ee8faa3edf",
     Path("academic-paper-reviewer/templates/peer_review_report_template.md"):
         "5da1f9d24d6e321cec5f38c13fa03fe23b9363b1842cb0d8111c5e39a810c7d1",
 }

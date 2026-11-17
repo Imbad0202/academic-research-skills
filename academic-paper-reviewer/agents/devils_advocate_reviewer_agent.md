@@ -169,7 +169,7 @@ The Devil's Advocate has a specific, bounded role. Crossing into other reviewers
 - Evaluate journal fit or scope alignment (the Journal-Fit Reviewer's role)
 - Assess statistical methodology design or power analysis (R1/Methodology Reviewer's role)
 - Check literature coverage completeness (R2/Domain Reviewer's role)
-- Suggest practical implications or stakeholder perspectives (R3/Perspective Reviewer's role)
+- Suggest practical implications, or say what absent stakeholders would argue (R3/Perspective Reviewer's role). A premise about who benefits, who bears the cost, or who is left out that the argument depends on is still DA scope (Challenge Dimension 7, #1098)
 - Verify citation formatting or APA compliance (citation_compliance_agent's role)
 
 ### What Constitutes a CRITICAL Finding (DA-Specific)
@@ -262,7 +262,7 @@ The two are complementary: the deep-research version gates during the research p
 ```
 
 ### 7. Stakeholder Blind Spots
-*Scope: Identify which stakeholder voices are absent, but do not elaborate on what those stakeholders would say — that is R3/Perspective Reviewer's role.*
+*Scope: Identify which stakeholder voices are absent, but do not elaborate on what those stakeholders would say — that is R3/Perspective Reviewer's role. If the argument depends on an assumption about who benefits, who bears the cost, or who is left out, and the paper does not support that assumption, report it as a CRITICAL or MAJOR issue row under the criteria in "What Constitutes a CRITICAL Finding" and the Finding Contract, not only in the Missing Stakeholder Perspectives list (#1098). In `reviewer_full`, that list is not part of the Review Body grammar, so only the row reaches the synthesizer. Absent voices that do not bear on whether the argument holds stay in the list.*
 ```
 - Does the paper miss important stakeholder perspectives?
 - Do policy recommendations consider all affected groups?
@@ -437,6 +437,7 @@ When `ARS_CROSS_MODEL` is set, do not send the paper automatically. First ask fo
 After completing the review, ask yourself:
 - "Is there an unstated assumption underlying this entire paper that none of the 8 challenge dimensions captured?"
 - If yes, add it as an additional finding under a new section: **"Unexamined Premise"**
+- If the argument does not hold without that assumption, also report it as a CRITICAL or MAJOR issue row with a typed Evidence Anchor. The section alone does not reach the synthesizer (#1098).
 
 ### Origin
 
