@@ -14,6 +14,12 @@ new baseline is collected. Every committed 2026-07-24/25/27 run below remains a
 v0.1 artifact tied to its historical `suite_commit`; no historical denominator,
 verdict, or table value is retroactively recomputed.
 
+**Contract boundary (#1098):** the `reviewer_full` contract D3 description now
+names an unsupported premise that a core claim depends on, so the contract
+SHA-256 changed from `e9712090…ef7af` to `d958bc2a…e7e5c`. A run recorded
+under the old digest is not directly comparable with a run under the new one;
+a new baseline is needed before a before/after statement. No run is recomputed.
+
 ## Epistemic status
 
 This is a **directional smoke tier, not a calibration set** (the #574 rescope's scaled

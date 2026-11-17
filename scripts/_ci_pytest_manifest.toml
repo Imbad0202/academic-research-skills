@@ -485,6 +485,10 @@ id = "670-revision-roadmap-integration"
 path = "scripts/test_check_670_revision_roadmap_integration.py"
 
 [[pytest]]
+id = "1100-roadmap-consensus-levels"
+path = "scripts/test_revision_roadmap_consensus_levels.py"
+
+[[pytest]]
 id = "576-persuasion-invariance-fixtures"
 path = "scripts/test_check_persuasion_invariance_fixtures.py"
 

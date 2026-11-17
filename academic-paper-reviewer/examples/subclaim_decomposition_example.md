@@ -61,8 +61,8 @@ Neither sub-claim triggers Journal-Fit Reviewer arbitration — there is no `dis
 
 Instead of one blurred "fix the statistics" line, two separate, traceable items, kept in source order (Step 5 never orders items by severity, obligation, or cost):
 
-> - **[SC-1]** `obligation_class: must_fix` — Specify the mixed-model random-effects grouping factor (sites vs participants) and re-state the model. *Severity: major (transported) | Anchor: `absence: §3 Methods — expected the random-effects grouping factor; checked §3 Methods, §4 Results` (transported) | Raised R1 (conf 5), corroborated R2 (conf 4).*
-> - **[SC-2]** `obligation_class: should_fix` — Standardize coefficient reporting across Tables 3–4 (one convention + a key). *Severity: major (transported) | Anchor: `table: Table 3 standardized betas vs Table 4 raw coefficients, no key` (transported) | Raised R1 (conf 5), corroborated R3 (conf 3).*
+> - **[SC-1]** `obligation_class: must_fix`, `consensus_level: CORROBORATED` — Specify the mixed-model random-effects grouping factor (sites vs participants) and re-state the model. *Severity: major (transported) | Anchor: `absence: §3 Methods — expected the random-effects grouping factor; checked §3 Methods, §4 Results` (transported) | Raised R1 (conf 5), corroborated R2 (conf 4).*
+> - **[SC-2]** `obligation_class: should_fix`, `consensus_level: CORROBORATED` — Standardize coefficient reporting across Tables 3–4 (one convention + a key). *Severity: major (transported) | Anchor: `table: Table 3 standardized betas vs Table 4 raw coefficients, no key` (transported) | Raised R1 (conf 5), corroborated R3 (conf 3).*
 
 Each item carries its `sub_claim_id`, traces back to the Step 1b inventory, and flows forward into `academic-paper` revision mode unchanged in format. The minority-risk sub-claim (the grouping factor) is now its own `must_fix` item rather than buried in a bundle. The obligation class is an editorial gate, not a work rank.
 
@@ -85,6 +85,7 @@ The same paper ends with a funding recommendation built on the pooled model. R3 
 
 - **SC-3 (funding premise unsupported):** `agree = 1` (R3 raised), `conflict = 0`, `silent = 3` (R1, R2, EIC) → a **single-reviewer finding, DA-corroborated**. The DA row is not a vote, so `agree` stays 1 and the denominator stays 4. The finding is evaluated against its criterion and the anchors of both rows. R3's minor and the DA's major are shown side by side; the gap is not a `disputed` position, because the DA is not one of the 4.
 - The label shows that the DA also raised the sub-claim. It does not show independent judgement: the seats can share one model, and peer-output blinding does not prove independent errors.
+- In the roadmap, the SC-3 item has `consensus_level: SINGLE-REVIEWER`, and the DA row goes into `corroborating_sources[]` with `reviewer: DA`, its major severity, its anchor, and confidence 4 (#1100). The DA row does not change `consensus_level` or `obligation_class`. The decision letter lists SC-3 under Below the Consensus Bar with the DA-corroborated note.
 
 ---
 

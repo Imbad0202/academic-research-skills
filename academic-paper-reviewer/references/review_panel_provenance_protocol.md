@@ -31,7 +31,7 @@ configured model, or intended routing plan.
   "panel_id": "review-round-1",
   "mode": "reviewer_full",
   "contract_id": "reviewer/reviewer_full/v2",
-  "contract_sha256": "e9712090d2469fea15a37b8e22d4e137afbcb2bf38d5789939c5df56738ef7af",
+  "contract_sha256": "d958bc2ade7d9d154954c33fd424766697a8b6ef664854800a3106d804ee7e5c",
   "seats": [
     {
       "seat_id": "EIC",
