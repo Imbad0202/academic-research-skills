@@ -152,8 +152,8 @@ ids, digest, or parallel-conflict groups, and it never emits a binding receipt.
      that a group is harmed or left out; that is a finding for the reviewers.
    - If no card has the competence, do not add the item to a card that lacks
      it. Write `Seat: none` in `## Stakeholder Coverage` and state the gap. The
-     Devil's Advocate still files an unsupported premise as an issue row, but
-     that does not cover the gap in domain competence.
+     Devil's Advocate still files an unsupported premise that it finds as an
+     issue row, but that does not cover the gap in domain competence.
 
 ### Dynamic Configuration Examples
 
@@ -224,8 +224,8 @@ The tables shorten each review focus to a few words. On a card, write each focus
 
 ## Stakeholder Coverage
 
-Seat: [Card #N (display role), Review Focus item M, or `none`]
-Check: [who the manuscript assumes will benefit, who bears the cost, and who is left out, with locations]
+Seat: [Card #2-#4 (display role), Review Focus item M, or `none`]
+Check: [the neutral scope of that Review Focus item: what to check and where, with no statement that a group is harmed or left out; with `Seat: none`, write `none`]
 Competence basis: [the part of the card's identity that gives this competence; with `Seat: none`, the gap and why no card has the competence]
 
 ## Review Strategy Recommendations

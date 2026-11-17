@@ -75,7 +75,8 @@ def test_current_roadmap_version_and_legacy_fields_are_load_bearing(
     root = _tree(tmp_path)
     schema = _read_json(root, guard.REVISION_SCHEMAS[0])
     if mutation == "version":
-        schema["properties"]["schema_version"]["const"] = "revision-roadmap/0.9"  # type: ignore[index]
+        # Dropping the readable 1.0 version must fail (#1100).
+        schema["properties"]["schema_version"]["enum"] = ["revision-roadmap/1.1"]  # type: ignore[index]
     else:
         schema["$defs"]["roadmap_item"]["properties"]["priority"] = {  # type: ignore[index]
             "type": "integer"

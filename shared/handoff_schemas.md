@@ -538,8 +538,9 @@ criteria or evidence base changed; it does not fabricate this machine object.
 ### Current machine family (#670)
 
 The immutable reviewer-owned core MUST validate against
-[`contracts/revision/revision_roadmap.schema.json`](contracts/revision/revision_roadmap.schema.json)
-with `schema_version: revision-roadmap/1.1`. It binds the exact base draft and
+[`contracts/revision/revision_roadmap.schema.json`](contracts/revision/revision_roadmap.schema.json).
+Producers emit `schema_version: revision-roadmap/1.1`; consumers also accept a
+valid `revision-roadmap/1.0` roadmap and keep it unchanged (#1100). It binds the exact base draft and
 block manifest, carries recomputable counts, and keeps `items[]` in deterministic
 source-traceability order. It contains no author decision and no user view.
 

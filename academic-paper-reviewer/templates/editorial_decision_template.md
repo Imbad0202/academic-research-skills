@@ -100,7 +100,7 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 **[SINGLE-REVIEWER]** (1/4 non-DA scoring reviewers raises it, none disputes):
 1. [Finding — name the seat and the sub-claim id. If an issue row of the DA reports the same sub-claim, add "DA-corroborated: the DA reports the same sub-claim. The DA is not an independent seat and does not change the count."]
 
-[Few seats is not low importance; the criterion and the anchored evidence decide. Write "None." when there are none.]
+[List only findings that reach the roadmap. Few seats is not low importance; the criterion and the anchored evidence decide. Omit an empty label; write "None." under this heading when both labels are empty.]
 
 ### Points of Disagreement
 

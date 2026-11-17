@@ -376,8 +376,8 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 #### Below the Consensus Bar (#1100)
 - [CORROBORATED] [Seats, e.g. R1, R2] — [Finding] — [SC-n]
 - [SINGLE-REVIEWER] [Seat] — [Finding] — [SC-n]
-  - DA-corroborated: the DA reports the same sub-claim. The DA is not an independent seat and does not change the count.
-[List each corroborated and single-reviewer finding that reaches the roadmap. Few seats is not low importance; the criterion and the anchored evidence decide. Write "None." when there are none.]
+  - [Only when an issue row of the DA reports the same sub-claim:] DA-corroborated: the DA reports the same sub-claim. The DA is not an independent seat and does not change the count.
+[List each corroborated and single-reviewer finding that reaches the roadmap. Few seats is not low importance; the criterion and the anchored evidence decide. Write "None." under this heading when there are none.]
 
 #### Points of Disagreement
 - **[Issue]**: R[X] argues [View A]; R[Y] argues [View B].
