@@ -185,8 +185,8 @@ def open_under(
     """Open ``anchor/components[0]/.../components[-1]`` without following links.
 
     Returns an open file descriptor for the leaf; the caller closes it.
-    ``components`` must be non-empty single names (no separators, no ``""`` or
-    ``"."``; ``".."`` is left to callers that open an explicit user path, and
+    ``components`` must be non-empty single names (no separators or drive
+    prefix, no ``""`` or ``"."``; ``".."`` is left to callers that open an explicit user path, and
     bundle readers reject it before calling).  ``nofollow_anchor`` also
     refuses a symlinked anchor, on both backends.
     """
@@ -198,6 +198,10 @@ def open_under(
             not isinstance(component, str)
             or component in ("", ".")
             or any(sep in component for sep in separators)
+            # Windows: "D:name" joins onto drive D's current directory and
+            # leaves the anchor; ":" also names an alternate data stream.
+            or os.path.splitdrive(component)[0]
+            or (os.name == "nt" and ":" in component)
         ):
             raise ValueError(f"open_under needs plain path components: {component!r}")
     if descriptor_relative_supported():

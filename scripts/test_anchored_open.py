@@ -162,6 +162,24 @@ def test_open_under_rejects_non_plain_components(tree, component):
         _anchored_open.open_under(tree, ["sub", component])
 
 
+def test_open_under_rejects_windows_drive_and_stream_components(tree, monkeypatch):
+    import ntpath
+
+    monkeypatch.setattr(os.path, "splitdrive", ntpath.splitdrive)
+    with pytest.raises(ValueError):
+        _anchored_open.open_under(tree, ["D:secret.json"])
+    monkeypatch.setattr(os, "name", "nt")
+    with pytest.raises(ValueError):
+        _anchored_open.open_under(tree, ["sub", "artifact.json:stream"])
+
+
+def test_posix_filenames_with_a_colon_are_still_plain(tree):
+    if os.name == "nt":
+        pytest.skip("POSIX only")
+    (tree / "a:b.json").write_text("{}", encoding="utf-8")
+    assert _read_fd(_anchored_open.open_under(tree, ["a:b.json"]))
+
+
 def test_scorer_imports_in_package_mode():
     """`python -m scripts.<module>` has the repo root, not scripts/, on sys.path."""
     import subprocess
