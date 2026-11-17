@@ -346,6 +346,10 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
         raise
     except _anchored_open.PlatformLimitation as exc:
         raise ActivityError("PATH", str(exc)) from None
+    except _anchored_open.SymlinkRejected:
+        raise ActivityError(
+            "PATH", "symlink or reparse point in artifact path is forbidden"
+        ) from None
     except OSError as exc:
         if exc.errno == errno.ELOOP:
             raise ActivityError("PATH", "symlink artifact path is forbidden") from None

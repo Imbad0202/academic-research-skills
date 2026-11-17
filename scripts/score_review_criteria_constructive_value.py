@@ -18,7 +18,10 @@ import tempfile
 from pathlib import Path
 from typing import Any, NoReturn
 
-import _anchored_open
+try:  # Dual-path import: sibling module on sys.path vs package import.
+    import _anchored_open
+except ImportError:  # pragma: no cover - package-import path
+    from scripts import _anchored_open  # type: ignore[no-redef]
 
 
 MAX_BYTES = 8 * 1024 * 1024

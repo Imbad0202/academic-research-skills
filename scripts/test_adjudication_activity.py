@@ -1564,3 +1564,29 @@ def test_read_artifact_relative_without_dir_fd_rejects_symlinks(_no_dir_fd_host,
         with pytest.raises(activity.ActivityError) as info:
             activity._read_artifact_relative(root, relative, 1_000_000)
         assert "symlink" in str(info.value)
+
+
+def test_read_artifact_relative_reparse_point_is_not_called_a_plain_symlink(
+    _no_dir_fd_host, tmp_path, monkeypatch
+):
+    """A non-symlink reparse point must not be reported as a symlink only."""
+    import os
+    import types
+
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "artifact.json").write_text("{}", encoding="utf-8")
+    real_lstat = os.lstat
+
+    def lstat(path, *args, **kwargs):
+        info = real_lstat(path, *args, **kwargs)
+        if os.path.basename(path) == "sub":
+            return types.SimpleNamespace(
+                st_mode=info.st_mode, st_ino=info.st_ino, st_dev=info.st_dev,
+                st_file_attributes=0x400,
+            )
+        return info
+
+    monkeypatch.setattr(os, "lstat", lstat)
+    with pytest.raises(activity.ActivityError) as info:
+        activity._read_artifact_relative(tmp_path, "sub/artifact.json", 1_000_000)
+    assert "reparse point" in str(info.value)

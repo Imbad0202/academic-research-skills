@@ -17,6 +17,6 @@
     "evals/heldout/review_criteria_constructive_value/treatment_prompt.md": "16907b4c35d9df226f831a837de0788d47d0790209d6f1a14e7fbebbb0921f22",
     "scripts/fixtures/review_target_context/synthetic-registry.json": "ad8a7892f975842ec99d66e16e4a45fc63bb9da09a14e38d86785532d26f2be1",
     "scripts/run_review_criteria_constructive_value.py": "1b02d405cef2212e2f8a2791a941ec06366911174dc17d738371d6a44e651caf",
-    "scripts/score_review_criteria_constructive_value.py": "2a12c8237f3463b953e6c7b28f2f80b97844e478e0db5c465035e9424a8e0c3d"
+    "scripts/score_review_criteria_constructive_value.py": "380db93757c30b51ae11c3e4ca3fdbe3b5318ba9bc1108abffeb6d9f7b4a308f"
   }
 }

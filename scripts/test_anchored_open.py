@@ -134,6 +134,48 @@ def test_open_under_file_in_the_middle_of_the_path(windows, tree):
         _anchored_open.open_under(tree, ["sub", "artifact.json", "deeper"])
 
 
+@pytest.mark.parametrize("simulate_windows", [False, True])
+def test_nofollow_anchor_rejects_a_symlinked_root(request, tmp_path, tree, simulate_windows):
+    _link(tmp_path, tree)
+    if simulate_windows:
+        request.getfixturevalue("windows")
+    with pytest.raises(OSError):
+        _anchored_open.open_under(
+            tree / "linkdir", ["artifact.json"], nofollow_anchor=True
+        )
+    # Without the flag the anchor is trusted, on both backends.
+    assert _read_fd(_anchored_open.open_under(tree / "linkdir", ["artifact.json"]))
+
+
+def test_path_backend_nofollow_anchor_names_the_cause(windows, tmp_path, tree):
+    _link(tmp_path, tree)
+    with pytest.raises(_anchored_open.SymlinkRejected) as info:
+        _anchored_open.open_under(tree / "linkdir", ["artifact.json"], nofollow_anchor=True)
+    assert info.value.errno == errno.ELOOP and "best-effort" in str(info.value)
+
+
+@pytest.mark.parametrize(
+    "component", ["", ".", "a/b", "a" + os.sep + "b", "/etc/passwd"]
+)
+def test_open_under_rejects_non_plain_components(tree, component):
+    with pytest.raises(ValueError):
+        _anchored_open.open_under(tree, ["sub", component])
+
+
+def test_scorer_imports_in_package_mode():
+    """`python -m scripts.<module>` has the repo root, not scripts/, on sys.path."""
+    import subprocess
+    import sys
+
+    repo = Path(__file__).resolve().parent.parent
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    result = subprocess.run(
+        [sys.executable, "-c", "import scripts.score_review_criteria_constructive_value"],
+        cwd=repo, env=env, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_open_under_needs_a_component(tree):
     with pytest.raises(ValueError):
         _anchored_open.open_under(tree, [])

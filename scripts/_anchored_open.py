@@ -31,10 +31,12 @@ Two backends, chosen per call by ``descriptor_relative_supported()``:
   - The check is not atomic.  A component replaced between the first
     ``lstat`` and the open, and restored before the second ``lstat``, is not
     detected.  The POSIX backend closes that race; this one narrows it.
-  - The anchor itself (the bundle root, the filesystem root or drive anchor,
-    or the current directory for a relative path) is trusted and not
-    checked.  The path-based backend therefore cannot tell whether a
-    relative path's *current directory* is itself reached through a link.
+  - The anchor (the bundle root, the filesystem root or drive anchor, or the
+    current directory for a relative path) is trusted: ``nofollow_anchor``
+    makes this backend ``lstat`` the anchor itself, as the POSIX walk does
+    with ``O_NOFOLLOW``, but neither backend can check the anchor's own
+    ancestors, and for a relative path the current directory is never
+    checked.
   - Every reparse point is rejected, not only symlinks and junctions, so a
     file under a cloud-sync placeholder directory is refused.
 
@@ -129,9 +131,17 @@ def _open_walk_path(
     anchor: str | os.PathLike[str],
     components: Sequence[str],
     flags: int,
+    *,
+    nofollow_anchor: bool,
 ) -> int:
     chain: list[tuple[Path, tuple[int, int] | None]] = []
     current = Path(anchor)
+    if nofollow_anchor:
+        # Only the anchor itself: its own ancestors stay trusted (module doc).
+        anchor_info = os.lstat(current)
+        if _is_reparse_or_link(anchor_info):
+            raise SymlinkRejected(str(current), best_effort=True)
+        chain.append((current, _identity(anchor_info)))
     for index, component in enumerate(components):
         current = current / component
         info = os.lstat(current)
@@ -175,16 +185,26 @@ def open_under(
     """Open ``anchor/components[0]/.../components[-1]`` without following links.
 
     Returns an open file descriptor for the leaf; the caller closes it.
-    ``components`` must be non-empty plain names.  ``nofollow_anchor`` also
-    refuses a symlinked anchor on the descriptor-relative backend.
+    ``components`` must be non-empty single names (no separators, no ``""`` or
+    ``"."``; ``".."`` is left to callers that open an explicit user path, and
+    bundle readers reject it before calling).  ``nofollow_anchor`` also
+    refuses a symlinked anchor, on both backends.
     """
     if not components:
         raise ValueError("open_under needs at least one path component")
+    separators = {"/", os.sep, os.altsep or "/"}
+    for component in components:
+        if (
+            not isinstance(component, str)
+            or component in ("", ".")
+            or any(sep in component for sep in separators)
+        ):
+            raise ValueError(f"open_under needs plain path components: {component!r}")
     if descriptor_relative_supported():
         return _open_walk_descriptor(
             anchor, components, flags, nofollow_anchor=nofollow_anchor
         )
-    return _open_walk_path(anchor, components, flags)
+    return _open_walk_path(anchor, components, flags, nofollow_anchor=nofollow_anchor)
 
 
 def open_explicit_path(path: Path, flags: int = os.O_RDONLY) -> int:
@@ -195,7 +215,8 @@ def open_explicit_path(path: Path, flags: int = os.O_RDONLY) -> int:
     path has no file component.
     """
     parts = path.parts
-    if path.is_absolute():
+    if path.anchor:
+        # Also a rooted path without a drive and a drive-relative path on Windows.
         anchor, components = path.anchor, parts[1:]
     else:
         anchor, components = ".", parts
