@@ -140,13 +140,29 @@ def test_missing_da_section_heading_fails(tmp_root: Path) -> None:
     assert any("must appear exactly once" in error for error in errors), errors
 
 
-def test_heading_inside_a_code_fence_does_not_end_a_section(tmp_root: Path) -> None:
+def test_fenced_example_heading_inside_a_section_passes(tmp_root: Path) -> None:
     path = tmp_root / lint.DA_AGENT
     heading = "### Frame-Lock Detection\n"
     path.write_text(
-        path.read_text(encoding="utf-8").replace(
-            heading, heading + "\n```markdown\n## Example\n### Frame-Lock Detection\n```\n"
-        ),
+        path.read_text(encoding="utf-8").replace(heading, heading + "\n```markdown\n## Example\n```\n"),
         encoding="utf-8",
     )
     assert lint.check(tmp_root) == []
+
+
+@pytest.mark.parametrize("heading", ["### Frame-Lock Detection", "### Origin"])
+def test_duplicated_boundary_heading_fails(tmp_root: Path, heading: str) -> None:
+    path = tmp_root / lint.DA_AGENT
+    path.write_text(path.read_text(encoding="utf-8") + "\n```\n" + heading + "\n```\n", encoding="utf-8")
+    errors = lint.check(tmp_root)
+    assert any(heading in error and "found 2" in error for error in errors), errors
+
+
+def test_boundary_heading_out_of_order_fails(tmp_root: Path) -> None:
+    path = tmp_root / lint.DA_AGENT
+    text = path.read_text(encoding="utf-8")
+    origin = "### Origin\n"
+    text = text.replace(origin, "")
+    path.write_text(text.replace("### Frame-Lock Detection\n", origin + "### Frame-Lock Detection\n"), encoding="utf-8")
+    errors = lint.check(tmp_root)
+    assert any("must follow" in error for error in errors), errors

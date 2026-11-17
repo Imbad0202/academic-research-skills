@@ -16,8 +16,10 @@ start after the previous sentence, so a line break cannot hide an edit to its
 first half. Every "(#1098)." in the checked files must close an exact copy of
 that sentence, and each file must hold the expected number of copies. In the DA
 agent file, each of the three named sections must hold exactly one copy, so a
-copy moved from one section to another fails. An edit to one copy, a lost copy,
-a moved copy, or an extra copy fails.
+copy moved from one section to another fails. DA_SECTIONS gives each section as
+two fixed heading lines, its own and the one that follows it; each line must
+appear exactly once. An edit to one copy, a lost copy, a moved copy, or an extra
+copy fails.
 
 Exit 0 = clean, 1 = any failure.
 """
@@ -33,11 +35,13 @@ DA_AGENT = "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
 SKILL = "academic-paper-reviewer/SKILL.md"
 END_TOKEN = "(#1098)."
 
-# Each DA copy belongs to one section, named by its heading line.
+# Each DA copy belongs to one section, given by its own heading line and the
+# heading line that follows it. Both lines are fixed text, so the lint does not
+# parse Markdown; a renamed or duplicated heading fails with a clear message.
 DA_SECTIONS = (
-    "### Phase 2 — Paper-visible review",
-    "### 7. Stakeholder Blind Spots",
-    "### Frame-Lock Detection",
+    ("### Phase 2 — Paper-visible review", "## Role Boundaries — DA vs Other Reviewers"),
+    ("### 7. Stakeholder Blind Spots", '### 8. "So What?" Test'),
+    ("### Frame-Lock Detection", "### Origin"),
 )
 
 EXPECTED_COPIES = {
@@ -45,9 +49,6 @@ EXPECTED_COPIES = {
     SOURCE: 1,
     SKILL: 1,
 }
-
-HEADING_RE = re.compile(r"#{2,4} ")
-FENCE_RE = re.compile(r" {0,3}(```|~~~)")
 
 DA_PHASE2_RE = re.compile(
     r"^<!-- reviewer-sprint-canonical:da-phase2:BEGIN -->\n(?P<body>.*?)"
@@ -86,33 +87,19 @@ def canonical_sentence(root: Path, errors: list[str]) -> str | None:
     return sentence
 
 
-def heading_lines(text: str) -> list[tuple[int, str]]:
-    """Return (offset, line) for each heading line outside fenced code blocks."""
-    found: list[tuple[int, str]] = []
-    offset = 0
-    fenced = False
-    for line in text.splitlines(keepends=True):
-        if FENCE_RE.match(line):
-            fenced = not fenced
-        elif not fenced and HEADING_RE.match(line):
-            found.append((offset, line.rstrip("\n")))
-        offset += len(line)
-    return found
-
-
-def section(text: str, heading: str) -> str | None:
-    """Return the text from a heading line to the next heading line, or None.
-
-    Lines inside fenced code blocks are not headings, so an example heading in
-    a fence does not end a section.
-    """
-    headings = heading_lines(text)
-    matches = [i for i, (_, line) in enumerate(headings) if line == heading]
-    if len(matches) != 1:
+def section(text: str, start: str, end: str, errors: list[str]) -> str | None:
+    """Return the text from the start heading line to the end heading line."""
+    offsets = {}
+    for heading in (start, end):
+        found = [m.start() for m in re.finditer(rf"^{re.escape(heading)}$", text, re.MULTILINE)]
+        if len(found) != 1:
+            errors.append(f"{DA_AGENT}: heading {heading!r} must appear exactly once, found {len(found)}")
+            return None
+        offsets[heading] = found[0]
+    if offsets[end] < offsets[start]:
+        errors.append(f"{DA_AGENT}: heading {end!r} must follow {start!r}")
         return None
-    start = headings[matches[0]][0]
-    end = headings[matches[0] + 1][0] if matches[0] + 1 < len(headings) else len(text)
-    return text[start:end]
+    return text[offsets[start]:offsets[end]]
 
 
 def check(root: Path = REPO_ROOT) -> list[str]:
@@ -132,13 +119,11 @@ def check(root: Path = REPO_ROOT) -> list[str]:
                 "differs from the canonical da-phase2 copy"
             )
     da_text = (root / DA_AGENT).read_text(encoding="utf-8")
-    for heading in DA_SECTIONS:
-        body = section(da_text, heading)
-        if body is None:
-            errors.append(f"{DA_AGENT}: heading {heading!r} must appear exactly once")
-        elif body.count(sentence) != 1:
+    for start, end in DA_SECTIONS:
+        body = section(da_text, start, end, errors)
+        if body is not None and body.count(sentence) != 1:
             errors.append(
-                f"{DA_AGENT}: section {heading!r} must hold exactly one copy of the "
+                f"{DA_AGENT}: section {start!r} must hold exactly one copy of the "
                 f"#1098 sentence, found {body.count(sentence)}"
             )
     return errors
