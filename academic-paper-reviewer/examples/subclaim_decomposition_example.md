@@ -76,7 +76,7 @@ Each item carries its `sub_claim_id`, traces back to the Step 1b inventory, and 
 The same paper ends with a funding recommendation built on the pooled model. R3 and the DA speak to a premise of that recommendation:
 
 - **R3 (Cross-disciplinary), Severity: Minor, Confidence 2** (anchor: `absence: §6 Implications — expected who bears the cost of the funding rule; checked §5 Discussion, §6 Implications`; competence: adjacent — policy implications, not funding design): "The recommendation assumes every site gains from the pooled rule. Small sites, which the pooled model underweights, may lose funding, and the paper does not discuss them."
-- **DA, MAJOR row, Confidence 4** (Dimension: 7 Stakeholder Blind Spots; anchor: `absence: §6 Implications — expected the effect of the rule on small sites; checked §4 Results, §6 Implications`): the recommendation depends on the assumption that all sites benefit, and the paper gives no evidence for it.
+- **DA, MAJOR row, Confidence 4** (competence: core — adversarial challenge of the argument's premises; Dimension: 7 Stakeholder Blind Spots; anchor: `absence: §6 Implications — expected the effect of the rule on small sites; checked §4 Results, §6 Implications`): the recommendation depends on the assumption that all sites benefit, and the paper gives no evidence for it.
 
 | sub_claim_id | parent_weakness | reviewer_id | position | evidence_pointer | severity | confidence |
 |--------------|-----------------|-------------|----------|------------------|----------|------------|

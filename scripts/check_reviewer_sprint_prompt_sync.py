@@ -119,7 +119,7 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # first. Re-pinned for #1098: the DA Phase 2 fragment states that a premise
 # the argument depends on and the paper does not support must be a CRITICAL
 # or MAJOR issue row; prose alone does not satisfy the rule.
-CANONICAL_CONTENT_SHA256 = "c09a905295643be79345e0a141ab88c59101860d3ca2e22f7405931897a9d989"
+CANONICAL_CONTENT_SHA256 = "c1ce7413b0411d0be7d07bd7a619c30a598023eb5ac89e853dc8962d41cc8d3f"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:
