@@ -138,3 +138,15 @@ def test_missing_da_section_heading_fails(tmp_root: Path) -> None:
     )
     errors = lint.check(tmp_root)
     assert any("must appear exactly once" in error for error in errors), errors
+
+
+def test_heading_inside_a_code_fence_does_not_end_a_section(tmp_root: Path) -> None:
+    path = tmp_root / lint.DA_AGENT
+    heading = "### Frame-Lock Detection\n"
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            heading, heading + "\n```markdown\n## Example\n### Frame-Lock Detection\n```\n"
+        ),
+        encoding="utf-8",
+    )
+    assert lint.check(tmp_root) == []

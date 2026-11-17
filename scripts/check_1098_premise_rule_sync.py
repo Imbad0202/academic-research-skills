@@ -46,7 +46,8 @@ EXPECTED_COPIES = {
     SKILL: 1,
 }
 
-HEADING_RE = re.compile(r"^#{2,4} ", re.MULTILINE)
+HEADING_RE = re.compile(r"#{2,4} ")
+FENCE_RE = re.compile(r" {0,3}(```|~~~)")
 
 DA_PHASE2_RE = re.compile(
     r"^<!-- reviewer-sprint-canonical:da-phase2:BEGIN -->\n(?P<body>.*?)"
@@ -85,13 +86,33 @@ def canonical_sentence(root: Path, errors: list[str]) -> str | None:
     return sentence
 
 
+def heading_lines(text: str) -> list[tuple[int, str]]:
+    """Return (offset, line) for each heading line outside fenced code blocks."""
+    found: list[tuple[int, str]] = []
+    offset = 0
+    fenced = False
+    for line in text.splitlines(keepends=True):
+        if FENCE_RE.match(line):
+            fenced = not fenced
+        elif not fenced and HEADING_RE.match(line):
+            found.append((offset, line.rstrip("\n")))
+        offset += len(line)
+    return found
+
+
 def section(text: str, heading: str) -> str | None:
-    """Return the text from a heading line to the next heading line, or None."""
-    starts = [m.start() for m in re.finditer(rf"^{re.escape(heading)}$", text, re.MULTILINE)]
-    if len(starts) != 1:
+    """Return the text from a heading line to the next heading line, or None.
+
+    Lines inside fenced code blocks are not headings, so an example heading in
+    a fence does not end a section.
+    """
+    headings = heading_lines(text)
+    matches = [i for i, (_, line) in enumerate(headings) if line == heading]
+    if len(matches) != 1:
         return None
-    following = HEADING_RE.search(text, starts[0] + len(heading))
-    return text[starts[0]:following.start() if following else len(text)]
+    start = headings[matches[0]][0]
+    end = headings[matches[0] + 1][0] if matches[0] + 1 < len(headings) else len(text)
+    return text[start:end]
 
 
 def check(root: Path = REPO_ROOT) -> list[str]:
