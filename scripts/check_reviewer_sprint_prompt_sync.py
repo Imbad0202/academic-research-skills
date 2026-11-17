@@ -116,8 +116,10 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # corresponding inline mirrors. The current pin includes the explicit
 # confidence-as-uncertainty-only boundary in the DA Phase 2 fragment. This is
 # the second v3.17-style content lock; exact canonical→mirror equality is the
-# first.
-CANONICAL_CONTENT_SHA256 = "231ba4bebb7fb031dc59b82bebd025d577a292258fbc5f570c2624746779e608"
+# first. Re-pinned for #1098: the DA Phase 2 fragment states that a premise
+# the argument depends on and the paper does not support is a CRITICAL or
+# MAJOR issue row, not prose alone.
+CANONICAL_CONTENT_SHA256 = "4f9314734f06cd902fcafcdd58d47f0a9bd42532852c65a0639ffc79b1fa500d"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:
