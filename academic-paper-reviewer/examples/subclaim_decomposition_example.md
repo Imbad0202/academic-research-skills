@@ -91,7 +91,7 @@ The same paper ends with a funding recommendation built on the pooled model. Two
 
 ---
 
-## What this example demonstrates (acceptance for #214)
+## What this example demonstrates (acceptance for #214 and #1098)
 
 - **Step 1b inventory** with `sub_claim` as the primary key, alongside the retained Step 1a summary matrix.
 - **Per-sub-claim consensus** in Step 2, with `not-mentioned` correctly excluded from both consensus and SPLIT counting.

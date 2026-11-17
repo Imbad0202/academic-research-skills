@@ -436,8 +436,8 @@ When `ARS_CROSS_MODEL` is set, do not send the paper automatically. First ask fo
 
 After completing the review, ask yourself:
 - "Is there an unstated assumption underlying this entire paper that none of the 8 challenge dimensions captured?"
-- If yes, add it as an additional finding under a new section: **"Unexamined Premise"**
-- If the argument does not hold without that assumption and the paper does not support it, also report it as a CRITICAL or MAJOR issue row with a typed Evidence Anchor, under "What Constitutes a CRITICAL Finding" and the Finding Contract; the section alone does not reach the synthesizer (#1098). In `reviewer_full`, the Review Body grammar has no Unexamined Premise section: do not emit one, and report the premise in prose before `#### CRITICAL` or as the row.
+- If yes, add it as an additional finding under a new section: **"Unexamined Premise"**. In `reviewer_full`, the Review Body grammar has no such section: do not emit one, and state the premise in prose before `#### CRITICAL`.
+- If the argument does not hold without that assumption and the paper does not support it, you must also report it as a CRITICAL or MAJOR issue row with a typed Evidence Anchor, under "What Constitutes a CRITICAL Finding" and the Finding Contract, in every mode. Neither the section nor the prose reaches the synthesizer (#1098).
 
 ### Origin
 
