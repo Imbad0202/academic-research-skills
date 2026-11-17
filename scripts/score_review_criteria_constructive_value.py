@@ -18,6 +18,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, NoReturn
 
+import _anchored_open
+
 
 MAX_BYTES = 8 * 1024 * 1024
 SHA = set("0123456789abcdef")
@@ -48,36 +50,15 @@ def _constant(value: str) -> NoReturn:
 
 
 def _open_nofollow(path: Path) -> int:
-    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-    nofollow = getattr(os, "O_NOFOLLOW", 0)
     parts = path.parts
-    if path.is_absolute():
-        directory_fd = os.open(os.sep, directory_flags)
-        components = parts[1:]
-    else:
-        directory_fd = os.open(".", directory_flags)
-        components = parts
-    if not components:
-        os.close(directory_fd)
+    if not (parts[1:] if path.is_absolute() else parts):
         raise ScoreError(f"explicit input must name a file: {path}")
     try:
-        for component in components[:-1]:
-            next_fd = os.open(
-                component,
-                directory_flags | nofollow,
-                dir_fd=directory_fd,
-            )
-            os.close(directory_fd)
-            directory_fd = next_fd
-        return os.open(
-            components[-1], os.O_RDONLY | nofollow, dir_fd=directory_fd
-        )
-    except OSError as exc:
+        return _anchored_open.open_explicit_path(path, os.O_RDONLY)
+    except (OSError, NotImplementedError) as exc:
         raise ScoreError(
             f"cannot traverse explicit input without symlinks {path}: {exc}"
         ) from exc
-    finally:
-        os.close(directory_fd)
 
 
 def _read(path: Path) -> tuple[dict[str, Any], bytes]:

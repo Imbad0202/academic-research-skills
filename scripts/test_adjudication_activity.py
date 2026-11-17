@@ -1516,3 +1516,51 @@ def test_delete_store_identity_swap_is_detected_before_unlink(
     assert "ERROR:CONFLICT" in stderr
     assert store.read_bytes() == replacement_bytes
     assert displaced.exists()
+
+
+# --- #1092: the artifact reader on a host without dir_fd (Windows) ---------
+
+
+@pytest.fixture
+def _no_dir_fd_host(monkeypatch):
+    """Windows facts: no dir_fd, and os.open() cannot open a directory."""
+    import errno
+    import os
+
+    real_open = os.open
+
+    def fake_open(path, flags, mode=0o777, *, dir_fd=None):
+        if dir_fd is not None:
+            raise NotImplementedError("dir_fd unavailable on this platform")
+        if isinstance(path, (str, os.PathLike)) and os.path.isdir(path):
+            raise PermissionError(errno.EACCES, "Permission denied", str(path))
+        return real_open(path, flags, mode)
+
+    monkeypatch.setattr(os, "supports_dir_fd", frozenset())
+    monkeypatch.setattr(os, "open", fake_open)
+
+
+def test_read_artifact_relative_without_dir_fd(_no_dir_fd_host, tmp_path):
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "artifact.json").write_text('{"ok": true}', encoding="utf-8")
+    raw = activity._read_artifact_relative(tmp_path, "sub/artifact.json", 1_000_000)
+    assert json.loads(raw) == {"ok": True}
+
+
+def test_read_artifact_relative_without_dir_fd_rejects_symlinks(_no_dir_fd_host, tmp_path):
+    import os
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "artifact.json").write_text("{}", encoding="utf-8")
+    root = tmp_path / "root"
+    root.mkdir()
+    try:
+        os.symlink(outside, root / "linkdir", target_is_directory=True)
+        os.symlink(outside / "artifact.json", root / "leaf.json")
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unavailable")
+    for relative in ("linkdir/artifact.json", "leaf.json"):
+        with pytest.raises(activity.ActivityError) as info:
+            activity._read_artifact_relative(root, relative, 1_000_000)
+        assert "symlink" in str(info.value)
