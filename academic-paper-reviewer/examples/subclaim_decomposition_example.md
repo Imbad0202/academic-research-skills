@@ -59,15 +59,12 @@ Neither sub-claim triggers Journal-Fit Reviewer arbitration — there is no `dis
 
 ### Step 5 — Revision Roadmap (sub-claim-keyed)
 
-Instead of one blurred "fix the statistics" line, two separately-prioritized, traceable items:
+Instead of one blurred "fix the statistics" line, two separate, traceable items, kept in source order (Step 5 never orders items by severity, obligation, or cost):
 
-> **Priority 1 — Structural (Must Fix)**
-> - **[SC-1]** Specify the mixed-model random-effects grouping factor (sites vs participants) and re-state the model. *Severity: major (transported) | Anchor: `absence: §3 Methods — expected the random-effects grouping factor; checked §3 Methods, §4 Results` (transported) | Raised R1 (conf 5), corroborated R2 (conf 4).*
->
-> **Priority 2 — Content Supplementation (Should Fix)**
-> - **[SC-2]** Standardize coefficient reporting across Tables 3–4 (one convention + a key). *Severity: major (transported) | Anchor: `table: Table 3 standardized betas vs Table 4 raw coefficients, no key` (transported) | Raised R1 (conf 5), corroborated R3 (conf 3).*
+> - **[SC-1]** `obligation_class: must_fix` — Specify the mixed-model random-effects grouping factor (sites vs participants) and re-state the model. *Severity: major (transported) | Anchor: `absence: §3 Methods — expected the random-effects grouping factor; checked §3 Methods, §4 Results` (transported) | Raised R1 (conf 5), corroborated R2 (conf 4).*
+> - **[SC-2]** `obligation_class: should_fix` — Standardize coefficient reporting across Tables 3–4 (one convention + a key). *Severity: major (transported) | Anchor: `table: Table 3 standardized betas vs Table 4 raw coefficients, no key` (transported) | Raised R1 (conf 5), corroborated R3 (conf 3).*
 
-Each item carries its `sub_claim_id`, traces back to the Step 1b inventory, and flows forward into `academic-paper` revision mode unchanged in format. The minority-risk sub-claim (the grouping factor) is now its own Priority-1 item rather than buried in a bundle.
+Each item carries its `sub_claim_id`, traces back to the Step 1b inventory, and flows forward into `academic-paper` revision mode unchanged in format. The minority-risk sub-claim (the grouping factor) is now its own `must_fix` item rather than buried in a bundle. The obligation class is an editorial gate, not a work rank.
 
 ---
 
@@ -96,6 +93,6 @@ The same paper ends with a funding recommendation built on the pooled model. R3 
 - **Step 1b inventory** with `sub_claim` as the primary key, alongside the retained Step 1a summary matrix.
 - **Per-sub-claim consensus** in Step 2, with `not-mentioned` correctly excluded from both consensus and SPLIT counting.
 - **SPLIT bound respected** — no arbitration is triggered absent an explicit conflicting position (the parenthetical shows what *would* trigger one).
-- **Revision Roadmap at sub-claim granularity** — the compound weakness yields two correctly-prioritized, traceable items instead of one.
+- **Revision Roadmap at sub-claim granularity** — the compound weakness yields two separate, traceable items, each with its own obligation class, instead of one.
 - **DA-corroborated label (#1098)** — a single-reviewer finding that a DA issue row also reports keeps `agree = 1` and the denominator of 4, and shows both rows and both severities.
 - DA-CRITICAL flow and the v3.6.2 sprint-contract arithmetic path are untouched (neither appears in this general-protocol example).

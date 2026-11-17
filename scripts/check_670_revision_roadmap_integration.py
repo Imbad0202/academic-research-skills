@@ -79,6 +79,8 @@ RUNTIME_HASHES = {
 # support must be a CRITICAL or MAJOR issue row; Phase 2 item 3 states the rule
 # for reviewer_full, and Dimension 7 and Frame-Lock carry the same sentence; no
 # score or output-grammar change).
+# Re-pinned for #1101 (devils_advocate states its dimension count as 8
+# challenges and 1 severity calibration; no detection-rule change).
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
         "9690e570d081bfcdef6da23fb93064af4028c9d6b766fcbcf0cf0981463d492f",
@@ -89,7 +91,7 @@ DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
         "a99386515c1e9e5b73e91f3f9cd62f6ec3660f03e229371ad53531fa165cf007",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
-        "0fbceee60dd8eb0ab938463576dbdc11ea4c6146cd6de391c9ca5b631d3b1875",
+        "3f39bad01d78a403da4318ed477acde13c3171ca61e96ee24c9404dade5ec1de",
     Path("academic-paper-reviewer/templates/peer_review_report_template.md"):
         "5da1f9d24d6e321cec5f38c13fa03fe23b9363b1842cb0d8111c5e39a810c7d1",
 }

@@ -213,7 +213,9 @@ The two are complementary: the deep-research version gates during the research p
 
 ---
 
-## Review Dimensions (8 Challenges)
+## Review Dimensions (8 Challenges and 1 Severity Calibration)
+
+Dimensions 1 to 8 challenge the paper. Dimension 9 calibrates the severity of your own findings; it does not examine the paper.
 
 ### 1. Core Thesis Challenge
 ```
@@ -290,7 +292,7 @@ This dimension runs at severity-assignment time and gates the *severity* of any 
 
 ## Surface-Form Parity Self-Check (#216)
 
-*This is NOT a tenth challenge dimension. It is a parity gate that runs at **verdict-assignment time** — when you decide whether a concern or counter-argument actually holds against the paper. The dominant AI-reviewer failure here (Kim et al. 2026, §F.3.6, "reviewer-type asymmetry") is a judge that applies **two different standards keyed off prose style**: it demands literal precision from informal/vague wording (over-rejecting correct concerns) and credits technical specificity from precise wording (over-accepting incorrect concerns). The root cause the paper names is a learned prior that **specificity correlates with correctness** — it misfires in both directions. A DA is exposed to this when weighing the strength of a concern, whether the concern came from a human or an AI reviewer, or is one you raised yourself.*
+*This is NOT another challenge dimension. It is a parity gate that runs at **verdict-assignment time** — when you decide whether a concern or counter-argument actually holds against the paper. The dominant AI-reviewer failure here (Kim et al. 2026, §F.3.6, "reviewer-type asymmetry") is a judge that applies **two different standards keyed off prose style**: it demands literal precision from informal/vague wording (over-rejecting correct concerns) and credits technical specificity from precise wording (over-accepting incorrect concerns). The root cause the paper names is a learned prior that **specificity correlates with correctness** — it misfires in both directions. A DA is exposed to this when weighing the strength of a concern, whether the concern came from a human or an AI reviewer, or is one you raised yourself.*
 
 <!-- SURFACE-FORM-PARITY-BLOCK:BEGIN (#216) -->
 Before you commit a correctness/validity verdict on any concern or counter-argument, run this parity gate:
