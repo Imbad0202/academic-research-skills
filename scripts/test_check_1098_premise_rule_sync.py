@@ -98,3 +98,43 @@ def test_truncated_canonical_sentence_fails(tmp_root: Path) -> None:
     _replace_nth(tmp_root / lint.SOURCE, sentence, "Short rule (#1098).", 0)
     errors = lint.check(tmp_root)
     assert any("truncated" in error for error in errors), errors
+
+
+def test_stray_noncanonical_ending_fails(tmp_root: Path) -> None:
+    path = tmp_root / lint.SKILL
+    path.write_text(path.read_text(encoding="utf-8") + "\nExtra rule (#1098).\n", encoding="utf-8")
+    errors = lint.check(tmp_root)
+    assert any(lint.SKILL in error and "differs from the canonical" in error for error in errors), errors
+    assert not any("exact copies" in error for error in errors), errors
+
+
+def test_line_break_hiding_an_edit_fails(tmp_root: Path) -> None:
+    sentence = _sentence()
+    edited = sentence.replace("does not support", "does support").replace(
+        " must be a CRITICAL or MAJOR", "\nmust be a CRITICAL or MAJOR"
+    )
+    assert "\n" in edited and "does support" in edited
+    _replace_nth(tmp_root / lint.SOURCE, sentence, edited, 0)
+    errors = lint.check(tmp_root)
+    assert any("must sit on one line" in error for error in errors), errors
+
+
+def test_copy_moved_between_da_sections_fails(tmp_root: Path) -> None:
+    sentence = _sentence()
+    path = tmp_root / lint.DA_AGENT
+    _replace_nth(path, sentence, "", 2)
+    _replace_nth(path, sentence, sentence + " " + sentence, 1)
+    errors = lint.check(tmp_root)
+    assert not any("exact copies" in error for error in errors), errors
+    assert any("Frame-Lock Detection" in error and "found 0" in error for error in errors), errors
+    assert any("Stakeholder Blind Spots" in error and "found 2" in error for error in errors), errors
+
+
+def test_missing_da_section_heading_fails(tmp_root: Path) -> None:
+    path = tmp_root / lint.DA_AGENT
+    path.write_text(
+        path.read_text(encoding="utf-8").replace("### Frame-Lock Detection", "### Frame Lock"),
+        encoding="utf-8",
+    )
+    errors = lint.check(tmp_root)
+    assert any("must appear exactly once" in error for error in errors), errors

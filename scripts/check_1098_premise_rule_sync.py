@@ -11,10 +11,13 @@ word in five places:
   * the DA report structure in the reviewer SKILL.md.
 
 The canonical sentence is read from the da-phase2 fragment, which
-check_reviewer_sprint_prompt_sync.py already pins. Every "(#1098)." in the
-checked files must close an exact copy of that sentence, and each file must hold
-the expected number of copies. An edit to one copy, a lost copy, or an extra
-copy fails.
+check_reviewer_sprint_prompt_sync.py already pins. It must sit on one line and
+start after the previous sentence, so a line break cannot hide an edit to its
+first half. Every "(#1098)." in the checked files must close an exact copy of
+that sentence, and each file must hold the expected number of copies. In the DA
+agent file, each of the three named sections must hold exactly one copy, so a
+copy moved from one section to another fails. An edit to one copy, a lost copy,
+a moved copy, or an extra copy fails.
 
 Exit 0 = clean, 1 = any failure.
 """
@@ -30,11 +33,20 @@ DA_AGENT = "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
 SKILL = "academic-paper-reviewer/SKILL.md"
 END_TOKEN = "(#1098)."
 
+# Each DA copy belongs to one section, named by its heading line.
+DA_SECTIONS = (
+    "### Phase 2 — Paper-visible review",
+    "### 7. Stakeholder Blind Spots",
+    "### Frame-Lock Detection",
+)
+
 EXPECTED_COPIES = {
-    DA_AGENT: 3,
+    DA_AGENT: len(DA_SECTIONS),
     SOURCE: 1,
     SKILL: 1,
 }
+
+HEADING_RE = re.compile(r"^#{2,4} ", re.MULTILINE)
 
 DA_PHASE2_RE = re.compile(
     r"^<!-- reviewer-sprint-canonical:da-phase2:BEGIN -->\n(?P<body>.*?)"
@@ -58,14 +70,28 @@ def canonical_sentence(root: Path, errors: list[str]) -> str | None:
         )
         return None
     end = body.index(END_TOKEN) + len(END_TOKEN)
-    line_start = body.rfind("\n", 0, end) + 1
-    previous_sentence_end = body.rfind(". ", line_start, end - len(END_TOKEN))
-    start = previous_sentence_end + 2 if previous_sentence_end != -1 else line_start
+    previous_sentence_end = body.rfind(". ", 0, end - len(END_TOKEN))
+    start = previous_sentence_end + 2 if previous_sentence_end != -1 else 0
     sentence = body[start:end]
+    if "\n" in sentence:
+        errors.append(
+            f"{SOURCE}: the #1098 sentence in da-phase2 must sit on one line, "
+            "after the previous sentence on that line"
+        )
+        return None
     if "CRITICAL or MAJOR" not in sentence or len(sentence) < 100:
         errors.append(f"{SOURCE}: the #1098 sentence in da-phase2 looks truncated: {sentence!r}")
         return None
     return sentence
+
+
+def section(text: str, heading: str) -> str | None:
+    """Return the text from a heading line to the next heading line, or None."""
+    starts = [m.start() for m in re.finditer(rf"^{re.escape(heading)}$", text, re.MULTILINE)]
+    if len(starts) != 1:
+        return None
+    following = HEADING_RE.search(text, starts[0] + len(heading))
+    return text[starts[0]:following.start() if following else len(text)]
 
 
 def check(root: Path = REPO_ROOT) -> list[str]:
@@ -83,6 +109,16 @@ def check(root: Path = REPO_ROOT) -> list[str]:
             errors.append(
                 f"{rel}: {endings - exact} {END_TOKEN!r} ending(s) close a sentence that "
                 "differs from the canonical da-phase2 copy"
+            )
+    da_text = (root / DA_AGENT).read_text(encoding="utf-8")
+    for heading in DA_SECTIONS:
+        body = section(da_text, heading)
+        if body is None:
+            errors.append(f"{DA_AGENT}: heading {heading!r} must appear exactly once")
+        elif body.count(sentence) != 1:
+            errors.append(
+                f"{DA_AGENT}: section {heading!r} must hold exactly one copy of the "
+                f"#1098 sentence, found {body.count(sentence)}"
             )
     return errors
 
