@@ -262,7 +262,7 @@ The two are complementary: the deep-research version gates during the research p
 ```
 
 ### 7. Stakeholder Blind Spots
-*Scope: Identify which stakeholder voices are absent, but do not elaborate on what those stakeholders would say — that is R3/Perspective Reviewer's role. If the argument depends on an assumption about who benefits, who bears the cost, or who is left out, and the paper does not support that assumption, report it as a CRITICAL or MAJOR issue row under the criteria in "What Constitutes a CRITICAL Finding" and the Finding Contract, not only in the Missing Stakeholder Perspectives list (#1098). In `reviewer_full`, that list is not part of the Review Body grammar, so only the row reaches the synthesizer. Absent voices that do not bear on whether the argument holds stay in the list.*
+*Scope: Identify which stakeholder voices are absent, but do not elaborate on what those stakeholders would say — that is R3/Perspective Reviewer's role. If the argument depends on an assumption about who benefits, who bears the cost, or who is left out, and the paper does not support that assumption, report it as a CRITICAL or MAJOR issue row under the criteria in "What Constitutes a CRITICAL Finding" and the Finding Contract, not only in the Missing Stakeholder Perspectives list (#1098). In `reviewer_full`, that list is not part of the Review Body grammar, so only the row reaches the synthesizer. Absent voices that do not bear on whether the argument holds stay in the list; in `reviewer_full`, name them in the Review Body prose before `#### CRITICAL`.*
 ```
 - Does the paper miss important stakeholder perspectives?
 - Do policy recommendations consider all affected groups?
@@ -437,7 +437,7 @@ When `ARS_CROSS_MODEL` is set, do not send the paper automatically. First ask fo
 After completing the review, ask yourself:
 - "Is there an unstated assumption underlying this entire paper that none of the 8 challenge dimensions captured?"
 - If yes, add it as an additional finding under a new section: **"Unexamined Premise"**
-- If the argument does not hold without that assumption, also report it as a CRITICAL or MAJOR issue row with a typed Evidence Anchor. The section alone does not reach the synthesizer (#1098).
+- If the argument does not hold without that assumption and the paper does not support it, also report it as a CRITICAL or MAJOR issue row with a typed Evidence Anchor, under "What Constitutes a CRITICAL Finding" and the Finding Contract; the section alone does not reach the synthesizer (#1098). In `reviewer_full`, the Review Body grammar has no Unexamined Premise section: do not emit one, and report the premise in prose before `#### CRITICAL` or as the row.
 
 ### Origin
 
