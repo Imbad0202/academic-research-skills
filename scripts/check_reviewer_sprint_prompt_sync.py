@@ -117,9 +117,9 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # confidence-as-uncertainty-only boundary in the DA Phase 2 fragment. This is
 # the second v3.17-style content lock; exact canonical→mirror equality is the
 # first. Re-pinned for #1098: the DA Phase 2 fragment states that a premise
-# the argument depends on and the paper does not support is a CRITICAL or
-# MAJOR issue row, not prose alone.
-CANONICAL_CONTENT_SHA256 = "4f9314734f06cd902fcafcdd58d47f0a9bd42532852c65a0639ffc79b1fa500d"
+# the argument depends on and the paper does not support must be a CRITICAL
+# or MAJOR issue row; prose alone does not satisfy the rule.
+CANONICAL_CONTENT_SHA256 = "c09a905295643be79345e0a141ab88c59101860d3ca2e22f7405931897a9d989"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:

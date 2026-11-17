@@ -1,6 +1,6 @@
 # Example: Sub-Claim Decomposition in Editorial Synthesis (§F.3.2 partial-evidence trap)
 
-This example shows the editorial synthesizer's Step 1 → Step 2 → Step 5 flow on a **compound weakness** — the case the §F.3.2 partial-evidence trap exists to catch — and contrasts the old bundle-level aggregation (which buries a minority sub-claim) with the sub-claim decomposition introduced for [#214](https://github.com/Imbad0202/academic-research-skills/issues/214).
+This example shows the editorial synthesizer's Step 1 → Step 2 → Step 5 flow on a **compound weakness** — the case the §F.3.2 partial-evidence trap exists to catch — and contrasts the old bundle-level aggregation (which buries a minority sub-claim) with the sub-claim decomposition introduced for [#214](https://github.com/Imbad0202/academic-research-skills/issues/214). A later section shows a single-reviewer finding that a DA issue row also reports ([#1098](https://github.com/Imbad0202/academic-research-skills/issues/1098)); it stops at Step 2.
 
 It is a focused illustration of one weakness bundle, not a full Phase 0–2 walkthrough (see `hei_paper_review_example.md` for that).
 
@@ -73,7 +73,7 @@ Each item carries its `sub_claim_id`, traces back to the Step 1b inventory, and 
 
 ## A third sub-claim: one seat plus a DA issue row (#1098)
 
-The same paper ends with a funding recommendation built on the pooled model. Two seats speak to a premise of that recommendation:
+The same paper ends with a funding recommendation built on the pooled model. R3 and the DA speak to a premise of that recommendation:
 
 - **R3 (Cross-disciplinary), Severity: Minor, Confidence 2** (anchor: `absence: §6 Implications — expected who bears the cost of the funding rule; checked §5 Discussion, §6 Implications`; competence: adjacent — policy implications, not funding design): "The recommendation assumes every site gains from the pooled rule. Small sites, which the pooled model underweights, may lose funding, and the paper does not discuss them."
 - **DA, MAJOR row, Confidence 4** (Dimension: 7 Stakeholder Blind Spots; anchor: `absence: §6 Implications — expected the effect of the rule on small sites; checked §4 Results, §6 Implications`): the recommendation depends on the assumption that all sites benefit, and the paper gives no evidence for it.
