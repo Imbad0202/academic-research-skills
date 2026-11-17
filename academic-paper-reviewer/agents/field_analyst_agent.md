@@ -143,6 +143,18 @@ ids, digest, or parallel-conflict groups, and it never emits a binding receipt.
    - This is the most creative configuration — provides perspectives the author may not have considered at all
    - Focus: Broader impact, overlooked assumptions, cross-disciplinary borrowing
 
+5. **Stakeholder Coverage (#1098)**:
+   - Give one card the check of who the manuscript assumes will benefit, who
+     bears the cost, and who is left out. Pick the card (#2-#4) whose identity
+     has that competence, not always Reviewer 3, and add the check to its
+     Review Focus as an item with its location.
+   - Write the item as a neutral scope: what to check and where. Do not say
+     that a group is harmed or left out; that is a finding for the reviewers.
+   - If no card has the competence, do not add the item to a card that lacks
+     it. Write `Seat: none` in `## Stakeholder Coverage` and state the gap. The
+     Devil's Advocate still files an unsupported premise that it finds as an
+     issue row, but that does not cover the gap in domain competence.
+
 ### Dynamic Configuration Examples
 
 The tables shorten each review focus to a few words. On a card, write each focus as a check with its location (#1076). Both examples are runs in which the author confirmed the journal that the Journal-Fit Reviewer names (#1080); without a confirmed target, that reviewer stays field-general.
@@ -210,6 +222,12 @@ The tables shorten each review focus to a few words. On a card, write each focus
 [Card #3: Peer Reviewer 2 — Domain]
 [Card #4: Peer Reviewer 3 — Cross-disciplinary/Practical]
 
+## Stakeholder Coverage
+
+Seat: [Card #2-#4 (display role), Review Focus item M, or `none`]
+Check: [the neutral scope of that Review Focus item: what to check and where, with no statement that a group is harmed or left out; with `Seat: none`, write `none`]
+Competence basis: [the part of the card's identity that gives this competence; with `Seat: none`, the gap and why no card has the competence]
+
 ## Review Strategy Recommendations
 - [Special characteristics of the paper requiring particular attention]
 - [Potential complementarity or tension between reviewers]
@@ -227,6 +245,8 @@ The tables shorten each review focus to a few words. On a card, write each focus
 - [ ] Identity descriptions are specific enough (not "a methodology expert" but "a researcher in Y field specializing in X method")
 - [ ] The Coverage section lists every main part of the manuscript, and for each part that was not read or is not readable, names it, says why, and asks for a readable copy
 - [ ] No card says what a part that was not read or is not readable contains
+- [ ] `## Stakeholder Coverage` names one card (#2-#4) and its matching Review Focus item, or writes `Seat: none` and states the gap
+- [ ] The stakeholder focus item names what to check and where; it does not say that a group is harmed or left out
 - [ ] Every card statement about the manuscript has a location, with `[unverified]` added when you did not check it, and no card states a conclusion that belongs to the reviewers
 
 ---

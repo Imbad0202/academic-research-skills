@@ -58,7 +58,8 @@ RE_REVIEW_RUNTIME = Path("scripts/check_re_review_synthesis.py")
 LEGACY_APPLY_RUNTIME = Path("scripts/legacy/ars_apply_revision_patch_v1_0.py")
 
 RUNTIME_HASHES = {
-    ROADMAP_RUNTIME: "5341358d489a550b56f0e7efde850c551b6d9df41106b0462e2f804ab4de9998",
+    # Re-pinned for #1100: CURRENT_ROADMAP_VERSION is now revision-roadmap/1.1.
+    ROADMAP_RUNTIME: "b72fcbb3d53f1cf698d35d48ffc4a56487f1f2a7026bd3ba5abf728a6c9ab7b6",
     APPLY_RUNTIME: "9aa84eb23c1b10f5c23008ff51d2feb6e64440834b48b090c833fe44669014b3",
     RE_REVIEW_RUNTIME: "b5ce94487857d2dc2c692f46efc671536a96664337fa1bcd76ffc3694f3f5346",
 }
@@ -122,21 +123,28 @@ REQUIRED_POINTERS = {
         "re_review/legacy/v1_0/",
     ),
     Path("shared/handoff_schemas.md"): (
-        "revision-roadmap/1.0",
+        "revision-roadmap/1.1",
         "author_adjudication.schema.json",
         "revision_evidence_bundle.schema.json",
         "obligation_class",
     ),
     Path("academic-paper-reviewer/agents/editorial_synthesizer_agent.md"): (
-        "revision-roadmap/1.0",
+        "revision-roadmap/1.1",
         "proposed_targets[]",
         "transport reference, not a rank",
+        "`CORROBORATED` (corroborated finding, agree =",
+        "`SINGLE-REVIEWER` (single-reviewer finding, agree = 1)",
+        "into `corroborating_sources[]` with `reviewer: DA`",
+        "never from the length\nof `corroborating_sources[]`",
+        "#### Below the Consensus Bar (#1100)",
     ),
     Path("academic-paper-reviewer/templates/editorial_decision_template.md"): (
         "Obligation class",
         "Cost scope",
         "Bounded consequence",
         "never a work rank",
+        "### Below the Consensus Bar (#1100)",
+        "The DA is not an independent seat and does not change the count.",
     ),
     Path("academic-paper/agents/revision_coach_agent.md"): (
         "build-adjudication",
@@ -257,7 +265,10 @@ def _schema_checks(root: Path) -> list[str]:
     roadmap_props = roadmap.get("properties", {})
     item = roadmap.get("$defs", {}).get("roadmap_item", {})
     item_props = item.get("properties", {})
-    if roadmap_props.get("schema_version", {}).get("const") != "revision-roadmap/1.0":
+    if roadmap_props.get("schema_version", {}).get("enum") != [
+        "revision-roadmap/1.1",
+        "revision-roadmap/1.0",
+    ]:
         errors.append("roadmap current schema_version drifted")
     if not {"base_draft_sha256", "block_manifest_sha256"}.issubset(roadmap.get("required", [])):
         errors.append("roadmap lost exact draft/manifest bindings")

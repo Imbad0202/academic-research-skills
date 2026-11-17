@@ -18,7 +18,10 @@
     "dissenting_opinions"
   ],
   "properties": {
-    "schema_version": { "const": "revision-roadmap/1.0" },
+    "schema_version": {
+      "enum": ["revision-roadmap/1.1", "revision-roadmap/1.0"],
+      "description": "Producers emit revision-roadmap/1.1 (#1100). A revision-roadmap/1.0 roadmap stays readable; it cannot carry CORROBORATED or SINGLE-REVIEWER."
+    },
     "revision_round": { "type": "integer", "minimum": 1 },
     "base_draft_sha256": { "$ref": "#/$defs/sha256" },
     "block_manifest_sha256": { "$ref": "#/$defs/sha256" },
@@ -44,6 +47,18 @@
     "dissenting_opinions": {
       "type": "array",
       "items": { "$ref": "#/$defs/nonempty_string" }
+    }
+  },
+  "if": { "properties": { "schema_version": { "const": "revision-roadmap/1.0" } } },
+  "then": {
+    "properties": {
+      "items": {
+        "items": {
+          "properties": {
+            "consensus_level": { "not": { "enum": ["CORROBORATED", "SINGLE-REVIEWER"] } }
+          }
+        }
+      }
     }
   },
   "$defs": {
@@ -296,7 +311,16 @@
         "target_section": { "$ref": "#/$defs/nonempty_string" },
         "suggested_action": { "$ref": "#/$defs/nonempty_string" },
         "consensus_level": {
-          "enum": ["CONSENSUS-4", "CONSENSUS-3", "SPLIT", "DA-CRITICAL", "SINGLE-VERIFIER"]
+          "enum": [
+            "CONSENSUS-4",
+            "CONSENSUS-3",
+            "CORROBORATED",
+            "SINGLE-REVIEWER",
+            "SPLIT",
+            "DA-CRITICAL",
+            "SINGLE-VERIFIER"
+          ],
+          "description": "Step 2 label of the driving sub-claim. CORROBORATED = agree 2 and SINGLE-REVIEWER = agree 1 among the four non-DA seats, with no conflict (#1100). SINGLE-VERIFIER is only for a re-review previously_missed item. A DA row never changes this value."
         },
         "verification_criteria": { "$ref": "#/$defs/nonempty_string" }
         ,

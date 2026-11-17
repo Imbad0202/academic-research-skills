@@ -492,7 +492,7 @@ criteria or evidence base changed; it does not fabricate this machine object.
 | `editorial_decision` | enum | `"Accept"` / `"Minor Revision"` / `"Major Revision"` / `"Reject"` |
 | `reviewer_reports` | list[ReviewerReport] | Individual review reports |
 | `consensus` | enum | `"CONSENSUS-4"` / `"CONSENSUS-3"` / `"SPLIT"` / `"DA-CRITICAL"` |
-| `revision_roadmap` | object | Non-ranking immutable roadmap core; current machine form is `revision-roadmap/1.0` |
+| `revision_roadmap` | object | Non-ranking immutable roadmap core; current machine form is `revision-roadmap/1.1`; a `revision-roadmap/1.0` roadmap stays readable and cannot carry `CORROBORATED` or `SINGLE-REVIEWER` (#1100) |
 | `calibration_status` | const | Current Schema 6 producer emits `NOT_CALIBRATED`. `PROFILE_MEASURED` is reserved until a closed, hash-bound empirical-profile contract and replay validator can prove an exact target/topology match; a profile name or prose claim cannot upgrade this field. |
 
 ### Optional Fields
@@ -538,8 +538,9 @@ criteria or evidence base changed; it does not fabricate this machine object.
 ### Current machine family (#670)
 
 The immutable reviewer-owned core MUST validate against
-[`contracts/revision/revision_roadmap.schema.json`](contracts/revision/revision_roadmap.schema.json)
-with `schema_version: revision-roadmap/1.0`. It binds the exact base draft and
+[`contracts/revision/revision_roadmap.schema.json`](contracts/revision/revision_roadmap.schema.json).
+Producers emit `schema_version: revision-roadmap/1.1`; consumers also accept a
+valid `revision-roadmap/1.0` roadmap and keep it unchanged (#1100). It binds the exact base draft and
 block manifest, carries recomputable counts, and keeps `items[]` in deterministic
 source-traceability order. It contains no author decision and no user view.
 

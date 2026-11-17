@@ -19,7 +19,7 @@
     "mode": {"const": "reviewer_full"},
     "contract_id": {"const": "reviewer/reviewer_full/v2"},
     "contract_sha256": {
-      "const": "e9712090d2469fea15a37b8e22d4e137afbcb2bf38d5789939c5df56738ef7af",
+      "const": "d958bc2ade7d9d154954c33fd424766697a8b6ef664854800a3106d804ee7e5c",
       "description": "SHA-256 of the exact raw bytes of shared/contracts/reviewer/full.json."
     },
     "seats": {

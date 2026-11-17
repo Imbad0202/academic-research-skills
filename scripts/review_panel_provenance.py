@@ -53,7 +53,7 @@ ARTIFACT_VERSION = "review-panel-provenance/1.0"
 CARRIER_VERSION = "review-panel-provenance-carrier/1.0"
 REVIEW_MODE = "reviewer_full"
 CONTRACT_ID = "reviewer/reviewer_full/v2"
-CONTRACT_SHA256 = "e9712090d2469fea15a37b8e22d4e137afbcb2bf38d5789939c5df56738ef7af"
+CONTRACT_SHA256 = "d958bc2ade7d9d154954c33fd424766697a8b6ef664854800a3106d804ee7e5c"
 FRESH_CONTEXT_SCOPE = "within_panel_attempt_only"
 UNKNOWN = "unknown"
 

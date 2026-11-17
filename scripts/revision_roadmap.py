@@ -70,7 +70,7 @@ CLAIM_INTENT_SCHEMA_PATH = (
 )
 PATCH_SCHEMA_PATH = REPO_ROOT / "shared" / "contracts" / "patch" / "revision_patch.schema.json"
 
-CURRENT_ROADMAP_VERSION = "revision-roadmap/1.0"
+CURRENT_ROADMAP_VERSION = "revision-roadmap/1.1"
 CURRENT_AUTHOR_VERSION = "author-adjudication/1.0"
 CURRENT_PATCH_VERSION = "1.1"
 CURRENT_REPORT_VERSION = "1.3"

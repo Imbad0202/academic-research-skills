@@ -279,7 +279,7 @@ When `ARS_CROSS_MODEL` is not set: no behavioral change.
 ### Step 5: Revision Roadmap Construction
 
 Emit `shared/contracts/revision/revision_roadmap.schema.json` with
-`schema_version: revision-roadmap/1.0`. **Roadmap items are keyed to
+`schema_version: revision-roadmap/1.1`. **Roadmap items are keyed to
 `sub_claim_id`, not weakness bundles**: a compound weakness whose sub-claims
 reached different dispositions produces separate items. Keep all items in the
 schema's deterministic `source_refs` order; severity, obligation, cost, and
@@ -296,6 +296,17 @@ For every item, keep these concepts independent:
   acceptance prediction; and
 - exact `proposed_targets[]` block ids and allowed operations from the bound
   block manifest.
+
+Set `consensus_level` from the Step 2 label of the driving sub-claim (#1100):
+`CONSENSUS-4`, `CONSENSUS-3`, `CORROBORATED` (corroborated finding, agree =
+2), `SINGLE-REVIEWER` (single-reviewer finding, agree = 1), `SPLIT`, or
+`DA-CRITICAL`. `SINGLE-VERIFIER` is only for a re-review `previously_missed`
+item. When an issue row of the DA reports the same sub-claim, copy that row
+into `corroborating_sources[]` with `reviewer: DA` and its transported
+severity, evidence anchor, and confidence. The DA row is not an independent
+judgement: it never changes `agree`, `consensus_level`, or `obligation_class`,
+and independent support is read from `consensus_level`, never from the length
+of `corroborating_sources[]`.
 
 The roadmap is reviewer-owned core only. Do not emit `author_triage`, author
 reasons, display order, work order, claim-strength authorization, or collateral
@@ -362,6 +373,12 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 - [CONSENSUS-3] [Consensus content]
 ...
 
+#### Below the Consensus Bar (#1100)
+- [CORROBORATED] [Seats, e.g. R1, R2] — [Finding] — [SC-n]
+- [SINGLE-REVIEWER] [Seat] — [Finding] — [SC-n]
+  - [Only when an issue row of the DA reports the same sub-claim:] DA-corroborated: the DA reports the same sub-claim. The DA is not an independent seat and does not change the count.
+[List each corroborated and single-reviewer finding that reaches the roadmap. Few seats is not low importance; the criterion and the anchored evidence decide. Write "None." under this heading when there are none.]
+
 #### Points of Disagreement
 - **[Issue]**: R[X] argues [View A]; R[Y] argues [View B].
   - **Editor's Resolution**: [Arbitration result] — [Rationale]
@@ -390,7 +407,7 @@ Thank you for submitting your manuscript titled "[Paper Title]" to [Journal Name
 
 ### Required Revisions (Must Fix)
 
-> **Ordinal contract (#576/#670):** `R<n>` follows immutable roadmap source order filtered to `obligation_class == must_fix`; author-selected display order and triage never enter the derivation. Blocks are exactly `R1..Rn`. Each Acceptance criteria value is a single-line `- **Acceptance criteria**: <text>` bullet. The machine artifact is the closed `revision-roadmap/1.0` core, not an author-editable work list.
+> **Ordinal contract (#576/#670):** `R<n>` follows immutable roadmap source order filtered to `obligation_class == must_fix`; author-selected display order and triage never enter the derivation. Blocks are exactly `R1..Rn`. Each Acceptance criteria value is a single-line `- **Acceptance criteria**: <text>` bullet. The machine artifact is the closed `revision-roadmap/1.1` core, not an author-editable work list.
 
 | Transport ref | Revision Item | Sub-Claim(s) | Severity | Evidence Anchor | Confidence | Source | Obligation class | Cost scope | Bounded consequence |
 |---|--------------|--------------|----------|-----------------|------------|--------|------------------|------------|---------------------|

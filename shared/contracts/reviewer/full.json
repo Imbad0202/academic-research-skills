@@ -24,7 +24,7 @@
     {
       "id": "D3",
       "name": "argumentative_coherence",
-      "description": "Core thesis is internally consistent; evidence supports claims; no fallacies that undermine the central argument.",
+      "description": "Core thesis is internally consistent; evidence supports claims; no fallacies that undermine the central argument; no premise that a core claim depends on, including one about who benefits, who bears the cost, or who is left out, is left unsupported.",
       "priority": "mandatory",
       "eligible_roles": ["da", "methodology"],
       "owner_role": "da"

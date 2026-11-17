@@ -8,7 +8,7 @@ Since #576 Spec B, this mode is governed by the **three-gate evidence-before-per
 
 ```
 Input:
-1. Immutable `revision-roadmap/1.0` core (Stage 3 output)
+1. Immutable `revision-roadmap/1.1` core (Stage 3 output; a valid `revision-roadmap/1.0` roadmap is also accepted and kept unchanged)
 2. Exact `author-adjudication/1.0` sidecar (complete explicit author choices and authority; checker-only, never a criterion input)
 3. Complete `revision-evidence-bundle/1.0` from exact integrity PASS to the revised draft
 4. Original (pre-revision) manuscript

@@ -92,6 +92,16 @@ This template is used by `editorial_synthesizer_agent` to produce the final Edit
 1. [Consensus content — indicate which 3 agree and name the silent 4th. If the 4th *disputes* the sub-claim rather than being silent, it is a SPLIT (see Points of Disagreement), not a CONSENSUS-3.]
 2. [...]
 
+### Below the Consensus Bar (#1100)
+
+**[CORROBORATED]** (2/4 non-DA scoring reviewers agree, none disputes):
+1. [Finding — name the 2 seats and the sub-claim id]
+
+**[SINGLE-REVIEWER]** (1/4 non-DA scoring reviewers raises it, none disputes):
+1. [Finding — name the seat and the sub-claim id. If an issue row of the DA reports the same sub-claim, add "DA-corroborated: the DA reports the same sub-claim. The DA is not an independent seat and does not change the count."]
+
+[List only findings that reach the roadmap. Few seats is not low importance; the criterion and the anchored evidence decide. Omit an empty label; write "None." under this heading when both labels are empty.]
+
 ### Points of Disagreement
 
 **Disagreement 1: [Issue name]**
@@ -247,7 +257,7 @@ After careful consideration, we are unable to accept your manuscript for publica
    author may select a presentation view or decide what to address
 5. **Exact scope**: Every item proposes exact block/operation targets; proposal
    is not write authority
-6. **Compatibility**: Emit the closed `revision-roadmap/1.0` machine artifact
+6. **Compatibility**: Emit the closed `revision-roadmap/1.1` machine artifact
    for `academic-paper` revision mode
 
 Finding severity is the Schema 6 enum (`critical` / `major` / `minor`), transported from the reviewer cards (#574 A3). `obligation_class` is a separate editorial gate and is never derived as a work rank from severity.

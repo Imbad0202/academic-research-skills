@@ -600,7 +600,7 @@ In **revision mode** (standalone `academic-paper` revision, which is also what p
 
 For a review-roadmap round, your revision-invocation context carries the
 **anchored draft**, its exact **block manifest**, immutable
-`revision-roadmap/1.0`, exact `claim-surface-manifest/1.0`, complete
+`revision-roadmap/1.1` (or a valid `revision-roadmap/1.0`), exact `claim-surface-manifest/1.0`, complete
 `author-adjudication/1.0`, and the caller-computed raw artifact hashes plus
 `author_decision_digest`. Copy those supplied bindings; do not compute or
 invent them. An integrity-correction round instead carries the anchored draft,

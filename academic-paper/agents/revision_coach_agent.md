@@ -330,7 +330,7 @@ If the user wants to proceed with revisions after receiving the Roadmap:
 
 ```
 revision_coach_agent output -> revision mode input
-  - revision-roadmap/1.0 is the immutable reviewer core
+  - revision-roadmap/1.1 (or a valid revision-roadmap/1.0, kept unchanged) is the immutable reviewer core
   - author-adjudication/1.0 is the only author work/claim authority
   - claim-surface-manifest/1.0 protects exact registered claim text
   - draft_writer_agent emits only a current 1.1 patch within those scopes

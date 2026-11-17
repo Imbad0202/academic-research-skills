@@ -503,7 +503,7 @@ schemas and `scripts/evidence_rows.py` identities and behavior remain unchanged.
 The current reviewer-to-author revision family lives under `revision/`:
 
 - `revision_roadmap.schema.json` — immutable reviewer-owned
-  `revision-roadmap/1.0`, exact draft/manifest bindings, source-trace order,
+  `revision-roadmap/1.1` (1.0 still readable), exact draft/manifest bindings, source-trace order,
   independent severity/obligation/cost/consequence, and proposed target scopes;
 - `claim_surface_manifest.schema.json` — exact registered Claim Intent surfaces,
   raw UTF-8 spans, hashes, blocks, current rungs, and byte-identical equality
