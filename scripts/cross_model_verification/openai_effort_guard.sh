@@ -12,6 +12,8 @@
 #
 # Rows (first-party documentation, checked 2026-09-06):
 #   gpt-6-astra   low|medium|high|xhigh|max   (none/minimal/ultra are not API values)
+# gpt-6.2-astra has no row (checked 2026-11-18): OpenAI documents only that it
+# rejects none, so an explicit value passes through to the API.
 ars_openai_effort_check() {
   _model="$1"; _effort="$2"
   [ -z "$_effort" ] && return 0
