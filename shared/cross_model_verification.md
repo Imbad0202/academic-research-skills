@@ -235,7 +235,7 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
    - **NEW-CHANGED (Stage 4.5 only) — verify 100%, no cap:** every reference supporting a claim that is **new or changed** since Stage 2.5, whatever its impact class.
    - **CONTROL (Stage 4.5 only) — the unchanged, non-high-impact remainder**, sampled at 10%, rounded up (minimum 3, maximum 10; fewer than 3 → all of it) to catch silent drift. At Stage 4.5, CONTROL replaces RANDOM — there is no separate RANDOM tier at the final gate.
    - Cost scales mainly with the count of high-impact (and, at Stage 4.5, new/changed) citations; for a fixed high-impact count, the total reference count can still change the sampled tier (the RANDOM/CONTROL rule above) — as the high-impact share of the references approaches 100%, coverage does too, which is the point: verification budget concentrates where the paper's weight rests. The old flat cap (max 15) is retired; only the sampled tiers (RANDOM/CONTROL) carry a cap (max 10 each).
-3. Issue **one verification request per selected reference** — not a batch. (Batching hides which reference the model actually grounded: a single grounding-metadata trace on a 5-reference response proves *something* was searched, not that *each* reference was. One reference per call makes the grounding evidence 1:1 with the verdict.) For each reference, construct a verification prompt:
+3. Issue **one API call per reference** — not a batch. (Batching hides which reference the model actually grounded: a single grounding-metadata trace on a 5-reference response proves *something* was searched, not that *each* reference was. One reference per call makes the grounding evidence 1:1 with the verdict.) For each reference, construct a verification prompt:
    ```
    Verify this academic reference. Check: Does it exist? Are the author
    names, year, title, journal, and DOI correct? Search the web to
@@ -476,7 +476,7 @@ if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   # Transport/API failure (401/429/5xx, or curl's 000 on a network error) — NOT the same as
   # "searched but found nothing". Surface as a transport error so the consumer falls back to
   # single-model (see § Graceful Degradation); never relabel it NOT_SEARCHED, which would
-  # hide that the call failed in transport.
+  # hide the HTTP or network error.
   echo "CROSS-MODEL-ERROR: openai_http_$http"
 elif ! jq -e -f "$GUARD/openai_has_completed_web_search.jq" <<<"$body" >/dev/null; then
   echo "NOT_SEARCHED: no_web_search_call"           # no completed search the guard can read — discard the text
