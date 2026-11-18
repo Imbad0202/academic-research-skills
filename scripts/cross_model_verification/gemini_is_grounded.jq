@@ -1,11 +1,13 @@
 # Canonical grounding guard — Gemini generateContent (google_search tool).
 # CONTRACT (cross_model_verification.md, Gemini block): accept the verdict text only when BOTH
 #   - webSearchQueries  (length > 0) — the model actually issued a search, AND
-#   - groundingSupports (length > 0) — the verdict TEXT is tied to retrieved chunks.
+#   - at least one groundingSupports entry whose chunk index leads to a retrieved chunk with a
+#     non-empty string uri (the extraction rule below; a non-empty array alone is not enough).
 # webSearchQueries + groundingChunks alone is NOT enough: Gemini can run a search, return chunks,
 # then emit an unsupported from-memory verdict whose text references none of them.
-# groundingSupports[].groundingChunkIndices is what links answer spans to sources; without it a
-# VERIFIED is not actually grounded. Used with `jq -e`: exit 0 = grounded; non-0 = NOT_SEARCHED.
+# groundingSupports[].groundingChunkIndices is what links answer spans to sources; without such a
+# link the guard cannot verify that a VERIFIED rests on a source. Used with `jq -e`: exit 0 = both
+# conditions hold; non-0 = NOT_SEARCHED.
 #
 # GUARD DERIVES FROM THE EXTRACTOR — by construction, not by a re-implemented predicate. The guard
 # embeds the EXACT extraction `gemini_sources.jq` performs (same `candidates[0]` selection, same
