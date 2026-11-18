@@ -83,13 +83,15 @@ RUNTIME_HASHES = {
 # score or output-grammar change).
 # Re-pinned for #1101 (devils_advocate states its dimension count as 8
 # challenges and 1 severity calibration; no detection-rule change).
+# Re-pinned for #1107 (domain_reviewer judges literature coverage as of the
+# manuscript's stated date; no severity, score, or output-grammar change).
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
         "9690e570d081bfcdef6da23fb93064af4028c9d6b766fcbcf0cf0981463d492f",
     Path("academic-paper-reviewer/agents/methodology_reviewer_agent.md"):
         "7369527eb99f1ca2a7351a338a4e7ef0df482d3fb516056d271a944eb7d6d8b9",
     Path("academic-paper-reviewer/agents/domain_reviewer_agent.md"):
-        "706a70fab08a37dff52f6e097787cf8d5712fff02bcce87ac0a184109f478f55",
+        "5f09b9b348814370c14185d6266622766ef36ab0942a14809c077771f5cbc932",
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
         "a99386515c1e9e5b73e91f3f9cd62f6ec3660f03e229371ad53531fa165cf007",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
