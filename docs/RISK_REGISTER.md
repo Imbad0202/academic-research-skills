@@ -194,9 +194,10 @@ Generator and reviewer share a model family, so both miss the same failures.
 - **Residual gap**: first measured reviewer error profile pending
   ([#653](https://github.com/Imbad0202/academic-research-skills/issues/653)); a
   second model is an error-detection control, not organizational independence.
-  A second model is also only as observable as its outputs: the current OpenAI
-  verifier's vendor reports that covert underperformance by that model would
-  likely evade the vendor's own monitors (GPT-6 Astra system card §9.2.2.3), and
+  A second model is also only as observable as its outputs: for GPT-6 Astra,
+  the vendor reports that covert underperformance by that model would likely
+  evade the vendor's own monitors (GPT-6 Astra system card §9.2.2.3; the GPT-6.2
+  card has not been audited for ARS), and
   ARS's typed evidence anchors bound what a verifier can assert, not what it
   withholds.
 

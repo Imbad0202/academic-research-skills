@@ -845,6 +845,9 @@ def test_both_openai_builders_source_the_canonical_effort_guard():
         ("gpt-6-astra", "max", True),
         ("gpt-6-astra", "ultra", False),   # not an Astra API value
         ("gpt-6-astra", "minimal", False),
+        ("gpt-6.2-astra", "max", True),
+        ("gpt-6.2-astra", "none", False),  # rejected per the reasoning guide
+        ("gpt-6.2-astra", "ultra", False),
         ("gpt-5.5", "minimal", True),      # other ids stay pass-through
     ],
 )

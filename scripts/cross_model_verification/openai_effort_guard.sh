@@ -10,13 +10,15 @@
 #   model's documentation lists as unsupported. Models without a row are
 #   permissive here: the provider rejects an unknown value visibly.
 #
-# Rows (first-party documentation, checked 2026-09-06):
-#   gpt-6-astra   low|medium|high|xhigh|max   (none/minimal/ultra are not API values)
+# Rows (first-party documentation; gpt-6-astra checked 2026-09-06,
+# gpt-6.2-astra checked 2026-11-18 against the OpenAI model catalog):
+#   gpt-6-astra     low|medium|high|xhigh|max   (none/minimal/ultra are not API values)
+#   gpt-6.2-astra   low|medium|high|xhigh|max   (same set; the reasoning guide states it rejects none)
 ars_openai_effort_check() {
   _model="$1"; _effort="$2"
   [ -z "$_effort" ] && return 0
   case "$_model" in
-    gpt-6-astra)
+    gpt-6-astra|gpt-6.2-astra)
       case "$_effort" in
         low|medium|high|xhigh|max) return 0 ;;
         *) echo "CROSS-MODEL-ERROR: invalid_astra_reasoning_effort (${_effort}; accepted: low|medium|high|xhigh|max)"; return 1 ;;
