@@ -91,7 +91,7 @@ DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/methodology_reviewer_agent.md"):
         "7369527eb99f1ca2a7351a338a4e7ef0df482d3fb516056d271a944eb7d6d8b9",
     Path("academic-paper-reviewer/agents/domain_reviewer_agent.md"):
-        "61b788b55fda916233d7c51e469bd23e3d31cf84ba0301c6c38ab7c90986e286",
+        "5f09b9b348814370c14185d6266622766ef36ab0942a14809c077771f5cbc932",
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
         "a99386515c1e9e5b73e91f3f9cd62f6ec3660f03e229371ad53531fa165cf007",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):

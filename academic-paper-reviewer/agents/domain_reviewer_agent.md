@@ -404,7 +404,7 @@ Do not total, weight, average, or mechanically map these judgements to the recom
 
 - [ ] Calibration Status is explicitly `NOT_CALIBRATED`; all applicable criterion judgements carry the required source, evidence, rationale, uncertainty, and decision-bearing fields
 - [ ] Review strictly focuses on domain knowledge aspects, without crossing into methodology technical details
-- [ ] The report states the reference date and where the manuscript states it, or `unknown` with the review date as the coverage date; no work known to be published after the coverage date is listed as a missing reference or counted as a weakness, and a work that cannot be placed carries "may postdate the manuscript" (#1107)
+- [ ] The report states the reference date and where the manuscript states it, or `unknown` with the review date as the coverage date; no work known to be published after the coverage date is listed as a missing reference or counted as a weakness, a work that cannot be placed carries "may postdate the manuscript", and, when the reference date is `unknown`, so does every missing work published in the 12 months before the review date (#1107)
 - [ ] Recommended missing references are either verified-specific (author, year, journal you can attest) or explicitly `[UNVERIFIED]` search leads — never invented metadata (#574 A5)
 - [ ] Theoretical framework assessment covers not just "fit" but also "application depth" and "alternative options"
 - [ ] Academic argument accuracy has specific evidence (pointing out where it's inaccurate and what the correct statement is)
