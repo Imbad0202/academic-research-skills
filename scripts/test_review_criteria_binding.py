@@ -627,3 +627,139 @@ def test_no_ambient_manuscript_scan(tmp_path, resolved_inputs) -> None:
     (tmp_path / "manuscript.md").write_text(sentinel, encoding="utf-8")
     manifest_path = _init(tmp_path, resolved_inputs)
     assert sentinel not in manifest_path.read_text(encoding="utf-8")
+
+
+# --- portable references: drive prefixes and colons ---------------------------
+
+DRIVE_OR_COLON_REFS = [
+    "C:/Windows/win.ini",   # drive-absolute on Windows
+    "C:secret.txt",         # drive-relative on Windows
+    "c:\\x",
+    "sub/file.txt:ads",     # alternate data stream on Windows
+    "a:b",
+    "x\nC:/y",            # a line break must not hide the colon from the schema
+]
+
+
+@pytest.mark.parametrize("ref", DRIVE_OR_COLON_REFS)
+def test_portable_ref_rejects_drive_prefix_and_colon(ref) -> None:
+    with pytest.raises(binding.BindingError) as info:
+        binding._portable_ref(ref, "artifact[x]")
+    assert "portable relative POSIX reference" in str(info.value)
+
+
+@pytest.mark.parametrize("ref", ["phase0/context.json", "a/b-c_d.e/f.md", "CON"])
+def test_portable_ref_still_accepts_plain_relative_refs(ref) -> None:
+    assert binding._portable_ref(ref, "artifact[x]") == ref
+
+
+@pytest.mark.parametrize("ref", DRIVE_OR_COLON_REFS)
+def test_manifest_schema_rejects_the_refs_the_validator_rejects(
+    tmp_path, resolved_inputs, ref
+) -> None:
+    manifest = _manifest(_complete(tmp_path, resolved_inputs))
+    validator = Draft202012Validator(
+        load_json(CONTRACTS / "review_criteria_binding_manifest.schema.json")
+    )
+    validator.validate(manifest)
+    manifest["receipts"][0]["artifacts"][0]["artifact_ref"] = ref
+    assert list(validator.iter_errors(manifest))
+
+
+def test_record_rejects_an_artifact_ref_with_a_drive_prefix(
+    tmp_path, resolved_inputs, capsys
+) -> None:
+    if os.name == "nt":
+        pytest.skip("needs a host where a colon is a legal file-name character")
+    manifest_path = _init(tmp_path, resolved_inputs)
+    manifest = _manifest(manifest_path)
+    name = "C:secret.md"
+    (tmp_path / name).write_text(
+        f"# Output\n\n{binding._render_conflict_line(manifest)}\n"
+        f"{binding._render_marker(manifest, 'formative_planning', 'FORMATIVE')}\n",
+        encoding="utf-8",
+    )
+    before = manifest_path.read_bytes()
+    old = Path.cwd()
+    try:
+        os.chdir(tmp_path)
+        code = binding.main([
+            "record", "--manifest", str(manifest_path),
+            "--consumer", "formative_planning",
+            "--artifact", f"FORMATIVE={name}",
+        ])
+    finally:
+        os.chdir(old)
+    assert code == 2
+    assert "portable relative POSIX reference" in capsys.readouterr().err
+    assert manifest_path.read_bytes() == before
+
+
+def test_record_with_an_unopenable_artifact_ref_is_a_controlled_failure(
+    tmp_path, resolved_inputs, capsys
+) -> None:
+    """An embedded NUL makes the open raise ValueError; it must not escape."""
+    manifest_path = _init(tmp_path, resolved_inputs)
+    before = manifest_path.read_bytes()
+    old = Path.cwd()
+    try:
+        os.chdir(tmp_path)
+        code = binding.main([
+            "record", "--manifest", str(manifest_path),
+            "--consumer", "formative_planning",
+            "--artifact", "FORMATIVE=a\x00b.md",
+        ])
+    finally:
+        os.chdir(old)
+    assert code == 2
+    assert "review-criteria binding failed" in capsys.readouterr().err
+    assert manifest_path.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "ref",
+    [
+        "\\\\server\\share\\f.md",   # UNC
+        "//server/share/f.md",       # UNC with forward slashes
+        "\\\\?\\C:\\a\\f.md",        # extended-length prefix
+        "//./pipe/x",                # device namespace
+        "/abs/f.md",
+        "\\abs\\f.md",               # rooted on the current drive
+        "a\\b/c.md",                 # mixed separators
+        "a/b\\..\\c.md",
+        "a/../b.md",
+        "../b.md",
+        "a//b.md",
+        "a/./b.md",
+        "a/",
+    ],
+)
+def test_portable_ref_rejects_unc_rooted_and_mixed_separator_refs(ref) -> None:
+    with pytest.raises(binding.BindingError):
+        binding._portable_ref(ref, "artifact[x]")
+    schema = load_json(CONTRACTS / "review_criteria_binding_manifest.schema.json")
+    pattern = schema["$defs"]["portable_ref"]["pattern"]
+    assert list(Draft202012Validator({"type": "string", "pattern": pattern}).iter_errors(ref))
+
+
+def test_every_accepted_ref_is_anchorless_on_windows() -> None:
+    """What the check lets through must stay relative under Windows path rules."""
+    from pathlib import PureWindowsPath
+
+    candidates = [
+        "phase0/context.json", "a/b.md", "CON", "a/NUL", "a/b.", "a/.. ", "...",
+        "C:/x", "C:x", "c:\\x", "f:ads", "//s/h/f", "\\\\s\\h\\f", "/x", "\\x",
+        "a\\b", "a/../b", "\uff23\uff1a/x", "a\u2215b",
+    ]
+    accepted = []
+    for ref in candidates:
+        try:
+            binding._portable_ref(ref, "artifact[x]")
+        except binding.BindingError:
+            continue
+        accepted.append(ref)
+        windows = PureWindowsPath(ref)
+        assert windows.anchor == "" and not windows.is_absolute(), ref
+        assert ".." not in windows.parts, ref
+    assert "phase0/context.json" in accepted
+    assert not any(":" in ref or "\\" in ref for ref in accepted)

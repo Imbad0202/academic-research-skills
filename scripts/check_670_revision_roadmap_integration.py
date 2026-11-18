@@ -60,7 +60,7 @@ LEGACY_APPLY_RUNTIME = Path("scripts/legacy/ars_apply_revision_patch_v1_0.py")
 RUNTIME_HASHES = {
     # Re-pinned for #1100: CURRENT_ROADMAP_VERSION is now revision-roadmap/1.1.
     # Re-pinned for #1092: ArtifactStore opens files through scripts/_anchored_open.py.
-    ROADMAP_RUNTIME: "d67213ffea825b1cf97090c410eadf11a766e2ef20642d68b236a3c312477041",
+    ROADMAP_RUNTIME: "381a7ee69fdd024fbd98f725d6424fd34e00c908096e6bf4fb3aa89f90c40bda",
     APPLY_RUNTIME: "9aa84eb23c1b10f5c23008ff51d2feb6e64440834b48b090c833fe44669014b3",
     RE_REVIEW_RUNTIME: "b5ce94487857d2dc2c692f46efc671536a96664337fa1bcd76ffc3694f3f5346",
 }

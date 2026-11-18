@@ -324,9 +324,16 @@ class ArtifactStore:
             if before_fp != after_fp or total != after.st_size:
                 raise ContractError([f"bundle {label}: artifact changed while read"])
             return b"".join(chunks)
+        except ContractError:
+            raise
         except OSError as exc:
             raise ContractError(
                 [f"bundle {label}: cannot open regular no-symlink artifact {relative}: {exc}"]
+            ) from exc
+        except ValueError as exc:
+            # A component that is not a plain name, or an embedded NUL.
+            raise ContractError(
+                [f"bundle {label}: artifact path cannot be opened safely {relative!r}: {exc}"]
             ) from exc
         finally:
             if file_fd is not None:

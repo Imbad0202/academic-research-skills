@@ -199,6 +199,11 @@ def _safe_explicit_file(path: Path, *, limit: int = MAX_ASSET_BYTES) -> bytes:
         raise MeasurementError(
             f"cannot open explicit path without symlinks {path}: {exc}"
         ) from exc
+    except ValueError as exc:
+        # A component that is not a plain name, or an embedded NUL.
+        raise MeasurementError(
+            f"explicit path cannot be opened safely {path!r}: {exc}"
+        ) from exc
     info = os.fstat(fd)
     if not stat.S_ISREG(info.st_mode):
         os.close(fd)

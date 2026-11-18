@@ -354,6 +354,9 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
         if exc.errno == errno.ELOOP:
             raise ActivityError("PATH", "symlink artifact path is forbidden") from None
         raise ActivityError("PATH", f"artifact traversal failed: {exc.__class__.__name__}") from None
+    except ValueError:
+        # The helper refuses a component that is not a plain name.
+        raise ActivityError("PATH", "unsafe relative artifact path") from None
     finally:
         for opened_fd in reversed(opened):
             os.close(opened_fd)

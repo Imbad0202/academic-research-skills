@@ -105,6 +105,12 @@ def _open_nofollow(path: Path, flags: int) -> int:
         raise BindingError(
             f"cannot traverse explicit input without symlinks {path}: {exc}"
         ) from exc
+    except ValueError as exc:
+        # The helper refuses a component that is not a plain name (a Windows
+        # drive or stream name) and os.open refuses an embedded NUL.
+        raise BindingError(
+            f"explicit input path cannot be opened safely {path!r}: {exc}"
+        ) from exc
 
 
 def _read_bytes(path: Path, limit: int) -> bytes:
@@ -194,7 +200,10 @@ def _sha(value: Any, path: str) -> str:
 
 def _portable_ref(value: Any, path: str) -> str:
     text = _string(value, path)
-    if len(text) > 512 or text.startswith("/") or "\\" in text:
+    # A colon is refused everywhere, not only on Windows: there "C:/x" is
+    # absolute, "C:x" is relative to drive C's current directory, and
+    # "name:stream" is an alternate data stream.
+    if len(text) > 512 or text.startswith("/") or "\\" in text or ":" in text:
         _fail(path, "must be a portable relative POSIX reference")
     if any(part in ("", ".", "..") for part in text.split("/")):
         _fail(path, "must not contain empty, dot, or parent components")

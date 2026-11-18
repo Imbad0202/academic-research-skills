@@ -362,3 +362,73 @@ def test_site5_scorer_rejects_symlink(windows, tmp_path, tree):
 
 def test_site6_ledger_fsync_directory(windows, tree):
     ledger._fsync_directory(tree)
+
+
+# --- the helper's ValueError never escapes a call site -----------------------
+# open_under raises ValueError for a component that is not a plain name, and
+# os.open raises it for an embedded NUL.  Each call site turns it into its own
+# error type.  (Site 3 is tested in its own test module.)
+
+
+def _raised_as_windows(monkeypatch, call):
+    """Run ``call`` with ``os.name == "nt"`` and return what it raised.
+
+    ``os.name`` is restored before the caller asserts: pathlib cannot build a
+    path while a POSIX host claims to be Windows, and pytest builds one to
+    report a failure.
+    """
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "name", "nt")
+        try:
+            call()
+        except Exception as exc:  # noqa: BLE001 - the caller checks the type
+            return exc
+    return None
+
+
+def test_site1_roadmap_store_turns_helper_valueerror_into_contract_error(tree, monkeypatch):
+    store = roadmap.ArtifactStore(tree)
+    with pytest.raises(roadmap.ContractError) as info:
+        store._open_relative("sub/a\x00b.json", "repro")
+    assert "bundle repro" in "".join(info.value.args[0])
+    for relative in ("sub/artifact.json:ads", "C:artifact.json"):
+        raised = _raised_as_windows(
+            monkeypatch, lambda: store._open_relative(relative, "repro")
+        )
+        assert type(raised) is roadmap.ContractError, repr(raised)
+
+
+def test_site1_roadmap_store_keeps_its_own_contract_errors(tree):
+    (tree / "sub" / "big.json").write_bytes(b"x" * (roadmap.MAX_ARTIFACT_BYTES + 1))
+    with pytest.raises(roadmap.ContractError) as info:
+        roadmap.ArtifactStore(tree)._open_relative("sub/big.json", "repro")
+    assert "exceeds" in "".join(info.value.args[0])
+
+
+def test_site2_binding_turns_helper_valueerror_into_binding_error(tree, monkeypatch):
+    with pytest.raises(binding.BindingError) as info:
+        binding._open_nofollow(tree / "sub" / "a\x00b.json", os.O_RDONLY)
+    assert type(info.value) is binding.BindingError
+    stream = Path("sub/artifact.json:ads")
+    monkeypatch.chdir(tree)
+    raised = _raised_as_windows(
+        monkeypatch, lambda: binding._open_nofollow(stream, os.O_RDONLY)
+    )
+    assert type(raised) is binding.BindingError, repr(raised)
+
+
+def test_site4_runner_turns_helper_valueerror_into_measurement_error(tree, monkeypatch):
+    with pytest.raises(runner.MeasurementError):
+        runner._safe_explicit_file(tree / "sub" / "a\x00b.json")
+    stream = tree / "sub" / "artifact.json:ads"
+    raised = _raised_as_windows(monkeypatch, lambda: runner._safe_explicit_file(stream))
+    assert type(raised) is runner.MeasurementError, repr(raised)
+
+
+def test_site5_scorer_turns_helper_valueerror_into_score_error(tree, monkeypatch):
+    with pytest.raises(scorer.ScoreError) as info:
+        scorer._open_nofollow(tree / "sub" / "a\x00b.json")
+    assert type(info.value) is scorer.ScoreError
+    stream = tree / "sub" / "artifact.json:ads"
+    raised = _raised_as_windows(monkeypatch, lambda: scorer._open_nofollow(stream))
+    assert type(raised) is scorer.ScoreError, repr(raised)

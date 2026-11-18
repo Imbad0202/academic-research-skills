@@ -62,6 +62,11 @@ def _open_nofollow(path: Path) -> int:
         raise ScoreError(
             f"cannot traverse explicit input without symlinks {path}: {exc}"
         ) from exc
+    except ValueError as exc:
+        # A component that is not a plain name, or an embedded NUL.
+        raise ScoreError(
+            f"explicit input path cannot be opened safely {path!r}: {exc}"
+        ) from exc
 
 
 def _read(path: Path) -> tuple[dict[str, Any], bytes]:

@@ -1590,3 +1590,25 @@ def test_read_artifact_relative_reparse_point_is_not_called_a_plain_symlink(
     with pytest.raises(activity.ActivityError) as info:
         activity._read_artifact_relative(tmp_path, "sub/artifact.json", 1_000_000)
     assert "reparse point" in str(info.value)
+
+
+@pytest.mark.parametrize("relative", ["C:artifact.json", "sub/artifact.json:ads"])
+def test_read_artifact_relative_turns_helper_valueerror_into_path_error(
+    tmp_path, monkeypatch, relative
+):
+    """The helper refuses a drive or stream component with ValueError on Windows."""
+    import os
+
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "artifact.json").write_text("{}", encoding="utf-8")
+    raised = None
+    # os.name is restored before the assert: pathlib cannot build a path while
+    # a POSIX host claims to be Windows, and pytest builds one to report.
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "name", "nt")
+        try:
+            activity._read_artifact_relative(tmp_path, relative, 1_000_000)
+        except Exception as exc:  # noqa: BLE001 - the type is asserted below
+            raised = exc
+    assert type(raised) is activity.ActivityError, repr(raised)
+    assert raised.code == "PATH"
