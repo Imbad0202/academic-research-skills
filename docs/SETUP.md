@@ -253,7 +253,7 @@ export ARS_CROSS_MODEL="gpt-6.2-astra"
 # export ARS_CROSS_MODEL="gpt-5.6-sol"
 
 python3 scripts/cross_model_codex_transport.py detect
-# The producer sends one closed codex_citation_request/1.0 object on stdin:
+# The producer sends one closed ars-codex-citation-request/1.0 object on stdin:
 printf '%s' "$CITATION_REQUEST_JSON" | scripts/cross_model_codex_verify.sh
 ```
 
