@@ -1516,3 +1516,99 @@ def test_delete_store_identity_swap_is_detected_before_unlink(
     assert "ERROR:CONFLICT" in stderr
     assert store.read_bytes() == replacement_bytes
     assert displaced.exists()
+
+
+# --- #1092: the artifact reader on a host without dir_fd (Windows) ---------
+
+
+@pytest.fixture
+def _no_dir_fd_host(monkeypatch):
+    """Windows facts: no dir_fd, and os.open() cannot open a directory."""
+    import errno
+    import os
+
+    real_open = os.open
+
+    def fake_open(path, flags, mode=0o777, *, dir_fd=None):
+        if dir_fd is not None:
+            raise NotImplementedError("dir_fd unavailable on this platform")
+        if isinstance(path, (str, os.PathLike)) and os.path.isdir(path):
+            raise PermissionError(errno.EACCES, "Permission denied", str(path))
+        return real_open(path, flags, mode)
+
+    monkeypatch.setattr(os, "supports_dir_fd", frozenset())
+    monkeypatch.setattr(os, "open", fake_open)
+
+
+def test_read_artifact_relative_without_dir_fd(_no_dir_fd_host, tmp_path):
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "artifact.json").write_text('{"ok": true}', encoding="utf-8")
+    raw = activity._read_artifact_relative(tmp_path, "sub/artifact.json", 1_000_000)
+    assert json.loads(raw) == {"ok": True}
+
+
+def test_read_artifact_relative_without_dir_fd_rejects_symlinks(_no_dir_fd_host, tmp_path):
+    import os
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "artifact.json").write_text("{}", encoding="utf-8")
+    root = tmp_path / "root"
+    root.mkdir()
+    try:
+        os.symlink(outside, root / "linkdir", target_is_directory=True)
+        os.symlink(outside / "artifact.json", root / "leaf.json")
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unavailable")
+    for relative in ("linkdir/artifact.json", "leaf.json"):
+        with pytest.raises(activity.ActivityError) as info:
+            activity._read_artifact_relative(root, relative, 1_000_000)
+        assert "symlink" in str(info.value)
+
+
+def test_read_artifact_relative_reparse_point_is_not_called_a_plain_symlink(
+    _no_dir_fd_host, tmp_path, monkeypatch
+):
+    """A non-symlink reparse point must not be reported as a symlink only."""
+    import os
+    import types
+
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "artifact.json").write_text("{}", encoding="utf-8")
+    real_lstat = os.lstat
+
+    def lstat(path, *args, **kwargs):
+        info = real_lstat(path, *args, **kwargs)
+        if os.path.basename(path) == "sub":
+            return types.SimpleNamespace(
+                st_mode=info.st_mode, st_ino=info.st_ino, st_dev=info.st_dev,
+                st_file_attributes=0x400,
+            )
+        return info
+
+    monkeypatch.setattr(os, "lstat", lstat)
+    with pytest.raises(activity.ActivityError) as info:
+        activity._read_artifact_relative(tmp_path, "sub/artifact.json", 1_000_000)
+    assert "reparse point" in str(info.value)
+
+
+@pytest.mark.parametrize("relative", ["C:artifact.json", "sub/artifact.json:ads"])
+def test_read_artifact_relative_turns_helper_valueerror_into_path_error(
+    tmp_path, monkeypatch, relative
+):
+    """The helper refuses a drive or stream component with ValueError on Windows."""
+    import os
+
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "artifact.json").write_text("{}", encoding="utf-8")
+    raised = None
+    # os.name is restored before the assert: pathlib cannot build a path while
+    # a POSIX host claims to be Windows, and pytest builds one to report.
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "name", "nt")
+        try:
+            activity._read_artifact_relative(tmp_path, relative, 1_000_000)
+        except Exception as exc:  # noqa: BLE001 - the type is asserted below
+            raised = exc
+    assert type(raised) is activity.ActivityError, repr(raised)
+    assert raised.code == "PATH"

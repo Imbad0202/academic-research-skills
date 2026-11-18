@@ -23,9 +23,10 @@ from resolve_review_target_context import ContractError as ResolverError
 from resolve_review_target_context import resolve
 
 try:  # Dual-path import: sibling module on sys.path vs package import.
+    import _anchored_open
     import file_lock
 except ImportError:  # pragma: no cover - package-import path
-    from scripts import file_lock  # type: ignore[no-redef]
+    from scripts import _anchored_open, file_lock  # type: ignore[no-redef]
 
 
 SCHEMA_VERSION = "review-criteria-binding/1.0"
@@ -95,34 +96,21 @@ def _reject_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _open_nofollow(path: Path, flags: int) -> int:
     """Open one explicit path without traversing a symlinked component."""
-    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-    nofollow = getattr(os, "O_NOFOLLOW", 0)
     parts = path.parts
-    if path.is_absolute():
-        directory_fd = os.open(os.sep, directory_flags)
-        components = parts[1:]
-    else:
-        directory_fd = os.open(".", directory_flags)
-        components = parts
-    if not components:
-        os.close(directory_fd)
+    if not (parts[1:] if path.is_absolute() else parts):
         raise BindingError(f"explicit input must name a file: {path}")
     try:
-        for component in components[:-1]:
-            next_fd = os.open(
-                component,
-                directory_flags | nofollow,
-                dir_fd=directory_fd,
-            )
-            os.close(directory_fd)
-            directory_fd = next_fd
-        return os.open(components[-1], flags | nofollow, dir_fd=directory_fd)
-    except OSError as exc:
+        return _anchored_open.open_explicit_path(path, flags)
+    except (OSError, NotImplementedError) as exc:
         raise BindingError(
             f"cannot traverse explicit input without symlinks {path}: {exc}"
         ) from exc
-    finally:
-        os.close(directory_fd)
+    except ValueError as exc:
+        # The helper refuses a component that is not a plain name (a Windows
+        # drive or stream name) and os.open refuses an embedded NUL.
+        raise BindingError(
+            f"explicit input path cannot be opened safely {path!r}: {exc}"
+        ) from exc
 
 
 def _read_bytes(path: Path, limit: int) -> bytes:
@@ -212,7 +200,10 @@ def _sha(value: Any, path: str) -> str:
 
 def _portable_ref(value: Any, path: str) -> str:
     text = _string(value, path)
-    if len(text) > 512 or text.startswith("/") or "\\" in text:
+    # A colon is refused everywhere, not only on Windows: there "C:/x" is
+    # absolute, "C:x" is relative to drive C's current directory, and
+    # "name:stream" is an alternate data stream.
+    if len(text) > 512 or text.startswith("/") or "\\" in text or ":" in text:
         _fail(path, "must be a portable relative POSIX reference")
     if any(part in ("", ".", "..") for part in text.split("/")):
         _fail(path, "must not contain empty, dot, or parent components")

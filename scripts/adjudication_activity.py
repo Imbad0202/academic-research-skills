@@ -27,9 +27,10 @@ from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
 try:  # Dual-path import: sibling module on sys.path vs package import.
+    import _anchored_open
     import file_lock
 except ImportError:  # pragma: no cover - package-import path
-    from scripts import file_lock  # type: ignore[no-redef]
+    from scripts import _anchored_open, file_lock  # type: ignore[no-redef]
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -315,17 +316,10 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
         or any(ord(char) < 32 or ord(char) == 127 for char in relative)
     ):
         raise ActivityError("PATH", "unsafe relative artifact path")
-    directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
     opened: list[int] = []
     try:
-        directory_fd = os.open(root, directory_flags)
-        opened.append(directory_fd)
-        for part in pure.parts[:-1]:
-            directory_fd = os.open(part, directory_flags, dir_fd=directory_fd)
-            opened.append(directory_fd)
-        fd = os.open(
-            pure.parts[-1], os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
-            dir_fd=directory_fd,
+        fd = _anchored_open.open_under(
+            root, pure.parts, os.O_RDONLY, nofollow_anchor=True
         )
         opened.append(fd)
         info = os.fstat(fd)
@@ -350,10 +344,19 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
         return b"".join(chunks)
     except ActivityError:
         raise
+    except _anchored_open.PlatformLimitation as exc:
+        raise ActivityError("PATH", str(exc)) from None
+    except _anchored_open.SymlinkRejected:
+        raise ActivityError(
+            "PATH", "symlink or reparse point in artifact path is forbidden"
+        ) from None
     except OSError as exc:
         if exc.errno == errno.ELOOP:
             raise ActivityError("PATH", "symlink artifact path is forbidden") from None
         raise ActivityError("PATH", f"artifact traversal failed: {exc.__class__.__name__}") from None
+    except ValueError:
+        # The helper refuses a component that is not a plain name.
+        raise ActivityError("PATH", "unsafe relative artifact path") from None
     finally:
         for opened_fd in reversed(opened):
             os.close(opened_fd)

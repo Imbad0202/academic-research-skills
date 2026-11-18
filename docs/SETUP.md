@@ -32,7 +32,7 @@ curl -fsSL https://claude.ai/install.sh | bash
 irm https://claude.ai/install.ps1 | iex
 ```
 
-**Platform support.** macOS and Linux are the tested platforms; CI runs on Ubuntu only. Windows is best-effort: the scripts that lock files share one helper (`scripts/file_lock.py`) with an `msvcrt` backend, no Windows CI job exists, and Windows behaviour rests on contributor verification (#843, #845). On Windows, shared read locks degrade to exclusive locks with a short wait, indefinite lock waits are capped at 30 seconds, and the inquiry branch ledger alpha refuses to run.
+**Platform support.** macOS and Linux are the tested platforms; CI runs on Ubuntu only. Windows is best-effort: the scripts that lock files share one helper (`scripts/file_lock.py`) with an `msvcrt` backend, no Windows CI job exists, and Windows behaviour rests on contributor verification (#843, #845). On Windows, shared read locks degrade to exclusive locks with a short wait, indefinite lock waits are capped at 30 seconds, and the inquiry branch ledger alpha refuses to run. Scripts that read an explicit input without following symlinks share one helper (`scripts/_anchored_open.py`, #1092): on POSIX it walks the path by directory descriptor, and on Windows, which has no `dir_fd`, it walks by path and rejects symlinks and reparse points before and after the open. That check is best-effort and not atomic, so a path component swapped during the read can go undetected there.
 
 <details>
 <summary>Alternative: npm install (deprecated)</summary>

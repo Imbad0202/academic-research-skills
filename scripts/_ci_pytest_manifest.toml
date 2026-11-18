@@ -733,6 +733,10 @@ id = "845-shared-file-lock"
 path = "scripts/test_file_lock.py"
 
 [[pytest]]
+id = "1092-anchored-open"
+path = "scripts/test_anchored_open.py"
+
+[[pytest]]
 id = "862-output-language-pair-contract"
 path = "scripts/test_output_language_pair.py"
 

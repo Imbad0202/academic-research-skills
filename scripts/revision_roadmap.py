@@ -28,6 +28,7 @@ from referencing import Registry, Resource
 if __package__ in (None, ""):  # pragma: no cover - direct CLI invocation
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from scripts import _anchored_open
 from scripts._block_parser import (
     BlockParseError,
     ParsedDocument,
@@ -297,25 +298,11 @@ class ArtifactStore:
 
     def _open_relative(self, relative: str, label: str) -> bytes:
         parts = self._parts(relative, label)
-        dir_flags = os.O_RDONLY
-        if hasattr(os, "O_DIRECTORY"):
-            dir_flags |= os.O_DIRECTORY
-        if hasattr(os, "O_NOFOLLOW"):
-            dir_flags |= os.O_NOFOLLOW
-        file_flags = os.O_RDONLY
-        if hasattr(os, "O_NOFOLLOW"):
-            file_flags |= os.O_NOFOLLOW
-        try:
-            current_fd = os.open(self.root, dir_flags)
-        except OSError as exc:  # pragma: no cover - root was validated
-            raise ContractError([f"bundle {label}: cannot open bundle root: {exc}"]) from exc
         file_fd: int | None = None
         try:
-            for part in parts[:-1]:
-                next_fd = os.open(part, dir_flags, dir_fd=current_fd)
-                os.close(current_fd)
-                current_fd = next_fd
-            file_fd = os.open(parts[-1], file_flags, dir_fd=current_fd)
+            file_fd = _anchored_open.open_under(
+                self.root, parts, os.O_RDONLY, nofollow_anchor=True
+            )
             before = os.fstat(file_fd)
             if not stat.S_ISREG(before.st_mode):
                 raise ContractError([f"bundle {label}: artifact is not a regular file"])
@@ -337,14 +324,20 @@ class ArtifactStore:
             if before_fp != after_fp or total != after.st_size:
                 raise ContractError([f"bundle {label}: artifact changed while read"])
             return b"".join(chunks)
+        except ContractError:
+            raise
         except OSError as exc:
             raise ContractError(
                 [f"bundle {label}: cannot open regular no-symlink artifact {relative}: {exc}"]
             ) from exc
+        except ValueError as exc:
+            # A component that is not a plain name, or an embedded NUL.
+            raise ContractError(
+                [f"bundle {label}: artifact path cannot be opened safely {relative!r}: {exc}"]
+            ) from exc
         finally:
             if file_fd is not None:
                 os.close(file_fd)
-            os.close(current_fd)
 
     def read(self, entry: dict, label: str) -> LoadedArtifact:
         relative = entry["path"]
