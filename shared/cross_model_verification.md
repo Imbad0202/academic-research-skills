@@ -234,7 +234,7 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
    - **RANDOM (Stage 2.5 only) — the non-high-impact remainder**, sampled at 10%, rounded up (minimum 3, maximum 10; if the remainder has fewer than 3 references, sample all of it).
    - **NEW-CHANGED (Stage 4.5 only) — verify 100%, no cap:** every reference supporting a claim that is **new or changed** since Stage 2.5, whatever its impact class.
    - **CONTROL (Stage 4.5 only) — the unchanged, non-high-impact remainder**, sampled at 10%, rounded up (minimum 3, maximum 10; fewer than 3 → all of it) to catch silent drift. At Stage 4.5, CONTROL replaces RANDOM — there is no separate RANDOM tier at the final gate.
-   - Cost scales with the count of high-impact (and, at Stage 4.5, new/changed) citations instead of total reference count — a results-dense paper approaches 100% coverage, which is the point: verification budget concentrates where the paper's weight rests. The old flat cap (max 15) is retired; only the sampled tiers (RANDOM/CONTROL) carry a cap (max 10 each).
+   - Cost scales mainly with the count of high-impact (and, at Stage 4.5, new/changed) citations; the total reference count moves only the sampled tier, which is 10% of the remainder (minimum 3, maximum 10) — a results-dense paper approaches 100% coverage, which is the point: verification budget concentrates where the paper's weight rests. The old flat cap (max 15) is retired; only the sampled tiers (RANDOM/CONTROL) carry a cap (max 10 each).
 3. Issue **one API call per reference** — not a batch. (Batching hides which reference the model actually grounded: a single grounding-metadata trace on a 5-reference response proves *something* was searched, not that *each* reference was. One reference per call makes the grounding evidence 1:1 with the verdict.) For each reference, construct a verification prompt:
    ```
    Verify this academic reference. Check: Does it exist? Are the author
@@ -479,7 +479,7 @@ if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   # imply a completed-but-ungrounded lookup.
   echo "CROSS-MODEL-ERROR: openai_http_$http"
 elif ! jq -e -f "$GUARD/openai_has_completed_web_search.jq" <<<"$body" >/dev/null; then
-  echo "NOT_SEARCHED: no_web_search_call"           # no search happened at all — discard the text
+  echo "NOT_SEARCHED: no_web_search_call"           # no completed search the guard can read (none ran, or the body is malformed) — discard the text
 else
   # A completed web_search_call proves *a* search ran, not that THIS reference's verdict
   # is supported by it. Emit the verdict text together with the url_citation annotations the
@@ -492,7 +492,7 @@ fi
 
 ### Google Gemini (Gemini 4 Argon / Gemini 3.1 Pro)
 
-The hosted grounding tool is `google_search` (REST uses snake_case; the JS SDK's `googleSearch` is the same tool). A grounded response carries `candidates[].groundingMetadata`; its absence means the model did not search.
+The hosted grounding tool is `google_search` (REST uses snake_case; the JS SDK's `googleSearch` is the same tool). A grounded response carries `candidates[].groundingMetadata`. Without it the response gives no evidence that a search ran, and the guard below treats it as `NOT_SEARCHED`.
 
 ```bash
 # PROMPT holds the single-reference verification prompt (step 3). One reference per call.
@@ -748,11 +748,11 @@ A further caveat that no threshold absorbs: a candidate with high verbalized eva
 
 ## Cost Considerations
 
-Cross-model verification adds API costs from the second provider:
+Cross-model verification adds API costs from the second provider. The dollar figures below assume that citation calls also use the first-party API (`ARS_CROSS_MODEL_TRANSPORT=api`). With `ARS_CROSS_MODEL_TRANSPORT=codex`, citation calls draw on the ChatGPT subscription and are not billed per API token; the DA and checkpoint calls still use the API.
 
 | Scenario | Additional Calls | Estimated Additional Cost |
 |----------|-----------------|--------------------------|
-| Integrity verification (risk-stratified: HIGH-IMPACT — and at Stage 4.5 NEW-CHANGED — 100% uncapped + sampled remainder, min 3 / max 10; **one call per reference**) | worked example: 60 refs, 12 high-impact → 12 + 5 = 17 calls per gate; Stage 2.5 and Stage 4.5 each run the selection → 34 calls when no non-high-impact reference supports a new or changed claim. Each such reference is a Stage 4.5 NEW-CHANGED call and leaves the CONTROL remainder, so recompute that sample (e.g. 8 of them → 12 + 8 + 4 = 24 calls at Stage 4.5, 41 for both gates). No fixed upper bound — a results-dense paper approaches all references at each gate | ~$2.70-5.90 (the example, both gates; scales linearly with calls) |
+| Integrity verification (risk-stratified: HIGH-IMPACT — and at Stage 4.5 NEW-CHANGED — 100% uncapped + sampled remainder, min 3 / max 10, all of it when fewer than 3; **one call per reference**) | worked example: 60 refs, 12 high-impact → 12 + 5 = 17 calls per gate; Stage 2.5 and Stage 4.5 each run the selection → 34 calls when no non-high-impact reference supports a new or changed claim. Each such reference is a Stage 4.5 NEW-CHANGED call and leaves the CONTROL remainder, so recompute that sample (e.g. 8 of them → 12 + 8 + 4 = 24 calls at Stage 4.5, 41 for both gates). No fixed upper bound — a results-dense paper approaches all references at each gate | ~$2.70-5.90 (the example, both gates; scales linearly with calls) |
 | DA cross-check (1 per checkpoint, 3 checkpoints) | 3 calls | ~$0.30-0.55 |
 | Blind disagreement checkpoints (design freeze + final editorial decision, 1 structured-decision call each; editorial repeats on re-review) | 2-3 calls | ~$0.20-0.55 |
 | **Full pipeline (the worked example)** | **~39-40 calls** | **~$3.20-7.00 — no fixed ceiling; grows with the high-impact / new-changed count** |
