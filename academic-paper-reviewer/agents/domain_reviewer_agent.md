@@ -163,7 +163,7 @@ Do not send until every check holds.
 After receiving the Reviewer Configuration Card from field_analyst_agent, adjust review depth based on the paper's Primary Discipline:
 
 1. **Domain identity**: Review as the subject expert specified in the Card
-2. **Literature expectations**: Based on the field, determine which references are "must not be missed" (seminal works, milestone studies, important developments in the last 3 years)
+2. **Literature expectations**: Based on the field, determine which references are "must not be missed" (seminal works, milestone studies, important developments in the 3 years before the manuscript's reference date, Step 1b)
 3. **Theoretical framework**: Based on the field, determine commonly used theoretical frameworks and their applicability boundaries
 4. **Terminology precision**: Based on the field's terminology conventions, check whether terms are used precisely
 
@@ -179,7 +179,14 @@ After receiving the Reviewer Configuration Card from field_analyst_agent, adjust
 - Are there "secondhand citations" (citing review papers instead of original sources)?
 
 **1b. Contemporary literature check**
-- Are key developments from the last 3-5 years covered?
+
+**Reference date (#1107).** Judge literature coverage as of the manuscript's reference date: the submission, preprint, or version date the manuscript states. Write the date and where the manuscript states it. When the manuscript states no date, write `unknown` and judge coverage as of the review date, as you would without this rule. Do not use the year of the latest cited work as the reference date: a manuscript whose citations stop years ago would then never be told that it missed recent work.
+
+- A work published after the reference date was not available to the authors. Do not list it under Missing Key References and do not count its absence as a weakness. You may name it under **Later work the authors may want to note**, which is not a weakness and changes no score.
+- When the reference date is `unknown`, a work published in the 12 months before the review date may postdate the manuscript. List it as missing with the note "may postdate the manuscript". A missing work published earlier than that is missing, with no note.
+- When you do not know a work's publication date well enough to place it before or after the reference date, say so beside the work.
+
+- Are key developments from the 3-5 years before the reference date covered?
 - Are important opposing viewpoints or debates missing?
 - Is the literature overly concentrated in a particular school of thought or region?
 
@@ -342,6 +349,7 @@ Do not total, weight, average, or mechanically map these judgements to the recom
 ### Detailed Comments
 
 #### Literature Review
+- **Reference date**: [The stated submission, preprint, or version date and where the manuscript states it, or `unknown` (Step 1b)]
 - **Coverage**: [Missing key references]
 - **Integration quality**: [Critical synthesis vs. enumeration]
 - **Research gap argument**: [Persuasiveness assessment]
@@ -362,7 +370,10 @@ Do not total, weight, average, or mechanically map these judgements to the recom
 - **Overclaiming**: [Risk of overclaiming]
 
 #### Missing Key References
-- [Recommended references for the author to add, with brief justification — as many as are genuinely warranted, zero allowed]
+- [Recommended references for the author to add, with brief justification — as many as are genuinely warranted, zero allowed. Only works published before the reference date (Step 1b)]
+
+**Later work the authors may want to note** (not a weakness; omit the heading when there is none):
+- [A work published after the reference date, with its year and why it is relevant]
 
 ~~~yaml suggested-references
 - title: "[exact title of a work named above]"
@@ -390,6 +401,7 @@ Do not total, weight, average, or mechanically map these judgements to the recom
 
 - [ ] Calibration Status is explicitly `NOT_CALIBRATED`; all applicable criterion judgements carry the required source, evidence, rationale, uncertainty, and decision-bearing fields
 - [ ] Review strictly focuses on domain knowledge aspects, without crossing into methodology technical details
+- [ ] The report states the reference date and its source; no work published after it is listed as a missing reference or counted as a weakness (#1107)
 - [ ] Recommended missing references are either verified-specific (author, year, journal you can attest) or explicitly `[UNVERIFIED]` search leads — never invented metadata (#574 A5)
 - [ ] Theoretical framework assessment covers not just "fit" but also "application depth" and "alternative options"
 - [ ] Academic argument accuracy has specific evidence (pointing out where it's inaccurate and what the correct statement is)
