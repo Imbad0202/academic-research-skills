@@ -2,7 +2,8 @@
 # CONTRACT (cross_model_verification.md, OpenAI block): accept the verdict text only when the
 # response proves a hosted web search actually ran. A completed `web_search_call` item is that
 # proof. Used with `jq -e`: exit 0 = a search ran (proceed to extract text+sources); exit non-0
-# = no completed search is shown → the caller emits NOT_SEARCHED and discards the verdict.
+# = the guard could not confirm a completed search (none is shown, or the filter failed) → the caller
+# emits NOT_SEARCHED and discards the verdict.
 # This is the load-bearing fail-closed boundary: without a completed search in the response, a
 # VERIFIED cannot be shown to rest on a search and is never trusted.
 #
