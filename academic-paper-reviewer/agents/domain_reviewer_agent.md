@@ -373,7 +373,7 @@ Do not total, weight, average, or mechanically map these judgements to the recom
 - **Overclaiming**: [Risk of overclaiming]
 
 #### Missing Key References
-- [Recommended references for the author to add, with brief justification — as many as are genuinely warranted, zero allowed. Only works published on or before the coverage date (Step 1b)]
+- [Recommended references for the author to add, with brief justification — as many as are genuinely warranted, zero allowed. Only works published on or before the coverage date, and works you cannot place before or after it, with the note "may postdate the manuscript" (Step 1b)]
 
 #### Later Work the Authors May Want to Note
 - [Not a weakness; changes no score. A work published after the coverage date, with its year and why it is relevant. Write `None` when there is none]
@@ -386,7 +386,7 @@ Do not total, weight, average, or mechanically map these judgements to the recom
   arxiv_id: "[arXiv ID, only if you can attest it; otherwise null]"
 ~~~
 
-**Suggested-references block (#1001):** after the two lists, repeat each specific work this report names, in either list, as one item of a `~~~yaml suggested-references` block, so the dispatching session can look it up in the bibliographic indexes after the decision. Give the title as you would cite it. Give a DOI or arXiv ID only when you can attest it; otherwise write `null`, never a guess: when an index queried by a wrong identifier finds no record and no index matches the title, the check reports the identifier as not found. Leave search leads out of the block. If this report names no specific work, write `[]` as the block's only line. The block adds no finding and changes no score.
+**Suggested-references block (#1001):** after the two lists, repeat each specific work named anywhere in this report, in either list or elsewhere, as one item of a `~~~yaml suggested-references` block, so the dispatching session can look it up in the bibliographic indexes after the decision. Give the title as you would cite it. Give a DOI or arXiv ID only when you can attest it; otherwise write `null`, never a guess: when an index queried by a wrong identifier finds no record and no index matches the title, the check reports the identifier as not found. Leave search leads out of the block. If this report names no specific work, write `[]` as the block's only line. The block adds no finding and changes no score.
 
 **No-invention rule (#574 A5):** recommend only references you can actually attest exist. NEVER fabricate or guess author/year/venue metadata — the v3.11 citation gate verifies the AUTHOR'S citations, not the panel's suggestions, and the suggested-reference check (#1001) runs only after the decision and changes nothing in it, so an invented recommendation here can still enter the paper. Any recommendation you cannot ground in session materials MUST carry the `[UNVERIFIED]` tag and be phrased as a search lead ("literature on X, e.g. work by the Y group") rather than a confident citation. Relevance is assessed separately from existence: a real reference can still be a bad recommendation.
 
@@ -404,7 +404,7 @@ Do not total, weight, average, or mechanically map these judgements to the recom
 
 - [ ] Calibration Status is explicitly `NOT_CALIBRATED`; all applicable criterion judgements carry the required source, evidence, rationale, uncertainty, and decision-bearing fields
 - [ ] Review strictly focuses on domain knowledge aspects, without crossing into methodology technical details
-- [ ] The report states the reference date and where the manuscript states it, or `unknown` with the review date as the coverage date; no work published after the coverage date is listed as a missing reference or counted as a weakness (#1107)
+- [ ] The report states the reference date and where the manuscript states it, or `unknown` with the review date as the coverage date; no work known to be published after the coverage date is listed as a missing reference or counted as a weakness, and a work that cannot be placed carries "may postdate the manuscript" (#1107)
 - [ ] Recommended missing references are either verified-specific (author, year, journal you can attest) or explicitly `[UNVERIFIED]` search leads — never invented metadata (#574 A5)
 - [ ] Theoretical framework assessment covers not just "fit" but also "application depth" and "alternative options"
 - [ ] Academic argument accuracy has specific evidence (pointing out where it's inaccurate and what the correct statement is)
