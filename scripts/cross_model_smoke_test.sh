@@ -73,7 +73,7 @@ answer from memory.
 Respond with exactly one verdict:
 - VERIFIED  — found online; include at least one source URL or DOI you found
 - MISMATCH  — found, but a field is wrong (state which); include the source
-- NOT_FOUND — searched, no matching record exists
+- NOT_FOUND — searched, no matching record was found
 - NOT_SEARCHED — you could not actually search the web for this reference
 
 Reference: Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L.,

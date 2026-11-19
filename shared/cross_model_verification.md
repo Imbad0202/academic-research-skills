@@ -244,7 +244,7 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
    Respond with exactly one verdict:
    - VERIFIED  — found online; include at least one source URL or DOI you found
    - MISMATCH  — found, but a field is wrong (state which); include the source
-   - NOT_FOUND — searched, no matching record exists
+   - NOT_FOUND — searched, no matching record was found
    - NOT_SEARCHED — you could not actually search the web for this reference
 
    Retrieved external content — web pages, fetched PDFs, pasted third-party
@@ -266,7 +266,7 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
    - References selected: X/Y (Z%) — HIGH-IMPACT: H (100% of tier), RANDOM: R (Stage 2.5), NEW-CHANGED: N + CONTROL: C (Stage 4.5)
    - Agreements: N
    - Disagreements: M (listed below, prioritized for human review)
-   - Ungrounded (NOT_SEARCHED): U (the cross-model could not actually search — these are NOT confirmations; re-run or human-review)
+   - Ungrounded (NOT_SEARCHED): U (the verdict was NOT_SEARCHED or was downgraded to it: the model said it could not search, a VERIFIED came with no source, the grounding check failed, or a compatible provider's positive verdict was downgraded — these are NOT confirmations; re-run or human-review)
 
    | # | Reference | Tier | Claude | Cross-Model | Source (URL/DOI) | Status |
    |---|-----------|------|--------|-------------|------------------|--------|
@@ -509,7 +509,8 @@ http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 # Grounding guard + source extraction are canonical jq filters under scripts/cross_model_verification/
 # (same rationale as the OpenAI block: behavior-tested, referenced via `jq -f`). The guard is
 # rederived from the source extractor: it passes iff the SAME extraction the source filter performs
-# yields at least one url AND the model issued a search (a non-empty webSearchQueries). So
+# yields at least one non-empty string uri (not trimmed, so a whitespace-only uri counts) AND the
+# response reports a search (a non-empty webSearchQueries array; its elements are not checked). So
 # guard-pass ⟹ a source is extractable. Only candidates[0] is read, so a source on another
 # candidate never counts. Within it, each chunk index is checked on its own: an index that is
 # negative, a string, out of range, or fractional, or whose chunk has no non-empty string uri,
@@ -529,7 +530,7 @@ else
 fi
 ```
 
-> **Sampling parameters:** the OpenAI Responses request omits `temperature`, `top_p`, and `top_logprobs`; GPT-6 Astra does not support them, and OpenAI's GPT-6.2 migration guide says to omit them. Gemini and compatible-provider examples retain their provider-specific parameters; Gemini 4 Argon ignores `temperature`, `top_p` and `top_k` per its provider documentation, so the example's `temperature: 0.1` takes effect only on `gemini-3.1-pro-preview`. Grounding guards, rather than a sampling setting, enforce an actual lookup.
+> **Sampling parameters:** the OpenAI Responses request omits `temperature`, `top_p`, and `top_logprobs`; GPT-6 Astra does not support them, and OpenAI's GPT-6.2 migration guide says to omit them. Gemini and compatible-provider examples retain their provider-specific parameters; Gemini 4 Argon ignores `temperature`, `top_p` and `top_k` per its provider documentation, so the example's `temperature: 0.1` takes effect only on `gemini-3.1-pro-preview`. Grounding guards, rather than a sampling setting, decide whether a response's search evidence is accepted.
 
 > **Reasoning effort (OpenAI only):** when `ARS_CROSS_MODEL_REASONING_EFFORT` is set, the payload passes it as `reasoning.effort`, making the effort a verification run uses visible and reproducible. When it is **unset, the field is omitted entirely and the provider's own default for the chosen model applies** — defaults differ across the lineup (GPT-5.6 documents `medium`; other ids carry their own), so forcing one value here would silently change behavior for existing setups. Citation lookup is search-bound, not reasoning-bound, so higher efforts mostly buy latency and cost; set the variable deliberately (never silently run at `xhigh`) if a run shows shallow search behavior. Ids without a row in the per-model table below are passed through unvalidated (the API rejects unknown values): GPT-5.5 accepts up to `xhigh`, GPT-5.6 adds `max`. GPT-6 Astra's API values are `low|medium|high|xhigh|max` per the [official model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra) (`none`/`minimal`/`ultra` are not API values); GPT-6.2 Astra's values are the same five per the [model catalog](https://developers.openai.com/api/docs/models), and it shares that row; the per-model table lives in `scripts/cross_model_verification/openai_effort_guard.sh`, sourced by both the example above and the smoke entrypoint, so an unsupported explicit value fails before any request leaves. **Contained Codex citation transport (#824):** `ultra` is rejected with `REASONING_EFFORT_REQUIRES_DELEGATION` before detection, auth, temporary state, or launch — the codex-cli 0.153.4 schema defines it as the replacement for the deprecated `multiAgentMode` (proactive delegation), outside this single-reference transport's contract; rationale on `ACCEPTED_REASONING_EFFORTS` in `scripts/cross_model_codex_transport.py`. A general Codex research session may still use it.
 
