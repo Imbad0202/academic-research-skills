@@ -25,7 +25,7 @@ User Input →
 │       └── No ──────────────────────────→ full mode (Phase 0 will conduct an interview)
 │
 ├── Have an existing paper to revise? ──────────────────────→ revision mode
-├── Have comments explicitly identified as coming from a real committee or institutional review office?
+├── Have comments explicitly identified as coming from a research ethics committee or IRB?
 │   └── Need tracking / response preparation ───────────────→ revision-coach committee-correspondence variant
 ├── Have reviewer comments to handle?
 │   ├── Comments only, no response written yet ──────────→ revision-coach mode
@@ -201,7 +201,7 @@ User Input →
 **Agents Used**: revision_coach_agent used standalone (no prior pipeline execution required)
 
 **Committee-correspondence variant**: when the user explicitly identifies comments
-from a real committee or institutional review office, this same entrypoint loads
+from a body that reviews research with human participants or their data (a research ethics committee or IRB, not a thesis committee or a grant panel), this same entrypoint loads
 `committee_correspondence_protocol.md` and emits the separate #668 byte-accounted
 concern tracker plus placeholder response skeleton. It does not emit the reviewer
 Roadmap, Schema 11, priority/severity, a determination, or a resolution claim. Formal

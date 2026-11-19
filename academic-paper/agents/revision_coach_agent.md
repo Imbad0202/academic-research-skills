@@ -54,9 +54,9 @@ Authoritative source: `shared/ground_truth_isolation_pattern.md` § 2A.
 
 ## Committee-Correspondence Variant (#668)
 
-When the user explicitly identifies the source as a real committee or institutional
-review office and asks for tracking or response preparation, stop the normal
-peer-review pipeline below and load
+When the user explicitly identifies the source as a body that reviews research with
+human participants or their data and asks for tracking or response preparation, stop
+the normal peer-review pipeline below and load
 `references/committee_correspondence_protocol.md`. That protocol owns the distinct
 `committee-correspondence/1.0` concern tracker, raw-letter preservation, complete
 source segmentation, response skeleton, #665 boundary, and deterministic checker.
@@ -64,7 +64,15 @@ source segmentation, response skeleton, #665 boundary, and deterministic checker
 Do not infer committee authority from tone or vocabulary. Journal or conference
 reviewers, editors, area chairs, and program committees are peer review, not a
 committee for this variant, even when the user names the venue or the venue calls
-the role a committee (#854). This variant never emits
+the role a committee (#854).
+This variant covers only comments from a body that reviews research with human
+participants or their data, such as a research ethics committee, an institutional
+review board (IRB), or a human research ethics office; a thesis or dissertation
+committee and a grant or funding panel are not such a body, so their comments take
+normal `revision-coach` (#907). Before taking this branch, quote the user's own
+words that name the body; a body that the user's own words do not name does not take
+this branch (#907).
+This variant never emits
 Schema 11, reviewer severity/obligation fields, a peer-review Revision Roadmap, or a claim of
 resolution/authorization. If the user did not identify the source authority, confirm
 the source before selecting this branch.

@@ -1,8 +1,7 @@
 # Committee Correspondence Protocol (#668)
 
 This is the `committee-correspondence` variant of `academic-paper`
-`revision-coach`. It structures comments already returned by a real committee or
-institutional review office. It never simulates a committee, predicts satisfaction,
+`revision-coach`. It structures comments already returned by a body that reviews research with human participants or their data. It never simulates a committee, predicts satisfaction,
 or makes a human-subjects determination.
 
 Canonical schema:
@@ -15,14 +14,22 @@ Design authority:
 ## Activation gate
 
 Use this variant only when the user explicitly identifies the input as comments or
-a letter from a real committee/institutional review office and asks for tracking,
-response preparation, or resubmission organization. Do not infer official authority
+a letter from a body that reviews research with human participants or their data
+and asks for tracking, response preparation, or resubmission organization. Do not infer official authority
 from formal tone, letterhead-like prose, words such as “required,” or a file name.
 
 If the source is ordinary manuscript peer review, use normal `revision-coach`.
 Journal or conference reviewers, editors, area chairs, and program committees are
 peer review, even when the user names the venue or the venue calls the role a
-committee (#854). If the source identity is uncertain, ask the user to identify it
+committee (#854).
+This variant covers only comments from a body that reviews research with human
+participants or their data, such as a research ethics committee, an institutional
+review board (IRB), or a human research ethics office; a thesis or dissertation
+committee and a grant or funding panel are not such a body, so their comments take
+normal `revision-coach` (#907). Before taking this branch, quote the user's own
+words that name the body; a body that the user's own words do not name does not take
+this branch (#907).
+If the source identity is uncertain, ask the user to identify it
 before choosing the variant. V1 accepts UTF-8 letter text. For a binary PDF/DOCX,
 retain the user’s original file outside this bundle and obtain a UTF-8
 export/transcription; label that textual source honestly rather than claiming byte

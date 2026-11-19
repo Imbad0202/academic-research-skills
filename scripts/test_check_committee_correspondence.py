@@ -108,6 +108,30 @@ def test_peer_review_exclusion_sentence_is_whole(relative: str, extra: str) -> N
     assert _PEER_REVIEW_EXCLUSION.format(extra=extra) in text
 
 
+_SCOPE_SENTENCES = (
+    "This variant covers only comments from a body that reviews research with human "
+    "participants or their data, such as a research ethics committee, an institutional "
+    "review board (IRB), or a human research ethics office; a thesis or dissertation "
+    "committee and a grant or funding panel are not such a body, so their comments take "
+    "normal `revision-coach` (#907).",
+    "Before taking this branch, quote the user's own words that name the body; a body "
+    "that the user's own words do not name does not take this branch (#907).",
+)
+
+
+@pytest.mark.parametrize("relative", [
+    ".claude/CLAUDE.md",
+    "academic-paper/agents/revision_coach_agent.md",
+    "academic-paper/SKILL.md",
+    "academic-paper/references/committee_correspondence_protocol.md",
+])
+@pytest.mark.parametrize("sentence", _SCOPE_SENTENCES)
+def test_scope_and_quote_sentences_are_whole(relative: str, sentence: str) -> None:
+    # #907: the variant is scoped by the human-subjects determination its outputs
+    # assume, and the model quotes the user's words that name the body.
+    text = " ".join((REPO_ROOT / relative).read_text(encoding="utf-8").split())
+    assert sentence in text
+
 _GRADER = REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-committee-branch.md"
 _GRADER_FLAGS = [
     "## 1. Source preservation",  # heading shapes of the two #853 misroutes
