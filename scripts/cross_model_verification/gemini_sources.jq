@@ -11,7 +11,8 @@
 # The `select(type=="number" and . == floor and . >= 0 and . < ($chunks|length))` admits only
 # valid in-range non-negative integer indices; anything else is dropped, one index at a time, so a
 # malformed index never yields a fabricated source or a crash. SOURCES is blank (→ NOT_SEARCHED)
-# only when no index yields a uri; one valid index elsewhere still yields its source.
+# only when no index yields a uri; another index still yields a source if its chunk has a
+# non-empty string web.uri.
 #
 # Every container is normalized to an array first (`arr/1`): `length` and `$chunks[.]` are only
 # meaningful on arrays, and a malformed groundingChunks/groundingSupports arriving as a string or
