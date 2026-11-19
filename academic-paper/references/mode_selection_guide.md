@@ -200,8 +200,7 @@ User Input →
 **Expected Duration**: Short-Medium
 **Agents Used**: revision_coach_agent used standalone (no prior pipeline execution required)
 
-**Committee-correspondence variant**: when the user explicitly says
-the comments come from a research ethics committee, an institutional review board (IRB), or another body that reviews research for research ethics or human-subjects protection, this same entrypoint loads
+**Committee-correspondence variant**: when the user says, or the pasted text shows, that the comments may come from a research ethics or human-subjects protection review (for example, from a research ethics committee or an institutional review board (IRB)), this same entrypoint loads
 `committee_correspondence_protocol.md`. The Activation gate in `committee_correspondence_protocol.md` decides which comments this variant covers and what to quote from the user before taking it; comments that the gate excludes take normal `revision-coach` (#907). When the variant applies, it emits the separate #668 byte-accounted
 concern tracker plus placeholder response skeleton. It does not emit the reviewer
 Roadmap, Schema 11, priority/severity, a determination, or a resolution claim. Formal

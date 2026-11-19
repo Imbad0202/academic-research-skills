@@ -378,8 +378,7 @@ See `references/mode_selection_guide.md` for details.
 
 Not sure? Start with `plan` — it will guide you step by step. `disclosure` is a finishing step — run it after the paper is drafted, targeting the venue you plan to submit to.
 
-**Committee-correspondence routing:** when the user explicitly says
-the comments come from a research ethics committee, an institutional review board (IRB), or another body that reviews research for research ethics or human-subjects protection, load
+**Committee-correspondence routing:** when the user says, or the pasted text shows, that the comments may come from a research ethics or human-subjects protection review (for example, from a research ethics committee or an institutional review board (IRB)), load
 `references/committee_correspondence_protocol.md`; do not infer official authority
 from tone. Journal or conference reviewers, editors, area chairs, and program
 committees are peer review, not a committee for this variant, even when the user

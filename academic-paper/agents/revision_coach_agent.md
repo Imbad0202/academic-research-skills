@@ -54,7 +54,7 @@ Authoritative source: `shared/ground_truth_isolation_pattern.md` § 2A.
 
 ## Committee-Correspondence Variant (#668)
 
-When the user explicitly says the comments come from a research ethics committee, an institutional review board (IRB), or another body that reviews research for research ethics or human-subjects protection, and asks for tracking or response preparation, load
+When the user says, or the pasted text shows, that the comments may come from a research ethics or human-subjects protection review (for example, from a research ethics committee or an institutional review board (IRB)), and asks for tracking, response preparation, or resubmission organization, load
 `references/committee_correspondence_protocol.md` and apply its Activation gate. If the gate takes
 the variant, stop the normal peer-review pipeline below. That protocol owns the distinct
 `committee-correspondence/1.0` concern tracker, raw-letter preservation, complete
@@ -67,8 +67,8 @@ the role a committee (#854).
 The Activation gate in `committee_correspondence_protocol.md` decides which comments this variant covers and what to quote from the user before taking it; comments that the gate excludes take normal `revision-coach` (#907).
 This variant never emits
 Schema 11, reviewer severity/obligation fields, a peer-review Revision Roadmap, or a claim of
-resolution/authorization. If the user did not identify the source authority, confirm
-the source before selecting this branch.
+resolution/authorization. If the user did not identify the source authority, ask as the
+Activation gate says before selecting this branch.
 
 ---
 

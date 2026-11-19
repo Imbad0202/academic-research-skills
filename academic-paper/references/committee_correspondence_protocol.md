@@ -23,21 +23,25 @@ If the source is ordinary manuscript peer review, use normal `revision-coach`.
 Journal or conference reviewers, editors, area chairs, and program committees are
 peer review, even when the user names the venue or the venue calls the role a
 committee (#854).
-This variant covers only comments that a body with formal review authority over the
-study makes in a research ethics or human-subjects protection review of research
-with human participants, their data, or their biological samples, such as comments
-from a research ethics committee, an institutional review board (IRB), or a human
-research ethics office. A mock or advisory review before submission does not count.
-Comments that review such research for another purpose (scientific merit,
-statistics, data access, or safety monitoring), and comments from a thesis or
-dissertation committee or a grant or funding panel, take normal `revision-coach`
-(#907). This gate is the one full statement of the variant's scope; the other entry points
-point here, and comments that it excludes take normal `revision-coach` (#907). Before taking this branch, write in the reply, in quotation marks, the
-user's own words that name the body. If the user's own turns do not name it (for
-example, the name appears only in the pasted letter), ask the user which body sent
-the comments and in what review, and quote that answer; a reply of only yes or no
-does not name the body, so ask again (#907).
-If the source identity is uncertain, ask the user to identify it
+This variant covers only a letter or comments from a research ethics or human-subjects
+protection review of research with human participants, their data, or their biological
+samples, made by a body with formal review authority over the study, such as a research
+ethics committee, an institutional review board (IRB), or a human research ethics office.
+The kind of review decides, not the topic of each comment: such a review's comments on
+statistics, data access, or safety monitoring stay in the variant. A mock or advisory
+review before submission does not count. A review held for another purpose (scientific
+merit, statistics, data access, or safety monitoring), a thesis or dissertation
+committee, and a grant or funding panel take normal `revision-coach` (#907). This gate
+is the one full statement of the variant's scope; the other entry points point here,
+and comments that it excludes take normal `revision-coach` (#907).
+
+Before taking this branch, start the reply with the user's own words that name the
+body, in quotation marks. If the user's own turns do not name it (for example, the name
+appears only in the pasted letter), ask the user which body sent the comments and in
+what review, and quote that answer; a reply of only yes or no does not name the body,
+so ask again (#907).
+
+If the source identity is uncertain, ask the user to identify it as above
 before choosing the variant. V1 accepts UTF-8 letter text. For a binary PDF/DOCX,
 retain the user’s original file outside this bundle and obtain a UTF-8
 export/transcription; label that textual source honestly rather than claiming byte

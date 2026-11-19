@@ -109,8 +109,8 @@ def test_peer_review_exclusion_sentence_is_whole(relative: str, extra: str) -> N
 
 
 _SCOPE_SENTENCES = (
-    'This variant covers only comments that a body with formal review authority over the study makes in a research ethics or human-subjects protection review of research with human participants, their data, or their biological samples, such as comments from a research ethics committee, an institutional review board (IRB), or a human research ethics office. A mock or advisory review before submission does not count. Comments that review such research for another purpose (scientific merit, statistics, data access, or safety monitoring), and comments from a thesis or dissertation committee or a grant or funding panel, take normal `revision-coach` (#907).',
-    "Before taking this branch, write in the reply, in quotation marks, the user's own words that name the body. If the user's own turns do not name it (for example, the name appears only in the pasted letter), ask the user which body sent the comments and in what review, and quote that answer; a reply of only yes or no does not name the body, so ask again (#907).",
+    "This variant covers only a letter or comments from a research ethics or human-subjects protection review of research with human participants, their data, or their biological samples, made by a body with formal review authority over the study, such as a research ethics committee, an institutional review board (IRB), or a human research ethics office. The kind of review decides, not the topic of each comment: such a review's comments on statistics, data access, or safety monitoring stay in the variant. A mock or advisory review before submission does not count. A review held for another purpose (scientific merit, statistics, data access, or safety monitoring), a thesis or dissertation committee, and a grant or funding panel take normal `revision-coach` (#907).",
+    "Before taking this branch, start the reply with the user's own words that name the body, in quotation marks. If the user's own turns do not name it (for example, the name appears only in the pasted letter), ask the user which body sent the comments and in what review, and quote that answer; a reply of only yes or no does not name the body, so ask again (#907).",
 )
 
 
@@ -133,8 +133,14 @@ def _flat(relative: str) -> str:
 @pytest.mark.parametrize("sentence", _SCOPE_SENTENCES)
 def test_scope_and_quote_sentences_are_whole_in_the_gate(sentence: str) -> None:
     # #907: the protocol's Activation gate is the one full statement of the scope
-    # and of the quote rule.
-    assert sentence in _flat(_SCOPE_HOME)
+    # and of the quote rule; the check reads only that section.
+    text = (REPO_ROOT / _SCOPE_HOME).read_text(encoding="utf-8")
+    start = text.index("\n## Activation gate\n")
+    end = text.index("\n## ", start + 1)
+    gate = " ".join(text[start:end].split())
+    rest = " ".join((text[:start] + text[end:]).split())
+    assert sentence in gate
+    assert sentence[:60] not in rest
 
 
 @pytest.mark.parametrize("relative", _SCOPE_POINTER_FILES)
