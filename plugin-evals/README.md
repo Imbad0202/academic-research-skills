@@ -154,9 +154,14 @@ research rather than the kind of review. Both rules were rewritten, and the
 protocol's Required interaction now starts the reply with the quote. None of the
 runs above used the final text. The grader text was also changed after the case
 03 run: it quotes the shortest violating part (a heading or a table cell counts),
-it no longer exempts a sentence only because it quotes the user, and a statement
-about the venue's program committee is not a violation. Calibration of the final
-grader text is recorded in the CHANGELOG entry for #907.
+it no longer exempts a sentence only because it quotes the user, a statement
+that only describes the venue's program committee or its rules is not a
+violation (a claim that the user named the program committee, or any
+committee, as the source still is), and a question that assumes the user named
+a committee is a violation. A later rewrite put the full scope and quote rules
+in one place, the protocol's Activation gate; the other entry points now point
+to it. Calibration of the final grader text is recorded in the CHANGELOG entry
+for #907.
 
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 

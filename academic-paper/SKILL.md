@@ -140,7 +140,7 @@ Activate `plan` mode when the user wants guidance, step-by-step planning, or exp
 | 9 | `formatter_agent` | Convert to LaTeX/DOCX (via Pandoc)/PDF/Markdown, journal formatting, cover letter, citation format conversion (APA 7 / Chicago / MLA / IEEE / Vancouver) | Phase 7 |
 | 10 | `socratic_mentor_agent` | Plan mode Socratic mentor: chapter-by-chapter guidance, convergence criteria (4 signals), question taxonomy (4 types), INSIGHT extraction | Plan Step 0-3 |
 | 11 | `visualization_agent` | Parse paper data and generate publication-quality figure code (Python matplotlib / R ggplot2) with APA 7.0 formatting, colorblind-safe palettes, and LaTeX integration | Phase 4 / Phase 7 |
-| 12 | `revision_coach_agent` | Parse unstructured reviewer comments into a Revision Roadmap, or explicitly identified comments made in a formal research ethics or human-subjects protection review of the study (such as from a research ethics committee, an IRB, or a human research ethics office) into the separate #668 source-accounted concern tracker; works standalone | Revision-Coach mode |
+| 12 | `revision_coach_agent` | Parse unstructured reviewer comments into a Revision Roadmap, or explicitly identified research-ethics review comments (the protocol's Activation gate decides which) into the separate #668 source-accounted concern tracker; works standalone | Revision-Coach mode |
 
 ---
 
@@ -366,7 +366,7 @@ See `references/mode_selection_guide.md` for details.
 | Just need an outline | `outline-only` | balanced |
 | Have a draft, received review feedback | `revision` | fidelity |
 | Have unstructured reviewer comments | `revision-coach` | balanced |
-| Have comments made in a formal research ethics or human-subjects protection review of the study (such as from a research ethics committee, an IRB, or a human research ethics office) to track | `revision-coach` committee-correspondence variant | fidelity |
+| Have research-ethics review comments to track (the protocol's Activation gate decides which) | `revision-coach` committee-correspondence variant | fidelity |
 | Just need an abstract | `abstract-only` | fidelity |
 | Need to check/fix citations | `citation-check` | fidelity |
 | Need to convert format (LaTeX, DOCX) or citation style | `format-convert` | fidelity |
@@ -378,25 +378,13 @@ See `references/mode_selection_guide.md` for details.
 
 Not sure? Start with `plan` — it will guide you step by step. `disclosure` is a finishing step — run it after the paper is drafted, targeting the venue you plan to submit to.
 
-**Committee-correspondence routing:** use the `revision-coach` variant only when the
-user explicitly identifies a body that reviews research with human participants or their data for research ethics or human-subjects protection. Load
+**Committee-correspondence routing:** when the user explicitly says
+the comments come from a research ethics committee, an institutional review board (IRB), or another body that reviews research for research ethics or human-subjects protection, load
 `references/committee_correspondence_protocol.md`; do not infer official authority
 from tone. Journal or conference reviewers, editors, area chairs, and program
 committees are peer review, not a committee for this variant, even when the user
 names the venue or the venue calls the role a committee (#854).
-This variant covers only comments that a body with formal review authority over the
-study makes in a research ethics or human-subjects protection review of research
-with human participants, their data, or their biological samples, such as comments
-from a research ethics committee, an institutional review board (IRB), or a human
-research ethics office. A mock or advisory review before submission does not count.
-Comments that review such research for another purpose (scientific merit,
-statistics, data access, or safety monitoring), and comments from a thesis or
-dissertation committee or a grant or funding panel, take normal `revision-coach`
-(#907). Before taking this branch, write in the reply, in quotation marks, the
-user's own words that name the body. If the user's own turns do not name it (for
-example, the name appears only in the pasted letter), ask the user which body sent
-the comments and in what review, and quote that answer; a reply of only yes or no
-does not name the body, so ask again (#907). The separate
+The Activation gate in `committee_correspondence_protocol.md` decides which comments this variant covers and what to quote from the user before taking it; comments that the gate excludes take normal `revision-coach` (#907). The separate
 artifact is a source-accounted drafting aid and never enters peer-review Schema 11.
 
 The canonical copy of the block below is `shared/references/review_form_note.md`; `scripts/check_review_form_note_sync.py` keeps this copy identical to it.

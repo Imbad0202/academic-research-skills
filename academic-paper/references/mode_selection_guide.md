@@ -25,7 +25,7 @@ User Input →
 │       └── No ──────────────────────────→ full mode (Phase 0 will conduct an interview)
 │
 ├── Have an existing paper to revise? ──────────────────────→ revision mode
-├── Have comments explicitly identified as as made in a formal research ethics or human-subjects protection review of the study (such as from a research ethics committee, an IRB, or a human research ethics office)?
+├── Have comments explicitly identified as coming from a research ethics review (the protocol's Activation gate decides which)?
 │   └── Need tracking / response preparation ───────────────→ revision-coach committee-correspondence variant
 ├── Have reviewer comments to handle?
 │   ├── Comments only, no response written yet ──────────→ revision-coach mode
@@ -200,9 +200,9 @@ User Input →
 **Expected Duration**: Short-Medium
 **Agents Used**: revision_coach_agent used standalone (no prior pipeline execution required)
 
-**Committee-correspondence variant**: when the user explicitly identifies comments
-from a body that reviews research with human participants or their data for research ethics or human-subjects protection (such as a research ethics committee, an IRB, or a human research ethics office; not a scientific, statistical, data-access, or safety review, a thesis committee, or a grant panel), this same entrypoint loads
-`committee_correspondence_protocol.md` and emits the separate #668 byte-accounted
+**Committee-correspondence variant**: when the user explicitly says
+the comments come from a research ethics committee, an institutional review board (IRB), or another body that reviews research for research ethics or human-subjects protection, this same entrypoint loads
+`committee_correspondence_protocol.md`. The Activation gate in `committee_correspondence_protocol.md` decides which comments this variant covers and what to quote from the user before taking it; comments that the gate excludes take normal `revision-coach` (#907). When the variant applies, it emits the separate #668 byte-accounted
 concern tracker plus placeholder response skeleton. It does not emit the reviewer
 Roadmap, Schema 11, priority/severity, a determination, or a resolution claim. Formal
 tone alone never activates the variant.

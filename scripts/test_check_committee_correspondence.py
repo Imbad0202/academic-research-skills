@@ -114,18 +114,38 @@ _SCOPE_SENTENCES = (
 )
 
 
-@pytest.mark.parametrize("relative", [
+_SCOPE_HOME = "academic-paper/references/committee_correspondence_protocol.md"
+_SCOPE_POINTER = (
+    "The Activation gate in `committee_correspondence_protocol.md` decides which comments this variant covers and what to quote from the user before taking it; comments that the gate excludes take normal `revision-coach` (#907)."
+)
+_SCOPE_POINTER_FILES = [
     ".claude/CLAUDE.md",
     "academic-paper/agents/revision_coach_agent.md",
     "academic-paper/SKILL.md",
-    "academic-paper/references/committee_correspondence_protocol.md",
-])
+    "academic-paper/references/mode_selection_guide.md",
+]
+
+
+def _flat(relative: str) -> str:
+    return " ".join((REPO_ROOT / relative).read_text(encoding="utf-8").split())
+
+
 @pytest.mark.parametrize("sentence", _SCOPE_SENTENCES)
-def test_scope_and_quote_sentences_are_whole(relative: str, sentence: str) -> None:
-    # #907: the variant is scoped by the human-subjects determination its outputs
-    # assume, and the model quotes the user's words that name the body.
-    text = " ".join((REPO_ROOT / relative).read_text(encoding="utf-8").split())
-    assert sentence in text
+def test_scope_and_quote_sentences_are_whole_in_the_gate(sentence: str) -> None:
+    # #907: the protocol's Activation gate is the one full statement of the scope
+    # and of the quote rule.
+    assert sentence in _flat(_SCOPE_HOME)
+
+
+@pytest.mark.parametrize("relative", _SCOPE_POINTER_FILES)
+def test_entry_points_point_to_the_gate(relative: str) -> None:
+    # #907: the other entry points carry a pointer, not a copy, so the copies
+    # cannot drift from the gate.
+    text = _flat(relative)
+    assert _SCOPE_POINTER in text
+    for sentence in _SCOPE_SENTENCES:
+        assert sentence[:60] not in text
+
 
 _GRADER = REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-committee-branch.md"
 _GRADER_FLAGS = [

@@ -1,7 +1,8 @@
 # Committee Correspondence Protocol (#668)
 
 This is the `committee-correspondence` variant of `academic-paper`
-`revision-coach`. It structures comments already returned by a body that reviews research with human participants or their data for research ethics or human-subjects protection. It never simulates a committee, predicts satisfaction,
+`revision-coach`. It structures comments already returned in a research ethics or human-subjects protection
+review that the Activation gate below covers. It never simulates a committee, predicts satisfaction,
 or makes a human-subjects determination.
 
 Canonical schema:
@@ -14,7 +15,8 @@ Design authority:
 ## Activation gate
 
 Use this variant only when the user explicitly identifies the input as comments or
-a letter from a body that reviews research with human participants or their data for research ethics or human-subjects protection and asks for tracking, response preparation, or resubmission organization. Do not infer official authority
+a letter from a review that this gate covers, and asks for tracking, response preparation, or
+resubmission organization. Do not infer official authority
 from formal tone, letterhead-like prose, words such as “required,” or a file name.
 
 If the source is ordinary manuscript peer review, use normal `revision-coach`.
@@ -29,7 +31,8 @@ research ethics office. A mock or advisory review before submission does not cou
 Comments that review such research for another purpose (scientific merit,
 statistics, data access, or safety monitoring), and comments from a thesis or
 dissertation committee or a grant or funding panel, take normal `revision-coach`
-(#907). Before taking this branch, write in the reply, in quotation marks, the
+(#907). This gate is the one full statement of the variant's scope; the other entry points
+point here, and comments that it excludes take normal `revision-coach` (#907). Before taking this branch, write in the reply, in quotation marks, the
 user's own words that name the body. If the user's own turns do not name it (for
 example, the name appears only in the pasted letter), ask the user which body sent
 the comments and in what review, and quote that answer; a reply of only yes or no
