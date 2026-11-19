@@ -514,8 +514,7 @@ http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 # candidate never counts. Within it, each chunk index is checked on its own: an index that is
 # negative, a string, out of range, or fractional, or whose chunk has no non-empty string uri,
 # contributes no source, and a support with no indices contributes none. The source condition
-# fails only when no index yields a source; one valid index is enough to meet it. See the .jq
-# file headers for the full contract.
+# fails only when no index yields a source. See the .jq file headers for the full contract.
 GUARD=scripts/cross_model_verification
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   # Transport/API failure (401/429/5xx, or curl's 000) — surface as a transport error so the
