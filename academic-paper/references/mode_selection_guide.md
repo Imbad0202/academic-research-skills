@@ -25,7 +25,7 @@ User Input →
 │       └── No ──────────────────────────→ full mode (Phase 0 will conduct an interview)
 │
 ├── Have an existing paper to revise? ──────────────────────→ revision mode
-├── Have comments explicitly identified as coming from a real committee or institutional review office?
+├── Have comments that may come from a research ethics review (the protocol's Activation gate decides)?
 │   └── Need tracking / response preparation ───────────────→ revision-coach committee-correspondence variant
 ├── Have reviewer comments to handle?
 │   ├── Comments only, no response written yet ──────────→ revision-coach mode
@@ -200,9 +200,8 @@ User Input →
 **Expected Duration**: Short-Medium
 **Agents Used**: revision_coach_agent used standalone (no prior pipeline execution required)
 
-**Committee-correspondence variant**: when the user explicitly identifies comments
-from a real committee or institutional review office, this same entrypoint loads
-`committee_correspondence_protocol.md` and emits the separate #668 byte-accounted
+**Committee-correspondence variant**: when the user says, or the pasted text shows, that the comments may come from a research ethics or human-subjects protection review (for example, from a research ethics committee or an institutional review board (IRB)), this same entrypoint loads
+`committee_correspondence_protocol.md`. The Activation gate in `committee_correspondence_protocol.md` decides which comments this variant covers and what to quote from the user before taking it; comments that the gate excludes take normal `revision-coach` (#907). When the variant applies, it emits the separate #668 byte-accounted
 concern tracker plus placeholder response skeleton. It does not emit the reviewer
 Roadmap, Schema 11, priority/severity, a determination, or a resolution claim. Formal
 tone alone never activates the variant.

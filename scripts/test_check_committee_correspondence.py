@@ -108,6 +108,51 @@ def test_peer_review_exclusion_sentence_is_whole(relative: str, extra: str) -> N
     assert _PEER_REVIEW_EXCLUSION.format(extra=extra) in text
 
 
+_SCOPE_SENTENCES = (
+    "This variant covers only a letter or comments from a research ethics or human-subjects protection review of research with human participants, their data, or their biological samples, made by a body with formal review authority over the study, such as a research ethics committee, an institutional review board (IRB), or a human research ethics office. The kind of review decides, not the topic of each comment: such a review's comments on statistics, data access, or safety monitoring stay in the variant. A formal review that such a body holds to decide whether the study needs its review also counts. A mock or advisory review before submission does not count. A review held for another purpose (scientific merit, statistics, data access, or safety monitoring), a thesis or dissertation committee, and a grant or funding panel take normal `revision-coach` (#907).",
+    "Before taking this branch, start the reply with the user's own words that name the body, in quotation marks. If the user's own turns do not name it (for example, the name appears only in the pasted letter), ask the user which body sent the comments and in what review, and quote that answer; a reply of only yes or no does not name the body, so ask again (#907).",
+)
+
+
+_SCOPE_HOME = "academic-paper/references/committee_correspondence_protocol.md"
+_SCOPE_POINTER = (
+    "The Activation gate in `committee_correspondence_protocol.md` decides which comments this variant covers and what to quote from the user before taking it; comments that the gate excludes take normal `revision-coach` (#907)."
+)
+_SCOPE_POINTER_FILES = [
+    ".claude/CLAUDE.md",
+    "academic-paper/agents/revision_coach_agent.md",
+    "academic-paper/SKILL.md",
+    "academic-paper/references/mode_selection_guide.md",
+]
+
+
+def _flat(relative: str) -> str:
+    return " ".join((REPO_ROOT / relative).read_text(encoding="utf-8").split())
+
+
+@pytest.mark.parametrize("sentence", _SCOPE_SENTENCES)
+def test_scope_and_quote_sentences_are_whole_in_the_gate(sentence: str) -> None:
+    # #907: the protocol's Activation gate is the one full statement of the scope
+    # and of the quote rule; the check reads only that section.
+    text = (REPO_ROOT / _SCOPE_HOME).read_text(encoding="utf-8")
+    start = text.index("\n## Activation gate\n")
+    end = text.index("\n## ", start + 1)
+    gate = " ".join(text[start:end].split())
+    rest = " ".join((text[:start] + text[end:]).split())
+    assert sentence in gate
+    assert sentence[:60] not in rest
+
+
+@pytest.mark.parametrize("relative", _SCOPE_POINTER_FILES)
+def test_entry_points_point_to_the_gate(relative: str) -> None:
+    # #907: the other entry points carry a pointer, not a copy, so the copies
+    # cannot drift from the gate.
+    text = _flat(relative)
+    assert _SCOPE_POINTER in text
+    for sentence in _SCOPE_SENTENCES:
+        assert sentence[:60] not in text
+
+
 _GRADER = REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-committee-branch.md"
 _GRADER_FLAGS = [
     "## 1. Source preservation",  # heading shapes of the two #853 misroutes

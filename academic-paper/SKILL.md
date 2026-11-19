@@ -140,7 +140,7 @@ Activate `plan` mode when the user wants guidance, step-by-step planning, or exp
 | 9 | `formatter_agent` | Convert to LaTeX/DOCX (via Pandoc)/PDF/Markdown, journal formatting, cover letter, citation format conversion (APA 7 / Chicago / MLA / IEEE / Vancouver) | Phase 7 |
 | 10 | `socratic_mentor_agent` | Plan mode Socratic mentor: chapter-by-chapter guidance, convergence criteria (4 signals), question taxonomy (4 types), INSIGHT extraction | Plan Step 0-3 |
 | 11 | `visualization_agent` | Parse paper data and generate publication-quality figure code (Python matplotlib / R ggplot2) with APA 7.0 formatting, colorblind-safe palettes, and LaTeX integration | Phase 4 / Phase 7 |
-| 12 | `revision_coach_agent` | Parse unstructured reviewer comments into a Revision Roadmap, or explicitly identified real-committee comments into the separate #668 source-accounted concern tracker; works standalone | Revision-Coach mode |
+| 12 | `revision_coach_agent` | Parse unstructured reviewer comments into a Revision Roadmap, or research-ethics review comments (the protocol's Activation gate decides which) into the separate #668 source-accounted concern tracker; works standalone | Revision-Coach mode |
 
 ---
 
@@ -349,7 +349,7 @@ See `references/mode_selection_guide.md` for details.
 | `format-convert` | "Convert to LaTeX" / "Convert citations to [format]" | 9 only | Formatted document; includes citation format conversion (APA 7 / Chicago / MLA / IEEE / Vancouver) |
 | `citation-check` | "Check citations" | 6 only | Citation error report |
 | `plan` | "guide my paper" / "help me plan my paper" | 1->10->3->4 | Chapter Plan + INSIGHT Collection |
-| `revision-coach` | "parse reviews" / "revision roadmap" / "I got reviewer comments" / "should we push back" / "conference rebuttal" / "grant panel response" / explicitly identified real committee correspondence | 12 only | Peer-review path: immutable Roadmap core + explicit author sidecar + optional Tracking Template/Response Skeleton. Committee path: separate #668 concern tracker + placeholder response skeleton; no Schema 11, reviewer obligation/severity, or determination. |
+| `revision-coach` | "parse reviews" / "revision roadmap" / "I got reviewer comments" / "should we push back" / "conference rebuttal" / "grant panel response" / research ethics review correspondence (the protocol's Activation gate decides) | 12 only | Peer-review path: immutable Roadmap core + explicit author sidecar + optional Tracking Template/Response Skeleton. Committee path: separate #668 concern tracker + placeholder response skeleton; no Schema 11, reviewer obligation/severity, or determination. |
 | **`disclosure`** (v3.2) | **"AI disclosure for Nature" / "generate AI usage statement"** | **9 only** | **Default venue path: `REQUIRED` / `ACTION_ONLY` / `NOT_REQUIRED` / `UNKNOWN` applicability plus typed halt status; policy-anchor path: anchor-specific render** |
 | **`rebuttal-audit`** | **"audit my response" / "check my rebuttal" / "did I miss any reviewer comment"** (requires BOTH reviewer comments AND an existing rebuttal draft) | **12 only (parse-only)** | **Rebuttal QA report: per-comment coverage + gaps + risk flags. No new response generated; advisory only. Does NOT emit Schema 11 / Material Passport / verified status.** |
 
@@ -366,7 +366,7 @@ See `references/mode_selection_guide.md` for details.
 | Just need an outline | `outline-only` | balanced |
 | Have a draft, received review feedback | `revision` | fidelity |
 | Have unstructured reviewer comments | `revision-coach` | balanced |
-| Have comments from a real committee/institutional review office to track | `revision-coach` committee-correspondence variant | fidelity |
+| Have research-ethics review comments to track (the protocol's Activation gate decides which) | `revision-coach` committee-correspondence variant | fidelity |
 | Just need an abstract | `abstract-only` | fidelity |
 | Need to check/fix citations | `citation-check` | fidelity |
 | Need to convert format (LaTeX, DOCX) or citation style | `format-convert` | fidelity |
@@ -378,12 +378,12 @@ See `references/mode_selection_guide.md` for details.
 
 Not sure? Start with `plan` — it will guide you step by step. `disclosure` is a finishing step — run it after the paper is drafted, targeting the venue you plan to submit to.
 
-**Committee-correspondence routing:** use the `revision-coach` variant only when the
-user explicitly identifies a real committee/institutional review office. Load
+**Committee-correspondence routing:** when the user says, or the pasted text shows, that the comments may come from a research ethics or human-subjects protection review (for example, from a research ethics committee or an institutional review board (IRB)), load
 `references/committee_correspondence_protocol.md`; do not infer official authority
 from tone. Journal or conference reviewers, editors, area chairs, and program
 committees are peer review, not a committee for this variant, even when the user
-names the venue or the venue calls the role a committee (#854). The separate
+names the venue or the venue calls the role a committee (#854).
+The Activation gate in `committee_correspondence_protocol.md` decides which comments this variant covers and what to quote from the user before taking it; comments that the gate excludes take normal `revision-coach` (#907). The separate
 artifact is a source-accounted drafting aid and never enters peer-review Schema 11.
 
 The canonical copy of the block below is `shared/references/review_form_note.md`; `scripts/check_review_form_note_sync.py` keeps this copy identical to it.
