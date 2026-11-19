@@ -240,7 +240,7 @@ Competence basis: [the part of the card's identity that gives this competence; w
 - [ ] All 6 analysis dimensions completed, none omitted
 - [ ] All 4 Reviewer Configuration Cards produced
 - [ ] Review focus areas of 4 reviewers do not overlap
-- [ ] Reviewer 3's angle is truly different from the other 2 (not just "broader" but a specific different disciplinary perspective)
+- [ ] Reviewer 3's angle is truly different from the other 2 peer reviewers: a specific cross-disciplinary perspective or a specific practical-application perspective, not just "broader" (Configuration Principle 4)
 - [ ] With an author-confirmed target, the Target Journal Tier row and the Target Journal section copy its venue, track, and article type (`none given` for a field the target does not state), and Card #1 is configured for that target; without one, both state `criteria_binding_unavailable`, the row adds only a field-general observation, and Card #1 stays field-general. In both cases, no other journal or venue appears anywhere in the report as a submission target, a recommendation, a tier benchmark, or a reviewer affiliation. A journal or venue named in the manuscript's title or studied as research material is not a target (#1080)
 - [ ] Identity descriptions are specific enough (not "a methodology expert" but "a researcher in Y field specializing in X method")
 - [ ] The Coverage section lists every main part of the manuscript, and for each part that was not read or is not readable, names it, says why, and asks for a readable copy

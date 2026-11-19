@@ -22,14 +22,14 @@ The author confirmed the target journal in this example, so the Field Analysis R
 
 ## Phase 0: Field Analysis & Persona Configuration
 
-### Field Analysis Report
+The Field Analysis Report:
 
-#### Paper Basic Information
+### Paper Basic Information
 - **Title**: Using Machine Learning to Predict University Closure Risk in Taiwan: An Institutional Research Data Approach
 - **Full text length**: Approximately 8,500 words
 - **Number of references**: 52
 
-#### Field Analysis
+### Field Analysis
 
 | Dimension | Analysis Result |
 |-----------|----------------|
@@ -40,65 +40,89 @@ The author confirmed the target journal in this example, so the Field Analysis R
 | Target Journal Tier | *Education and Information Technologies*; track: none given; article type: research article |
 | Paper Maturity | Pre-submission — Complete structure, analysis completed |
 
-#### Target Journal
+### Target Journal
 - **Venue**: *Education and Information Technologies*
 - **Track**: none given
 - **Article type**: research article
 
-#### Reviewer Configuration Cards
+### Coverage
+
+| Part | Status |
+|------|--------|
+| Abstract | read |
+| Body sections §1-§7 | read |
+| Model-comparison table in §4 (four models, AUC and F1) | read |
+| Table with top-5 feature importances in §4 | read |
+| Figures | none |
+| Embedded images | none |
+| Appendices | none |
+| References | read |
+
+All main parts were read, so no readable copy is requested.
+
+### Reviewer Configuration Cards
 
 ---
 
-### Reviewer Configuration Card #1
+#### Reviewer Configuration Card #1
 
 **Role**: EIC
 **Display role**: Journal-Fit Reviewer
 **Identity Description**: *Education and Information Technologies* (Springer) Associate Editor, specializing in educational data science and Learning Analytics, has overseen the review of multiple ML-in-education application papers over the past 5 years.
 **Review Focus**:
-  1. Novelty of ML application in higher education management — Such research is already abundant at the student level (student attrition prediction); is there sufficient new contribution at the institutional level
-  2. Paper's actual impact — Can the model really be used by education authorities
-  3. Quality of cross-disciplinary integration — Is it just a technology showcase or does it offer educational insight
-**Will particularly care about**: "Whether AUC = 0.94 is overly optimistic, especially with only 12 positive cases"
+  1. Novelty of ML application in higher education management — Such research is already abundant at the student level (student attrition prediction); is there sufficient new contribution at the institutional level [§1, §6]
+  2. Paper's actual impact — Can the model really be used by education authorities [§4, §5, §6]
+  3. Quality of cross-disciplinary integration — Is it just a technology showcase or does it offer educational insight [§5, §6, §7]
+**Will particularly care about**: "Whether AUC = 0.94 is overly optimistic, especially with only 12 positive cases" [§3, §4]
 **Possible blind spots**: May focus too much on the technical side, overlooking the complexity of policy application
 
 ---
 
-### Reviewer Configuration Card #2
+#### Reviewer Configuration Card #2
 
 **Role**: Peer Reviewer 1 (Methodology — ML Technical Expert)
 **Identity Description**: Statistical learning / machine learning methodology researcher, specializing in classification models, class imbalance handling, and model evaluation, with multiple methodology articles in social science ML applications.
 **Review Focus**:
-  1. Class imbalance handling (12 positive vs 140 negative) — Is SMOTE the best strategy
-  2. Overfitting risk — 47 features + small positive count + no visible feature selection strategy
-  3. Rigor of model evaluation — Cross-validation strategy, temporal split, out-of-time validation
-**Will particularly care about**: "Whether F1 = 0.87 with 12 positive cases is statistically reliable, whether bootstrapped confidence intervals are reported"
+  1. Class imbalance handling (12 positive vs 140 negative) — Is SMOTE the best strategy [§3]
+  2. Overfitting risk — 47 features + small positive count; is a feature selection strategy described, and does it control the risk [§3, §4]
+  3. Rigor of model evaluation — Cross-validation strategy, temporal split, out-of-time validation [§3, §4]
+**Will particularly care about**: "Whether F1 = 0.87 with 12 positive cases is statistically reliable, whether bootstrapped confidence intervals are reported" [§4]
 **Possible blind spots**: May not be sufficiently sensitive to the substantive meaning of university closure
 
 ---
 
-### Reviewer Configuration Card #3
+#### Reviewer Configuration Card #3
 
 **Role**: Peer Reviewer 2 (Domain — Institutional Research Expert)
 **Identity Description**: Taiwan institutional research (IR) scholar, specializing in higher education data analysis and indicator system construction, participated in the planning of the Ministry of Education's university closure early warning mechanism.
 **Review Focus**:
-  1. Selection logic for the 47 feature variables — Whether key indicators are covered, whether there are omissions
-  2. Data quality — Accuracy of public data, missing value handling, cross-year consistency
-  3. Operational definition of "closure" — Whether the 12 positive cases include all situations (cessation, merger, restructuring)
-**Will particularly care about**: "Closure is not just a financial issue; whether governance, geographic location, political factors, and other non-quantifiable indicators are considered"
+  1. Selection logic for the 47 feature variables — Whether key indicators are covered, whether there are omissions [§3]
+  2. Data quality — Accuracy of public data, missing value handling, cross-year consistency [§3, §5]
+  3. Operational definition of "closure" — Whether the 12 positive cases include all situations (cessation, merger, restructuring) [§3]
+**Will particularly care about**: "Closure is not just a financial issue; whether governance, geographic location, political factors, and other non-quantifiable indicators are considered" [§3, §5]
 **Possible blind spots**: May not be sufficiently sensitive to ML methodology details
 
 ---
 
-### Reviewer Configuration Card #4
+#### Reviewer Configuration Card #4
 
 **Role**: Peer Reviewer 3 (Cross-disciplinary — Public Policy / AI Ethics)
 **Identity Description**: Public policy scholar, specializing in AI application ethics in the public sector, algorithmic decision fairness and transparency, researching AI's role in education policy.
 **Review Focus**:
-  1. Algorithmic fairness — Could the predictive model produce systematic bias against certain types of institutions (rural, vocational, indigenous colleges)
-  2. Ethical considerations of policy application — If the government uses this model, what consequences would institutions labeled "high risk" face
-  3. Self-fulfilling prophecy — Could the model predicting a university will close actually accelerate its closure
-**Will particularly care about**: "Whether black-box models (XGBoost) are acceptable in public policy, explainability requirements"
+  1. Algorithmic fairness — Could the predictive model produce systematic bias against certain types of institutions (rural, vocational, indigenous colleges) [§3, §4]
+  2. Ethical considerations of policy application — If the government uses this model, what consequences would institutions labeled "high risk" face [§5, §6]
+  3. Self-fulfilling prophecy — Could the model predicting a university will close actually accelerate its closure [§5, §6]
+  4. Stakeholders — Who the proposed early-warning use assumes will benefit, who bears the cost, and who is left out [§1, §5]
+**Will particularly care about**: "Whether black-box models (XGBoost) are acceptable in public policy, explainability requirements" [§3, §4, §5]
 **Possible blind spots**: May not understand model technical details well enough
+
+---
+
+### Stakeholder Coverage
+
+Seat: Card #4 (Peer Reviewer 3), Review Focus item 4
+Check: who the proposed early-warning use assumes will benefit, who bears the cost, and who is left out [§1, §5]
+Competence basis: research on AI ethics in the public sector and on algorithmic decision fairness, which covers who gains from and who bears the cost of an algorithmic label
 
 ---
 
@@ -211,7 +235,7 @@ The author confirmed the target journal in this example, so the Field Analysis R
 **Core Challenge**: Predictive discrimination does not by itself establish decision utility. The paper reports AUC/F1 but does not specify an operating threshold or compare the policy costs of false positives and false negatives, so the claimed early-warning usefulness is not yet supported.
 
 - **Severity**: Major
-- **Evidence Anchor**: `absence: §4 Results/§5 Discussion — expected threshold-specific confusion costs or a decision-utility analysis; checked model-evaluation tables and policy-implications discussion`
+- **Evidence Anchor**: `absence: §4 Results/§5 Discussion — expected threshold-specific confusion costs or a decision-utility analysis; checked the model-comparison table and policy-implications discussion`
 - **Confidence**: 4 — uncertainty/scope metadata only; predictive-decision stress test
 - **Bounded remedy**: Add threshold-specific error trade-offs and limit the policy-use claim to the evaluated decision context.
 
@@ -249,7 +273,7 @@ The author confirmed the target journal in this example, so the Field Analysis R
 - [ ] R2: Compare SMOTE vs ADASYN vs cost-sensitive learning (Source: R1-W2) — Severity: Critical | Anchor: `text: abstract "12 institutions... employing SMOTE to address class imbalance"` | Confidence: 5
 - [ ] R3a: Add "Ethical Implications" section discussing the self-fulfilling prophecy risk (Source: R3-W1) — Severity: Critical | Anchor: `absence: §5/§6 Discussion — expected an ethical-implications discussion of prediction-induced closure risk; checked §5 Discussion, §6 Conclusion` | Confidence: 4
 - [ ] R3b: Add a fairness/subgroup-bias analysis across institution types (Source: R3-W2) — Severity: Major | Anchor: `absence: §3 Methods — expected a fairness/subgroup-bias analysis across institution type; checked §3 Methods, §4 Results` | Confidence: 4
-- [ ] R3c: Add threshold-specific false-positive/false-negative policy-cost analysis and bound the early-warning claim (Source: DA-W1) — Severity: Major | Anchor: `absence: §4 Results/§5 Discussion — expected threshold-specific confusion costs or a decision-utility analysis; checked model-evaluation tables and policy-implications discussion` | Confidence: 4
+- [ ] R3c: Add threshold-specific false-positive/false-negative policy-cost analysis and bound the early-warning claim (Source: DA-W1) — Severity: Major | Anchor: `absence: §4 Results/§5 Discussion — expected threshold-specific confusion costs or a decision-utility analysis; checked the model-comparison table and policy-implications discussion` | Confidence: 4
 - [ ] R4: Add SHAP analysis, providing case-level explainability (Source: R3-W3) — Severity: Major | Anchor: `absence: §3/§4 Methods/Results — expected case-level explainability (e.g. SHAP) beyond aggregate feature importance; checked §3 Methods, §4 Results` | Confidence: 3
 - [ ] R5: Execute feature selection, report reduced model performance (Source: R1-W3) — Severity: Major | Anchor: `absence: §3 Methods — expected a feature-selection step reported against 47 features vs. 12 positive cases; checked §3 Methods, §4 Results` | Confidence: 5
 
