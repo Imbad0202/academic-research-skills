@@ -1,6 +1,6 @@
 # Claude Code를 위한 Academic Research Skills
 
-[![Version](https://img.shields.io/badge/version-v3.24.3-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.3)
+[![Version](https://img.shields.io/badge/version-v3.24.4-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.4)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -275,7 +275,7 @@ You: "status"
 
 기준별 증거에 연결된 **서술형 판단**을 수행하는 7개 에이전트 다관점 심사. 모드: full, re-review, quick, methodology-focus, guided, calibration. 현재 live review와 Schema 6 package는 항상 `NOT_CALIBRATED`이며, full calibration은 제한된 candidate profile만 만들고 live review 적용은 아직 연결되지 않았습니다. 고정 총점을 Accept / Minor Revision / Major Revision / Reject에 매핑하지 않습니다. 1차 심사 패널 대 계약 기반 re-review 디스패치 경계: ARCHITECTURE.md §3 Stage 3 / Stage 3' 참조.
 
-### Academic Pipeline (v3.24.3)
+### Academic Pipeline (v3.24.4)
 
 무결성 검증, 2단계 심사, 소크라테스식 코칭, 협업 평가를 갖춘 10단계 오케스트레이터. 파이프라인 규칙(에이전트가 따르는 프로토콜이며 실행 시 보장이 아님): 모든 단계는 사용자 확인 체크포인트를 요구하며, 무결성 검증(Stage 2.5 + 4.5)은 MANDATORY이며 기록 없는 우회 경로가 없고(모든 오버라이드는 Stage 6를 위해 사용자 사유 기록을 요구), R&R Traceability Matrix(Schema 11)는 각 심사 의견을 저자의 수정 주장에 대응시키고 재심사에서 그것이 검증되었는지를 기록합니다. v3.4는 Stage 2.5 / 4.5에 Compliance Agent(PRISMA-trAIce + RAISE)를 추가했습니다. v3.5는 모든 FULL/SLIM 체크포인트와 파이프라인 완료 시점에 **Collaboration Depth Observer**(`collaboration_depth_agent`, 자문 전용 — 절대 차단하지 않음)를 추가합니다. 필수(MANDATORY) 무결성 게이트(2.5 / 4.5)는 컴플라이언스 점검이 희석되지 않도록 observer를 명시적으로 건너뜁니다. Wang & Zhang (2026), IJETHE 23:11에 기반합니다. 에이전트·산출물·게이트를 포함한 단계별 매트릭스: ARCHITECTURE.md §3 참조.
 
@@ -370,6 +370,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 여기에는 최근 3개 릴리스만 실려 있습니다. 전체 변경 이력은 영어판 [CHANGELOG.md](CHANGELOG.md)를 참조하세요. v3.21.2까지의 한국어 릴리스 요약은 [docs/changelog-archive/ko-KR.md](docs/changelog-archive/ko-KR.md)에 동결 보관되며 이후 갱신되지 않습니다.
 
+### v3.24.4 (2026-11-19) — 연구윤리 심의로 범위를 좁힌 위원회 서신 변형, 합의 기준에 못 미친 지적의 roadmap 및 편지 반영, 권장 OpenAI 검증 모델 GPT-6.2 Astra
+
+> **리뷰, revision-coach, 교차 모델 검증, Windows 수정. 새 skill이나 모드 없음, 프롬프트 수준 변경은 측정되지 않았음:** `revision-coach`의 위원회 서신 변형은 이제 연구에 대한 공식 연구윤리 심의나 인간 대상 연구 보호 심의에서 나온 의견만 다루며, 코치는 답변 첫머리에 그 기관을 지목한 사용자 자신의 말을 인용합니다(#907). 사전 등록한 eval 실행은 이 규칙의 이전 문구를 사용했습니다. 최종 문구는 아직 실행하지 않았으며, 재시험은 #1122에서 추적합니다. DA가 아닌 리뷰어 4명 중 2명이 충돌 없이 제기했거나 1명만 제기한 지적에는 이제 roadmap 수준(`revision-roadmap/1.1`의 `CORROBORATED` 또는 `SINGLE-REVIEWER`)이 붙고, 편지에는 Below the Consensus Bar 절이 생깁니다(#1100). Devil's Advocate는 핵심 주장이 기대지만 논문이 뒷받침하지 않는 전제를 issue row로 기록하고, synthesizer는 DA도 보고한 단일 리뷰어 지적에 표시를 합니다(#1098). `reviewer_full` contract 다이제스트가 바뀌므로 이전 다이제스트로 실행한 seeded-defect 결과와는 직접 비교할 수 없습니다. 분야 분석은 원고가 누구의 이익을 가정하고 누가 비용을 지는지 점검할 리뷰어 자리를 지정하며(#1098), 영역 리뷰어는 원고 자체의 날짜를 기준으로 문헌 범위를 판단합니다(#1107의 일부). GPT-6.2 Astra는 잠정 교차 모델 검증 모델이자 권장 OpenAI id가 되었습니다. 진입 게이트 스모크 테스트는 ChatGPT 구독 전송에서만 통과했고, Promotion Bakeoff 기록은 없으며, GPT-6.2 system card는 ARS용으로 감사하지 않았습니다. symlink를 따라가지 않는 파일 읽기 5개와 ledger의 디렉터리 fsync는 이제 Windows에서 바로 실패하지 않습니다(#1092). Windows 경로는 최선 노력 방식이고 Windows CI 작업은 없으며, 참조에 콜론이 들어 있는 binding manifest는 이제 검증을 통과하지 않습니다. Chicago, MLA, IEEE, Vancouver 논문에서는 전체 수정이 들어올 때까지 `citation_compliance_agent`가 지적만 보고하고 아무것도 자동 수정하지 않으며, 일부 지적은 여전히 틀릴 수 있습니다(#1093). `academic-paper` `full` 수정 루프는 끝나는 방식마다 다음 단계가 하나로 정해졌고(#1087), 수정 토큰 검사는 긴 대문자나 숫자 열에서 멈추지 않으며(#1088), MLA 9th 변환은 항목에 있는 DOI를 유지합니다(#1095). 교차 모델 검증 문서와 주석은 검사로 실제 알 수 있는 것만 쓰도록 바뀌었고(#1111, #1113, #1114, #1116), 리뷰 예시는 Coverage와 Stakeholder Coverage 규칙을 보여 줍니다(#1085).
+
 ### v3.24.3 (2026-11-14) — 사용자 언어로 쓴 저자용 편지, 확인되지 않은 학술지를 지목하지 않는 분야 분석, 중국어와 일본어를 세는 Phase 1 검사
 
 > **리뷰, 인용, 어댑터 수정과 새 리뷰 산출물 하나. 새 skill이나 모드 없음, 프롬프트 수준 변경은 측정되지 않았음:** 이제 `full` 리뷰는 Editorial Decision Package와 함께 사용자 언어로 저자에게 보내는 편지도 씁니다. `scripts/check_author_letter.py`는 지원하는 따옴표로 표시한 인용문을 원고에서 찾지 못할 때, 편지에 기계용 줄이나 내부 ID가 남아 있을 때, 항목 대응표가 roadmap의 각 행을 한 번씩 싣지 않을 때 실패합니다(#1078). 분야 분석은 읽은 내용을 Reviewer Configuration Cards 앞에 나열하고(#1075), 카드에는 결론 대신 원고 위치가 붙은 점검 항목을 씁니다(#1076). 투고할 학술지나 다른 투고처를 더 이상 추천하지 않으며, 저자가 확인한 투고처가 있을 때만 그것을 적습니다(#1080). Phase 1 검사는 한자나 가나 한 글자를 1점, 단어 하나를 2점으로 세므로, 짧은 중국어·일본어 트리거도 측정합니다. 원고 유출 검사는 원고에서 베낀 24점 분량의 중국어·일본어 구절을 찾아내지만, 같은 구절이 metadata-envelope 값이나 contract에도 있으면 제외합니다(#1077). 한국어는 계속 공백으로 셉니다. NFKC 후에 한자나 가나가 없는 텍스트에서는 두 검사 모두 먼저 NFKC를 적용하고, 트리거 계산은 `—` 같은 단독 기호를 더 이상 단어로 세지 않습니다. 원고 유출 검사는 합성 데이터로만 테스트했으며, 실제 리뷰에서는 어떤 비율도 측정하지 않았습니다. 리뷰어 주장 검사는 인용문을 비교하기 전에 NFC를 적용합니다(#1074). `citation_compliance_agent`는 `full` 모드에서만 논문 원고를 수정하며, 이제 그 Corrected Draft가 Phase 6로 갑니다. `revision` 모드에서는 수정 제안을 돌려줍니다(#1068). 이 에이전트의 Phase Boundary 블록은 자신의 두 산출물을 모두 명시합니다(#1067). 단독 citation-check는 보고서를 돌려주고, 사용자의 글은 요청할 때만 고쳐 씁니다(#1062). Zotero와 Obsidian 어댑터는 schema나 타입 검사를 통과하지 못한 항목이나 노트를 passport에 쓰거나 실행을 멈추는 대신 rejection log로 보냅니다. 숫자 값을 담은 Zotero `date`나 `issued`(예: `"date": 2024`)는 이제 거부되며, `folder_scan.py`를 포함한 세 어댑터 모두 `jsonschema`가 필요합니다. 실제 Zotero 내보내기 파일이나 Obsidian vault로는 실행하지 않았습니다(#1055, #1056, #1058, #1059). Claude Fable 5.2가 지원되는 세션 모델이 되었습니다. system card 감사와 라우팅 스모크 테스트는 했지만, 전체 파이프라인 실행이나 리뷰어 보정은 하지 않았습니다(#1063).
@@ -377,7 +381,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.24.2 (2026-11-06) — 실험이 lock 값 없음을 정직하게 표시, repro_lock 정렬, sr-screener 방법 문장 수정
 
 > **수정과 문서, 새 skill이나 모드 없음, 프롬프트 수준 변경은 측정하지 않음:** 이제 `experiment_provenance[]` 항목은 정직하게 적을 lock 값이 없음을 `repro_lock: null`과 `repro_lock_reason`으로 표시할 수 있습니다(#1049). 전에는 설문이나 LLM을 쓰지 않은 분석이 자리표시자 값을 넣어야만 통과했습니다. 이전 ARS는 이 형식을 거부하므로, 이 형식을 쓰는 passport에는 이 릴리스가 필요합니다. `check_repro_lock.py`는 이제 null인 model id처럼 필드의 타입이나 값 규칙을 어긴 필수 값에서 실패합니다. `cross_model.secondary_model_id`는 계속 null일 수 있습니다. `planned_vs_executed[].value`는 숫자나 문자열만 받으므로, 전에 통과한 일부 passport가 이제 실패합니다(#1050). `sr-screener` 방법 문장은 더 이상 리뷰어가 레코드 파일만 읽을 수 있다고 하지 않습니다. 도구 목록이 없애는 것은 웹과 쓰기 권한이고, 주어진 파일만 읽는 것은 지시입니다(#1039). SETUP은 업로드한 skill이 대화에서 재시도 후 내장 서브 에이전트를 실행한 두 차례의 확인 결과를 기록합니다. 멀티 에이전트 단계는 아직 테스트하지 않았습니다(#1040).
-
-### v3.24.1 (2026-11-02) — claude.ai 계정 마켓플레이스에서 plugin 설치, 리뷰 전 설정 카드 확인, 브라질 포르투갈어 README
-
-> **claude.ai와 Claude Desktop 설치 수정, 새 skill이나 모드 없음:** 이제 ARS를 claude.ai 계정 마켓플레이스에서 설치할 수 있습니다. 이 릴리스 전에는 이 방식으로 설치하면 핵심 skill 다섯 개가 하나도 로드되지 않았고(#1035), plugin 에이전트 네 개는 이름에 밑줄이 있어 claude.ai가 받아들이지 않았습니다(#1037). Claude Desktop에서 일반 채팅으로 skill 하나와 `/ars-lit-review`가 실행되었고, 프로젝트 세션은 plugin 에이전트 `synthesis-agent`에 바로 작업을 넘겼으며, 폴더 작업에서는 SessionStart 시작 알림이 나타났습니다. write-scope guard, 도구 허용 목록, 전체 파이프라인 실행은 claude.ai와 Claude Desktop에서 테스트하지 않았습니다. 리뷰는 이제 사용자가 Reviewer Configuration Cards를 확인할 때까지 기다리며(#1030), README에 브라질 포르투갈어판이 추가되었습니다(#1032).

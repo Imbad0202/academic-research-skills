@@ -9,8 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.24.3 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.24.4 | Full pipeline orchestrator | (coordinates all above) |
 | `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
+
+## v3.24.4 Key Additions (a committee-correspondence variant scoped to research ethics review + below-consensus findings in the roadmap and letter + GPT-6.2 Astra as the recommended OpenAI verifier)
+
+- **The `revision-coach` committee-correspondence variant covers only a formal research ethics or human-subjects protection review of the study (#907).** The coach starts its reply with the user's own words that name the body, and asks when the user's turns do not name it; the full scope and quote rules sit once, in the Activation gate of `committee_correspondence_protocol.md`. Plugin-eval case 03 gains `no-false-committee-claim`, and new case 08 sends the case-04 letter with the mode command. The preregistered runs used an earlier text of the rules and the grader; the final text has not been run, and a retest of case 08 is tracked in #1122.
+- **Findings below the consensus bar reach the roadmap and the letter, and the DA files unsupported premises as issue rows (#1100, #1098).** `revision-roadmap/1.1` adds `CORROBORATED` and `SINGLE-REVIEWER`, and the letter gains a Below the Consensus Bar section with the DA-corroborated note. The field analyst writes a `## Stakeholder Coverage` section, and the `reviewer_full` D3 names an unsupported premise, so the contract digest changes and seeded-defect runs under the old digest are not directly comparable. The domain reviewer counts literature coverage from the manuscript's own date (part of #1107). Prompt-level; unmeasured.
+- **GPT-6.2 Astra is a provisional cross-model verifier and the recommended OpenAI id.** It passed the entry-gate smoke on the ChatGPT-subscription citation transport only; no API-route smoke or Promotion Bakeoff is recorded, and the GPT-6.2 system card has not been audited for ARS. The cross-model docs and guard comments now say what the checks show (#1111, #1113, #1114, #1116); the guard logic does not change.
+- **Smaller changes.** Five no-follow file readers and the ledger's directory fsync no longer fail outright on Windows, through the new `scripts/_anchored_open.py`, which is best-effort and has no Windows CI job; a binding manifest whose reference contains a colon no longer validates (#1092). `citation_compliance_agent` auto-corrects nothing in Chicago, MLA, IEEE, or Vancouver papers until the full fix lands (#1093, interim). Each end of the `academic-paper` `full` revision loop has one next step (#1087); the revision token check no longer stalls on a long run of capitals or digits (#1088); MLA 9th conversion keeps a DOI the entry has (#1095); the reviewer examples show the Coverage and Stakeholder Coverage rules (#1085); `scripts/check_1098_premise_rule_sync.py` pins the #1098 sentence (#1099, #1101).
 
 ## v3.24.3 Key Additions (an author letter in the user's language + a field analyst that names no unconfirmed journal + Phase 1 checks that count Chinese and Japanese text)
 
@@ -455,7 +462,7 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
-- **Suite version**: 3.24.3 (per CHANGELOG.md)
-- **Last Updated**: 2026-11-14
+- **Suite version**: 3.24.4 (per CHANGELOG.md)
+- **Last Updated**: 2026-11-19
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
