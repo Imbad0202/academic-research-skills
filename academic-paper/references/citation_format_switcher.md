@@ -97,7 +97,7 @@ Smith, John A., and Betty C. Jones. "Article Title in Title Case."
     Journal Title, vol. 45, no. 2, 2024, pp. 123-45.
 ```
 
-**Key rules**: No year in-text, page numbers always, containers model, no DOI in basic format (include if online), title case for all titles.
+**Key rules**: No year in-text, page numbers always, containers model, keep a DOI when the source has one (optional, not required), title case for all titles.
 
 ---
 
@@ -143,7 +143,7 @@ Smith, John A., and Betty C. Jones. "Article Title in Title Case."
 1. Remove years from in-text, add page numbers
 2. Expand first names, change "&" → "and"
 3. Change format: vol., no., year order
-4. Remove DOIs (unless online-only source)
+4. Keep DOIs: MLA 9th makes a DOI optional, so do not remove one
 5. Rename "References" → "Works Cited"
 
 ### APA → IEEE
