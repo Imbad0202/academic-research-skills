@@ -163,9 +163,8 @@ in one place, the protocol's Activation gate; the other entry points now point
 to it. Calibration of the final grader text is recorded in the CHANGELOG entry
 for #907. The runner checks `--max-cost-usd` before it starts each run, so the
 last run can go over the flag: case 08 spent US$2.47 for the agent (US$2.49 with
-the judge) under a US$2 flag. The
-retest of case 08 on the final text is preregistered in
-`preregistration-907-retest.md`.
+the judge) under a US$2 flag. A
+retest of case 08 on the final text is tracked in #1122.
 
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 
