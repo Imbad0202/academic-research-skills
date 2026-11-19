@@ -1,6 +1,6 @@
 # Academic Research Skills for Claude Code
 
-[![Version](https://img.shields.io/badge/version-v3.24.3-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.3)
+[![Version](https://img.shields.io/badge/version-v3.24.4-blue)](https://github.com/Imbad0202/academic-research-skills/releases/tag/v3.24.4)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20696614-blue)](https://doi.org/10.5281/zenodo.20696614)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Sponsor](https://img.shields.io/badge/sponsor-Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/crucify020v)
@@ -268,7 +268,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 
 7 个 Agent 的多视角审查，采用 **逐准则、证据锚定的叙事判断**。模式：full、re-review、quick、methodology-focus、guided、calibration。目前 live review 与 Schema 6 package 一律为 `NOT_CALIBRATED`；完整 calibration 可产生有界候选 profile，但尚未接入 live review。不得以固定总分映射接受、小修、大修或退稿。第一轮审查面板 vs. 契约治理再审调度的分界：见 ARCHITECTURE.md §3 Stage 3 / Stage 3'。
 
-### Academic Pipeline (v3.24.3)
+### Academic Pipeline (v3.24.4)
 
 10 阶段调度器，含学术诚信验证、两阶段审查、苏格拉底指导、协作质量评估。Pipeline 规则（由 agent 按流程遵守，不是运行时保证）：每个阶段都需用户确认 checkpoint；学术诚信验证（Stage 2.5 + 4.5）为 MANDATORY 且没有不留记录的绕过路径（所有覆写都须记录用户理由、供 Stage 6 使用）；R&R 追溯矩阵（Schema 11）把每一项审查意见对应到作者的修订主张，并记录复审是否验证通过。v3.4 添加 Compliance Agent（PRISMA-trAIce + RAISE）于 Stage 2.5 / 4.5。v3.5 添加 **协作深度观察员**（`collaboration_depth_agent`，仅咨询性质、永不阻挡流程）于每一次 FULL/SLIM checkpoint 与 pipeline 完成时。MANDATORY 学术诚信闸门（2.5 / 4.5）明确跳过观察员，避免稀释合规检查。理论基础：Wang & Zhang (2026), IJETHE 23:11。逐阶段矩阵（agent、产出物、闸门）：见 ARCHITECTURE.md §3。
 
@@ -340,6 +340,10 @@ https://github.com/Imbad0202/academic-research-skills
 
 这里只列最近三个版本。完整更新记录在英文版 [CHANGELOG.md](CHANGELOG.md)。到 v3.21.2 为止的简体中文版本摘要已冻结存放于 [docs/changelog-archive/zh-CN.md](docs/changelog-archive/zh-CN.md)，之后不再更新。
 
+### v3.24.4（2026-11-19）— 委员会来函变体只限研究伦理审查、未达共识门槛的意见进入 roadmap 与信件，以及 GPT-6.2 Astra 成为推荐的 OpenAI 核查模型
+
+> **审查、revision-coach、跨模型核查与 Windows 修复；没有新 skill 或模式，提示层的改动未经测量：**`revision-coach` 的委员会来函变体现在只处理一种意见：研究涉及人类参与者、其数据或其生物样本，而由对该研究有正式审查权的机构，在正式的研究伦理审查或人类受试者保护审查中提出的意见。教练采用这个变体前，回复开头先引用用户指名该机构的原话；用户自己的发言没有指名时，教练会先问是哪个机构、在什么审查中提出（#907）。预先登记的 eval 运行用的是这些规则较早的文字，最终规则还没在 plugin eval 中运行过，重测记录在 #1122。这道关卡的已知限制（例如用户指名了机构、但审查性质不明）列在 #1123。信件新增 Below the Consensus Bar 一节，列出第一轮中四位非 DA 审查者有两位提出且无冲突、或只有一位提出的意见；`revision-roadmap/1.1` 给这些意见 `CORROBORATED` 与 `SINGLE-REVIEWER` 两个等级，`revision-roadmap/1.0` 的 roadmap 仍可读取，但无法记录这两个值（#1100）。Devil's Advocate 会把核心主张所依赖、却没有支持的前提列为一条 issue row；单一审查者的意见也出现在 DA 的 issue row 时，synthesizer 会加上标记，这个标记不会提高该意见的等级，也不代表有独立判断（#1098）。`reviewer_full` contract 的摘要值改变，所以旧摘要值下的 seeded-defect 运行结果不能直接比较。领域分析者会指出由哪个审查席位检查稿件假设谁受益、谁承担代价，或写 `Seat: none` 并说明缺口（#1098）。领域审查者以稿件标明的日期判断文献覆盖；稿件没有标明日期、以及文献可能晚于稿件时怎么处理，CHANGELOG 条目有说明（#1107 的一部分）。GPT-6.2 Astra 成为暂定的跨模型核查模型，也是推荐的 OpenAI id；它只在 ChatGPT 订阅的引文核查传输上通过入门冒烟测试，没有 Promotion Bakeoff 记录，GPT-6.2 的 system card 也还没为 ARS 审计。在 Responses API 路径上，`openai_effort_guard.sh` 会在请求发出前拒绝它的 `none`、`minimal` 与 `ultra` 推理强度。五个不跟随 symlink 的文件读取器在 Windows 上不再直接失败；inquiry branch ledger 在无法打开目录时会跳过目录 fsync，所以在 Windows 上 rename 后立刻崩溃，可能丢失新的目录项（#1092）。Windows 路径是尽力而为、不是原子操作，不会检查路径上的每一层目录（信任哪些目录见 CHANGELOG 条目），检查到的 reparse point 一律拒绝（包括云同步的占位文件），而且只在其他主机上以模拟方式测试，没有在 Windows 上实际运行过。inquiry branch ledger alpha 仍拒绝在 Windows 上运行；引用中含冒号的 binding manifest 现在在任何平台上都无法通过验证。Chicago、MLA、IEEE 与 Vancouver 格式的论文，`citation_compliance_agent` 在完整修正上线前报告问题、不自动修正，部分报告仍可能有误（#1093）。`academic-paper` `full` 修稿循环的每种结束方式现在都有一个明确的下一步（#1087），修稿 token 检查遇到很长的一串大写字母或数字不再卡住（#1088），MLA 9th 转换会保留条目已有的 DOI（#1095）。跨模型核查的文档、注释，以及核查模型提示中的 `NOT_FOUND` 定义，现在写的是检查实际显示的结果（#1111、#1113、#1114、#1116）；审查示例也展示了 Coverage 与 Stakeholder Coverage 规则（#1085）。
+
 ### v3.24.3（2026-11-14）— 用用户语言写给作者的信、不点名未经确认期刊的领域分析，以及会计算中日文的 Phase 1 检查
 
 > **审查、引用与适配器修复，加上一项新的审查产出；没有新 skill 或模式，提示层的改动未经测量：**`full` 审查现在除了 Editorial Decision Package，也会用用户的语言写一封给作者的信。`scripts/check_author_letter.py` 在三种情况会判定失败：用支持的引号标出的引文在稿件里找不到、信中留有给程序读的行或内部编号，以及项目对照表没有把 roadmap 的每一行各列一次（#1078）。领域分析会在 Reviewer Configuration Cards 之前列出读过哪些内容（#1075），卡片写的是附稿件位置的待查项目，不是结论（#1076）；它不再推荐投稿期刊或其他发表渠道，只在作者确认过目标时才写出目标（#1080）。Phase 1 的检查把一个汉字或假名算 1 点、一个词算 2 点，所以短的中日文触发条件也能测量；抄稿检查也能找出从稿件抄来、达 24 点的中日文段落，但同一段若也出现在 metadata-envelope 的值或 contract 里就不算（#1077）。韩文仍按空格计算。对 NFKC 之后没有汉字或假名的文字，两项检查现在都先做 NFKC，触发条件的计数也不再把 `—` 这类单独符号算成一个词。抄稿检查只有合成数据测试，也没有在真实审查上测量任何比率。审查意见核查在比对引文前会先做 NFC（#1074）。`citation_compliance_agent` 只在 `full` 模式修改论文稿件，它的 Corrected Draft 现在会送进 Phase 6；在 `revision` 模式则提出修改建议（#1068）。它的 Phase Boundary 段落写明它的两项产出（#1067）；单独使用的 citation-check 会返回报告，只在用户要求时才改写用户的文字（#1062）。Zotero 与 Obsidian 适配器遇到不符 schema 或类型错误的条目或笔记，会送进 rejection log，不再写进 passport，也不再让整批中断；Zotero 的 `date` 或 `issued` 若是数字（例如 `"date": 2024`）现在会被拒收，三个适配器（含 `folder_scan.py`）现在都需要 `jsonschema`。这些改动没有用真实的 Zotero 导出文件或 Obsidian 笔记库运行过（#1055、#1056、#1058、#1059）。Claude Fable 5.2 成为支持的 session 模型；它做过 system card 审计与路由冒烟测试，但没有完整的 pipeline 运行，也没有审查校准（#1063）。
@@ -347,7 +351,3 @@ https://github.com/Imbad0202/academic-research-skills
 ### v3.24.2（2026-11-06）— 实验可如实表示没有 lock 值、repro_lock 规则对齐，以及 sr-screener 方法段落更正
 
 > **修复与文档；没有新 skill 或模式，提示层的改动未经测量：**`experiment_provenance[]` 的条目现在可以如实表示没有可填的 lock 值，写法是 `repro_lock: null` 加上 `repro_lock_reason`（#1049）。问卷或没有使用 LLM 的分析，以前只能填占位值才能通过。旧版 ARS 不接受这个写法，所以用这个写法的 passport 需要这一版。`check_repro_lock.py` 现在会拦下违反字段类型或值规则的必填值，例如 `null` 的 model id；`cross_model.secondary_model_id` 仍可为 `null`。`planned_vs_executed[].value` 只接受数字或文本，所以有些以前通过的 passport 现在会失败（#1050）。`sr-screener` 的方法段落不再说审查代理只能读记录文件：工具清单去掉的是网络与写入权限，只读指定文件是一项指示（#1039）。SETUP 记录了两次检查：上传的 skill 在对话中重试后派出内置子代理；多代理阶段仍未测试（#1040）。
-
-### v3.24.1（2026-11-02）— 从 claude.ai 账号市集安装 plugin、审稿前确认配置卡，以及巴西葡萄牙文 README
-
-> **claude.ai 与 Claude Desktop 的安装修复；没有新 skill 或模式：**ARS 现在可以从 claude.ai 账号市集安装。这一版之前，这种安装方式下，五个核心 skill 全都无法加载（#1035），而且四个 plugin 代理的名称含下划线，claude.ai 不接受（#1037）。在 Claude Desktop 上，普通对话中有一个 skill 与 `/ars-lit-review` 实际运行；项目对话直接派工给 plugin 代理 `synthesis-agent`；文件夹工作时出现 SessionStart 启动通知。write-scope guard、工具白名单与完整 pipeline 在 claude.ai 与 Claude Desktop 上尚未测试。审稿时现在会等用户确认 Reviewer Configuration Cards（#1030），README 也新增巴西葡萄牙文版（#1032）。
