@@ -25,7 +25,7 @@ User Input →
 │       └── No ──────────────────────────→ full mode (Phase 0 will conduct an interview)
 │
 ├── Have an existing paper to revise? ──────────────────────→ revision mode
-├── Have comments explicitly identified as coming from a research ethics review (the protocol's Activation gate decides which)?
+├── Have comments that may come from a research ethics review (the protocol's Activation gate decides)?
 │   └── Need tracking / response preparation ───────────────→ revision-coach committee-correspondence variant
 ├── Have reviewer comments to handle?
 │   ├── Comments only, no response written yet ──────────→ revision-coach mode

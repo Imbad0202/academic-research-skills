@@ -140,7 +140,7 @@ Activate `plan` mode when the user wants guidance, step-by-step planning, or exp
 | 9 | `formatter_agent` | Convert to LaTeX/DOCX (via Pandoc)/PDF/Markdown, journal formatting, cover letter, citation format conversion (APA 7 / Chicago / MLA / IEEE / Vancouver) | Phase 7 |
 | 10 | `socratic_mentor_agent` | Plan mode Socratic mentor: chapter-by-chapter guidance, convergence criteria (4 signals), question taxonomy (4 types), INSIGHT extraction | Plan Step 0-3 |
 | 11 | `visualization_agent` | Parse paper data and generate publication-quality figure code (Python matplotlib / R ggplot2) with APA 7.0 formatting, colorblind-safe palettes, and LaTeX integration | Phase 4 / Phase 7 |
-| 12 | `revision_coach_agent` | Parse unstructured reviewer comments into a Revision Roadmap, or explicitly identified research-ethics review comments (the protocol's Activation gate decides which) into the separate #668 source-accounted concern tracker; works standalone | Revision-Coach mode |
+| 12 | `revision_coach_agent` | Parse unstructured reviewer comments into a Revision Roadmap, or research-ethics review comments (the protocol's Activation gate decides which) into the separate #668 source-accounted concern tracker; works standalone | Revision-Coach mode |
 
 ---
 
@@ -349,7 +349,7 @@ See `references/mode_selection_guide.md` for details.
 | `format-convert` | "Convert to LaTeX" / "Convert citations to [format]" | 9 only | Formatted document; includes citation format conversion (APA 7 / Chicago / MLA / IEEE / Vancouver) |
 | `citation-check` | "Check citations" | 6 only | Citation error report |
 | `plan` | "guide my paper" / "help me plan my paper" | 1->10->3->4 | Chapter Plan + INSIGHT Collection |
-| `revision-coach` | "parse reviews" / "revision roadmap" / "I got reviewer comments" / "should we push back" / "conference rebuttal" / "grant panel response" / explicitly identified research ethics review correspondence | 12 only | Peer-review path: immutable Roadmap core + explicit author sidecar + optional Tracking Template/Response Skeleton. Committee path: separate #668 concern tracker + placeholder response skeleton; no Schema 11, reviewer obligation/severity, or determination. |
+| `revision-coach` | "parse reviews" / "revision roadmap" / "I got reviewer comments" / "should we push back" / "conference rebuttal" / "grant panel response" / research ethics review correspondence (the protocol's Activation gate decides) | 12 only | Peer-review path: immutable Roadmap core + explicit author sidecar + optional Tracking Template/Response Skeleton. Committee path: separate #668 concern tracker + placeholder response skeleton; no Schema 11, reviewer obligation/severity, or determination. |
 | **`disclosure`** (v3.2) | **"AI disclosure for Nature" / "generate AI usage statement"** | **9 only** | **Default venue path: `REQUIRED` / `ACTION_ONLY` / `NOT_REQUIRED` / `UNKNOWN` applicability plus typed halt status; policy-anchor path: anchor-specific render** |
 | **`rebuttal-audit`** | **"audit my response" / "check my rebuttal" / "did I miss any reviewer comment"** (requires BOTH reviewer comments AND an existing rebuttal draft) | **12 only (parse-only)** | **Rebuttal QA report: per-comment coverage + gaps + risk flags. No new response generated; advisory only. Does NOT emit Schema 11 / Material Passport / verified status.** |
 

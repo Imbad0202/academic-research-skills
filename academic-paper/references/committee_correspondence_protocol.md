@@ -28,7 +28,8 @@ protection review of research with human participants, their data, or their biol
 samples, made by a body with formal review authority over the study, such as a research
 ethics committee, an institutional review board (IRB), or a human research ethics office.
 The kind of review decides, not the topic of each comment: such a review's comments on
-statistics, data access, or safety monitoring stay in the variant. A mock or advisory
+statistics, data access, or safety monitoring stay in the variant. A formal review that
+such a body holds to decide whether the study needs its review also counts. A mock or advisory
 review before submission does not count. A review held for another purpose (scientific
 merit, statistics, data access, or safety monitoring), a thesis or dissertation
 committee, and a grant or funding panel take normal `revision-coach` (#907). This gate
