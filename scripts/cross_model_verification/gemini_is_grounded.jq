@@ -15,12 +15,15 @@
 # url AND the model actually issued a search (a non-empty webSearchQueries array on the SAME
 # candidate). The safety invariant is **guard-pass ⟹ at least one source extractable**: deriving
 # the guard from the extractor — rather than asserting two parallel jq programs agree — makes it
-# hold for every input shape (a multi-candidate response where candidate 0 is unsupported, a
-# fractional/negative/string/out-of-range index, a non-string uri, AND a malformed NON-OBJECT at any
-# dereference point — `candidates[0]`, `groundingMetadata`, a `groundingSupports` element, a cited
-# `groundingChunks` element, or its `web` — all leave the extraction empty → guard fails closed →
-# an unsupported NOT_FOUND/MISMATCH, which the
-# blank-source downgrade does not rescue since it only touches VERIFIED, is never trusted). The
+# hold for every input shape. Only `candidates[0]` is read, so a source on another candidate never
+# counts. A non-object `candidates[0]` or `groundingMetadata`, or a non-array `candidates`,
+# `groundingSupports` or `groundingChunks`, empties the whole extraction. Per entry, a
+# fractional/negative/string/out-of-range index, a uri that is not a non-empty string, or a NON-OBJECT
+# `groundingSupports` element, cited `groundingChunks` element, or `web` contributes no source and
+# drops only that entry. The source condition fails, and the guard closed with it, only when no
+# entry yields a source (so an unsupported NOT_FOUND/MISMATCH, which the blank-source downgrade
+# does not rescue since it only touches VERIFIED, is never trusted); one valid entry is enough to
+# meet it. The
 # guard is strictly STRONGER than "has a source": a response carrying chunks but no webSearchQueries
 # (sources non-blank, no real search signal) still fails — the converse is intentionally not
 # required. Keep this extraction's LOGIC identical to gemini_sources.jq's `$srcs` body — same
