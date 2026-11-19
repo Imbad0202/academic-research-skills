@@ -17,13 +17,13 @@
 # the guard from the extractor — rather than asserting two parallel jq programs agree — makes it
 # hold for every input shape. Only `candidates[0]` is read, so a source on another candidate never
 # counts. A non-object `candidates[0]` or `groundingMetadata`, or a non-array `candidates`,
-# `groundingSupports` or `groundingChunks`, empties the whole extraction. Per entry, a
-# fractional/negative/string/out-of-range index, a uri that is not a non-empty string, or a NON-OBJECT
-# `groundingSupports` element, cited `groundingChunks` element, or `web` contributes no source and
-# drops only that entry. The source condition fails, and the guard closed with it, only when no
-# entry yields a source (so an unsupported NOT_FOUND/MISMATCH, which the blank-source downgrade
-# does not rescue since it only touches VERIFIED, is never trusted); one valid entry is enough to
-# meet it. The
+# `groundingSupports` or `groundingChunks`, empties the whole extraction. Each chunk index is
+# checked on its own: a fractional/negative/string/out-of-range index, a cited `groundingChunks`
+# element or `web` that is NOT AN OBJECT, or a uri that is not a non-empty string drops only that
+# index; a non-object `groundingSupports` element or a non-array `groundingChunkIndices` drops only
+# that support. The source condition fails only when no index yields a source; one valid index is
+# enough to meet it. So a NOT_FOUND/MISMATCH with no source link at all is never trusted (the
+# blank-source downgrade only touches VERIFIED, so it does not rescue one). The
 # guard is strictly STRONGER than "has a source": a response carrying chunks but no webSearchQueries
 # (sources non-blank, no real search signal) still fails — the converse is intentionally not
 # required. Keep this extraction's LOGIC identical to gemini_sources.jq's `$srcs` body — same

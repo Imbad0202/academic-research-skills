@@ -235,7 +235,7 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
    - **NEW-CHANGED (Stage 4.5 only) — verify 100%, no cap:** every reference supporting a claim that is **new or changed** since Stage 2.5, whatever its impact class.
    - **CONTROL (Stage 4.5 only) — the unchanged, non-high-impact remainder**, sampled at 10%, rounded up (minimum 3, maximum 10; fewer than 3 → all of it) to catch silent drift. At Stage 4.5, CONTROL replaces RANDOM — there is no separate RANDOM tier at the final gate.
    - Cost scales mainly with the count of high-impact (and, at Stage 4.5, new/changed) citations; for a fixed high-impact count, the total reference count can still change the sampled tier (the RANDOM/CONTROL rule above) — as the high-impact share of the references approaches 100%, coverage does too, which is the point: verification budget concentrates where the paper's weight rests. The old flat cap (max 15) is retired; only the sampled tiers (RANDOM/CONTROL) carry a cap (max 10 each).
-3. Issue **one API call per reference** — not a batch. (In a batched response one grounding trace serves all the references: a single grounding-metadata trace on a 5-reference response does not by itself show that *each* reference was searched. With one reference per call, each call's grounding evidence belongs to one reference and its verdict.) For each reference, construct a verification prompt:
+3. Issue **one API call per reference** — not a batch. (A single grounding-metadata trace on a 5-reference response does not by itself show that *each* reference was searched. With one reference per call, each call's grounding evidence belongs to one reference and its verdict.) For each reference, construct a verification prompt:
    ```
    Verify this academic reference. Check: Does it exist? Are the author
    names, year, title, journal, and DOI correct? Search the web to
@@ -511,10 +511,11 @@ http="${resp##*$'\n'}"; body="${resp%$'\n'*}"
 # rederived from the source extractor: it passes iff the SAME extraction the source filter performs
 # yields at least one url AND the model issued a search (a non-empty webSearchQueries). So
 # guard-pass ⟹ a source is extractable. Only candidates[0] is read, so a source on another
-# candidate never counts. Within it, a support entry whose index is empty, negative, a string,
-# out of range, or fractional, or whose chunk has no non-empty string uri, contributes no source. The
-# source condition fails, and the guard with it, only when no entry yields a source; one valid
-# entry is enough to meet it. See the .jq file headers for the full contract.
+# candidate never counts. Within it, each chunk index is checked on its own: an index that is
+# negative, a string, out of range, or fractional, or whose chunk has no non-empty string uri,
+# contributes no source, and a support with no indices contributes none. The source condition
+# fails only when no index yields a source; one valid index is enough to meet it. See the .jq
+# file headers for the full contract.
 GUARD=scripts/cross_model_verification
 if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
   # Transport/API failure (401/429/5xx, or curl's 000) — surface as a transport error so the
