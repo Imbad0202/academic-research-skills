@@ -21,8 +21,8 @@
 # `[0]` access (`arr(.candidates)[0]` on a non-array yields null → no metadata → blank sources).
 # Every value that is then field-dereferenced is object-normalized (`obj/1`): a non-object
 # `candidates[0]`, `groundingMetadata`, `groundingSupports` element, cited `groundingChunks` element,
-# or its `web` (e.g. `web: 5`) would otherwise crash jq ("Cannot index number with string …")
-# instead of being dropped.
+# or its `web` (e.g. `web: 5`) can otherwise make jq fail ("Cannot index number with string …";
+# a `null` does not, since `null | .uri` is `null`) instead of being dropped.
 # Extracted URIs are filtered to non-empty strings so a malformed `uri` (a number/bool/object)
 # never fabricates a source. Indices must be non-negative INTEGERS (`. == floor`): jq does not
 # fractional-index, so a `0.5` would yield null anyway, but excluding it keeps this predicate
