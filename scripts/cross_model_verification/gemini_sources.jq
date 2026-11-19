@@ -9,8 +9,10 @@
 #     and defeat the downgrade;
 #   - a string index raises a jq error ("Cannot index array with string").
 # The `select(type=="number" and . == floor and . >= 0 and . < ($chunks|length))` admits only
-# valid in-range non-negative integer indices; anything else is dropped, so a malformed support set
-# yields blank SOURCES (→ NOT_SEARCHED) rather than a fabricated or crashing result.
+# valid in-range non-negative integer indices; anything else is dropped, one index at a time, so a
+# malformed index never yields a fabricated source or a crash. SOURCES is blank (→ NOT_SEARCHED)
+# only when no index yields a uri; another index still yields a source if its chunk has a
+# non-empty string web.uri.
 #
 # Every container is normalized to an array first (`arr/1`): `length` and `$chunks[.]` are only
 # meaningful on arrays, and a malformed groundingChunks/groundingSupports arriving as a string or
@@ -20,7 +22,7 @@
 # Every value that is then field-dereferenced is object-normalized (`obj/1`): a non-object
 # `candidates[0]`, `groundingMetadata`, `groundingSupports` element, cited `groundingChunks` element,
 # or its `web` (e.g. `web: 5`) would otherwise crash jq ("Cannot index number with string …")
-# instead of yielding blank SOURCES.
+# instead of being dropped.
 # Extracted URIs are filtered to non-empty strings so a malformed `uri` (a number/bool/object)
 # never fabricates a source. Indices must be non-negative INTEGERS (`. == floor`): jq does not
 # fractional-index, so a `0.5` would yield null anyway, but excluding it keeps this predicate
