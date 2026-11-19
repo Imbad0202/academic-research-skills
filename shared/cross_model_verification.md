@@ -266,7 +266,7 @@ When the integrity_verification_agent detects `ARS_CROSS_MODEL` in the environme
    - References selected: X/Y (Z%) — HIGH-IMPACT: H (100% of tier), RANDOM: R (Stage 2.5), NEW-CHANGED: N + CONTROL: C (Stage 4.5)
    - Agreements: N
    - Disagreements: M (listed below, prioritized for human review)
-   - Ungrounded (NOT_SEARCHED): U (no search evidence that passes the checks backs the verdict: the model said it could not search, a VERIFIED came with no source, the grounding check failed, or a compatible provider's positive verdict was downgraded — these are NOT confirmations; re-run or human-review)
+   - Ungrounded (NOT_SEARCHED): U (the verdict was NOT_SEARCHED or was downgraded to it: the model said it could not search, a VERIFIED came with no source, the grounding check failed, or a compatible provider's positive verdict was downgraded — these are NOT confirmations; re-run or human-review)
 
    | # | Reference | Tier | Claude | Cross-Model | Source (URL/DOI) | Status |
    |---|-----------|------|--------|-------------|------------------|--------|
