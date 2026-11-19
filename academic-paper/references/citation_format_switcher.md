@@ -94,10 +94,10 @@ Smith, John A. 2024. "Article Title in Title Case." Journal Title
 **Works Cited**:
 ```
 Smith, John A., and Betty C. Jones. "Article Title in Title Case."
-    Journal Title, vol. 45, no. 2, 2024, pp. 123-45.
+    Journal Title, vol. 45, no. 2, 2024, pp. 123-45, https://doi.org/10.xxxx.
 ```
 
-**Key rules**: No year in-text, page numbers always, containers model, no DOI in basic format (include if online), title case for all titles.
+**Key rules**: No year in-text, page numbers always, containers model, keep each DOI that the entry has and carry over a DOI that the supplied source data gives (ARS does not require looking up a missing DOI), title case for all titles.
 
 ---
 
@@ -143,7 +143,7 @@ Smith, John A., and Betty C. Jones. "Article Title in Title Case."
 1. Remove years from in-text, add page numbers
 2. Expand first names, change "&" → "and"
 3. Change format: vol., no., year order
-4. Remove DOIs (unless online-only source)
+4. Keep each DOI that the entry has, and carry over a DOI that the supplied source data gives; ARS does not require looking up a missing DOI
 5. Rename "References" → "Works Cited"
 
 ### APA → IEEE
