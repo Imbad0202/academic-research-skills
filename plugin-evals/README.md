@@ -107,8 +107,8 @@ The counts and costs here are maintainer-reported, from local runs that are not
 committed. The bars were frozen first in `preregistration-907.md` (cases 03 and
 04) and `preregistration-907-command.md` (case 08).
 
-The variant now covers only comments from a research ethics or human-subjects
-protection review, and the coach quotes, in its reply, the user's words that
+The variant now covers only comments from a formal research ethics or
+human-subjects protection review of the study, and the coach quotes, in its reply, the user's words that
 name the body. Case 03 gains `no-false-committee-claim` (llm, `arm: with-only`).
 
 **Runs.** Claude Code 2.1.328, `--ablation none --model claude-opus-5-5
@@ -129,12 +129,23 @@ Case 08 ran as `--case '08-*' --max-cost-usd 2`.
   the start of the message): a run with the skill cost far more than the
   estimate, so the cap stopped the run after 2 runs; the third did not start.
   Agent cost US$2.47 and judge cost US$0.02, over the US$2 cap, because the
-  runner checks the cap only before it starts a run. Both runs fired the skill.
-  Run 1 took the variant (a segmentation for the user to confirm, concern IDs,
-  the placeholder skeleton, and the human-subjects boundary) and passed
-  `tracker-covers-5`, but it did not quote the user's words that name the
-  committee. The answer of run 2 was not kept (its paid grader was skipped at
-  the cap), so it could not be read.
+  runner checks the cap only before it starts a run. `skill-fired` passed in
+  both runs; it checks that the Skill tool was called, not which skill.
+  `no-severity-words` passed in both runs. Run 1 took the variant (a
+  segmentation for the user to confirm, concern IDs, the placeholder skeleton,
+  and the human-subjects boundary) and passed `tracker-covers-5`, but it did not
+  quote the user's words that name the committee. The answer of run 2 was not
+  kept (its paid grader was skipped at the cap), so it could not be read. The
+  preregistration did not say how to count a run that the cap stops or an answer
+  that was not kept; this report counts them as not read.
+
+**Limits of these bars.** The case 04 and case 08 bars ask for concern IDs and
+a segmentation. The protocol asks the coach to show the segmentation and wait
+for the user's confirmation before it makes the concerns, so a first answer
+that stops correctly at that point has no IDs; these bars cannot tell that
+answer from one that left the variant. `no-false-committee-claim` reads only
+the last message, so it does not see a false claim in earlier text of the same
+run.
 
 **After these runs.** Cross-model review of the change then found that the
 quote rule did not say where the quote goes and conflicted with the rule to
