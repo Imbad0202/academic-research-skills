@@ -109,13 +109,8 @@ def test_peer_review_exclusion_sentence_is_whole(relative: str, extra: str) -> N
 
 
 _SCOPE_SENTENCES = (
-    "This variant covers only comments from a body that reviews research with human "
-    "participants or their data, such as a research ethics committee, an institutional "
-    "review board (IRB), or a human research ethics office; a thesis or dissertation "
-    "committee and a grant or funding panel are not such a body, so their comments take "
-    "normal `revision-coach` (#907).",
-    "Before taking this branch, quote the user's own words that name the body; a body "
-    "that the user's own words do not name does not take this branch (#907).",
+    'This variant covers only comments that a body makes in a research ethics or human-subjects protection review of research with human participants or their data, such as comments from a research ethics committee, an institutional review board (IRB), or a human research ethics office. Comments that review such research for another purpose (scientific merit, statistics, data access, or safety monitoring), and comments from a thesis or dissertation committee or a grant or funding panel, take normal `revision-coach` (#907).',
+    "Before taking this branch, write in the reply, in quotation marks, the user's own words that name the body. If the user's own turns do not name it (for example, the name appears only in the pasted letter), ask the user which body sent the comments and in what review, and quote that answer; a reply of only yes or no does not name the body, so ask again (#907).",
 )
 
 

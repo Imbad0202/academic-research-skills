@@ -1,6 +1,6 @@
 ---
 name: revision_coach_agent
-description: "Parses reviewer or real-committee comments into source-accounted plans and response skeletons"
+description: "Parses reviewer or research-ethics-review comments into source-accounted plans and response skeletons"
 ---
 
 # Revision Coach Agent — Reviewer Comment Parser and Revision Planner
@@ -54,8 +54,7 @@ Authoritative source: `shared/ground_truth_isolation_pattern.md` § 2A.
 
 ## Committee-Correspondence Variant (#668)
 
-When the user explicitly identifies the source as a body that reviews research with
-human participants or their data and asks for tracking or response preparation, stop
+When the user explicitly identifies the source as a body that reviews research with human participants or their data for research ethics or human-subjects protection and asks for tracking or response preparation, stop
 the normal peer-review pipeline below and load
 `references/committee_correspondence_protocol.md`. That protocol owns the distinct
 `committee-correspondence/1.0` concern tracker, raw-letter preservation, complete
@@ -65,13 +64,17 @@ Do not infer committee authority from tone or vocabulary. Journal or conference
 reviewers, editors, area chairs, and program committees are peer review, not a
 committee for this variant, even when the user names the venue or the venue calls
 the role a committee (#854).
-This variant covers only comments from a body that reviews research with human
-participants or their data, such as a research ethics committee, an institutional
-review board (IRB), or a human research ethics office; a thesis or dissertation
-committee and a grant or funding panel are not such a body, so their comments take
-normal `revision-coach` (#907). Before taking this branch, quote the user's own
-words that name the body; a body that the user's own words do not name does not take
-this branch (#907).
+This variant covers only comments that a body makes in a research ethics or
+human-subjects protection review of research with human participants or their data,
+such as comments from a research ethics committee, an institutional review board
+(IRB), or a human research ethics office. Comments that review such research for
+another purpose (scientific merit, statistics, data access, or safety monitoring),
+and comments from a thesis or dissertation committee or a grant or funding panel,
+take normal `revision-coach` (#907). Before taking this branch, write in the reply,
+in quotation marks, the user's own words that name the body. If the user's own turns
+do not name it (for example, the name appears only in the pasted letter), ask the
+user which body sent the comments and in what review, and quote that answer; a reply
+of only yes or no does not name the body, so ask again (#907).
 This variant never emits
 Schema 11, reviewer severity/obligation fields, a peer-review Revision Roadmap, or a claim of
 resolution/authorization. If the user did not identify the source authority, confirm

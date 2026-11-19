@@ -104,27 +104,48 @@ skill in 2 of 2. Cost: US$1.58.
 ## Committee-variant scope (2026-11-19, #907)
 
 The counts and costs here are maintainer-reported, from local runs that are not
-committed. The bars were frozen first in `preregistration-907.md`.
+committed. The bars were frozen first in `preregistration-907.md` (cases 03 and
+04) and `preregistration-907-command.md` (case 08).
 
-The variant now covers only a body that reviews research with human
-participants or their data, and the coach quotes the user's words that name it.
-Case 03 gains `no-false-committee-claim` (llm, `arm: with-only`). Before any
-priced run it was judged once by `sonnet` on the 11 stored case-03 answers from
-2026-09-12: the one answer that said "you explicitly identified a real
-committee (ICLR reviewers)" failed, and the other 10 passed. One positive
-example does not measure the grader's recall.
+The variant now covers only comments from a research ethics or human-subjects
+protection review, and the coach quotes, in its reply, the user's words that
+name the body. Case 03 gains `no-false-committee-claim` (llm, `arm: with-only`).
 
-Run with Claude Code 2.1.328, `--ablation none --model claude-opus-5-5
---judge-model sonnet --runs 3 --no-publish`, one `--case` per case, from
-outside the plugin checkout:
+**Runs.** Claude Code 2.1.328, `--ablation none --model claude-opus-5-5
+--judge-model sonnet --runs 3 --no-publish`, from outside the plugin checkout.
+The preregistration gave one call with `--case '0[34]-*' --max-cost-usd 8`; the
+runner matched no case with that glob and spent nothing, so cases 03 and 04 ran
+as two calls, `--case '03-*'` and `--case '04-*'`, each with `--max-cost-usd 4`.
+Case 08 ran as `--case '08-*' --max-cost-usd 2`.
 
-- **Case 03:** 3 of 3 runs passed all five graders, `no-false-committee-claim`
-  included. Each run fired the skill. Cost: US$1.27, plus US$0.19 of judge calls
-  for both cases.
+- **Case 03:** 3 of 3 runs passed all five graders (the four in the
+  preregistration plus `skill-fired`, which the preregistration did not list as
+  a bar), and each run fired the skill. Agent cost US$1.27, judge cost US$0.12.
 - **Case 04:** the skill fired in 0 of 3 runs, so the change was **not tested**
   on this case. Opus 5.5 wrote its own tracker table without the skill, and
-  `tracker-covers-5` failed in 3 of 3. Cost: US$0.57. On 2026-09-24 the skill
-  fired in 2 of 7 runs of this case.
+  `tracker-covers-5` failed in 3 of 3. Agent cost US$0.57, judge cost US$0.07.
+  On 2026-09-24 the skill fired in 2 of 7 runs of this case.
+- **Case 08** (case 04 with `/academic-research-skills:ars-revision-coach` at
+  the start of the message): a run with the skill cost far more than the
+  estimate, so the cap stopped the run after 2 runs; the third did not start.
+  Agent cost US$2.47 and judge cost US$0.02, over the US$2 cap, because the
+  runner checks the cap only before it starts a run. Both runs fired the skill.
+  Run 1 took the variant (a segmentation for the user to confirm, concern IDs,
+  the placeholder skeleton, and the human-subjects boundary) and passed
+  `tracker-covers-5`, but it did not quote the user's words that name the
+  committee. The answer of run 2 was not kept (its paid grader was skipped at
+  the cap), so it could not be read.
+
+**After these runs.** Cross-model review of the change then found that the
+quote rule did not say where the quote goes and conflicted with the rule to
+confirm an unnamed source, and that the scope sentence named the subject of the
+research rather than the kind of review. Both rules were rewritten, and the
+protocol's Required interaction now starts the reply with the quote. None of the
+runs above used the final text. The grader text was also changed after the case
+03 run: it quotes the shortest violating part (a heading or a table cell counts),
+it no longer exempts a sentence only because it quotes the user, and a statement
+about the venue's program committee is not a violation. Calibration of the final
+grader text is recorded in the CHANGELOG entry for #907.
 
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 
