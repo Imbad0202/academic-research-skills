@@ -171,6 +171,8 @@ Phase 6: PEER REVIEW   -> [peer_reviewer]              -> Review Report (max 2 r
 Phase 7: FORMAT        -> [formatter]                  -> Final Output Package
 ```
 
+In `full` mode, if any Phase 6 revision round added, removed, or changed a citation, re-run `citation_compliance_agent` on the Final Reviewed Draft (the draft that goes to Phase 7). Pass its new Corrected Reference List, Citation Audit Report, and Corrected Draft to `formatter_agent`; otherwise the Phase 5a list stands. If the re-check changes that draft, apply the existing Review Status rules to that Corrected Draft (#1071).
+
 > See `references/workflow_phase_details.md` for detailed per-phase agent behavior and output descriptions.
 
 ### Review-target criteria binding (#684)

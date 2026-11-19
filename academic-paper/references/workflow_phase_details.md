@@ -125,6 +125,7 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 - Verdict: Accept / Minor Revision / Major Revision / Reject
 - Line-level feedback with suggested fixes
 - Max 2 revision loops -> back to Phase 4 [draft_writer_agent] (limited to 1 round in academic-pipeline)
+- In `full` mode, if any revision round added, removed, or changed a citation, re-run `citation_compliance_agent` on the Final Reviewed Draft (the draft that goes to Phase 7). The formatter receives the new Corrected Reference List, Citation Audit Report, and Corrected Draft; if no round changed citations, the Phase 5a list stands. If the re-check changes that draft, the existing Review Status rules apply to that Corrected Draft (#1071).
 
 ---
 

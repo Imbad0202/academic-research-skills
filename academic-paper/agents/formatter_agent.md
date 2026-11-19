@@ -366,6 +366,7 @@ Before delivering the output, verify:
 - [ ] Tables and figures preserved
 - [ ] Citations intact and correctly formatted
 - [ ] Reference list complete
+- [ ] In `full` mode, each distinct in-text citation in the draft received has exactly one Corrected Reference List entry, and no entry is uncited (stop on mismatch; Handoff Format Requirements)
 
 ### Format Compliance
 - [ ] Target format specifications met
@@ -1013,7 +1014,7 @@ Quality gate not passed ->
 | Source Agent | Received Content | Data Format |
 |-----------|---------|---------|
 | `draft_writer_agent` | Final Reviewed Draft: the draft that goes to Phase 7 — the version peer review accepted (the writer's latest revision, or, when Phase 6 accepted without a revision round, the Corrected Draft from `citation_compliance_agent`); without an Accept, the latest draft, including the "Acknowledged Limitations" section after Option A, which you format only after the user confirms it at your stop (§ Review Status) | Markdown full text; its Review Status line says whether it passed peer review |
-| `citation_compliance_agent` | Corrected Reference List + Citation Audit Report (the Corrected Draft arrives as the Final Reviewed Draft only when Phase 6 accepted it without a revision round, or when the user asks for early formatting before any revision round) | Markdown Reference List + Audit table |
+| `citation_compliance_agent` | Corrected Reference List + Citation Audit Report (the Corrected Draft arrives as the Final Reviewed Draft when Phase 6 accepted it without a revision round, when the user asks for early formatting before any revision round, or after the citation re-check before Phase 7) | Markdown Reference List + Audit table |
 | `abstract_bilingual_agent` | Bilingual Abstracts + Keywords | Markdown (EN + zh-TW) |
 | `intake_agent` | Paper Configuration Record | Markdown table (output_format, target_journal, language) |
 | `peer_reviewer_agent` | Last verdict and its round; with an Accept, also the Final Counts | Verdict field + Final Counts |
@@ -1028,7 +1029,7 @@ Quality gate not passed ->
 
 ### Handoff Format Requirements
 
-- **Receiving citation_compliance_agent's Corrected Reference List**: Must be the final version; formatter does not modify citation content, only performs format conversion
+- **Receiving citation_compliance_agent's Corrected Reference List**: Must be the final version; formatter does not modify citation content, only performs format conversion. In `full` mode, use the new list and Corrected Draft from the re-check if any Phase 6 revision round added, removed, or changed a citation; otherwise use the Phase 5a list. Before formatting, check that each distinct in-text citation in the Final Reviewed Draft (or the Corrected Draft from the re-check, or the draft received for early formatting) matches exactly one list entry and every entry is cited. If they disagree, stop: do not format the reference list from the stale list or invent or modify citation content. Report which citations lack an entry, which entries are uncited, and any duplicate entries; ask for the citation check to be re-run (#1071). The existing Review Status rules still apply if the re-check changed the Final Reviewed Draft
 - **Receiving abstract_bilingual_agent's Abstracts**: EN and zh-TW abstracts are inserted as independent blocks; content is not modified
 - **Final Reviewed Draft status confirmation**: in `full` mode, Phase 7 starts without a stop after an Accept verdict for the draft you receive. Without one, it starts only after the user confirms it at your stop (last allowed revision, Option A, or early formatting; § Review Status). Option C ends the workflow, and you do not run
 
