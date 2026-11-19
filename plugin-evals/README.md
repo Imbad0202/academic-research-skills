@@ -101,6 +101,31 @@ skill descriptions and the SessionStart hook are unchanged from `main`, so those
 5 runs do not test it. The stored 2026-09-12 runs on `claude-opus-5` fired the
 skill in 2 of 2. Cost: US$1.58.
 
+## Committee-variant scope (2026-11-19, #907)
+
+The counts and costs here are maintainer-reported, from local runs that are not
+committed. The bars were frozen first in `preregistration-907.md`.
+
+The variant now covers only a body that reviews research with human
+participants or their data, and the coach quotes the user's words that name it.
+Case 03 gains `no-false-committee-claim` (llm, `arm: with-only`). Before any
+priced run it was judged once by `sonnet` on the 11 stored case-03 answers from
+2026-09-12: the one answer that said "you explicitly identified a real
+committee (ICLR reviewers)" failed, and the other 10 passed. One positive
+example does not measure the grader's recall.
+
+Run with Claude Code 2.1.328, `--ablation none --model claude-opus-5-5
+--judge-model sonnet --runs 3 --no-publish`, one `--case` per case, from
+outside the plugin checkout:
+
+- **Case 03:** 3 of 3 runs passed all five graders, `no-false-committee-claim`
+  included. Each run fired the skill. Cost: US$1.27, plus US$0.19 of judge calls
+  for both cases.
+- **Case 04:** the skill fired in 0 of 3 runs, so the change was **not tested**
+  on this case. Opus 5.5 wrote its own tracker table without the skill, and
+  `tracker-covers-5` failed in 3 of 3. Cost: US$0.57. On 2026-09-24 the skill
+  fired in 2 of 7 runs of this case.
+
 ## Side channels and ceilings (pilot 2026-09-12, 1 run × 2 arms)
 
 | Channel | Ceiling | Observed max |
