@@ -137,7 +137,7 @@ CANONICAL_ENFORCEMENT = {
     ),
     "4": (
         "**Enforcement (v3.9.4):** prompt-level fence + advisory verifier "
-        "(`scripts/check_pipeline_integrity.py` v3.9.4 extension). Since the #134 rescope (PR #294), "
+        "(`scripts/check_pipeline_integrity.py`). Since the #134 rescope (PR #294), "
         "a PreToolUse write-scope guard enforces the WRITE clause only when this role runs "
         "as a separately dispatched subagent of its own agent type in an install that wires "
         "the hook (the plugin install); when it runs inline in the main session (the default "
