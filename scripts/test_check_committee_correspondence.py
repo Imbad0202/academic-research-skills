@@ -154,6 +154,17 @@ def test_entry_points_point_to_the_gate(relative: str) -> None:
         assert sentence[:60] not in text
 
 
+def test_mode_guide_tree_names_each_request_the_gate_accepts() -> None:
+    # #1123 point 5: the gate takes tracking, response preparation, or resubmission
+    # organization, and the decision tree's committee branch has to say the same.
+    requests = "tracking, response preparation, or resubmission organization"
+    assert f"asks for {requests}" in _flat(_SCOPE_HOME)
+    tree = (REPO_ROOT / "academic-paper/references/mode_selection_guide.md").read_text(encoding="utf-8")
+    branch = next((line for line in tree.splitlines() if "─→" in line and "committee-correspondence variant" in line), "")
+    assert branch, "committee branch missing from the decision tree"
+    assert requests in branch
+
+
 _GRADER = REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-committee-branch.md"
 _GRADER_FLAGS = [
     "## 1. Source preservation",  # heading shapes of the two #853 misroutes
