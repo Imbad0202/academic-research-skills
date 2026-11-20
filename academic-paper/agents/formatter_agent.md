@@ -515,7 +515,7 @@ NOT a refusal rule: this agent stays stamp-only (Invariant 13) — it never re-r
 
 This section applies to `academic-paper` `full` mode. It does not apply to `format-convert` mode, to the standalone `disclosure` mode, or to `academic-pipeline` Stage 5, where the Stage 5 entry gate holds the user's confirmation.
 
-**Start condition.** Start Phase 7 without a stop when `peer_reviewer_agent` gave an Accept verdict for the draft you receive. Otherwise, before you format, show the user the Review Status line below and ask whether to format the draft in that state. This is the one confirmation stop for the Phase 6 -> 7 step; no other agent asks it first. Start only after the user confirms it. If the user declines, stop and format nothing. The cases are in `peer_reviewer_agent` § Loop End States and `academic-paper/SKILL.md` Checkpoint Rule 6; Option C ends the workflow, and you do not run.
+**Start condition.** Start Phase 7 without a confirmation stop only when you receive the version `peer_reviewer_agent` accepted. Otherwise, before you format, show the user the Review Status line below and ask whether to format the draft in that state. If the re-check or a user-requested citation edit changed the draft after an Accept, use the seventh Review Status line at this stop. This is the one confirmation stop for the Phase 6 -> 7 step; no other agent asks it first. Start only after the user confirms it. If the user declines, stop and format nothing. The cases are in `peer_reviewer_agent` § Loop End States and `academic-paper/SKILL.md` Checkpoint Rule 6; Option C ends the workflow, and you do not run.
 
 **Review Status line.** Write exactly one of these in the `Review Status` row of Format Specifications Applied, and use the same line at the stop:
 
@@ -525,12 +525,13 @@ This section applies to `academic-paper` `full` mode. It does not apply to `form
 - `Formatted early at the user's request: Round N verdict <verdict> on this draft`
 - `Formatted early at the user's request: revised after the Round N verdict <verdict>; not re-reviewed`
 - `Formatted early at the user's request: no review has read this draft`
+- `Citations changed after Round N acceptance; this version has not been re-reviewed`
 
-For early formatting, pick the line by the draft you receive: the draft that the last review read, a revision of it that no review read, or a draft that no review read at all.
+For early formatting without citation changes after acceptance, pick the line by the draft you receive: the draft that the last review read, a revision of it that no review read, or a draft that no review read at all.
 
 Do not call a draft "passed peer review" unless its line is `Accepted in Round N`.
 
-**Counts.** With an Accept, use the reviewer's Final Counts (body word count, in-text citation count, reference-list entry count) as the input counts in the Final Quality Checklist. Otherwise, count the draft you receive yourself, per `shared/references/word_count_conventions.md`, and state in the Final Quality Checklist that the counts are your own.
+**Counts.** With an Accept for the version you receive, use the reviewer's Final Counts (body word count, in-text citation count, reference-list entry count) as the input counts in the Final Quality Checklist. Otherwise, count the draft you receive yourself, per `shared/references/word_count_conventions.md`, and state in the Final Quality Checklist that the counts are your own.
 
 ## Output Format
 
@@ -1014,7 +1015,7 @@ Quality gate not passed ->
 | Source Agent | Received Content | Data Format |
 |-----------|---------|---------|
 | `draft_writer_agent` | Final Reviewed Draft: the draft that goes to Phase 7 — the version peer review accepted (the writer's latest revision, or, when Phase 6 accepted without a revision round, the Corrected Draft from `citation_compliance_agent`); without an Accept, the latest draft, including the "Acknowledged Limitations" section after Option A, which you format only after the user confirms it at your stop (§ Review Status) | Markdown full text; its Review Status line says whether it passed peer review |
-| `citation_compliance_agent` | Corrected Reference List + Citation Audit Report (the Corrected Draft arrives as the Final Reviewed Draft when Phase 6 accepted it without a revision round, when the user asks for early formatting before any revision round, or after the citation re-check before Phase 7) | Markdown Reference List + Audit table |
+| `citation_compliance_agent` | Corrected Reference List + Citation Audit Report; after a re-check, also retain the Phase 5a report and correction log (the Corrected Draft arrives as the Final Reviewed Draft when Phase 6 accepted it without a revision round, when the user asks for early formatting before any revision round, or after the citation re-check before Phase 7) | Markdown Reference List + Audit table |
 | `abstract_bilingual_agent` | Bilingual Abstracts + Keywords | Markdown (EN + zh-TW) |
 | `intake_agent` | Paper Configuration Record | Markdown table (output_format, target_journal, language) |
 | `peer_reviewer_agent` | Last verdict and its round; with an Accept, also the Final Counts | Verdict field + Final Counts |
@@ -1029,9 +1030,9 @@ Quality gate not passed ->
 
 ### Handoff Format Requirements
 
-- **Receiving citation_compliance_agent's Corrected Reference List**: Must be the final version; formatter does not modify citation content, only performs format conversion. In `full` mode, use the new list and Corrected Draft from the re-check if any Phase 6 revision round added, removed, or changed a citation; otherwise use the Phase 5a list. Before formatting, check that each distinct in-text citation in the Final Reviewed Draft (or the Corrected Draft from the re-check, or the draft received for early formatting) matches exactly one list entry and every entry is cited. If they disagree, stop: do not format the reference list from the stale list or invent or modify citation content. Report which citations lack an entry, which entries are uncited, and any duplicate entries; ask for the citation check to be re-run (#1071). The existing Review Status rules still apply if the re-check changed the Final Reviewed Draft
+- **Receiving citation_compliance_agent's Corrected Reference List**: Must be the final version; formatter does not modify citation content, only performs format conversion. In `full` mode, use the new list and Corrected Draft from the re-check if any Phase 6 revision round added, removed, or changed a citation, or if the user requested a citation change in chat outside a revision round after Phase 5a and before Phase 7; otherwise use the Phase 5a list. Keep the Phase 5a Citation Audit Report and correction log alongside the re-check's report. In `full` mode, before formatting, check that each distinct in-text citation in the Final Reviewed Draft (or the Corrected Draft from the re-check, or the draft received for early formatting) matches exactly one list entry and every entry is cited. In `full` mode, if they disagree, stop: do not format the reference list from the stale list or invent or modify citation content. Report which citations lack an entry, which entries are uncited, and any duplicate entries; ask for the citation check to be re-run (#1071). If the re-check or a user-requested citation edit changed the draft after an Accept, use `Citations changed after Round N acceptance; this version has not been re-reviewed` and ask for confirmation at the stop (§ Review Status)
 - **Receiving abstract_bilingual_agent's Abstracts**: EN and zh-TW abstracts are inserted as independent blocks; content is not modified
-- **Final Reviewed Draft status confirmation**: in `full` mode, Phase 7 starts without a stop after an Accept verdict for the draft you receive. Without one, it starts only after the user confirms it at your stop (last allowed revision, Option A, or early formatting; § Review Status). Option C ends the workflow, and you do not run
+- **Final Reviewed Draft status confirmation**: in `full` mode, Phase 7 starts without a stop after an Accept verdict for the draft you receive. Without one, it starts only after the user confirms it at your stop (last allowed revision, Option A, early formatting, or citation changes after acceptance; § Review Status). Option C ends the workflow, and you do not run
 
 ## Quality Criteria
 

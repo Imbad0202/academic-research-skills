@@ -125,7 +125,7 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 - Verdict: Accept / Minor Revision / Major Revision / Reject
 - Line-level feedback with suggested fixes
 - Max 2 revision loops -> back to Phase 4 [draft_writer_agent] (limited to 1 round in academic-pipeline)
-- In `full` mode, if any revision round added, removed, or changed a citation, re-run `citation_compliance_agent` on the Final Reviewed Draft (the draft that goes to Phase 7). The formatter receives the new Corrected Reference List, Citation Audit Report, and Corrected Draft; if no round changed citations, the Phase 5a list stands. If the re-check changes that draft, the existing Review Status rules apply to that Corrected Draft (#1071).
+- In `full` mode, re-run `citation_compliance_agent` before Phase 7 if any Phase 6 revision round added, removed, or changed a citation, or if the user requested a citation change in chat outside a revision round after Phase 5a. Use the latest draft intended for Phase 7, including the user's changes. Keep the Phase 5a Citation Audit Report and its correction log alongside the re-check's report. The formatter uses the re-check's Corrected Draft and Corrected Reference List; without either trigger, the Phase 5a list stands. The re-check must list conflicts with the user's requested change in its audit report instead of overwriting that change. If the re-check or a user-requested citation edit changed the draft after an Accept, the formatter uses `Citations changed after Round N acceptance; this version has not been re-reviewed` and stops to ask for confirmation. It skips that confirmation stop only when it receives the version the reviewer accepted (#1071).
 
 ---
 

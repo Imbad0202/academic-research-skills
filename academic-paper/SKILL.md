@@ -171,7 +171,7 @@ Phase 6: PEER REVIEW   -> [peer_reviewer]              -> Review Report (max 2 r
 Phase 7: FORMAT        -> [formatter]                  -> Final Output Package
 ```
 
-In `full` mode, if any Phase 6 revision round added, removed, or changed a citation, re-run `citation_compliance_agent` on the Final Reviewed Draft (the draft that goes to Phase 7). Pass its new Corrected Reference List, Citation Audit Report, and Corrected Draft to `formatter_agent`; otherwise the Phase 5a list stands. If the re-check changes that draft, apply the existing Review Status rules to that Corrected Draft (#1071).
+In `full` mode, re-run `citation_compliance_agent` before Phase 7 if any Phase 6 revision round added, removed, or changed a citation, or if the user requested a citation change in chat outside a revision round after Phase 5a. Use the latest draft intended for Phase 7, including the user's changes. Keep the Phase 5a Citation Audit Report and its correction log alongside the re-check's report. The formatter uses the re-check's Corrected Draft and Corrected Reference List; without either trigger, the Phase 5a list stands. The re-check must list conflicts with the user's requested change in its audit report instead of overwriting that change. If the re-check or a user-requested citation edit changed the draft after an Accept, the formatter uses `Citations changed after Round N acceptance; this version has not been re-reviewed` and stops to ask for confirmation. It skips that confirmation stop only when it receives the version the reviewer accepted (#1071).
 
 > See `references/workflow_phase_details.md` for detailed per-phase agent behavior and output descriptions.
 
