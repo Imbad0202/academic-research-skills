@@ -123,6 +123,7 @@ _SCOPE_POINTER_FILES = [
     "academic-paper/agents/revision_coach_agent.md",
     "academic-paper/SKILL.md",
     "academic-paper/references/mode_selection_guide.md",
+    "commands/ars-revision-coach.md",
 ]
 
 
