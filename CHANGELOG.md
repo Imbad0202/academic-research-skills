@@ -6,8 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **The README names the DeepSeek Harness (DSH) sibling distribution maintained by TY-Cheng (#1126).** It is recognized under the platform-ports policy in `CONTRIBUTING.md`. The ARS maintainer verified that its vendored skill and core files match the pinned upstream commit and reviewed its README and submission documents; the ARS maintainer did not audit the port's code or run it. The README entry states the port's limits. The Claude Code hooks are not ported. Its documented run used version 0.3.0 of the port, before its native DSH team skills and tools, ran all role prompts inline in one session, and used a model that its agent reported as `deepseek-flash`. That run shows no separate user decision at the review or Stage 5 entry checkpoints, and it predates the checkpoint rules that version 0.4.5 added to the port's `ars-pipeline-team` skill.
+
 ### Fixed
 
+- **`timeline_extraction_agent` no longer cites a v3.9.4 extension of `scripts/check_pipeline_integrity.py` that does not exist (#1129, reported by @SID-6921).** Its enforcement sentence now names the advisory verifier as the other Bucket A agents do, and `CANONICAL_ENFORCEMENT["4"]` in `scripts/check_v3_9_2_phase_boundary.py` carries the same sentence. The verifier and the write-scope guard are unchanged.
 - **`academic-paper` full mode refreshes the Corrected Reference List after citation changes in Phase 6 (#1071).** If any revision round added, removed, or changed a citation, `citation_compliance_agent` runs again on the Final Reviewed Draft before Phase 7, and the formatter uses its new list and Corrected Draft; otherwise the Phase 5a list stands. The formatter checks that each distinct in-text citation has exactly one reference entry and no entry is uncited, stops on a mismatch, reports it, and asks for the citation check to be re-run without inventing or modifying citation content. Existing Review Status rules still apply, and revision-mode and citation-check-mode behavior is unchanged. Prompt-level; the effect on runs is unmeasured.
 
 ## [3.24.4] - 2026-11-19 — A committee-correspondence variant scoped to research ethics review, below-consensus findings in the roadmap and letter, and GPT-6.2 Astra as the recommended OpenAI verifier
