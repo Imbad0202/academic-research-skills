@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **The README names the DeepSeek Harness (DSH) sibling distribution maintained by TY-Cheng (#1126).** It is recognized under the platform-ports policy in `CONTRIBUTING.md`, and `THIRD_PARTY.md` lists it. The ARS maintainer checked that its vendored skill and core files match the pinned upstream commit; the port's behavior was not tested here. The README entry states the port's limits. The Claude Code hooks are not ported. The documented run used a model that its agent reported as DeepSeek. That run shows no separate user decision at the review or Stage 5 entry checkpoints, and it predates the port's checkpoint rules in version 0.4.5.
+- **The README names the DeepSeek Harness (DSH) sibling distribution maintained by TY-Cheng (#1126).** It is recognized under the platform-ports policy in `CONTRIBUTING.md`. The ARS maintainer verified that its vendored skill and core files match the pinned upstream commit and reviewed its documents; the ARS maintainer did not audit the port's code or run it. The README entry states the port's limits. The Claude Code hooks are not ported. Its documented run used version 0.3.0 of the port, ran the review roles in one session, and used a model that its agent reported as `deepseek-flash`. That run shows no separate user decision at the review or Stage 5 entry checkpoints, and it predates the checkpoint rules that version 0.4.5 added to the port's `ars-pipeline-team` skill.
 
 ### Fixed
 
