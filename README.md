@@ -84,6 +84,8 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 **Using Codex CLI?** Install the sibling distribution instead: [`Imbad0202/academic-research-skills-codex`](https://github.com/Imbad0202/academic-research-skills-codex) — same workflow content, Codex-native packaging as a single `$academic-research-suite` skill with `ars-*` aliases.
 
+**Using DeepSeek Harness (DSH)?** [`TY-Cheng/dsh-academic-research-skills`](https://github.com/TY-Cheng/dsh-academic-research-skills) is a community sibling distribution maintained by TY-Cheng, not by this repository. It vendors the ARS skills and core files unmodified at a pinned upstream commit, regenerates the commands for DSH, and adds its own skills and tools. The Claude Code hooks, including the per-role write-scope guard, are not ported. The ARS maintainer checked only that the vendored files match the pinned commit and has not run the port. The port's documented end-to-end run stopped after Stage 5, and its agent reported a DeepSeek model; no Claude run was made. That run's record shows no separate user decision at the Stage 3, Stage 3′, or Stage 5 entry checkpoints, and the run predates the checkpoint rules added in version 0.4.5 of the port. Report DSH-specific issues in that repository.
+
 **Third-party platforms and integrations** that wrap or host ARS are listed in [THIRD_PARTY.md](THIRD_PARTY.md) — community-submitted and not reviewed or endorsed by the maintainer.
 
 **Governance:** who decides, what cross-model review does and does not provide, and the project's end-of-life posture are stated in [GOVERNANCE.md](GOVERNANCE.md); security reporting and triage in [SECURITY.md](SECURITY.md).

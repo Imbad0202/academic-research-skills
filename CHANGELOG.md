@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **The README names the DeepSeek Harness (DSH) sibling distribution maintained by TY-Cheng (#1126).** It is recognized under the platform-ports policy in `CONTRIBUTING.md`, and `THIRD_PARTY.md` lists it. The ARS maintainer checked that its vendored skill and core files match the pinned upstream commit; the port's behavior was not tested here. The README entry states the port's limits. The Claude Code hooks are not ported. The documented run used a model that its agent reported as DeepSeek. That run shows no separate user decision at the review or Stage 5 entry checkpoints, and it predates the port's checkpoint rules in version 0.4.5.
+
 ### Fixed
 
 - **`timeline_extraction_agent` no longer cites a v3.9.4 extension of `scripts/check_pipeline_integrity.py` that does not exist (#1129, reported by @SID-6921).** Its enforcement sentence now names the advisory verifier as the other Bucket A agents do, and `CANONICAL_ENFORCEMENT["4"]` in `scripts/check_v3_9_2_phase_boundary.py` carries the same sentence. The verifier and the write-scope guard are unchanged.
