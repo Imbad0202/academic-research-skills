@@ -558,6 +558,48 @@
         "scripts/test_audit_panel_claims.py::test_an_id_answered_twice_has_no_usable_verdict",
         "scripts/test_audit_panel_claims.py::test_an_unread_seat_makes_the_coverage_partial_and_none_read_is_not_none"
       ]
+    },
+    {
+      "mechanism": "manuscript_retraction_check_not_checked",
+      "failure_class": "The opt-in manuscript retraction check cannot run: the list output path already exists or cannot be checked, the manuscript cannot be read, or the user-reviewed DOI list cannot be read",
+      "degraded_state": "not checked: the script exits 2 with a STOP line on stderr (and renders 'Not checked:' in check mode), and when opted in the Editorial Decision Letter attachment is one line saying the retraction check did not run",
+      "diagnostic_marker": "stderr line starting 'STOP: ' and exit code 2; Markdown line 'Not checked: ' ('未檢查：' in zh-TW) under '## Attachment: Retraction Check (advisory, #1108)'",
+      "downstream_consumer": "The dispatching session that runs scripts/check_manuscript_retractions.py when the user opts in, the Editorial Decision Letter attachment, and the user",
+      "terminal_policy_effect": "none: the retraction check is opt-in and advisory; a check that did not run is not a clean result and blocks nothing",
+      "authority": [
+        {
+          "file": "scripts/check_manuscript_retractions.py",
+          "anchor": "raise Stop(f\"output file already exists: {out_path}\")"
+        },
+        {
+          "file": "academic-paper-reviewer/SKILL.md",
+          "anchor": "the section is one line saying the retraction check did not run"
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_manuscript_retractions.py::test_list_refuses_existing_output_before_reading_manuscript",
+        "scripts/test_check_manuscript_retractions.py::test_list_permission_error_stops_before_reading_manuscript",
+        "scripts/test_check_manuscript_retractions.py::test_check_unreadable_list_returns_exit_2_and_not_checked"
+      ]
+    },
+    {
+      "mechanism": "manuscript_retraction_check_partial",
+      "failure_class": "The opt-in manuscript retraction check reads the list only in part or cannot settle every DOI: one or more non-blank, non-comment lines are invalid, a resolver is degraded, or a DOI ends with unknown status",
+      "degraded_state": "partial: the script exits 0, marks coverage as partial, lists every invalid line, and lists every unknown or single-resolver degraded DOI so none is treated as not retracted",
+      "diagnostic_marker": "Markdown report line 'DOIs checked: <n> (partial).' ('已查 DOI：<n> 筆（部分）。' in zh-TW) and 'Not read (invalid lines in list' / 'Unknown status' / 'Single-resolver verdicts'",
+      "downstream_consumer": "The reader of the Editorial Decision Letter that carries the report as an advisory attachment, and the user",
+      "terminal_policy_effect": "none: the retraction check is opt-in and advisory; a partial report is not a clean result and blocks nothing",
+      "authority": [
+        {
+          "file": "scripts/check_manuscript_retractions.py",
+          "anchor": "report[\"status\"] = \"partial\" if (invalid_lines or any_degraded_or_unknown) else \"checked\""
+        }
+      ],
+      "pinned_by": [
+        "scripts/test_check_manuscript_retractions.py::test_unknown_missing_flag_stays_unknown_and_partial",
+        "scripts/test_check_manuscript_retractions.py::test_degraded_resolver_makes_report_partial",
+        "scripts/test_check_manuscript_retractions.py::test_comment_and_blank_lines_ignored_while_invalid_lines_counted"
+      ]
     }
   ]
 }

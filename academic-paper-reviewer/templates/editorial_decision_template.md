@@ -238,6 +238,12 @@ After careful consideration, we are unable to accept your manuscript for publica
 
 ---
 
+## Attachment: Retraction Check (advisory, #1108)
+
+[Leave this section out. Opt-in only; when requested, the dispatching session appends it after the decision is final and after the user reviews the DOI list (`SKILL.md` § Retraction check attachment).]
+
+---
+
 ## Attachment: Acronym Check (advisory, #849)
 
 [Leave this section out. The dispatching session appends it after the decision is final (`SKILL.md` § Acronym check attachment).]

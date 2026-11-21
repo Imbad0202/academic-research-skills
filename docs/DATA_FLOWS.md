@@ -60,6 +60,13 @@ arXiv ID they give, through the same four clients. It runs live and does not rea
 the verification cache. Off switch: don't run it; the letter's attachment then says the
 check did not run.
 
+Opt-in after a review, `scripts/check_manuscript_retractions.py` (#1108) runs in two
+steps: `list` reads the manuscript and writes its DOIs to a new file without sending
+anything; after the user reviews and edits that file, `check` sends only the DOIs left in
+the list to OpenAlex (`scripts/openalex_client.py`) and Crossref
+(`scripts/crossref_client.py`), live and without reading or writing any retraction cache.
+No manuscript titles or prose are sent. Off switch: opt-in only — don't run it.
+
 | Resolver | Endpoint | Credentials (optional) | Per-index note |
 |---|---|---|---|
 | `scripts/semantic_scholar_client.py` | `api.semanticscholar.org` | `S2_API_KEY` (raises rate limit) | |
