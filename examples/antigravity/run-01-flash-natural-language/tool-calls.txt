@@ -1,0 +1,7 @@
+  2  read_file          {"EndLine": 150, "Path": "~/.gemini/config/plugins/academic-research-skills/skills/deep-research/SKILL.md", "StartLine": 1}
+  4  read_file          {"EndLine": 400, "Path": "<ARS_ROOT>/deep-research/SKILL.md", "StartLine": 1}
+  6  read_file          {"EndLine": 729, "Path": "<ARS_ROOT>/deep-research/SKILL.md", "StartLine": 401}
+  8  read_file          {"EndLine": 200, "Path": "<ARS_ROOT>/academic-paper-reviewer/references/review_criteria_framework.md", "StartLine": 1}
+ 10  search_web         {"query": "\"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks\" Lewis NeurIPS 2020"}
+ 12  search_web         {"query": "\"Retrieval Augmentation Reduces Hallucination in Conversation\" Shuster EMNLP 2021"}
+ 14  search_web         {"query": "\"Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection\" Asai ICLR 2024"}
