@@ -125,6 +125,9 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 - Verdict: Accept / Minor Revision / Major Revision / Reject
 - Line-level feedback with suggested fixes
 - Max 2 revision loops -> back to Phase 4 [draft_writer_agent] (limited to 1 round in academic-pipeline)
+- In `full` mode, call `citation_compliance_agent` for a re-check before Phase 7 if any Phase 6 revision round added, removed, or changed a citation or a reference-list entry. Also re-check if the user asks in chat to add, remove, or change a citation or a reference-list entry outside a revision round after Phase 5a and before Phase 7. The caller applies any chat edit to a working copy of the latest Phase 7 candidate and sends that draft and the user's instruction to the re-check. Keep any accepted version for comparison. A chat edit uses no revision round.
+- In `full` mode, when a re-check runs, use its Corrected Draft as the sole Phase 7 manuscript and use its accompanying reference list. Keep the Phase 5a Citation Audit Report and correction log alongside the re-check's report. The re-check preserves explicit user edits and records conflicts in Items Flagged for Review. Use the Phase 5a list only when no re-check ran. For early formatting after Phase 5a and before any revision round, send the initial Phase 5a Corrected Draft if no re-check ran (#1071).
+- In `full` mode, only the version the reviewer accepted skips Review Status confirmation and uses the reviewer's Final Counts. If a chat edit or the re-check changed a citation or a reference-list entry after acceptance, the formatter shows `Citations changed after Round N acceptance; this version has not been re-reviewed`, asks once, and counts the draft it receives (#1071).
 
 ---
 
@@ -133,6 +136,7 @@ Detailed per-phase agent behavior and output descriptions for the 8-phase orches
 **Agent**: `formatter_agent`
 **Output**: Final Output Package
 
+- In `full` mode, once Review Status allows formatting, compare the incoming draft and list before conversion. Count only works that require an entry under the selected citation style. List missing, uncited, or duplicate entries in an Output Package warning and continue formatting with citation content preserved (#1071).
 - Target format conversion (LaTeX + .bib / DOCX / PDF / Markdown)
 - Journal-specific formatting (if target journal specified)
 - Cover letter (if journal submission)

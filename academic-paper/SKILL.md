@@ -171,6 +171,10 @@ Phase 6: PEER REVIEW   -> [peer_reviewer]              -> Review Report (max 2 r
 Phase 7: FORMAT        -> [formatter]                  -> Final Output Package
 ```
 
+In `full` mode, call `citation_compliance_agent` for a re-check before Phase 7 if any Phase 6 revision round added, removed, or changed a citation or a reference-list entry. Also re-check if the user asks in chat to add, remove, or change a citation or a reference-list entry outside a revision round after Phase 5a and before Phase 7. For a chat edit, the caller applies the request to a working copy of the latest Phase 7 candidate and sends that copy and the user's instruction to the re-check. Keep any accepted version for comparison. A chat edit uses no revision round.
+
+In `full` mode, when a re-check runs, its Corrected Draft is the sole Phase 7 manuscript. Use its accompanying reference list. Keep the Phase 5a Citation Audit Report and correction log alongside the re-check's report. The re-check preserves explicit user edits and records conflicts in Items Flagged for Review. Use the Phase 5a list only when no re-check ran. If no re-check ran and formatting is requested after Phase 5a but before any revision round, send the initial Phase 5a Corrected Draft. Once Review Status allows formatting, the formatter compares the draft and list under the selected style. Citation quality findings from this comparison go in an Output Package warning while formatting continues (#1071).
+
 > See `references/workflow_phase_details.md` for detailed per-phase agent behavior and output descriptions.
 
 ### Review-target criteria binding (#684)
@@ -210,6 +214,7 @@ alignment and do not silently reconstruct a target from model memory.
    - **Last allowed revision**: after a Round 2 Minor Revision verdict, `draft_writer_agent` makes the second and last revision, and no review follows it.
    - **Option A**: after Round 2, the user picks Option A, and `draft_writer_agent` adds the "Acknowledged Limitations" section.
    - **Early formatting**: the user asks for Phase 7 before an Accept, including before any review.
+   - **Citations changed after acceptance**: a chat edit or the re-check changed a citation or a reference-list entry after Round N accepted the draft. The formatter shows `Citations changed after Round N acceptance; this version has not been re-reviewed`, asks once, and counts the draft it receives. A re-check that returns the accepted draft intact follows the accepted-version path (#1071).
 
    Option C ends the workflow, and Phase 7 does not run. Option B returns to the phase it names. If the user declines at the stop, keep the draft and all Review Reports and end the workflow, as Option C does.
 
@@ -472,8 +477,8 @@ accurate, keep it out of the errors, the corrections, and the Items Flagged for
 Review, and put it in a separate notes line. Leave the user's excerpt or draft text to the user: offer a
 corrected version and produce it only when the user asks. In this mode the
 agent's Auto-correct principle covers the reference list and the listed
-replacements; its Corrected Draft output belongs to `full`-mode runs that call
-it as Phase 5a, not to this mode (#1062, #1068). For Chicago 17th, MLA 9th, IEEE, and Vancouver, the agent's Other Citation Styles: Report Only rule replaces this: the report lists findings only, with no Corrected Reference List or replacement citations. A corrected version of the user's text still comes only when the user asks, and it begins with a note that a correction for another style may be wrong (#1093).
+replacements. The agent produces a Corrected Draft at initial Phase 5a and at
+the pre-Phase 7 re-check in `full` mode (#1062, #1068, #1071). For Chicago 17th, MLA 9th, IEEE, and Vancouver, the agent's Other Citation Styles: Report Only rule replaces the citation-check deliverable: the report lists findings only, with no Corrected Reference List or replacement citations. A corrected version of the user's text still comes only when the user asks, and it begins with a note that a correction for another style may be wrong (#1093).
 
 ---
 
@@ -605,6 +610,8 @@ Explicit prohibitions to prevent common failure modes:
 ---
 
 ## Quality Standards
+
+On a `full`-mode re-check, preserve explicit user edits, verify the sources as usual, and record any resulting orphan, format, or DOI conflict in Items Flagged for Review. A recorded conflict may proceed to handoff (#1071).
 
 ### Writing Quality
 1. **Every claim must have a citation** or be supported by the paper's own data — or, for #548 absence/novelty claims, carry documented-search provenance plus the named nearest prior work where one exists (the explicit absence-of-adjacent-work statement suffices otherwise; no source can cite an absence)
