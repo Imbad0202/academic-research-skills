@@ -136,15 +136,15 @@ more than one claim, write one Claim Decomposition block per claim.
    cross-check's own result in a line after Reading, or states that fewer
    than two independent sources are available.
 
-**What this reports, not rules.** A needed premise that is `CONTRADICTED`:
-state why the claim fails. A needed premise that is `UNSUPPORTED`, with no
-needed premise `CONTRADICTED`: say the claim is not established, distinct
-from refuted. When one needed premise is
-`CONTRADICTED` and another is `UNSUPPORTED`, report the contradiction first
-and still list the unsupported premise. When every premise `HOLDS`: say each
-premise holds on its cited passage; whether the claim as a whole stands comes
-from the 2+-independent-source cross-check, not this table. A premise the
-claim does not need that is `UNSUPPORTED` or `CONTRADICTED`: flag the
+**What this reports, not rules.** The needed premises decide which one of
+three cases applies. At least one needed premise `CONTRADICTED`: state why
+the claim fails, naming each contradicted needed premise, then still list
+any needed premise that is `UNSUPPORTED`. No needed premise `CONTRADICTED`
+and at least one `UNSUPPORTED`: say the claim is not established, distinct
+from refuted. Every needed premise `HOLDS`: say each of them holds on its
+cited passage; whether the claim as a whole stands comes from the
+2+-independent-source cross-check, not this table. In any case, a premise
+the claim does not need that is `UNSUPPORTED` or `CONTRADICTED`: flag the
 weakness and state what, if anything, the remaining evidence still supports.
 The table never accepts or rejects the claim.
 
@@ -259,16 +259,16 @@ Flag immediately if ANY of:
 |---------|---------|-------------------|----------|------|
 | [premise] | HOLDS / UNSUPPORTED / CONTRADICTED | yes / no | [for HOLDS/CONTRADICTED: short ref; excerpt + locator (section/page, or `abstract only`); for UNSUPPORTED: the source(s) and part(s) read, stating that none of them supports the premise] | [why, when not HOLDS] |
 
-**Reading**: [a needed premise CONTRADICTED: state why the claim fails; a
-needed premise UNSUPPORTED and no needed premise CONTRADICTED: state the
-claim is not established; one needed premise CONTRADICTED and another
-UNSUPPORTED: report the contradiction first, still list the unsupported
-premise; every premise HOLDS: say each holds on its cited
-passage, with the claim's overall standing given by Cross-check below; a
-non-needed premise UNSUPPORTED or CONTRADICTED: flag it and state what, if
-anything, the remaining evidence still supports, regardless of whether a
-needed premise also failed; reporting only, no accept/reject verdict on the
-claim]
+**Reading**: [one of three cases, decided by the needed premises: at least
+one needed premise CONTRADICTED: state why the claim fails, naming each
+contradicted needed premise, then still list any UNSUPPORTED needed premise;
+no needed premise CONTRADICTED and at least one UNSUPPORTED: state the claim
+is not established, distinct from refuted; every needed premise HOLDS: say
+each holds on its cited passage, with the claim's overall standing given by
+Cross-check below. In addition, a non-needed premise UNSUPPORTED or
+CONTRADICTED: flag it and state what, if anything, the remaining evidence
+still supports, regardless of whether a needed premise also failed;
+reporting only, no accept/reject verdict on the claim]
 
 **Cross-check**: [the 2+-independent-source cross-check's result for the
 claim as a whole, or that fewer than two independent sources are available]
