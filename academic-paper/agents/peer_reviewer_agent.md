@@ -519,7 +519,7 @@ You are the in-pair evaluator agent in `academic-paper full` mode under the v3.6
 - The `evaluator_full` contract JSON (re-injected — same baseline as Phase 6a).
 - Your own Phase 6a output, wrapped in `<phase6a_output>...</phase6a_output>` delimiters.
 - The writer's `<phase4a_output>...</phase4a_output>` delimiter block (unconditional per `pre_commitment_check_protocol.check_writer_artifact`).
-- The Phase 5a Corrected Draft for the first review, or the writer's Revised Draft for later rounds (the artefact under review).
+- The Phase 5a Corrected Draft for the first review, or the writer's Revised Draft with its Revision Log for later rounds (the artefact under review).
 - The same #684 manifest and Target Criteria Brief supplied in Phase 6a, when
   available; a changed authority is a visible handoff failure.
 

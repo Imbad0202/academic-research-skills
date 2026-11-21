@@ -267,7 +267,7 @@ For each `academic-paper full` invocation, Phase 4 + Phase 6 expand from two sin
    - Lint: 5 structural checks.
 4. **Phase 6b — evaluator paper-visible scoring + decision.**
    - System prompt: `### Phase 6b — Evaluator paper-visible scoring + decision` sub-section in the same agent file.
-   - User content: `evaluator_full` contract JSON (re-injected) + Phase 6a output wrapped in `<phase6a_output>...</phase6a_output>` + the writer's `<phase4a_output>` (unconditional per `pre_commitment_check_protocol.check_writer_artifact`) + the Phase 5a Corrected Draft for the first review, or the writer's Revised Draft for later rounds (the artefact under review) + the unchanged #684 authority when it was supplied in Phase 6a.
+   - User content: `evaluator_full` contract JSON (re-injected) + Phase 6a output wrapped in `<phase6a_output>...</phase6a_output>` + the writer's `<phase4a_output>` (unconditional per `pre_commitment_check_protocol.check_writer_artifact`) + the Phase 5a Corrected Draft for the first review, or the writer's Revised Draft with its Revision Log for later rounds (the artefact under review) + the unchanged #684 authority when it was supplied in Phase 6a.
    - Output: `## Dimension Scores` → `## Failure Condition Checks` → `## Review Body` → `## Evaluator Decision`, plus the role marker/unavailable disclosure and a separately validated constructive sidecar when applicable.
    - Lint: 5 structural checks.
 
