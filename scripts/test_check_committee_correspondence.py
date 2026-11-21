@@ -154,6 +154,41 @@ def test_entry_points_point_to_the_gate(relative: str) -> None:
         assert sentence[:60] not in text
 
 
+def _requests(listed: str) -> list[str]:
+    """Split "a, b, or c" into its requests."""
+    return [item for item in re.split(r",\s*(?:or\s+)?|\s+or\s+", listed.strip()) if item]
+
+
+def test_mode_guide_tree_names_each_request_the_gate_accepts() -> None:
+    # #1123 point 5: the gate takes tracking, response preparation, or resubmission
+    # organization, and the decision tree's committee branch has to say the same.
+    text = (REPO_ROOT / _SCOPE_HOME).read_text(encoding="utf-8")
+    start = text.index("\n## Activation gate\n")
+    end = text.index("\n## ", start + 1)
+    gate = " ".join(text[start:end].split())
+    asked = re.search(r"\basks for (.+?)\.(?:\s|$)", gate)
+    assert asked, "the Activation gate no longer lists the requests it accepts"
+
+    tree = (REPO_ROOT / "academic-paper/references/mode_selection_guide.md").read_text(encoding="utf-8").splitlines()
+    node = next((i for i, line in enumerate(tree) if re.match(r"[├└]── .*research ethics review", line)), None)
+    assert node is not None, "research-ethics node missing from the decision tree"
+    children = []
+    for line in tree[node + 1 :]:
+        if not re.match(r"[│ ]{4}[ │]*[├└]──", line):
+            break
+        children.append(line)
+    # every routed line under the node (and the node itself) counts, so a second route cannot hide
+    routed = [line for line in [tree[node], *children] if "→" in line]
+    assert len(routed) == 1, f"expected one routed line under the research-ethics node, found {routed}"
+    branch = re.search(r"[├└]──\s*(?:Need\s+)?(.+?)\s*─*\s*→\s*(.+?)\s*$", routed[0])
+    assert branch, f"committee line is not a tree branch: {routed[0]!r}"
+    assert branch[2] == "revision-coach committee-correspondence variant"
+
+    expected = ["tracking", "response preparation", "resubmission organization"]
+    assert _requests(asked[1]) == expected
+    assert _requests(branch[1]) == expected
+
+
 _GRADER = REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-committee-branch.md"
 _GRADER_FLAGS = [
     "## 1. Source preservation",  # heading shapes of the two #853 misroutes
