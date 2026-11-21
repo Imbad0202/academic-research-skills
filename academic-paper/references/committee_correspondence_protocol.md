@@ -30,8 +30,9 @@ ethics committee, an institutional review board (IRB), or a human research ethic
 The kind of review decides, not the topic of each comment: such a review's comments on
 statistics, data access, or safety monitoring stay in the variant. A formal review that
 such a body holds to decide whether the study needs its review also counts. A mock or advisory
-review, or an informal consultation (before or after submission, even from the same body),
-does not count. A review held for another purpose (scientific
+review before submission does not count. An informal consultation does not count,
+before or after submission, even when it comes from the same body. A review held for
+another purpose (scientific
 merit, statistics, data access, or safety monitoring), a thesis or dissertation
 committee, and a grant or funding panel take normal `revision-coach` (#907, #1123). This gate
 is the one full statement of the variant's scope; the other entry points point here,
@@ -41,9 +42,11 @@ Before taking this branch, start the reply with the user's own words that name t
 body, in quotation marks. If the user's own turns do not name it (for example, the name
 appears only in the pasted letter), ask the user which body sent the comments and in
 what review, and quote that answer; a reply of only yes or no does not name the body,
-so ask again (#907). If the user names the body without stating the kind of review (for
-example, "statistical comments from our IRB"), ask what kind of review the comments came
-from before choosing the variant (#1123).
+so ask again (#907). If the user names the body but the kind of review is still unclear,
+ask what kind of review produced the comments before choosing the variant (#1123).
+For example, for "This is the formal letter from our research ethics committee",
+enter the variant and open the reply by quoting the words the user supplied.
+For "statistical comments from our IRB", ask what kind of review produced the comments.
 
 If the source identity or the kind of review is uncertain, ask the user to identify it
 as above before choosing the variant. V1 accepts UTF-8 letter text. For a binary PDF/DOCX,

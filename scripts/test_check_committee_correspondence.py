@@ -109,8 +109,8 @@ def test_peer_review_exclusion_sentence_is_whole(relative: str, extra: str) -> N
 
 
 _SCOPE_SENTENCES = (
-    "This variant covers only a letter or comments from a research ethics or human-subjects protection review of research with human participants, their data, or their biological samples, made by a body with formal review authority over the study, such as a research ethics committee, an institutional review board (IRB), or a human research ethics office. The kind of review decides, not the topic of each comment: such a review's comments on statistics, data access, or safety monitoring stay in the variant. A formal review that such a body holds to decide whether the study needs its review also counts. A mock or advisory review, or an informal consultation (before or after submission, even from the same body), does not count. A review held for another purpose (scientific merit, statistics, data access, or safety monitoring), a thesis or dissertation committee, and a grant or funding panel take normal `revision-coach` (#907, #1123).",
-    "Before taking this branch, start the reply with the user's own words that name the body, in quotation marks. If the user's own turns do not name it (for example, the name appears only in the pasted letter), ask the user which body sent the comments and in what review, and quote that answer; a reply of only yes or no does not name the body, so ask again (#907). If the user names the body without stating the kind of review (for example, \"statistical comments from our IRB\"), ask what kind of review the comments came from before choosing the variant (#1123).",
+    "This variant covers only a letter or comments from a research ethics or human-subjects protection review of research with human participants, their data, or their biological samples, made by a body with formal review authority over the study, such as a research ethics committee, an institutional review board (IRB), or a human research ethics office. The kind of review decides, not the topic of each comment: such a review's comments on statistics, data access, or safety monitoring stay in the variant. A formal review that such a body holds to decide whether the study needs its review also counts. A mock or advisory review before submission does not count. An informal consultation does not count, before or after submission, even when it comes from the same body. A review held for another purpose (scientific merit, statistics, data access, or safety monitoring), a thesis or dissertation committee, and a grant or funding panel take normal `revision-coach` (#907, #1123).",
+    "Before taking this branch, start the reply with the user's own words that name the body, in quotation marks. If the user's own turns do not name it (for example, the name appears only in the pasted letter), ask the user which body sent the comments and in what review, and quote that answer; a reply of only yes or no does not name the body, so ask again (#907).",
 )
 
 
@@ -247,8 +247,14 @@ def test_activation_gate_covers_post_submission_informal_and_unknown_review_kind
     start = text.index("\n## Activation gate\n")
     end = text.index("\n## ", start + 1)
     gate = " ".join(text[start:end].split())
-    assert "informal consultation (before or after submission, even from the same body)" in gate
-    assert "If the user names the body without stating the kind of review" in gate
+    assert "A mock or advisory review before submission does not count." in gate
+    assert "An informal consultation does not count, before or after submission, even when it comes from the same body." in gate
+    assert (
+        "If the user names the body but the kind of review is still unclear, "
+        "ask what kind of review produced the comments before choosing the variant"
+    ) in gate
+    assert '"This is the formal letter from our research ethics committee", enter the variant and open the reply by quoting the words the user supplied.' in gate
+    assert '"statistical comments from our IRB", ask what kind of review produced the comments.' in gate
     assert "If the source identity or the kind of review is uncertain" in gate
 
 
@@ -268,6 +274,7 @@ def test_no_false_committee_claim_grader_has_no_pc_exemption_overlap() -> None:
     assert '"you said the program committee sent these comments"' in flat
     assert 'a clause that uses "program committee", "area chair", "PC", or "the committee"' in flat
     assert "the rest of the same sentence is still checked, and any violating claim in the same sentence still fails" in flat
+    assert "provided it makes no claim or assumption that the user named or identified" in flat
     assert "a statement that only describes the venue's program committee" not in flat
     assert "identified a committee for the committee-correspondence variant" not in flat
 
