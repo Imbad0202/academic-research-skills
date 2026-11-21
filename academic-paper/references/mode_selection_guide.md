@@ -26,7 +26,7 @@ User Input →
 │
 ├── Have an existing paper to revise? ──────────────────────→ revision mode
 ├── Have comments that may come from a research ethics review (the protocol's Activation gate decides)?
-│   └── Need tracking / response preparation ───────────────→ revision-coach committee-correspondence variant
+│   └── Need tracking, response preparation, or resubmission organization ─→ revision-coach committee-correspondence variant
 ├── Have reviewer comments to handle?
 │   ├── Comments only, no response written yet ──────────→ revision-coach mode
 │   └── Comments + an existing rebuttal/response draft ──→ rebuttal-audit mode
