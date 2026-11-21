@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Clarify citation verification outcomes and removal rules, and report claim verdicts with coverage based on checks against at least two independent sources (#1137, #1142).
+
 - **The `academic-paper` mode guide's committee branch names resubmission organization, as the Activation gate does (#1123 point 5, contributed by @TanmayShah29).** A new test in `scripts/test_check_committee_correspondence.py` checks that the decision tree's committee line and the gate list the same three requests.
 
 - **`timeline_extraction_agent` no longer cites a v3.9.4 extension of `scripts/check_pipeline_integrity.py` that does not exist (#1129, reported by @SID-6921).** Its enforcement sentence now names the advisory verifier as the other Bucket A agents do, and `CANONICAL_ENFORCEMENT["4"]` in `scripts/check_v3_9_2_phase_boundary.py` carries the same sentence. The verifier and the write-scope guard are unchanged.

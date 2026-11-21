@@ -47,8 +47,9 @@ def test_output_format_has_claim_verification_verdicts_section() -> None:
     text = AGENT_DOC.read_text(encoding="utf-8")
     template = _extract_output_format_template(text)
 
-    assert "### Claim Verification Verdicts" in template
-    verdicts_pos = template.index("### Claim Verification Verdicts")
+    heading = re.search(r"^### Claim Verification Verdicts$", template, re.MULTILINE)
+    assert heading is not None
+    verdicts_pos = heading.start()
     decomp_pos = template.index("### Claim Decomposition")
     assert verdicts_pos < decomp_pos, (
         "Claim Verification Verdicts should appear as a standard report section "
@@ -56,33 +57,34 @@ def test_output_format_has_claim_verification_verdicts_section() -> None:
     )
 
     verdicts_block = template[verdicts_pos:decomp_pos]
-    for column in ("Claim", "Verdict", "Epistemic Status", "Independent Sources"):
-        assert column in verdicts_block, f"Missing column {column!r} in Claim Verification Verdicts table"
+    header = next(line for line in verdicts_block.splitlines() if line.startswith("|"))
+    columns = [cell.strip() for cell in header.strip("|").split("|")]
+    assert columns == ["Claim", "Verdict", "Epistemic Status", "Independent Sources", "Basis / Notes"]
+    assert "undetermined (for Unverifiable)" in verdicts_block
     for verdict in ("Verified", "Partially True", "False", "Unverifiable"):
         assert verdict in verdicts_block, f"Missing verdict option {verdict!r} in Claim Verification Verdicts table"
 
-    assert "Factual Claims Checked" in template
+    assert "Count only claims checked against two or more independent sources in X." in template
+    assert "Keep attempts with fewer sources in the verdict table." in template
 
 
 def test_unverifiable_and_fabricated_outcomes_do_not_overlap() -> None:
     text = AGENT_DOC.read_text(encoding="utf-8")
     outcomes = _section(text, "#### Verification Outcome")
 
-    unverifiable_match = re.search(r"^- `UNVERIFIABLE`:(.*)$", outcomes, re.MULTILINE)
-    fabricated_match = re.search(r"^- `FABRICATED`:(.*)$", outcomes, re.MULTILINE)
-    assert unverifiable_match is not None, "Missing UNVERIFIABLE outcome"
-    assert fabricated_match is not None, "Missing FABRICATED outcome"
-
-    unverifiable_line = unverifiable_match.group(1).lower()
-    fabricated_line = fabricated_match.group(1).lower()
-
-    assert "tiers 0" in unverifiable_line or "exhausted" in unverifiable_line
-    assert "human review" in unverifiable_line
-    assert "do not auto-remove" in unverifiable_line
-
-    assert "evidence of non-existence (all tiers fail)" not in fabricated_line
-    assert "positive evidence" in fabricated_line
-    assert "not" in fabricated_line and "unverifiable" in fabricated_line
+    rows = re.findall(r"^- `([A-Z0-9_]+)`: (.*)$", outcomes, re.MULTILINE)
+    lines = dict(rows)
+    assert len(rows) == len(lines), "Each verification verdict must have exactly one outcome row"
+    actions = {verdict: line.partition("→")[2].strip() for verdict, line in lines.items()}
+    assert set(actions) == {"S2_VERIFIED", "VERIFIED", "PLAUSIBLE", "UNVERIFIABLE", "FABRICATED"}
+    assert all(actions.values())
+    assert actions["UNVERIFIABLE"] == "Keep and flag for human review."
+    assert actions["FABRICATED"] == "CRITICAL, must remove"
+    assert {verdict for verdict, action in actions.items() if "remove" in action.lower()} == {"FABRICATED"}
+    assert "Positive evidence establishes that the cited work itself was invented" in lines["FABRICATED"]
+    assert "DOI_MISMATCH" not in lines["FABRICATED"]
+    assert "only when existence remains unconfirmed" in lines["UNVERIFIABLE"]
+    assert "Journal indexing flags do not change this verdict" in lines["VERIFIED"]
 
 
 def test_red_flags_do_not_equate_missing_index_with_nonexistent_journal() -> None:

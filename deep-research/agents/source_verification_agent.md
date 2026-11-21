@@ -200,11 +200,12 @@ These are screening flags for further scrutiny, not standalone proof of fabricat
 - [ ] The source is suspiciously perfect (exactly supports the claim with no caveats)
 
 #### Verification Outcome
-- `S2_VERIFIED`: Semantic Scholar API match (Levenshtein >= 0.70 + year match). Strongest programmatic evidence.
-- `VERIFIED`: DOI resolves + metadata matches (Tier 1)
-- `PLAUSIBLE`: No DOI but WebSearch confirms existence (Tier 2)
-- `UNVERIFIABLE`: Lookup exhausted across Tiers 0–2 (or lookup tools unavailable) without confirming existence, and no positive evidence that the record was invented → flag for human review (do not auto-remove)
-- `FABRICATED`: Positive evidence that the cited record was invented — e.g., DOI resolves to an unrelated work (`DOI_MISMATCH`), claimed volume/issue/pages or publication date are impossible against the venue's confirmed archive, or the claimed venue/publisher archive confirms no such record exists. Failing all lookup tiers or triggering a screening red flag alone (such as absence from Scopus/WoS/DOAJ) is **not** sufficient for `FABRICATED` — classify as `UNVERIFIABLE` instead → CRITICAL, must remove
+- When a citation field conflicts, look up the work by title and authors and check the publisher record. If the work is found, record and correct the wrong field, then assess the corrected record below. If the search does not find the work, classify it as `UNVERIFIABLE` unless independent positive evidence meets the `FABRICATED` condition.
+- `S2_VERIFIED`: Semantic Scholar API match (Levenshtein >= 0.70 + year match). Strongest programmatic evidence. → Record the match.
+- `VERIFIED`: DOI resolves and title and authors match (Tier 1). Journal indexing flags do not change this verdict. → Record the verified source.
+- `PLAUSIBLE`: No DOI but WebSearch confirms existence (Tier 2). → Record the supporting source.
+- `UNVERIFIABLE`: Existence remains unconfirmed after lookup across Tiers 0–2, or lookup tools are unavailable, and there is no positive evidence of invention. A screening flag leads to this outcome only when existence remains unconfirmed. → Keep and flag for human review.
+- `FABRICATED`: Positive evidence establishes that the cited work itself was invented. → CRITICAL, must remove
 
 ### 5. Currency Assessment
 
@@ -244,7 +245,7 @@ These are screening flags for further scrutiny, not standalone proof of fabricat
 ### Overall Assessment
 **Sources Reviewed**: X
 **Verified**: X | **Flagged**: X | **Rejected**: X
-**Factual Claims Checked**: X / Y (Z%; target >= 30%)
+**Factual Claims Checked**: X / Y (Z%; target >= 30%). Count only claims checked against two or more independent sources in X. Keep attempts with fewer sources in the verdict table.
 
 ### Source Quality Matrix
 
@@ -256,7 +257,7 @@ These are screening flags for further scrutiny, not standalone proof of fabricat
 
 | Claim | Verdict | Epistemic Status | Independent Sources | Basis / Notes |
 |-------|---------|------------------|---------------------|---------------|
-| [checked claim] | Verified / Partially True / False / Unverifiable | established fact / supported hypothesis / contested claim / speculation | [2+ independent short refs, or note if < 2 available] | [verification basis; caveat or correction if not Verified] |
+| [checked claim] | Verified / Partially True / False / Unverifiable | established fact / supported hypothesis / contested claim / speculation / undetermined (for Unverifiable) | [2+ independent short refs, or note if < 2 available] | [verification basis; caveat or correction if not Verified] |
 
 ### Claim Decomposition (only on an explicit premise-check request)
 
