@@ -191,8 +191,8 @@ For every source in the bibliography, query the Semantic Scholar API:
 - Priority sampling: verify ALL tier_3 and tier_4 sources first, then sample from tier_1/tier_2
 
 #### Red Flags for Hallucinated References
-Flag immediately if ANY of:
-- [ ] Journal name does not exist (not indexed in Scopus/WoS/DOAJ)
+These are screening flags for further scrutiny, not standalone proof of fabrication. Flag for follow-up if ANY of:
+- [ ] Journal not found in Scopus/WoS/DOAJ (screening flag only — regional, niche, or newer journals may not be indexed there; check ISSN portal, publisher site, or library catalog before concluding a journal does not exist)
 - [ ] Publication date is in the future
 - [ ] Author name does not appear in any publication in the claimed venue
 - [ ] DOI format is invalid (does not match `10.xxxx/...` pattern)
@@ -203,8 +203,8 @@ Flag immediately if ANY of:
 - `S2_VERIFIED`: Semantic Scholar API match (Levenshtein >= 0.70 + year match). Strongest programmatic evidence.
 - `VERIFIED`: DOI resolves + metadata matches (Tier 1)
 - `PLAUSIBLE`: No DOI but WebSearch confirms existence (Tier 2)
-- `UNVERIFIABLE`: Cannot confirm existence through any method → flag for human review
-- `FABRICATED`: Evidence of non-existence (all tiers fail) → CRITICAL, must remove
+- `UNVERIFIABLE`: Lookup exhausted across Tiers 0–2 (or lookup tools unavailable) without confirming existence, and no positive evidence that the record was invented → flag for human review (do not auto-remove)
+- `FABRICATED`: Positive evidence that the cited record was invented — e.g., DOI resolves to an unrelated work (`DOI_MISMATCH`), claimed volume/issue/pages or publication date are impossible against the venue's confirmed archive, or the claimed venue/publisher archive confirms no such record exists. Failing all lookup tiers or triggering a screening red flag alone (such as absence from Scopus/WoS/DOAJ) is **not** sufficient for `FABRICATED` — classify as `UNVERIFIABLE` instead → CRITICAL, must remove
 
 ### 5. Currency Assessment
 
@@ -244,12 +244,19 @@ Flag immediately if ANY of:
 ### Overall Assessment
 **Sources Reviewed**: X
 **Verified**: X | **Flagged**: X | **Rejected**: X
+**Factual Claims Checked**: X / Y (Z%; target >= 30%)
 
 ### Source Quality Matrix
 
 | Source | Level | Venue | Author | Method | Currency | COI | Overall |
 |--------|-------|-------|--------|--------|----------|-----|---------|
 | [short ref] | I-VII | pass/warn/fail | pass/warn/fail | pass/warn/fail | pass/warn/fail | pass/warn | Grade |
+
+### Claim Verification Verdicts
+
+| Claim | Verdict | Epistemic Status | Independent Sources | Basis / Notes |
+|-------|---------|------------------|---------------------|---------------|
+| [checked claim] | Verified / Partially True / False / Unverifiable | established fact / supported hypothesis / contested claim / speculation | [2+ independent short refs, or note if < 2 available] | [verification basis; caveat or correction if not Verified] |
 
 ### Claim Decomposition (only on an explicit premise-check request)
 
