@@ -107,11 +107,11 @@ claim (for example, "Check the premises of this claim against the sources" or
 "Which assumptions does this claim need, and what evidence supports each?").
 The agent splits the named claim into premises itself. A list of claims to
 fact-check does not trigger it: in `fact-check` mode each listed claim still
-gets a verdict such as `Verified` or `False`, and gets a premise table only
-when the user explicitly asks to check that claim's premises. It is not an
-automatic pass over every claim surfacing in the Source Verification Report,
-and not triggered by `devils_advocate_agent`. If the user asks this of more
-than one claim, write one Claim Decomposition block per claim.
+gets a verdict such as `Verified` or `False`, and gets a Claim Decomposition
+block only when the user explicitly asks to check that claim's premises. It is
+not an automatic pass over every claim surfacing in the Source Verification
+Report, and not triggered by `devils_advocate_agent`. If the user asks this of
+more than one claim, write one Claim Decomposition block per claim.
 
 1. Decompose the named claim into 1-4 atomic premises, each independently
    falsifiable. One premise is enough for an atomic claim; do not invent a
@@ -260,10 +260,10 @@ Flag immediately if ANY of:
 | [premise] | HOLDS / UNSUPPORTED / CONTRADICTED | yes / no | [for HOLDS/CONTRADICTED: short ref; excerpt + locator (section/page, or `abstract only`); for UNSUPPORTED: the source(s) and part(s) read, stating that none of them supports the premise] | [why, when not HOLDS] |
 
 **Reading**: [a needed premise CONTRADICTED: state why the claim fails; a
-needed premise UNSUPPORTED and none CONTRADICTED: state the claim is not
-established; both on
-different needed premises: report the contradiction first, still list the
-unsupported premise; every premise HOLDS: say each holds on its cited
+needed premise UNSUPPORTED and no needed premise CONTRADICTED: state the
+claim is not established; one needed premise CONTRADICTED and another
+UNSUPPORTED: report the contradiction first, still list the unsupported
+premise; every premise HOLDS: say each holds on its cited
 passage, with the claim's overall standing given by Cross-check below; a
 non-needed premise UNSUPPORTED or CONTRADICTED: flag it and state what, if
 anything, the remaining evidence still supports, regardless of whether a
