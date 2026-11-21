@@ -109,8 +109,8 @@ def test_peer_review_exclusion_sentence_is_whole(relative: str, extra: str) -> N
 
 
 _SCOPE_SENTENCES = (
-    "This variant covers only a letter or comments from a research ethics or human-subjects protection review of research with human participants, their data, or their biological samples, made by a body with formal review authority over the study, such as a research ethics committee, an institutional review board (IRB), or a human research ethics office. The kind of review decides, not the topic of each comment: such a review's comments on statistics, data access, or safety monitoring stay in the variant. A formal review that such a body holds to decide whether the study needs its review also counts. A mock or advisory review before submission does not count. A review held for another purpose (scientific merit, statistics, data access, or safety monitoring), a thesis or dissertation committee, and a grant or funding panel take normal `revision-coach` (#907).",
-    "Before taking this branch, start the reply with the user's own words that name the body, in quotation marks. If the user's own turns do not name it (for example, the name appears only in the pasted letter), ask the user which body sent the comments and in what review, and quote that answer; a reply of only yes or no does not name the body, so ask again (#907).",
+    "This variant covers only a letter or comments from a research ethics or human-subjects protection review of research with human participants, their data, or their biological samples, made by a body with formal review authority over the study, such as a research ethics committee, an institutional review board (IRB), or a human research ethics office. The kind of review decides, not the topic of each comment: such a review's comments on statistics, data access, or safety monitoring stay in the variant. A formal review that such a body holds to decide whether the study needs its review also counts. A mock or advisory review, or an informal consultation (before or after submission, even from the same body), does not count. A review held for another purpose (scientific merit, statistics, data access, or safety monitoring), a thesis or dissertation committee, and a grant or funding panel take normal `revision-coach` (#907, #1123).",
+    "Before taking this branch, start the reply with the user's own words that name the body, in quotation marks. If the user's own turns do not name it (for example, the name appears only in the pasted letter), ask the user which body sent the comments and in what review, and quote that answer; a reply of only yes or no does not name the body, so ask again (#907). If the user names the body without stating the kind of review (for example, \"statistical comments from our IRB\"), ask what kind of review the comments came from before choosing the variant (#1123).",
 )
 
 
@@ -237,6 +237,39 @@ def test_no_committee_branch_grader_flags_the_branch_and_passes_a_refusal() -> N
     missed = [a for a, m in zip(_GRADER_FLAGS, matched) if not m]
     flagged = [a for a, m in zip(_GRADER_PASSES, matched[len(_GRADER_FLAGS):]) if m]
     assert (missed, flagged) == ([], [])
+
+
+def test_activation_gate_covers_post_submission_informal_and_unknown_review_kind() -> None:
+    # #1123 points 1 and 2: exclude informal consultation even after submission
+    # from the same body, and ask for the kind of review when a body is named
+    # without stating what review produced the comments.
+    text = (REPO_ROOT / _SCOPE_HOME).read_text(encoding="utf-8")
+    start = text.index("\n## Activation gate\n")
+    end = text.index("\n## ", start + 1)
+    gate = " ".join(text[start:end].split())
+    assert "informal consultation (before or after submission, even from the same body)" in gate
+    assert "If the user names the body without stating the kind of review" in gate
+    assert "If the source identity or the kind of review is uncertain" in gate
+
+
+def test_no_false_committee_claim_grader_has_no_pc_exemption_overlap() -> None:
+    # #1123 point 3: the program-committee exemption must be clause-scoped and
+    # cannot overlap with a claim in the same sentence that the user said the
+    # program committee sent the comments.
+    grader = (REPO_ROOT / "plugin-evals/03-iclr-rebuttal-en/graders/no-false-committee-claim.md").read_text(
+        encoding="utf-8"
+    )
+    front, body = grader.split("---\n")[1:3]
+    assert "type: llm" in front
+    assert "focus: last_message" in front
+    assert "arm: with-only" in front
+    flat = " ".join(body.split())
+    assert "a committee (including the program committee)" in flat
+    assert '"you said the program committee sent these comments"' in flat
+    assert 'a clause that uses "program committee", "area chair", "PC", or "the committee"' in flat
+    assert "the rest of the same sentence is still checked, and any violating claim in the same sentence still fails" in flat
+    assert "a statement that only describes the venue's program committee" not in flat
+    assert "identified a committee for the committee-correspondence variant" not in flat
 
 def test_fixture_proves_compound_multi_label_and_degraded_mode() -> None:
     tracker = _load(FIXTURE / TRACKER_NAME)
