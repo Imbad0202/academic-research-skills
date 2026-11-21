@@ -747,5 +747,58 @@ class LauncherInfraProtectionTest(unittest.TestCase):
                              "writing the launcher itself must be infra-denied")
 
 
+class LauncherWindowsAppsExclusionTest(unittest.TestCase):
+    """#1025: a real interpreter reachable outside WindowsApps is preferred over the alias
+    candidates, and anything sitting in a WindowsApps-named directory is never used, even if it
+    would otherwise be the first match on PATH."""
+
+    def _run_with_path(self, path, payload, extra_env=None):
+        env = {"PATH": path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND}
+        if extra_env:
+            env.update(extra_env)
+        proc = subprocess.run(
+            [_SH, LAUNCHER], input=json.dumps(payload), env=env,
+            capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+        )
+        return proc.returncode, proc.stdout, proc.stderr
+
+    def test_windowsapps_entry_skipped_falls_back_to_real_elsewhere(self):
+        # A working interpreter sits in a directory whose path contains "WindowsApps" AND
+        # comes first on PATH; a second, equally real interpreter sits in an ordinary
+        # directory later on PATH. The WindowsApps one must be skipped even though it would
+        # win a plain first-match PATH search, and the later real one must be used instead.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            real_dir = os.path.join(base, "Program Files", "Python312")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(real_dir)
+            _fake_real_python(os.path.join(windowsapps_dir, "python3"))
+            _fake_real_python(os.path.join(real_dir, "python3"))
+            path = os.pathsep.join([windowsapps_dir, real_dir, _SYS_PATH])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            decision = json.loads(out)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "must skip the WindowsApps candidate and use the real one on PATH")
+
+    def test_only_windowsapps_present_falls_back_to_alias_candidates_unchanged(self):
+        # No non-WindowsApps interpreter exists anywhere on PATH: behavior must be unchanged
+        # from before #1025 (fall through to the ordinary py/python3/python candidates, which
+        # here are the same WindowsApps-housed interpreter, since that's genuinely all there is).
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            os.makedirs(windowsapps_dir)
+            _fake_real_python(os.path.join(windowsapps_dir, "python3"))
+            path = os.pathsep.join([windowsapps_dir, _SYS_PATH])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            decision = json.loads(out)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the only interpreter available is under WindowsApps; it must "
+                             "still be used via the ordinary candidate loop, not refused")
+
+
 if __name__ == "__main__":
     unittest.main()

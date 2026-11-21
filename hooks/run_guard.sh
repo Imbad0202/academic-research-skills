@@ -258,6 +258,92 @@ os._exit(0)
 # (gemini round-6 P1). If mktemp can't give us a private file, degrade safely to pass-through.
 GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 
+# --- #1025: prefer a non-WindowsApps interpreter over the alias candidates --------------
+# On Windows with the Python Install Manager, `py` is an App Execution Alias; each launch
+# through the alias makes AppXSvc run an update check that leaks memory (python/pymanager#396,
+# #1015). If a real interpreter is already reachable on PATH outside WindowsApps, using it
+# instead avoids the alias path entirely, rather than only cutting launches per call (#1015).
+#
+# We only ever look at PATH entries' own filesystem paths, never a candidate's printed output:
+# an approach that took the interpreter path FROM a probe's output kept raising new review
+# findings across three rounds in #1019 and was replaced, so this repeats that lesson rather
+# than the rejected approach. `command -v -p` is not portable (dash lacks it); instead this
+# walks $PATH by hand and checks each directory for an executable name match. Sets globals
+# PREFERRED_PYTHON (the resolved path) and PREFERRED_PYTHON_IS_PY (non-empty iff the matched
+# name was `py`/`py.exe`, which still needs a `-3` argument like the alias candidate below).
+PREFERRED_PYTHON=
+PREFERRED_PYTHON_IS_PY=
+find_non_windowsapps_python() {
+    for name in py python3 python; do
+        _fnwp_saved_ifs=$IFS
+        IFS=:
+        set -- $PATH
+        IFS=$_fnwp_saved_ifs
+        for dir in "$@"; do
+            [ -n "$dir" ] || continue
+            case $dir in
+                *WindowsApps*) continue ;;
+            esac
+            for ext in "" ".exe"; do
+                cand_path="$dir/$name$ext"
+                [ -f "$cand_path" ] && [ -x "$cand_path" ] || continue
+                PREFERRED_PYTHON=$cand_path
+                [ "$name" = "py" ] && PREFERRED_PYTHON_IS_PY=1
+                return 0
+            done
+        done
+    done
+    return 1
+}
+find_non_windowsapps_python
+
+# Try one candidate: "$@" is the interpreter argv prefix (e.g. `py -3`, or one resolved path,
+# possibly with its own `-3`). Echoes the forwarded decision and returns 0 on a healthy guard
+# decision (caller should exit 0 right after); returns 1 to mean "stop trying candidates, guard
+# is broken" (the old `break`); returns 2 to mean "try the next candidate" (the old `continue`).
+try_candidate() {
+    GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$@" -I -c "$GUARD_RUNNER" "$GUARD" 2>"$GUARD_ERR")
+    GUARD_STATUS=$?
+    case $GUARD_OUT in
+        "$MARKER" | "$MARKER$NL"*) ;;
+        *) return 2 ;;
+    esac
+    [ "$GUARD_STATUS" -eq 0 ] || return 1
+    [ "$GUARD_OUT" = "$MARKER" ] && return 1
+    case $GUARD_OUT in
+        "$MARKER$NL"*"$NL$END_MARKER") ;;
+        *) return 2 ;;
+    esac
+    DECISION=${GUARD_OUT#"$MARKER$NL"}
+    DECISION=${DECISION%"$NL$END_MARKER"}
+    case $DECISION in
+        *"$NL"*) return 2 ;;
+        "{"*"}")
+            [ -s "$GUARD_ERR" ] && cat "$GUARD_ERR" >&2
+            rm -f "$GUARD_ERR" 2>/dev/null
+            printf '%s\n' "$DECISION"
+            return 0
+            ;;
+    esac
+    return 2
+}
+
+# Try the preferred non-WindowsApps interpreter first, if one was found, before the alias
+# candidates below (quoted as a single arg: never word-split, so a path containing spaces,
+# e.g. under "Program Files", is passed through intact).
+if [ -n "$PREFERRED_PYTHON" ]; then
+    if [ -n "$PREFERRED_PYTHON_IS_PY" ]; then
+        set -- "$PREFERRED_PYTHON" -3
+    else
+        set -- "$PREFERRED_PYTHON"
+    fi
+    try_candidate "$@"
+    case $? in
+        0) exit 0 ;;
+        1) rm -f "$GUARD_ERR" 2>/dev/null; emit_passthrough_and_exit ;;
+    esac
+fi
+
 # Candidates in order; `py -3` first (the Windows launcher). For each one:
 #   * no marker line first (stub, missing interpreter, hang before start) -> next candidate;
 #   * marker, exit 0, one line of JSON object, and the end line -> forward that decision;
@@ -272,30 +358,11 @@ for cand in "py -3" "python3" "python"; do
     # shellcheck disable=SC2086  # intentional word-split: "py -3" -> py with arg -3
     set -- $cand
     command -v "$1" >/dev/null 2>&1 || continue
-    GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$@" -I -c "$GUARD_RUNNER" "$GUARD" 2>"$GUARD_ERR")
-    GUARD_STATUS=$?
-    case $GUARD_OUT in
-        "$MARKER" | "$MARKER$NL"*) ;;
-        *) continue ;;
-    esac
-    [ "$GUARD_STATUS" -eq 0 ] || break
-    [ "$GUARD_OUT" = "$MARKER" ] && break
-    case $GUARD_OUT in
-        "$MARKER$NL"*"$NL$END_MARKER") ;;
-        *) continue ;;
-    esac
-    DECISION=${GUARD_OUT#"$MARKER$NL"}
-    DECISION=${DECISION%"$NL$END_MARKER"}
-    case $DECISION in
-        *"$NL"*) ;;
-        "{"*"}")
-            # Healthy guard decision: relay its stderr advisories, then forward it.
-            [ -s "$GUARD_ERR" ] && cat "$GUARD_ERR" >&2
-            rm -f "$GUARD_ERR" 2>/dev/null
-            printf '%s\n' "$DECISION"
-            exit 0
-            ;;
-    esac
+    try_candidate "$@"
+    _tc_status=$?
+    [ "$_tc_status" -eq 2 ] && continue
+    [ "$_tc_status" -eq 0 ] && exit 0
+    break
 done
 
 # Guard broke / timed out / produced invalid output. Degrade, don't block, don't spam.
