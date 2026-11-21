@@ -384,7 +384,12 @@ def test_the_template_puts_the_attachment_before_the_claim_check_and_the_acronym
     start = text.index("```markdown\n")
     letter = text[start:text.index("\n```\n", start)]
     headings = [line for line in letter.split("\n") if line.startswith("## ")]
-    assert headings[-3:] == [ATTACHMENT_HEADING, "## Attachment: Reviewer Claim Check (advisory, #1002)", ACRONYM_HEADING]
+    assert headings[-4:] == [
+        ATTACHMENT_HEADING,
+        "## Attachment: Reviewer Claim Check (advisory, #1002)",
+        "## Attachment: Retraction Check (advisory, #1108)",
+        ACRONYM_HEADING,
+    ]
     skill = (REPO_ROOT / "academic-paper-reviewer" / "SKILL.md").read_text(encoding="utf-8")
     assert f"`{ATTACHMENT_HEADING}`" in skill
     assert "before the acronym check attachment, which stays the letter's last write" in skill

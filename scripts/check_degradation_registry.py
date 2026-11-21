@@ -103,6 +103,10 @@ _EXPECTED_MECHANISMS = frozenset({
     # Advisory; a degraded report is never a clean result and never blocks.
     "panel_claim_check_not_run",
     "panel_claim_check_partial",
+    # #1108: opt-in manuscript retraction check (scripts/check_manuscript_retractions.py).
+    # Advisory; a degraded report is never a clean result and never blocks.
+    "manuscript_retraction_check_not_checked",
+    "manuscript_retraction_check_partial",
 })
 
 
