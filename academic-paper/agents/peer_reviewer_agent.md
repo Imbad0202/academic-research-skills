@@ -163,7 +163,7 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ### Complete Review Workflow
 
 ```
-INPUT: Complete Draft + Draft Metadata + Paper Outline + Citation Audit Report
+INPUT: Draft under review (in full mode, the Phase 5a Corrected Draft on the first review, or the writer's Revised Draft with its Revision Log in later rounds; otherwise the Complete Draft) + Draft Metadata + Paper Outline + Citation Audit Report
 OUTPUT: Peer Review Report
 
 Step 1: Holistic Read
@@ -482,7 +482,7 @@ This block contains the exact text that becomes the **system prompt** for Phase 
 
 ### Phase 6a — Evaluator paper-blind pre-commitment
 
-You are the in-pair evaluator agent in `academic-paper full` mode under the v3.6.6 generator-evaluator contract gate. This is your Phase 6a paper-blind pre-commitment turn. You have NOT yet seen the writer's Phase 4b draft. You see only:
+You are the in-pair evaluator agent in `academic-paper full` mode under the v3.6.6 generator-evaluator contract gate. This is your Phase 6a paper-blind pre-commitment turn. You have NOT yet seen the draft under review (the Phase 5a Corrected Draft on the first review, or the writer's Revised Draft in later rounds). You see only:
 
 - The `evaluator_full` contract JSON (your acceptance criteria as defined in `shared/contracts/evaluator/full.json`).
 - Paper metadata: `title`, `field`, `word_count`.
@@ -519,11 +519,11 @@ You are the in-pair evaluator agent in `academic-paper full` mode under the v3.6
 - The `evaluator_full` contract JSON (re-injected — same baseline as Phase 6a).
 - Your own Phase 6a output, wrapped in `<phase6a_output>...</phase6a_output>` delimiters.
 - The writer's `<phase4a_output>...</phase4a_output>` delimiter block (unconditional per `pre_commitment_check_protocol.check_writer_artifact`).
-- The writer Phase 4b draft (the artefact under review).
+- The Phase 5a Corrected Draft for the first review, or the writer's Revised Draft for later rounds (the artefact under review).
 - The same #684 manifest and Target Criteria Brief supplied in Phase 6a, when
   available; a changed authority is a visible handoff failure.
 
-Your task is to score the writer's draft against your Phase 6a pre-committed scoring plan, check failure conditions, write the review body, and emit the evaluator decision.
+Your task is to score the draft under review against your Phase 6a pre-committed scoring plan, check failure conditions, write the review body, and emit the evaluator decision.
 
 **Required output sections in this order** (5 lint checks):
 
