@@ -106,12 +106,12 @@ Runs only when the user explicitly asks to check the premises of a specific
 claim (for example, "Check the premises of this claim against the sources" or
 "Which assumptions does this claim need, and what evidence supports each?").
 The agent splits the named claim into premises itself. A list of claims to
-fact-check does not trigger it (`fact-check` mode output is unchanged: each
-listed claim still gets a verdict such as `Verified` or `False`, with no
-premise table); it is not an automatic pass over every claim surfacing in the
-Source Verification Report, and not triggered by `devils_advocate_agent`. If
-the user asks this of more than one claim, write one Claim Decomposition
-block per claim.
+fact-check does not trigger it: in `fact-check` mode each listed claim still
+gets a verdict such as `Verified` or `False`, and gets a Claim Decomposition
+block only when the user explicitly asks to check that claim's premises. It is
+not an automatic pass over every claim surfacing in the Source Verification
+Report, and not triggered by `devils_advocate_agent`. If the user asks this of
+more than one claim, write one Claim Decomposition block per claim.
 
 1. Decompose the named claim into 1-4 atomic premises, each independently
    falsifiable. One premise is enough for an atomic claim; do not invent a
@@ -136,14 +136,15 @@ block per claim.
    cross-check's own result in a line after Reading, or states that fewer
    than two independent sources are available.
 
-**What this reports, not rules.** A needed premise that is `CONTRADICTED`:
-state why the claim fails. A needed premise that is `UNSUPPORTED`: say the
-claim is not established, distinct from refuted. When one needed premise is
-`CONTRADICTED` and another is `UNSUPPORTED`, report the contradiction first
-and still list the unsupported premise. When every premise `HOLDS`: say each
-premise holds on its cited passage; whether the claim as a whole stands comes
-from the 2+-independent-source cross-check, not this table. A premise the
-claim does not need that is `UNSUPPORTED` or `CONTRADICTED`: flag the
+**What this reports, not rules.** The needed premises decide which one of
+three cases applies. At least one needed premise `CONTRADICTED`: state why
+the claim fails, naming each contradicted needed premise, then still list
+any needed premise that is `UNSUPPORTED`. No needed premise `CONTRADICTED`
+and at least one `UNSUPPORTED`: say the claim is not established, distinct
+from refuted. Every needed premise `HOLDS`: say each of them holds on its
+cited passage; whether the claim as a whole stands comes from the
+2+-independent-source cross-check, not this table. In any case, a premise
+the claim does not need that is `UNSUPPORTED` or `CONTRADICTED`: flag the
 weakness and state what, if anything, the remaining evidence still supports.
 The table never accepts or rejects the claim.
 
@@ -152,9 +153,10 @@ argument-level and holistic (for example, "remove the strongest source"); this
 pass is the opposite by design, decontextualized and premise by premise. The
 Stage 2.5/4.5 claim audit (`claim_ref_alignment_audit_agent`) decomposes a
 cited claim into sub-claims but checks each against one reference's excerpt;
-this pass checks the premises of a claim the user explicitly asks to check
-against the Reference Existence Verification's full verified source set,
-once that verification is complete, and makes the needed/not-needed
+this pass runs only when the user explicitly asks to check the premises of a
+specific claim, checks those premises against the Reference Existence
+Verification's full verified source set once that verification is complete,
+and makes the needed/not-needed
 (fundamental/non-fundamental) judgment the Stage 2.5/4.5 audit does not.
 
 ### Reference Existence Verification
@@ -257,15 +259,16 @@ Flag immediately if ANY of:
 |---------|---------|-------------------|----------|------|
 | [premise] | HOLDS / UNSUPPORTED / CONTRADICTED | yes / no | [for HOLDS/CONTRADICTED: short ref; excerpt + locator (section/page, or `abstract only`); for UNSUPPORTED: the source(s) and part(s) read, stating that none of them supports the premise] | [why, when not HOLDS] |
 
-**Reading**: [a needed premise CONTRADICTED: state why the claim fails; a
-needed premise UNSUPPORTED: state the claim is not established; both on
-different needed premises: report the contradiction first, still list the
-unsupported premise; every premise HOLDS: say each holds on its cited
-passage, with the claim's overall standing given by Cross-check below; a
-non-needed premise UNSUPPORTED or CONTRADICTED: flag it and state what, if
-anything, the remaining evidence still supports, regardless of whether a
-needed premise also failed; reporting only, no accept/reject verdict on the
-claim]
+**Reading**: [one of three cases, decided by the needed premises: at least
+one needed premise CONTRADICTED: state why the claim fails, naming each
+contradicted needed premise, then still list any UNSUPPORTED needed premise;
+no needed premise CONTRADICTED and at least one UNSUPPORTED: state the claim
+is not established, distinct from refuted; every needed premise HOLDS: say
+each holds on its cited passage, with the claim's overall standing given by
+Cross-check below. In addition, a non-needed premise UNSUPPORTED or
+CONTRADICTED: flag it and state what, if anything, the remaining evidence
+still supports, regardless of whether a needed premise also failed;
+reporting only, no accept/reject verdict on the claim]
 
 **Cross-check**: [the 2+-independent-source cross-check's result for the
 claim as a whole, or that fewer than two independent sources are available]
