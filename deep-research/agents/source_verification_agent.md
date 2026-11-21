@@ -136,17 +136,24 @@ more than one claim, write one Claim Decomposition block per claim.
    cross-check's own result in a line after Reading, or states that fewer
    than two independent sources are available.
 
-**What this reports, not rules.** The needed premises decide which one of
-three cases applies. At least one needed premise `CONTRADICTED`: state why
-the claim fails, naming each contradicted needed premise, then still list
-any needed premise that is `UNSUPPORTED`. No needed premise `CONTRADICTED`
-and at least one `UNSUPPORTED`: say the claim is not established, distinct
-from refuted. Every needed premise `HOLDS`: say each of them holds on its
-cited passage; whether the claim as a whole stands comes from the
-2+-independent-source cross-check, not this table. In any case, a premise
-the claim does not need that is `UNSUPPORTED` or `CONTRADICTED`: flag the
-weakness and state what, if anything, the remaining evidence still supports.
-The table never accepts or rejects the claim.
+**What this reports, not rules.** Write the Reading from the rows marked
+needed. Check these cases in order and use the first one that matches:
+
+1. No row is marked needed: say that no single premise was marked necessary
+   for the claim, so the table does not show whether the claim stands.
+2. A needed premise is `CONTRADICTED`: state why the claim fails, naming
+   each contradicted needed premise, then still list any needed premise that
+   is `UNSUPPORTED`.
+3. A needed premise is `UNSUPPORTED`: say the claim is not established,
+   distinct from refuted.
+4. Every needed premise `HOLDS`: say each needed premise holds on its cited
+   passage.
+
+In every case, also flag each premise the claim does not need that is
+`UNSUPPORTED` or `CONTRADICTED`, and state what, if anything, the remaining
+evidence still supports. Whether the claim as a whole stands comes from the
+2+-independent-source cross-check, not this table. The table never accepts
+or rejects the claim.
 
 **Boundaries.** `devils_advocate_agent`'s Stress Test table stays
 argument-level and holistic (for example, "remove the strongest source"); this
@@ -259,16 +266,11 @@ Flag immediately if ANY of:
 |---------|---------|-------------------|----------|------|
 | [premise] | HOLDS / UNSUPPORTED / CONTRADICTED | yes / no | [for HOLDS/CONTRADICTED: short ref; excerpt + locator (section/page, or `abstract only`); for UNSUPPORTED: the source(s) and part(s) read, stating that none of them supports the premise] | [why, when not HOLDS] |
 
-**Reading**: [one of three cases, decided by the needed premises: at least
-one needed premise CONTRADICTED: state why the claim fails, naming each
-contradicted needed premise, then still list any UNSUPPORTED needed premise;
-no needed premise CONTRADICTED and at least one UNSUPPORTED: state the claim
-is not established, distinct from refuted; every needed premise HOLDS: say
-each holds on its cited passage, with the claim's overall standing given by
-Cross-check below. In addition, a non-needed premise UNSUPPORTED or
-CONTRADICTED: flag it and state what, if anything, the remaining evidence
-still supports, regardless of whether a needed premise also failed;
-reporting only, no accept/reject verdict on the claim]
+**Reading**: [the first matching case from "What this reports, not rules"
+above (1 no row needed, 2 a needed premise CONTRADICTED, 3 a needed premise
+UNSUPPORTED, 4 every needed premise HOLDS), plus a flag for each non-needed
+premise that is UNSUPPORTED or CONTRADICTED; reporting only, no
+accept/reject verdict on the claim]
 
 **Cross-check**: [the 2+-independent-source cross-check's result for the
 claim as a whole, or that fewer than two independent sources are available]
