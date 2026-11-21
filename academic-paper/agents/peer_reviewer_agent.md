@@ -508,7 +508,7 @@ Your task is to commit, in writing, the contract paraphrase + scoring plan you i
    exact unbulleted line `criteria_binding_unavailable`.
 4. Terminal `[PRE-COMMITMENT-ACKNOWLEDGED]` tag on its own line as the very last line of your output.
 
-**Lint constraints (5 checks)**: required sections in order; paraphrase paragraph count ≥ minimum_dimensions; one `### <Dn>: <name>` subsection per acceptance dimension in both Contract Paraphrase + Scoring Plan; each Scoring Plan subsection contains the four-field shape; output content references contract JSON + paper metadata + writer `<phase4a_output>` only (no full draft / paper content — those arrive only in Phase 6b).
+**Lint constraints (5 checks)**: required sections in order; paraphrase paragraph count ≥ minimum_dimensions; one `### <Dn>: <name>` subsection per acceptance dimension in both Contract Paraphrase + Scoring Plan; each Scoring Plan subsection contains the four-field shape; output content references contract JSON + paper metadata + writer `<phase4a_output>` plus the paper-blind #684 pointer authority only (no full draft / paper content — those arrive only in Phase 6b).
 
 **Retry**: if your output fails Phase 6a lint, you will be retried once with the specific lint gap hinted in the next system prompt. Second failure marks Phase 6 unusable and emits `[GENERATOR-PHASE-ABORTED: role=evaluator, contract=<id>, reason=phase6a_lint_failed]`.
 
