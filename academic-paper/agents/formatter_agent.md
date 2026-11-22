@@ -103,7 +103,7 @@ Reference: `references/latex_template_reference.md`
 **Bibliography .bib file**:
 - All references in BibTeX format
 - Entry types: `@article`, `@book`, `@inproceedings`, `@techreport`, etc.
-- Preserve incoming DOI values. Include the DOI field where available unless a `full`-mode re-check flagged an explicit user omission.
+- Preserve incoming DOI values. Include the DOI field where available.
 - Consistent citation keys: `AuthorYear` or `Author_Year_Keyword`
 
 ### 3. DOCX (via Pandoc when available)
@@ -272,7 +272,7 @@ The formatter agent can convert citations between any two supported formats at a
 
 ### Conversion Pipeline
 
-In `full` mode, complete the incoming citation and reference-list comparison in Handoff Format Requirements before normalization or regeneration. If a citation cannot be converted without changing its content, retain its text and include the mismatch in the Output Package warning (#1071).
+In `full` mode, complete the incoming citation and reference-list comparison in Handoff Format Requirements before normalization or regeneration. In `full` mode, if a citation named in a reported incoming mismatch cannot be converted without changing its content, retain its text verbatim and keep the mismatch in the Output Package warning (#1071).
 
 ```
 Step 1: Parse Existing Citations
@@ -337,7 +337,7 @@ When converting **from** Chicago Notes-Bibliography:
 
 When converting **to** numbered formats:
 - Assign numbers based on order of first appearance in the text
-- Replace author-year citations with bracketed numbers, except in `full` mode when conversion would change a citation's content. Retain those citations verbatim.
+- Replace author-year citations with bracketed numbers. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
 - Reorder the reference list numerically
 
 When converting **from** numbered formats:
@@ -389,7 +389,7 @@ Before delivering the output, verify:
 - [ ] Keywords present
 - [ ] AI disclosure statement present
 - [ ] Limitations section present
-- [ ] Incoming DOI values preserved and all available DOIs included, except for explicit user omissions flagged by a `full`-mode re-check.
+- [ ] Incoming DOI values preserved and all available DOIs included
 - [ ] CRediT author contribution statement included (if multi-author)
 - [ ] Funding statement included (with or without funding)
 
@@ -520,7 +520,7 @@ NOT a refusal rule: this agent stays stamp-only (Invariant 13) — it never re-r
 
 This section applies to `academic-paper` `full` mode. It does not apply to `format-convert` mode, to the standalone `disclosure` mode, or to `academic-pipeline` Stage 5, where the Stage 5 entry gate holds the user's confirmation.
 
-**Start condition.** Start Phase 7 without confirmation only when the Final Reviewed Draft is the version `peer_reviewer_agent` accepted. This includes a re-check that returns the accepted draft intact. Otherwise, show the Review Status line below and ask once whether to format the draft in that state. Use the seventh line if a chat edit or the re-check changed a citation or a reference-list entry after acceptance. If the user confirms, count the draft you received and continue. If the user declines, stop and format nothing. See `peer_reviewer_agent` § Loop End States and `academic-paper/SKILL.md` Checkpoint Rule 6. Option C ends the workflow before Phase 7.
+**Start condition.** Start Phase 7 without confirmation only when the Final Reviewed Draft and its reference list both match the version `peer_reviewer_agent` accepted: the accepted draft with its `## References` section. The caller keeps that copy and makes the comparison. It passes you the reviewer's Final Counts only when both match. A re-check that changed neither keeps this path. Otherwise, show the Review Status line below and ask once whether to format the draft in that state. Use the seventh line if the re-check changed a citation in the draft or an entry in the list after acceptance. If the user confirms, count the draft you received and continue. If the user declines, stop and format nothing. See `peer_reviewer_agent` § Loop End States and `academic-paper/SKILL.md` Checkpoint Rule 6. Option C ends the workflow before Phase 7.
 
 **Review Status line.** Write exactly one of these in the `Review Status` row of Format Specifications Applied, and use the same line at the stop:
 
@@ -536,7 +536,7 @@ For early formatting, pick the line according to which draft you receive. It may
 
 Do not call a draft "passed peer review" unless its line is `Accepted in Round N`.
 
-**Counts.** With an Accept for the version you receive, use the reviewer's Final Counts (body word count, in-text citation count, reference-list entry count) as the input counts in the Final Quality Checklist. Otherwise, count the draft you receive yourself, per `shared/references/word_count_conventions.md`, and state in the Final Quality Checklist that the counts are your own.
+**Counts.** When the draft and its reference list both match the accepted version (Start condition), the caller passes you the reviewer's Final Counts (body word count, in-text citation count, reference-list entry count). Use them as the input counts in the Final Quality Checklist. Otherwise, count the draft you receive yourself, per `shared/references/word_count_conventions.md`, and state in the Final Quality Checklist that the counts are your own.
 
 ## Output Format
 
@@ -921,7 +921,7 @@ Template D: "The data that support the findings of this study are available from
 □ Keywords present
 □ AI Disclosure Statement present
 □ Limitations section present
-□ Incoming DOI values preserved and Reference List DOIs complete, except for explicit user omissions flagged by a `full`-mode re-check.
+□ Incoming DOI values preserved and Reference List DOIs complete
 
 === Submission Package ===
 □ Main file format correct
@@ -1029,11 +1029,11 @@ Quality gate not passed ->
 
 | Source Agent | Received Content | Data Format |
 |-----------|---------|---------|
-| Phase 7 caller | One Final Reviewed Draft. In `full` mode after a re-check, use its Corrected Draft even if it has never been reviewed. In `full` mode with no re-check, use the accepted draft or the draft from the last revision or Option A. In `full` mode, for early formatting before any revision round, use the initial Phase 5a Corrected Draft only if no re-check ran (§ Review Status) | Markdown full text |
-| `citation_compliance_agent` | Reference list and Citation Audit Report. In `full` mode, the selected list comes from the re-check if it ran, or from Phase 5a if it did not. After a re-check, keep both reports and the Phase 5a correction log | Markdown Reference List + Audit table |
+| Phase 7 caller | One Final Reviewed Draft. In `full` mode after a re-check, use its Corrected Draft even if it has never been reviewed. In `full` mode with no re-check, use the accepted draft or the draft from the last revision or Option A. In `full` mode with no revision round (a Round 1 Accept, or early formatting before any revision round), use the initial Phase 5a Corrected Draft (§ Review Status) | Markdown full text |
+| `citation_compliance_agent` | Reference list and Citation Audit Report. In `full` mode, the selected list comes from the re-check if it ran, or from Phase 5a if it did not. After a re-check, keep both reports and, when Phase 5a produced one, its correction log | Markdown Reference List + Audit table |
 | `abstract_bilingual_agent` | Bilingual Abstracts + Keywords | Markdown (EN + zh-TW) |
 | `intake_agent` | Paper Configuration Record | Markdown table (output_format, target_journal, language) |
-| `peer_reviewer_agent` | Last verdict and its round. Use the reviewer's Final Counts only when the draft received is the version accepted | Verdict field + Final Counts for the accepted version only |
+| `peer_reviewer_agent` | Last verdict and its round. The caller passes the reviewer's Final Counts only when the draft you receive and its reference list both match the accepted version (§ Review Status) | Verdict field + Final Counts when the caller passes them |
 
 ### Output Destinations
 
@@ -1045,9 +1045,9 @@ Quality gate not passed ->
 
 ### Handoff Format Requirements
 
-- **Receiving the reference list**: In `full` mode, use the re-check's Corrected Draft and accompanying list whenever a re-check ran. Keep both audit reports and the Phase 5a correction log. Use the Phase 5a list only when no re-check ran. In `full` mode, once Review Status allows formatting, compare the incoming draft and list in both directions before any conversion. Count distinct cited works that require an entry under the selected style. Count repeated mentions once and check each work in a grouped citation. For `(Original, as cited in Secondary)`, only Secondary requires an entry from that citation. Report each missing, uncited, or duplicate entry under the warning in the Output Package. Format as usual and preserve all incoming citation content and list entries (#1071). In `full` mode, if a chat edit or the re-check changed a citation or a reference-list entry after acceptance, use `Citations changed after Round N acceptance; this version has not been re-reviewed` and ask once before formatting (§ Review Status).
+- **Receiving the reference list**: In modes other than `full`, the Corrected Reference List from `citation_compliance_agent` must be the final version; formatter does not modify citation content, only performs format conversion. In `full` mode, use the re-check's Corrected Draft and accompanying list whenever a re-check ran. Keep both audit reports and, when Phase 5a produced one, its correction log. Use the Phase 5a list only when no re-check ran. In `full` mode, once Review Status allows formatting, compare the incoming draft and list in both directions before any conversion. Count distinct cited works that require an entry under the selected style. Count repeated mentions once and check each work in a grouped citation. For `(Original, as cited in Secondary)`, only Secondary requires an entry from that citation. Count an entry as uncited only where the selected style requires a list entry to be cited. Report each missing, uncited, or duplicate entry under the warning in the Output Package. Format as usual and preserve all incoming citation content and list entries (#1071). In `full` mode, if the re-check changed a citation in the draft or an entry in the list after acceptance, use `Citations changed after Round N acceptance; this version has not been re-reviewed` and ask once before formatting (§ Review Status).
 - **Receiving abstract_bilingual_agent's Abstracts**: EN and zh-TW abstracts are inserted as independent blocks; content is not modified
-- **Final Reviewed Draft status confirmation**: In `full` mode, Phase 7 starts without confirmation only for the accepted version. Ask once if a citation or a reference-list entry changed after acceptance, or for the last allowed revision, Option A, or early formatting (§ Review Status). Option C ends the workflow before Phase 7.
+- **Final Reviewed Draft status confirmation**: In `full` mode, Phase 7 starts without confirmation only when the draft and its reference list both match the accepted version. Ask once if a citation or a reference-list entry changed after acceptance, or for the last allowed revision, Option A, or early formatting (§ Review Status). Option C ends the workflow before Phase 7.
 
 ## Quality Criteria
 

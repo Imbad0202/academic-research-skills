@@ -171,9 +171,9 @@ Phase 6: PEER REVIEW   -> [peer_reviewer]              -> Review Report (max 2 r
 Phase 7: FORMAT        -> [formatter]                  -> Final Output Package
 ```
 
-In `full` mode, call `citation_compliance_agent` for a re-check before Phase 7 if any Phase 6 revision round added, removed, or changed a citation or a reference-list entry. Also re-check if the user asks in chat to add, remove, or change a citation or a reference-list entry outside a revision round after Phase 5a and before Phase 7. For a chat edit, the caller applies the request to a working copy of the latest Phase 7 candidate and sends that copy and the user's instruction to the re-check. Keep any accepted version for comparison. A chat edit uses no revision round.
+In `full` mode, call `citation_compliance_agent` for a re-check before Phase 7 if any Phase 6 revision round or the Option A edit (the "Acknowledged Limitations" section) added, removed, or changed a citation or a reference-list entry. Count the changes of every round, not only the last one. Send the writer's latest draft to the re-check. When the reviewer accepted a draft, keep that draft with its `## References` section for the comparison in Checkpoint Rule 6.
 
-In `full` mode, when a re-check runs, its Corrected Draft is the sole Phase 7 manuscript. Use its accompanying reference list. Keep the Phase 5a Citation Audit Report and correction log alongside the re-check's report. The re-check preserves explicit user edits and records conflicts in Items Flagged for Review. Use the Phase 5a list only when no re-check ran. If no re-check ran and formatting is requested after Phase 5a but before any revision round, send the initial Phase 5a Corrected Draft. Once Review Status allows formatting, the formatter compares the draft and list under the selected style. Citation quality findings from this comparison go in an Output Package warning while formatting continues (#1071).
+In `full` mode, when a re-check runs, its Corrected Draft is the sole Phase 7 manuscript. Use its accompanying reference list. Keep the Phase 5a Citation Audit Report, and its correction log when Phase 5a produced one, alongside the re-check's report. The re-check verifies sources as usual and records conflicts in Items Flagged for Review. Use the Phase 5a list only when no re-check ran. With no revision round (a Round 1 Accept, or formatting requested after Phase 5a but before any revision round), no re-check runs; send the initial Phase 5a Corrected Draft. Once Review Status allows formatting, the formatter compares the draft and list under the selected style. Citation quality findings from this comparison go in an Output Package warning while formatting continues (#1071).
 
 > See `references/workflow_phase_details.md` for detailed per-phase agent behavior and output descriptions.
 
@@ -210,11 +210,11 @@ alignment and do not silently reconstruct a target from model memory.
 3. ⚠️ **IRON RULE**: Max 2 revision loops; unresolved items -> "Acknowledged Limitations" (when the user picks Option A; see rule 6)
 4. **Peer Review** Critical-severity issues block progression to Phase 7 through an Accept or Option A. While a Critical issue remains, `peer_reviewer_agent` does not offer Option A; the user can still ask for early formatting, and Phase 7 then follows rule 6
 5. User can skip Phase 1 (literature) if providing own sources
-6. **Phase 6 -> 7** (`full` mode, #1087): Phase 7 starts without a stop when peer review gave an Accept verdict for the draft that goes to Phase 7. In every other case Phase 7 starts only after the user confirms it at one stop, which `formatter_agent` shows before it formats, with the draft's Review Status (`formatter_agent` § Review Status). The cases are:
+6. **Phase 6 -> 7** (`full` mode, #1087): Phase 7 starts without a stop when the draft that goes to Phase 7 and its reference list both match the version peer review accepted (the accepted draft with its `## References` section). In every other case Phase 7 starts only after the user confirms it at one stop, which `formatter_agent` shows before it formats, with the draft's Review Status (`formatter_agent` § Review Status). The cases are:
    - **Last allowed revision**: after a Round 2 Minor Revision verdict, `draft_writer_agent` makes the second and last revision, and no review follows it.
    - **Option A**: after Round 2, the user picks Option A, and `draft_writer_agent` adds the "Acknowledged Limitations" section.
    - **Early formatting**: the user asks for Phase 7 before an Accept, including before any review.
-   - **Citations changed after acceptance**: a chat edit or the re-check changed a citation or a reference-list entry after Round N accepted the draft. The formatter shows `Citations changed after Round N acceptance; this version has not been re-reviewed`, asks once, and counts the draft it receives. A re-check that returns the accepted draft intact follows the accepted-version path (#1071).
+   - **Citations changed after acceptance**: a re-check ran after Round N accepted the draft. The caller compares the re-check's Corrected Draft and its reference list with the accepted draft and its `## References` section. If either differs, the formatter shows `Citations changed after Round N acceptance; this version has not been re-reviewed`, asks once, and counts the draft it receives. If both match, the accepted-version path applies, and the caller passes the reviewer's Final Counts to the formatter (#1071).
 
    Option C ends the workflow, and Phase 7 does not run. Option B returns to the phase it names. If the user declines at the stop, keep the draft and all Review Reports and end the workflow, as Option C does.
 
@@ -611,7 +611,7 @@ Explicit prohibitions to prevent common failure modes:
 
 ## Quality Standards
 
-On a `full`-mode re-check, preserve explicit user edits, verify the sources as usual, and record any resulting orphan, format, or DOI conflict in Items Flagged for Review. A recorded conflict may proceed to handoff (#1071).
+On a `full`-mode re-check, verify the sources as usual and record conflicts in Items Flagged for Review. A recorded conflict may proceed to handoff (#1071).
 
 ### Writing Quality
 1. **Every claim must have a citation** or be supported by the paper's own data — or, for #548 absence/novelty claims, carry documented-search provenance plus the named nearest prior work where one exists (the explicit absence-of-adjacent-work statement suffices otherwise; no source can cite an absence)
