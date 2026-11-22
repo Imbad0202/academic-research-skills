@@ -206,6 +206,8 @@ Flag immediately if ANY of:
 - `UNVERIFIABLE`: Cannot confirm existence through any method → flag for human review
 - `FABRICATED`: Evidence of non-existence (all tiers fail) → CRITICAL, must remove
 
+If Semantic Scholar has no matching record and the publisher record confirms the cited work and its printed DOI, but that DOI resolves to a different record, assign `PLAUSIBLE`. Under Flagged Sources (Detail), identify the publisher record, the printed DOI, and the record it resolves to. Retain any `DOI_MISMATCH` flag raised in Tier 0.
+
 ### 5. Currency Assessment
 
 | Field Velocity | Acceptable Age | Example Fields |

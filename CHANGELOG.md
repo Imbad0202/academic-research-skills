@@ -16,6 +16,8 @@ All notable changes to this project will be documented in this file.
 
 - **`academic-paper` `full` mode Phase 6 review inputs name the Phase 5a Corrected Draft for the first review and the writer's Revised Draft with its Revision Log for later rounds (#1136).** `academic-paper/SKILL.md` (Phase 6a overview and Phase 6b user content) and `academic-paper/agents/peer_reviewer_agent.md` (Complete Review Workflow input and Phase 6a/6b contract prompts) previously named the Phase 4b draft (or Complete Draft), contradicting `peer_reviewer_agent.md`'s Input Sources table after #1068. Prompt-level; unmeasured.
 
+- **Source verification assigns `PLAUSIBLE` when the publisher confirms the work and its printed DOI, Semantic Scholar has no match, and the DOI resolves to a different record (#1159, contributed by @pinjun99).** The report identifies both records and retains any Tier 0 `DOI_MISMATCH` flag. Prompt-level; unmeasured.
+
 - **The `academic-paper` mode guide's committee branch names resubmission organization, as the Activation gate does (#1123 point 5, contributed by @TanmayShah29).** A new test in `scripts/test_check_committee_correspondence.py` checks that the decision tree's committee line and the gate list the same three requests.
 
 - **`timeline_extraction_agent` no longer cites a v3.9.4 extension of `scripts/check_pipeline_integrity.py` that does not exist (#1129, reported by @SID-6921).** Its enforcement sentence now names the advisory verifier as the other Bucket A agents do, and `CANONICAL_ENFORCEMENT["4"]` in `scripts/check_v3_9_2_phase_boundary.py` carries the same sentence. The verifier and the write-scope guard are unchanged.
