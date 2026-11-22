@@ -173,6 +173,38 @@ def test_conflicting_latest_crossref_events_are_disputed(first: str, second: str
     assert signal["finding"] == "unresolved"
 
 
+def test_earlier_crossref_conflict_is_superseded_by_later_reinstatement() -> None:
+    earlier = "2026-06-01T08:00:00Z"
+    later = "2026-06-01T09:00:00Z"
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(
+            _event("retraction", earlier),
+            _event("reinstatement", earlier),
+            _event("reinstatement", later),
+        ),
+    )
+    context = signal["retraction_context"]
+    assert context["resolver_observations"][1]["verdict"] == "reinstated"
+    assert context["effective_status"] == "reinstated"
+
+
+def test_two_latest_crossref_reinstatements_are_reinstated() -> None:
+    latest = "2026-06-01T09:00:00Z"
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(
+            _event("reinstatement", latest),
+            {**_event("reinstatement", latest), "record-id": 43},
+        ),
+    )
+    context = signal["retraction_context"]
+    crossref = context["resolver_observations"][1]
+    assert len(crossref["events"]) == 2
+    assert crossref["verdict"] == "reinstated"
+    assert context["effective_status"] == "reinstated"
+
+
 def test_conflicting_undated_crossref_events_are_disputed() -> None:
     signal = _resolve(
         openalex={"status": "degraded"},
