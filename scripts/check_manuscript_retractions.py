@@ -6,22 +6,29 @@ the user has seen and edited what would be sent:
 
   list   Read ``--manuscript`` (no network), find its DOIs, and write each one
          with its manuscript lines to a NEW file named by ``--out``. The
-         output file is created exclusively (``open(..., "x")``) BEFORE the
-         manuscript is read, which is the destination check; an existing path
-         is never touched. If anything fails after the file is created
-         (reading the manuscript or writing), that new file is removed.
+         output file is created exclusively (``O_CREAT | O_EXCL``, mode 0600)
+         BEFORE the manuscript is read, which is the destination check; an
+         existing path is never touched, and ``--manuscript`` and ``--out``
+         may not be the same path. If anything fails after the file is
+         created (reading the manuscript or writing), the script removes that
+         new file, and if the removal fails it says so and names the path
+         that remains.
   check  Read the edited ``--list`` file and look up ONLY the DOIs left in it
          with OpenAlex (``openalex_client.py``) and Crossref
          (``crossref_client.py``), through ``retraction_status.py``. Lookups
          run live, one after another, and read or write no cache.
 
-List file: blank lines and lines starting with ``#`` are ignored. Every other
-line is ``<doi>`` or ``<doi><TAB or spaces><location note>``; a line that does
-not start with a DOI is reported as not read.
+List file: blank lines and lines starting with ``#`` are ignored (a leading
+byte order mark is dropped). Every other line is ``<doi>`` or
+``<doi><whitespace><location note>``: the DOI is the first whitespace-free
+field, and only that field is sent. A line whose first field is not a DOI is
+reported by its line number only; its text is never copied into the report.
 
 Rules the report keeps:
-- Unknown stays unknown. A missing ``is_retracted`` flag, an unavailable index,
-  or no record anywhere is never read as "not retracted".
+- Unknown stays unknown. A missing ``is_retracted`` flag, an unavailable or
+  unreadable index, or no record anywhere is never read as "not retracted".
+  When either index could not be read for a DOI, the run is partial and the
+  row names that index.
 - When Crossref has no record and OpenAlex gives a verdict, the verdict rests
   on OpenAlex alone; every such DOI is listed with its manuscript location.
 - A retracted or disputed DOI is listed with the manuscript location, so the
@@ -56,10 +63,14 @@ except ImportError:  # pragma: no cover - namespace import
     )
 
 LANGS = ("en", "zh-TW")
+# A DOI body stops at whitespace, markup characters, and CJK punctuation, full-width forms, kana,
+# ideographs and hangul, so prose that follows a DOI in running CJK text is not read into it.
+_DOI_BODY = r"[^\s<>\"{}|\\^`\[\]　-〿぀-ヿ㐀-䶿一-鿿가-힯＀-￯]+"
 _DOI_RE = re.compile(
-    r"(?:https?://(?:dx\.)?doi\.org/|doi:\s*)?(10\.[0-9]{4,9}/[^\s<>\"{}|\\^`\[\]]+)",
+    r"(?P<url>https?://(?:dx\.)?doi\.org/)?(?:doi:\s*)?(?P<doi>10\.[0-9]{4,9}/" + _DOI_BODY + ")",
     re.IGNORECASE,
 )
+_DOI_FIELD = re.compile(r"10\.[0-9]{4,9}/" + _DOI_BODY)
 _MD_SPECIAL = re.compile(r"([\\`*_\[\]|~])")
 _STATUSES = ("retracted", "disputed", "reinstated", "not_retracted", "unknown")
 
@@ -73,17 +84,18 @@ _TEXT: dict[str, dict[str, Any]] = {
         "title": "Retraction check (opt-in script output, not a reviewer finding; #1108)",
         "coverage": "DOIs checked: {n} ({state}). Retracted: {retracted}; disputed: {disputed}; reinstated: {reinstated}; not retracted: {not_retracted}; unknown: {unknown}.",
         "state": {"checked": "complete", "partial": "partial"},
-        "invalid": "Not read (a line that is not blank, not a `#` comment, and does not start with a DOI):",
-        "invalid_row": "- list line {line}: `{text}`",
+        "invalid": "Not read (these list lines are not blank, not `#` comments, and do not start with a DOI; their text is not repeated here):",
+        "invalid_row": "- list line {line}",
         "none": "No DOIs were listed to check.",
         "retracted": "Retracted (check how the manuscript relies on each work):",
-        "disputed": "Disputed (OpenAlex and Crossref disagree):",
+        "disputed": "Disputed (OpenAlex and Crossref disagree, or one index reports conflicting retraction events):",
         "reinstated": "Reinstated (retracted earlier, reinstated later):",
         "oa_only": "OpenAlex-only verdicts (Crossref has no record, as for many DataCite DOIs; {n} DOI(s)):",
         "unknown_head": "Unknown status (no index settled it; this is not \"not retracted\"; {n} DOI(s)):",
+        "degraded_head": "One index could not be read (the DOI was settled by the other index only; {n} DOI(s)):",
         "verdict": {"retracted": "retracted", "disputed": "disputed", "reinstated": "reinstated",
                     "not_retracted": "not retracted", "unknown": "unknown"},
-        "detail": {"degraded": "unavailable", "no_record": "no record", "missing_flag": "flag missing"},
+        "detail": {"degraded": "unavailable or unreadable", "no_record": "no record", "missing_flag": "flag missing"},
         "no_location": "location not given",
         "dated": "event date {date}",
         "note": (
@@ -96,17 +108,18 @@ _TEXT: dict[str, dict[str, Any]] = {
         "title": "撤稿狀態查核（選擇性啟用之腳本輸出，不是審稿意見；#1108）",
         "coverage": "已查 DOI：{n} 筆（{state}）。已撤稿：{retracted}；索引分歧：{disputed}；已恢復：{reinstated}；未見撤稿：{not_retracted}；狀態不明：{unknown}。",
         "state": {"checked": "完整", "partial": "部分"},
-        "invalid": "未讀取（非空白、非 `#` 註解，且不以 DOI 開頭的行）：",
-        "invalid_row": "- 清單第 {line} 行：`{text}`",
+        "invalid": "未讀取（這些清單行非空白、非 `#` 註解，且不以 DOI 開頭；報告不重複其內容）：",
+        "invalid_row": "- 清單第 {line} 行",
         "none": "清單中沒有待查的 DOI。",
         "retracted": "已撤稿（請確認稿件如何依賴這些文獻）：",
-        "disputed": "索引分歧（OpenAlex 與 Crossref 結果不一致）：",
+        "disputed": "索引分歧（OpenAlex 與 Crossref 結果不一致，或單一索引內的撤稿事件互相矛盾）：",
         "reinstated": "已恢復（曾撤稿，後來恢復）：",
         "oa_only": "僅依 OpenAlex 判定（Crossref 查無紀錄，DataCite DOI 常見此情形；共 {n} 筆）：",
         "unknown_head": "狀態不明（兩個索引都未給出判定；這不等於「未撤稿」；共 {n} 筆）：",
+        "degraded_head": "有一個索引無法讀取（僅依另一個索引判定；共 {n} 筆）：",
         "verdict": {"retracted": "已撤稿", "disputed": "分歧", "reinstated": "已恢復",
                     "not_retracted": "未見撤稿", "unknown": "不明"},
-        "detail": {"degraded": "無法使用", "no_record": "查無紀錄", "missing_flag": "缺少旗標"},
+        "detail": {"degraded": "無法使用或無法讀取", "no_record": "查無紀錄", "missing_flag": "缺少旗標"},
         "no_location": "未提供位置",
         "dated": "事件日期 {date}",
         "note": (
@@ -140,7 +153,10 @@ def extract_dois(text: str) -> list[tuple[str, list[int]]]:
     found: dict[str, list[int]] = {}
     for lineno, line in enumerate(text.splitlines(), start=1):
         for match in _DOI_RE.finditer(line):
-            doi = normalize_doi(_trim(match.group(1)))
+            raw = match.group("doi")
+            if match.group("url"):  # in a doi.org URL, a fragment or query is not part of the DOI
+                raw = re.split(r"[#?]", raw, maxsplit=1)[0]
+            doi = normalize_doi(_trim(raw))
             if doi and lineno not in found.setdefault(doi, []):
                 found[doi].append(lineno)
     return list(found.items())
@@ -149,7 +165,7 @@ def extract_dois(text: str) -> list[tuple[str, list[int]]]:
 def format_list(entries: list[tuple[str, list[int]]]) -> str:
     out = [
         "# DOIs found in the manuscript (#1108). Only the DOIs left in this file are sent to OpenAlex and Crossref.",
-        "# Delete a line to keep its DOI out of the lookup. A note after the DOI (tab or spaces) is shown in the report.",
+        "# Delete a line to keep its DOI out of the lookup. A note after the DOI (whitespace) is shown in the report, never sent.",
         "# Blank lines and lines starting with # are ignored.",
     ]
     if not entries:
@@ -158,24 +174,53 @@ def format_list(entries: list[tuple[str, list[int]]]) -> str:
     return "\n".join(out) + "\n"
 
 
+def _same_path(a: Path, b: Path) -> bool:
+    try:
+        return os.path.normcase(a.resolve()) == os.path.normcase(b.resolve())
+    except OSError:
+        return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+
+
+def _open_new(out: Path) -> Any:
+    """Create ``out`` exclusively with mode 0600 and return a text handle. Raises if it exists."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    fd = os.open(out, flags, 0o600)
+    try:
+        return os.fdopen(fd, "w", encoding="utf-8", newline="\n")
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _read_utf8(path: Path, what: str) -> str:
+    """Read a UTF-8 file. Errors name the path and the failure, never the file's content."""
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise Stop(f"cannot read {what} {path}: {exc.strerror or type(exc).__name__}") from None
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise Stop(f"cannot read {what} {path}: not valid UTF-8 (error at byte {exc.start})") from None
+
+
 def run_list(manuscript: Path, out: Path) -> int:
     """Create ``out`` exclusively (this is the destination check), then read the manuscript and write.
 
     A refused path is reported before the manuscript is read, so it is never mistaken for "no DOI".
     An existing file is never opened for writing. Once the new file exists, any failure removes it.
     """
+    if _same_path(manuscript, out):
+        raise Stop(f"--manuscript and --out are the same path: {out}")
     try:
-        handle = open(out, "x", encoding="utf-8", newline="\n")
+        handle = _open_new(out)
     except FileExistsError:
         raise Stop(f"output file already exists: {out}") from None
     except OSError as exc:
         raise Stop(f"cannot create output file {out}: {exc}") from exc
     try:
         with handle:
-            try:
-                text = manuscript.read_bytes().decode("utf-8")
-            except (OSError, UnicodeDecodeError) as exc:
-                raise Stop(f"cannot read manuscript {manuscript}: {exc}") from exc
+            text = _read_utf8(manuscript, "manuscript")
             entries = extract_dois(text)
             handle.write(format_list(entries))
     except BaseException as exc:
@@ -207,21 +252,25 @@ def run_list(manuscript: Path, out: Path) -> int:
 # ---------------------------------------------------------------------------
 
 
-def parse_list(text: str) -> tuple[list[dict[str, Any]], list[tuple[int, str]]]:
-    """Return ``(entries, invalid)``; entries are distinct DOIs with their location notes."""
+def parse_list(text: str) -> tuple[list[dict[str, Any]], list[int]]:
+    """Return ``(entries, invalid)``: distinct DOIs with their notes, and the numbers of unreadable lines.
+
+    The DOI is the first whitespace-free field of a line and must be a whole DOI. The rest of the
+    line is a note: it is shown in the report and never sent.
+    """
     entries: dict[str, dict[str, Any]] = {}
-    invalid: list[tuple[int, str]] = []
-    for lineno, raw in enumerate(text.splitlines(), start=1):
+    invalid: list[int] = []
+    for lineno, raw in enumerate(text.removeprefix("﻿").splitlines(), start=1):
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        head, _, note = line.partition("\t") if "\t" in line else line.partition(" ")
-        doi = normalize_doi(head)
-        if doi is None:
-            invalid.append((lineno, line))
+        fields = line.split(None, 1)
+        doi = normalize_doi(fields[0])
+        if doi is None or not _DOI_FIELD.fullmatch(doi):
+            invalid.append(lineno)
             continue
         entry = entries.setdefault(doi, {"doi": doi, "locations": []})
-        note = note.strip()
+        note = fields[1].strip() if len(fields) > 1 else ""
         if note and note not in entry["locations"]:
             entry["locations"].append(note)
     return list(entries.values()), invalid
@@ -232,7 +281,9 @@ def _openalex(client: Any, doi: str) -> tuple[dict[str, Any], str]:
         data = client._get(f"/works/doi:{urllib.parse.quote(doi, safe='')}", {"select": _OA_FIELDS})
     except (OpenAlexUnavailable, OSError, ValueError):
         return {"status": "degraded"}, "degraded"
-    if not isinstance(data, dict) or not data:
+    if not isinstance(data, dict):  # an unreadable body is not "no record"
+        return {"status": "degraded"}, "degraded"
+    if not data:  # the client returns {} for a 404
         return {"status": "checked", "record": {}}, "no_record"
     if not isinstance(data.get("is_retracted"), bool):
         return {"status": "checked", "record": data}, "missing_flag"
@@ -244,9 +295,13 @@ def _crossref(client: Any, doi: str) -> tuple[dict[str, Any], str]:
         data = client._get(f"/works/{urllib.parse.quote(doi, safe='')}", {})
     except (CrossrefUnavailable, OSError, ValueError):
         return {"status": "degraded"}, "degraded"
-    message = data.get("message") if isinstance(data, dict) else None
-    if not isinstance(message, dict) or not message:
+    if not isinstance(data, dict):  # an unreadable body is not "no record"
+        return {"status": "degraded"}, "degraded"
+    if not data:  # the client returns {} for a 404
         return {"status": "checked", "records": []}, "no_record"
+    message = data.get("message")
+    if not isinstance(message, dict) or not message:
+        return {"status": "degraded"}, "degraded"
     return {"status": "checked", "records": [message]}, "ok"
 
 
@@ -255,11 +310,7 @@ def build_report(
     clients: Callable[[], tuple[Any, Any]] = lambda: (OpenAlexClient(), CrossrefClient()),
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    try:
-        text = list_path.read_bytes().decode("utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
-        raise Stop(f"cannot read list file {list_path}: {exc}") from exc
-    entries, invalid = parse_list(text)
+    entries, invalid = parse_list(_read_utf8(list_path, "list file"))
     items: list[dict[str, Any]] = []
     if entries:
         oa_client, cr_client = clients()
@@ -288,7 +339,9 @@ def build_report(
                 "crossref": {"verdict": seen["Crossref"], "detail": cr_detail},
                 "openalex_only": cr_detail == "no_record" and seen["OpenAlex"] != "unknown",
             })
-    partial = bool(invalid) or any(i["status"] == "unknown" for i in items)
+    partial = bool(invalid) or any(
+        i["status"] == "unknown" or "degraded" in (i["openalex"]["detail"], i["crossref"]["detail"]) for i in items
+    )
     return {"state": "partial" if partial else "checked", "items": items, "invalid": invalid}
 
 
@@ -296,6 +349,15 @@ def _cell(value: str) -> str:
     """Escape untrusted text so it renders as literal Markdown."""
     value = " ".join(value.split()).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return _MD_SPECIAL.sub(r"\\\1", value)
+
+
+def _code(value: str) -> str:
+    """Render text as a Markdown code span: no backslash escapes, a fence longer than any backtick run."""
+    value = " ".join(value.split())
+    longest = max((len(run) for run in re.findall(r"`+", value)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if value.startswith("`") or value.endswith("`") else ""
+    return f"{fence}{pad}{value}{pad}{fence}"
 
 
 def _side(side: dict[str, str], t: dict[str, Any]) -> str:
@@ -307,7 +369,7 @@ def _side(side: dict[str, str], t: dict[str, Any]) -> str:
 
 def _row(item: dict[str, Any], t: dict[str, Any]) -> str:
     where = _cell("; ".join(item["locations"])) if item["locations"] else t["no_location"]
-    row = f"- `{_cell(item['doi'])}` ({where}): OpenAlex {_side(item['openalex'], t)}; Crossref {_side(item['crossref'], t)}"
+    row = f"- {_code(item['doi'])} ({where}): OpenAlex {_side(item['openalex'], t)}; Crossref {_side(item['crossref'], t)}"
     if item["event_date"]:
         row += "; " + t["dated"].format(date=_cell(item["event_date"]))
     return row + "."
@@ -323,7 +385,7 @@ def render(report: dict[str, Any], lang: str = "en") -> str:
     else:
         lines.append(t["none"])
     if invalid:
-        lines += ["", t["invalid"]] + [t["invalid_row"].format(line=n, text=_cell(s)) for n, s in invalid]
+        lines += ["", t["invalid"]] + [t["invalid_row"].format(line=n) for n in invalid]
     groups = [
         (t["retracted"], [i for i in items if i["status"] == "retracted"]),
         (t["disputed"], [i for i in items if i["status"] == "disputed"]),
@@ -331,7 +393,14 @@ def render(report: dict[str, Any], lang: str = "en") -> str:
     ]
     oa_only = [i for i in items if i["openalex_only"]]
     unknown = [i for i in items if i["status"] == "unknown"]
+    # A degraded source is shown in the row of a retracted, disputed, or unknown DOI; for the rest it needs its own group.
+    degraded = [
+        i for i in items
+        if i["status"] in ("not_retracted", "reinstated")
+        and "degraded" in (i["openalex"]["detail"], i["crossref"]["detail"])
+    ]
     groups.append((t["oa_only"].format(n=len(oa_only)), oa_only))
+    groups.append((t["degraded_head"].format(n=len(degraded)), degraded))
     groups.append((t["unknown_head"].format(n=len(unknown)), unknown))
     for heading, rows in groups:
         if rows:
