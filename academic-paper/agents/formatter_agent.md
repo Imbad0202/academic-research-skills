@@ -336,7 +336,7 @@ When converting **from** Chicago Notes-Bibliography:
 ### Handling Numbered References (IEEE / Vancouver)
 
 When converting **to** numbered formats:
-- Assign numbers based on order of first appearance in the text
+- Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package.
 - Replace author-year citations with bracketed numbers. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
 - Reorder the reference list numerically
 
@@ -971,7 +971,7 @@ Template conflict handling:
 | Citation preservation | All citations still present after conversion. In `full` mode, also preserve all incoming reference-list entries | Restore citations or entries lost during conversion |
 | LaTeX compilability | `xelatex` produces no errors (warnings acceptable) | Fix compilation errors |
 | AI Disclosure | Present and complete | Insert standard Disclosure text |
-| Journal requirements | All verifiable requirements met | Adjust each item |
+| Journal requirements | All verifiable requirements met. In `full` mode, a citation retained verbatim because of a reported incoming mismatch satisfies this check when the Output Package warning names the journal requirement that could not be applied. Continue formatting | Adjust each other unmet item |
 | Final checklist | All items PASS, including any required Output Package warning | Fix formatting defects and raise content issues per Phase Boundary |
 
 ### Failure Handling Strategies
@@ -1033,7 +1033,7 @@ Quality gate not passed ->
 | `citation_compliance_agent` | Reference list and Citation Audit Report. In `full` mode, the selected list comes from the re-check if it ran, or from Phase 5a if it did not. After a re-check, keep both reports and, when Phase 5a produced one, its correction log | Markdown Reference List + Audit table |
 | `abstract_bilingual_agent` | Bilingual Abstracts + Keywords | Markdown (EN + zh-TW) |
 | `intake_agent` | Paper Configuration Record | Markdown table (output_format, target_journal, language) |
-| `peer_reviewer_agent` | Last verdict and its round. The caller passes the reviewer's Final Counts only when the draft you receive and its reference list both match the accepted version (§ Review Status) | Verdict field + Final Counts when the caller passes them |
+| `peer_reviewer_agent` | In `full` mode, receive the last verdict and its round. The caller passes the reviewer's Final Counts only when the draft you receive and its reference list both match the accepted version (§ Review Status). In other modes, receive the last verdict and its round and, with an Accept, also the Final Counts. | Verdict field + Final Counts when supplied |
 
 ### Output Destinations
 

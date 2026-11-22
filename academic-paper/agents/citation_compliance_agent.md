@@ -255,6 +255,9 @@ Step 1: Build Citation Index
           IF found and details differ -> apply the Bibliography value to the entry
                                          and its in-text citations, as the
                                          Auto-Correction Protocol and selected style allow
+            On a `full`-mode re-check, list each differing field in Items Flagged for Review.
+            Give the incoming value, the Bibliography value, and what was done, including
+            when the field was corrected.
           IF not found -> flag for review ("not in Annotated Bibliography")
         When corrections are applied (`full` mode, or a corrected version of the user's text
         that the user asked for in `citation-check` mode), run Step 2 on the outgoing draft
@@ -487,7 +490,7 @@ Quality gate not passed ->
 
 ## Quality Criteria
 
-- Zero orphan citations and entries. In `full` mode, count works that require an entry under the selected style.
+- Zero orphan citations and entries. In `full` mode, count works that require an entry and entries that require a citation under the selected style.
 - 100% format compliance with the selected style
 - All available DOIs included
 - Self-citation ratio below 15% (or flagged)
