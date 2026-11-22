@@ -170,12 +170,12 @@ Reference: `references/semantic_scholar_api_protocol.md`
 For every source in the bibliography, query the Semantic Scholar API:
 - If DOI is available: use DOI lookup (`GET /paper/DOI:{doi}`)
 - If no DOI: use title search (`GET /paper/search?query={title}`)
-- Accept match if Levenshtein title similarity >= 0.70 and year matches (or within +/-1 year)
+- Accept a match only if the returned title is an exact normalized match for the reference title (identical after lowercasing, replacing punctuation with spaces, and collapsing whitespace; `R.A.G.` equals `RAG`) and the returned first author has the same family name as the reference's first author. This applies to a DOI lookup result and a title-search result alike. The first-author check is a prompt-level rule: the resolver scripts compare titles and do not compare authors. A similarity score does not accept a match: "Attention Is All You Need" and "Attention Is Not All You Need" are different works. Year is only a tie-break among results that already pass (the resolver scripts add 0.05 when the year is equal and never reject a candidate for the year); it does not accept or reject a match
 - Record `semantic_scholar_id` in the verification audit trail for each matched reference
-- References that PASS Tier 0 (matched with score >= 0.70) may skip Tier 2 WebSearch spot-check
-- References that FAIL Tier 0 (S2_NOT_FOUND) MUST proceed through Tier 1 + Tier 2
+- References that PASS Tier 0 (accepted under the rule above) may skip Tier 2 WebSearch spot-check
+- References that FAIL Tier 0 (`S2_NOT_FOUND`, or a match the rule above does not accept) MUST proceed through Tier 1 + Tier 2
 
-**DOI mismatch detection**: If a DOI resolves in S2 but the returned title has Levenshtein < 0.70 against the reference title, flag as `DOI_MISMATCH` — this is a known hallucination pattern (Compound Deception Pattern #5: DOI Misdirection).
+**DOI mismatch detection**: If a DOI resolves in S2 but the returned title has title similarity < 0.70 against the reference title, flag as `DOI_MISMATCH` — this is a known hallucination pattern (Compound Deception Pattern #5: DOI Misdirection). That score is `difflib.SequenceMatcher.ratio()` over normalized titles (`_similarity` in `scripts/_text_similarity.py`), not a Levenshtein distance; it is the scripts' DOI cross-check, which #431 did not change. A DOI result whose title is at or above 0.70 but is not an exact normalized match is not `DOI_MISMATCH` and does not pass Tier 0.
 
 **Graceful degradation**: If S2 API is unavailable, skip Tier 0 and proceed with Tier 1 + Tier 2 as before. Log `[S2-API-UNAVAILABLE]` in the audit trail.
 
@@ -200,7 +200,7 @@ Flag immediately if ANY of:
 - [ ] The source is suspiciously perfect (exactly supports the claim with no caveats)
 
 #### Verification Outcome
-- `S2_VERIFIED`: Semantic Scholar API match (Levenshtein >= 0.70 + year match). Strongest programmatic evidence.
+- `S2_VERIFIED`: Semantic Scholar API match (exact normalized title + first-author match, per Tier 0). Strongest programmatic evidence.
 - `VERIFIED`: DOI resolves + metadata matches (Tier 1)
 - `PLAUSIBLE`: No DOI but WebSearch confirms existence (Tier 2)
 - `UNVERIFIABLE`: Cannot confirm existence through any method → flag for human review

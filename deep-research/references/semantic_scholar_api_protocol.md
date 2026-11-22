@@ -24,7 +24,7 @@ PaperOrchestra (Song et al., 2026) demonstrated that a two-phase citation pipeli
 GET /paper/search?query={url_encoded_title}&limit=5&fields=title,authors,year,externalIds,venue,publicationDate
 ```
 
-**Matching rule**: Compute Levenshtein similarity between query title and each result title (case-insensitive, stripped of punctuation). Accept if similarity >= 0.70 (matching PaperOrchestra's threshold). If multiple results >= 0.70, prefer the one with matching year.
+**Matching rule**: Accept a result only when its title is an exact normalized match for the query title: the two titles are identical after lowercasing, replacing ASCII punctuation with spaces, and collapsing whitespace, and a dotted acronym counts as its undotted form (`R.A.G.` = `RAG`). This is `exact_normalized_title` in `scripts/_text_similarity.py`, the check the resolver scripts have applied to title-search results since #431. A similarity score alone does not accept a result: "Attention Is All You Need" and "Attention Is Not All You Need" score 0.926 and are different works. That score is `difflib.SequenceMatcher.ratio()` (`_similarity` in the same module), not a Levenshtein distance. A query title that is only a generic label (`Editorial`, `Introduction`, `Book Review`) is not accepted from title search and needs a DOI match. If more than one result passes, prefer the one with matching year. Year is only that tie-break: the scripts add 0.05 to the score when the year is equal and never reject a result for the year.
 
 ### Pattern 2: DOI Lookup (when DOI is available)
 
@@ -32,7 +32,7 @@ GET /paper/search?query={url_encoded_title}&limit=5&fields=title,authors,year,ex
 GET /paper/DOI:{doi}?fields=title,authors,year,externalIds,venue,publicationDate,citationCount
 ```
 
-**Matching rule**: DOI match is exact. Cross-check that returned title matches the reference title (Levenshtein >= 0.70). If title mismatch despite DOI match, flag as `DOI_MISMATCH` — a known hallucination pattern where a fabricated DOI resolves to an unrelated paper.
+**Matching rule**: DOI match is exact. Cross-check the returned title against the reference title. If the title similarity is below 0.70 (`_similarity` in `scripts/_text_similarity.py`, `difflib.SequenceMatcher.ratio()` over normalized titles, not a Levenshtein distance; the scripts' DOI cross-check, which #431 did not change), flag as `DOI_MISMATCH` — a known hallucination pattern where a fabricated DOI resolves to an unrelated paper. A DOI match at or above 0.70 is a match, but it passes Tier 0 only if the returned title is also an exact normalized match (Pattern 1 rule); see Tier 0 pass below.
 
 ### Pattern 3: Semantic Scholar ID Lookup (for re-verification)
 
@@ -54,6 +54,8 @@ Used when re-verifying a reference that was previously resolved to a Semantic Sc
 
 **Execution order**: Tier 0 first (batch, 1 req/sec). References that PASS Tier 0 skip Tier 2 unless flagged for other reasons. References that FAIL Tier 0 proceed to Tier 1 + Tier 2 for manual investigation.
 
+**Tier 0 pass (`S2_VERIFIED`)**: A match passes Tier 0 only when (1) the returned title is an exact normalized match for the reference title (Pattern 1 rule; a DOI match needs this too) and (2) the first author Semantic Scholar returns has the same family name as the reference's first author, compared case-insensitively; if either side has no author, the check fails. A match that does not pass is not `S2_NOT_FOUND` and not `DOI_MISMATCH`; it proceeds to Tier 1 + Tier 2. Check (2) is made in the prompt-run path only: the resolver scripts compare titles and do not compare authors. Year is not a pass condition. In the scripts it is only a tie-break among title-search candidates that already pass (an equal year adds 0.05 to the score and never rejects a candidate).
+
 ---
 
 ## Response Handling
@@ -67,12 +69,12 @@ Record the following in the reference's verification audit trail:
 - `s2_year`: returned year
 - `s2_venue`: returned venue
 - `s2_citation_count`: citation count (informational)
-- `match_score`: Levenshtein similarity score
+- `match_score`: title similarity score (`difflib.SequenceMatcher.ratio()` in `scripts/_text_similarity.py`; not a Levenshtein distance)
 - `verification_method`: `"s2_title_search"` or `"s2_doi_lookup"`
 
 ### On no match
 
-- If 0 results with Levenshtein >= 0.70: classify as `S2_NOT_FOUND`
+- If no DOI match is found and no title-search result passes the Pattern 1 matching rule: classify as `S2_NOT_FOUND`
 - `S2_NOT_FOUND` does NOT automatically mean fabrication — the paper may exist but not be indexed in Semantic Scholar (e.g., very recent, non-English, grey literature)
 - Proceed to Tier 1 (DOI) and Tier 2 (WebSearch) for further investigation
 - If ALL tiers fail: classify as `NOT_FOUND` per existing protocol

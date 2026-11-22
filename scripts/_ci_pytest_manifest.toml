@@ -329,6 +329,10 @@ id = "250-title-fuzzy-false-positive-pin"
 path = "scripts/test_title_fuzzy_false_positive.py"
 
 [[pytest]]
+id = "1146-tier0-prompt-title-gate"
+path = "scripts/test_tier0_title_gate_prompt_sync.py"
+
+[[pytest]]
 id = "396-rubric-weight-consistency"
 path = "scripts/test_check_rubric_weight_consistency.py"
 
