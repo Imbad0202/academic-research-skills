@@ -24,7 +24,7 @@ PaperOrchestra (Song et al., 2026) demonstrated that a two-phase citation pipeli
 GET /paper/search?query={url_encoded_title}&limit=5&fields=title,authors,year,externalIds,venue,publicationDate
 ```
 
-**Matching rule**: Accept a result only when its title is an exact normalized match for the query title: the two titles are identical after lowercasing, replacing ASCII punctuation with spaces, and collapsing whitespace, and a dotted acronym counts as its undotted form (`R.A.G.` = `RAG`). This is `exact_normalized_title` in `scripts/_text_similarity.py`, the check the resolver scripts have applied to title-search results since #431. A similarity score alone does not accept a result: "Attention Is All You Need" and "Attention Is Not All You Need" score 0.926 and are different works. That score is `difflib.SequenceMatcher.ratio()` (`_similarity` in the same module), not a Levenshtein distance. A query title that is only a generic label (`Editorial`, `Introduction`, `Book Review`) is not accepted from title search and needs a DOI match. If more than one result passes, prefer the one with matching year. Year is only that tie-break: the scripts add 0.05 to the score when the year is equal and never reject a result for the year.
+**Matching rule**: The title check passes if the two titles are equal under any of the three forms used by `exact_normalized_title` in `scripts/_text_similarity.py`. The base form lowercases, replaces ASCII punctuation with spaces, and collapses and trims whitespace. The dotted-acronym form first removes the dots in a run of two or more contiguous dotted initials, then applies the base form (`R.A.G.` equals `RAG`). When both titles contain a Han ideograph in U+4E00-U+9FFF, `_cjk_titles_match` also accepts equal, nonempty Chinese-aware forms. This form folds fullwidth ASCII (`甲Ａ` equals `甲A`), strips a supported enclosing wrapper only when that pair encloses the whole title, strips the terminal marks `。` and `.`, normalizes whitespace, removes spaces touching Han characters, and preserves letter case. Passing the title check is not a Tier 0 pass, which also requires the first-author check. The resolver scripts have applied this title check to title-search results since #431. A similarity score alone does not pass the title check: "Attention Is All You Need" and "Attention Is Not All You Need" score 0.926 and are different works. That score is `_similarity` in the same module (see Pattern 2), not a Levenshtein distance. A generic query title such as `Editorial`, `Introduction`, or `Book Review` cannot pass by title search and requires a DOI lookup. For every title-search result, check both the exact normalized title and the first author's family name against the reference. Compare family names case-insensitively. If either side has no author, the author check fails. Only after checking every result, use matching year as a tie-break among those that pass both checks. Year is not a pass condition. The resolver's title-search scoring in `scripts/semantic_scholar_client.py` adds 0.05 when the year is equal among candidates that already have an exact normalized title, and it never rejects a candidate for the year; that scoring does not compare authors.
 
 ### Pattern 2: DOI Lookup (when DOI is available)
 
@@ -32,7 +32,7 @@ GET /paper/search?query={url_encoded_title}&limit=5&fields=title,authors,year,ex
 GET /paper/DOI:{doi}?fields=title,authors,year,externalIds,venue,publicationDate,citationCount
 ```
 
-**Matching rule**: DOI match is exact. Cross-check the returned title against the reference title. If the title similarity is below 0.70 (`_similarity` in `scripts/_text_similarity.py`, `difflib.SequenceMatcher.ratio()` over normalized titles, not a Levenshtein distance; the scripts' DOI cross-check, which #431 did not change), flag as `DOI_MISMATCH` — a known hallucination pattern where a fabricated DOI resolves to an unrelated paper. A DOI match at or above 0.70 is a match, but it passes Tier 0 only if the returned title is also an exact normalized match (Pattern 1 rule); see Tier 0 pass below.
+**Matching rule**: The DOI itself must match exactly. Cross-check the returned title against the reference title. The title score is `_similarity` in `scripts/_text_similarity.py`. It returns `1.0` for a Chinese-aware exact match and otherwise takes the higher of the base and dotted-acronym `difflib.SequenceMatcher.ratio()` scores, not a Levenshtein distance. #431 changed those forms; only the threshold stayed at 0.70. If the title score is below 0.70, flag as `DOI_MISMATCH` — a known hallucination pattern where a fabricated DOI resolves to an unrelated paper. A DOI candidate at or above 0.70 whose title is not an exact normalized match does not trigger `DOI_MISMATCH` and does not pass Tier 0.
 
 ### Pattern 3: Semantic Scholar ID Lookup (for re-verification)
 
@@ -54,27 +54,27 @@ Used when re-verifying a reference that was previously resolved to a Semantic Sc
 
 **Execution order**: Tier 0 first (batch, 1 req/sec). References that PASS Tier 0 skip Tier 2 unless flagged for other reasons. References that FAIL Tier 0 proceed to Tier 1 + Tier 2 for manual investigation.
 
-**Tier 0 pass (`S2_VERIFIED`)**: A match passes Tier 0 only when (1) the returned title is an exact normalized match for the reference title (Pattern 1 rule; a DOI match needs this too) and (2) the first author Semantic Scholar returns has the same family name as the reference's first author, compared case-insensitively; if either side has no author, the check fails. A match that does not pass is not `S2_NOT_FOUND` and not `DOI_MISMATCH`; it proceeds to Tier 1 + Tier 2. Check (2) is made in the prompt-run path only: the resolver scripts compare titles and do not compare authors. Year is not a pass condition. In the scripts it is only a tie-break among title-search candidates that already pass (an equal year adds 0.05 to the score and never rejects a candidate).
+**Tier 0 pass (`S2_VERIFIED`)**: A candidate passes Tier 0 (`S2_VERIFIED`) only when its returned title is an exact normalized match for the reference title and its first author's family name matches the reference's first author's family name case-insensitively. If either side has no author, the check fails. This applies to both a DOI lookup and a title search, subject to the generic-title exclusion on title search. A candidate that fails only the prompt-level title or author requirement proceeds to Tier 1 + Tier 2 without being classified as `S2_NOT_FOUND` or `DOI_MISMATCH`. Both the first-author comparison on either path and exact-title verification on a DOI candidate are prompt-level requirements. The scripts do not compare authors. `_lookup_by_doi` returns `matched: True` once the DOI title cross-check clears its threshold (`scripts/semantic_scholar_client.py`). Year is not a pass condition. Matching year is only a tie-break among title-search candidates that pass both checks.
 
 ---
 
 ## Response Handling
 
-### On successful match
+### On Tier 0 pass (`S2_VERIFIED`)
 
-Record the following in the reference's verification audit trail:
+Record the following in the verification audit trail of a reference that passes Tier 0. Record `semantic_scholar_id` in the verification audit trail for deduplication only when the reference passes Tier 0.
 - `semantic_scholar_id`: the S2 paper ID (e.g., `"649def34f8be52c8b66281af98ae884c09aef38b"`)
 - `s2_title`: returned title
 - `s2_authors`: returned author list
 - `s2_year`: returned year
 - `s2_venue`: returned venue
 - `s2_citation_count`: citation count (informational)
-- `match_score`: title similarity score (`difflib.SequenceMatcher.ratio()` in `scripts/_text_similarity.py`; not a Levenshtein distance)
+- `match_score`: title similarity returned by `_similarity` in `scripts/_text_similarity.py` (see Pattern 2). It is the title score, before any year preference.
 - `verification_method`: `"s2_title_search"` or `"s2_doi_lookup"`
 
 ### On no match
 
-- If no DOI match is found and no title-search result passes the Pattern 1 matching rule: classify as `S2_NOT_FOUND`
+- If no DOI candidate is returned and title search yields no non-generic exact normalized title candidate, classify as `S2_NOT_FOUND`.
 - `S2_NOT_FOUND` does NOT automatically mean fabrication — the paper may exist but not be indexed in Semantic Scholar (e.g., very recent, non-English, grey literature)
 - Proceed to Tier 1 (DOI) and Tier 2 (WebSearch) for further investigation
 - If ALL tiers fail: classify as `NOT_FOUND` per existing protocol
@@ -90,7 +90,7 @@ Record the following in the reference's verification audit trail:
 
 ## Deduplication via S2 ID
 
-When two references resolve to the same `semantic_scholar_id`, flag as duplicate. The `bibliography_agent` uses this for deduplication during search (matching PaperOrchestra's approach of deduplicating via Semantic Scholar IDs).
+When two references that pass Tier 0 have the same recorded `semantic_scholar_id`, flag as duplicate. The `bibliography_agent` uses this for deduplication during search (matching PaperOrchestra's approach of deduplicating via Semantic Scholar IDs).
 
 ---
 
