@@ -171,6 +171,10 @@ Phase 6: PEER REVIEW   -> [peer_reviewer]              -> Review Report (max 2 r
 Phase 7: FORMAT        -> [formatter]                  -> Final Output Package
 ```
 
+In `full` mode, call `citation_compliance_agent` for a re-check before Phase 7 if any Phase 6 revision round or the Option A edit (the "Acknowledged Limitations" section) added, removed, or changed a citation or a reference-list entry. Count the changes of every round, not only the last one. Send the writer's latest draft to the re-check. When the reviewer accepted a draft, keep that draft with its `## References` section for the comparison in Checkpoint Rule 6.
+
+In `full` mode, when a re-check runs, its Corrected Draft is the sole Phase 7 manuscript. Use its accompanying reference list. Keep the Phase 5a Citation Audit Report, and its correction log when Phase 5a produced one, alongside the re-check's report. The re-check verifies sources as usual and records conflicts in Items Flagged for Review. Use the Phase 5a list only when no re-check ran. With no revision round (a Round 1 Accept, or formatting requested after Phase 5a but before any revision round), no re-check runs; send the initial Phase 5a Corrected Draft. Once Review Status allows formatting, the formatter compares the draft and list under the selected style. Citation quality findings from this comparison go in an Output Package warning while formatting continues (#1071).
+
 > See `references/workflow_phase_details.md` for detailed per-phase agent behavior and output descriptions.
 
 ### Review-target criteria binding (#684)
@@ -206,10 +210,11 @@ alignment and do not silently reconstruct a target from model memory.
 3. ⚠️ **IRON RULE**: Max 2 revision loops; unresolved items -> "Acknowledged Limitations" (when the user picks Option A; see rule 6)
 4. **Peer Review** Critical-severity issues block progression to Phase 7 through an Accept or Option A. While a Critical issue remains, `peer_reviewer_agent` does not offer Option A; the user can still ask for early formatting, and Phase 7 then follows rule 6
 5. User can skip Phase 1 (literature) if providing own sources
-6. **Phase 6 -> 7** (`full` mode, #1087): Phase 7 starts without a stop when peer review gave an Accept verdict for the draft that goes to Phase 7. In every other case Phase 7 starts only after the user confirms it at one stop, which `formatter_agent` shows before it formats, with the draft's Review Status (`formatter_agent` § Review Status). The cases are:
+6. **Phase 6 -> 7** (`full` mode, #1087): Phase 7 starts without a stop when the draft that goes to Phase 7 and its reference list both match the version peer review accepted (the accepted draft with its `## References` section). In every other case Phase 7 starts only after the user confirms it at one stop, which `formatter_agent` shows before it formats, with the draft's Review Status (`formatter_agent` § Review Status). The cases are:
    - **Last allowed revision**: after a Round 2 Minor Revision verdict, `draft_writer_agent` makes the second and last revision, and no review follows it.
    - **Option A**: after Round 2, the user picks Option A, and `draft_writer_agent` adds the "Acknowledged Limitations" section.
    - **Early formatting**: the user asks for Phase 7 before an Accept, including before any review.
+   - **Citations changed after acceptance**: a re-check ran after Round N accepted the draft. The caller compares the re-check's Corrected Draft and its reference list with the accepted draft and its `## References` section. If either differs, the formatter shows `Citations changed after Round N acceptance; this version has not been re-reviewed`, asks once, and counts the draft it receives. If both match, the accepted-version path applies, and the caller passes the reviewer's Final Counts to the formatter (#1071).
 
    Option C ends the workflow, and Phase 7 does not run. Option B returns to the phase it names. If the user declines at the stop, keep the draft and all Review Reports and end the workflow, as Option C does.
 
@@ -243,7 +248,7 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 
 v3.6.6 splits Phase 4 (writer drafting) and Phase 6 (in-pair evaluator review) into paper-blind / paper-visible call pairs gated by the `writer_full` and `evaluator_full` contracts. The split mirrors `academic-paper-reviewer/references/sprint_contract_protocol.md` (the v3.6.2 reviewer pattern) but adapts it for single-agent generator modes that have no panel and (for the writer) no scoring_plan.
 
-The load-bearing mechanism is the **physical separation of calls**: writer Phase 4a never sees the runtime drafting artefacts; evaluator Phase 6a never sees the writer Phase 4b draft. This destroys the "read the paper, then rationalise the standard" drift path on the in-pair self-quality gate.
+The load-bearing mechanism is the **physical separation of calls**: writer Phase 4a never sees the runtime drafting artefacts; evaluator Phase 6a never sees the draft under review (the Phase 5a Corrected Draft on the first review, or the writer's Revised Draft in later rounds). This destroys the "read the paper, then rationalise the standard" drift path on the in-pair self-quality gate.
 
 ### Four-call structure
 
@@ -267,7 +272,7 @@ For each `academic-paper full` invocation, Phase 4 + Phase 6 expand from two sin
    - Lint: 5 structural checks.
 4. **Phase 6b — evaluator paper-visible scoring + decision.**
    - System prompt: `### Phase 6b — Evaluator paper-visible scoring + decision` sub-section in the same agent file.
-   - User content: `evaluator_full` contract JSON (re-injected) + Phase 6a output wrapped in `<phase6a_output>...</phase6a_output>` + the writer's `<phase4a_output>` (unconditional per `pre_commitment_check_protocol.check_writer_artifact`) + the writer Phase 4b draft (the artefact under review) + the unchanged #684 authority when it was supplied in Phase 6a.
+   - User content: `evaluator_full` contract JSON (re-injected) + Phase 6a output wrapped in `<phase6a_output>...</phase6a_output>` + the writer's `<phase4a_output>` (unconditional per `pre_commitment_check_protocol.check_writer_artifact`) + the Phase 5a Corrected Draft for the first review, or the writer's Revised Draft with its Revision Log for later rounds (the artefact under review) + the unchanged #684 authority when it was supplied in Phase 6a.
    - Output: `## Dimension Scores` → `## Failure Condition Checks` → `## Review Body` → `## Evaluator Decision`, plus the role marker/unavailable disclosure and a separately validated constructive sidecar when applicable.
    - Lint: 5 structural checks.
 
@@ -472,8 +477,8 @@ accurate, keep it out of the errors, the corrections, and the Items Flagged for
 Review, and put it in a separate notes line. Leave the user's excerpt or draft text to the user: offer a
 corrected version and produce it only when the user asks. In this mode the
 agent's Auto-correct principle covers the reference list and the listed
-replacements; its Corrected Draft output belongs to `full`-mode runs that call
-it as Phase 5a, not to this mode (#1062, #1068). For Chicago 17th, MLA 9th, IEEE, and Vancouver, the agent's Other Citation Styles: Report Only rule replaces this: the report lists findings only, with no Corrected Reference List or replacement citations. A corrected version of the user's text still comes only when the user asks, and it begins with a note that a correction for another style may be wrong (#1093).
+replacements. The agent produces a Corrected Draft at initial Phase 5a and at
+the pre-Phase 7 re-check in `full` mode (#1062, #1068, #1071). For Chicago 17th, MLA 9th, IEEE, and Vancouver, the agent's Other Citation Styles: Report Only rule replaces the citation-check deliverable: the report lists findings only, with no Corrected Reference List or replacement citations. A corrected version of the user's text still comes only when the user asks, and it begins with a note that a correction for another style may be wrong (#1093).
 
 ---
 
@@ -605,6 +610,8 @@ Explicit prohibitions to prevent common failure modes:
 ---
 
 ## Quality Standards
+
+On a `full`-mode re-check, verify the sources as usual and record conflicts in Items Flagged for Review. A recorded conflict may proceed to handoff (#1071).
 
 ### Writing Quality
 1. **Every claim must have a citation** or be supported by the paper's own data — or, for #548 absence/novelty claims, carry documented-search provenance plus the named nearest prior work where one exists (the explicit absence-of-adjacent-work statement suffices otherwise; no source can cite an absence)

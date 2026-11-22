@@ -253,7 +253,7 @@ def test_activation_gate_covers_post_submission_informal_and_unknown_review_kind
         "If the user names the body but the kind of review is still unclear, "
         "ask what kind of review produced the comments before choosing the variant"
     ) in gate
-    assert '"This is the formal letter from our research ethics committee", enter the variant and open the reply by quoting the words the user supplied.' in gate
+    assert '"This is the formal letter from our research ethics committee; help me prepare the reply", enter the variant and open the reply by quoting the words the user supplied.' in gate
     assert '"statistical comments from our IRB", ask what kind of review produced the comments.' in gate
     assert "If the source identity or the kind of review is uncertain" in gate
 

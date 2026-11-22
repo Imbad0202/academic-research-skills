@@ -163,7 +163,7 @@ Keep your review **brief but complete**. State each finding and your verdict dir
 ### Complete Review Workflow
 
 ```
-INPUT: Complete Draft + Draft Metadata + Paper Outline + Citation Audit Report
+INPUT: Draft under review (in full mode, the Phase 5a Corrected Draft on the first review, or the writer's Revised Draft with its Revision Log in later rounds; otherwise the Complete Draft) + Draft Metadata + Paper Outline + Citation Audit Report
 OUTPUT: Peer Review Report
 
 Step 1: Holistic Read
@@ -331,7 +331,7 @@ Round 2 (re-review):
   OUTPUT: Round 2 Peer Review Report
 
   Decision:
-  ├── All applicable decision-bearing criteria met -> Accept (can proceed to Phase 7)
+  ├── All applicable decision-bearing criteria met -> Accept (see Loop End States)
   ├── Only limited, non-core repairable issues remain -> Minor Revision
   │     (draft_writer_agent makes the last allowed revision; no review follows it)
   ├── Substantial but repairable decision-bearing issues remain -> Major Revision
@@ -356,7 +356,10 @@ Step 2: Provide user with the options below
   Option A: Accept current state -> draft_writer_agent adds an
             "Acknowledged Limitations" section that lists every unresolved
             Issue (the user's Option A choice authorizes this one edit only)
-            -> that draft goes to the Phase 7 confirmation stop
+            -> the caller prepares the Phase 7 draft; the citation re-check
+               runs if this edit or any revision round added, removed, or
+               changed a citation or a reference-list entry
+            -> the formatter asks for Review Status confirmation
             (SKILL.md Checkpoint Rule 6)
             Not offered while a Critical Issue remains (Checkpoint Rule 4);
             the user can still ask for early formatting
@@ -374,7 +377,8 @@ Each way the revision loop ends has one next step. `academic-paper/SKILL.md` Che
 
 | End state | Next step |
 |---|---|
-| Accept (any round) | Phase 7 starts without a stop |
+| Accept (any round), accepted version goes to Phase 7 | Phase 7 starts without confirmation and uses the reviewer's Final Counts only when the Final Reviewed Draft and its reference list both match the version `peer_reviewer_agent` accepted: the accepted draft with its `## References` section. This includes a re-check for which both match. |
+| Citations changed after acceptance | If, after the re-check, the Final Reviewed Draft or its reference list differs from the version `peer_reviewer_agent` accepted (the accepted draft with its `## References` section), the formatter shows `Citations changed after Round N acceptance; this version has not been re-reviewed`, asks once, and counts the draft it receives if the user confirms (#1071) |
 | Round 2 Minor Revision | `draft_writer_agent` makes the last allowed revision; no review follows it; Phase 7 starts after the user confirms it at the stop |
 | Round 2 Major Revision or Reject, Option A | Only when no Critical Issue remains: `draft_writer_agent` adds the "Acknowledged Limitations" section; Phase 7 starts after the user confirms it at the stop |
 | Round 2 Major Revision or Reject, Option B | Return to the phase the option names |
@@ -453,14 +457,14 @@ Quality gate not passed ->
 | Target Agent | Output Content | Data Format |
 |-----------|---------|---------|
 | `draft_writer_agent` | Peer Review Report + Revision Instructions | This agent's Output Format |
-| `formatter_agent` | Last verdict and its round; with an Accept, also the Final Counts. Phase 7 starts on an Accept, otherwise only after the user confirms it (Loop End States) | Verdict field + Final Counts |
+| `formatter_agent` | Last verdict and its round. With every Accept, also the Final Counts of the draft you accepted. The caller passes them to the formatter only when the Phase 7 draft and its reference list both match the accepted version. If the re-check changed a citation or a reference-list entry after acceptance, the last Accept and its round stay as review history, and the formatter asks for confirmation and counts the draft it receives (Loop End States) | Verdict field + Final Counts with every Accept |
 | User | Complete Review Report | Readable structured report |
 
 ### Handoff Format Requirements
 
 - **Output to draft_writer_agent**: Each Issue must include `Section` (precise to section number) so draft_writer can directly locate the edit point
 - **Round 2 receiving Revised Draft**: Must also receive Revision Log to track which Issues have been addressed
-- **Output to formatter_agent**: Give the last verdict and its round. With an Accept, also give the Final Counts of the accepted draft: body word count (counted per `shared/references/word_count_conventions.md`), in-text citation count, and reference-list entry count. The formatter uses them as the input counts in its Final Quality Checklist. When the draft that goes to Phase 7 has no Accept (Loop End States), give no counts; the formatter counts that draft itself
+- **Output to formatter_agent**: Give the last verdict and its round. With every Accept, also give the Final Counts of the draft you accepted: body word count (per `shared/references/word_count_conventions.md`), in-text citation count, and reference-list entry count. The caller passes them to the formatter only when the Phase 7 draft and its reference list both match the accepted version (the accepted draft with its `## References` section). If the re-check changed a citation or a reference-list entry after acceptance, your Accept and its round stay as review history. When Phase 7 proceeds, the formatter calculates the counts on the draft it receives and labels them as its own in the Final Quality Checklist only if there was no Accept or if the Phase 7 draft or its reference list differs from the accepted version.
 
 ## Quality Criteria
 
@@ -482,7 +486,7 @@ This block contains the exact text that becomes the **system prompt** for Phase 
 
 ### Phase 6a — Evaluator paper-blind pre-commitment
 
-You are the in-pair evaluator agent in `academic-paper full` mode under the v3.6.6 generator-evaluator contract gate. This is your Phase 6a paper-blind pre-commitment turn. You have NOT yet seen the writer's Phase 4b draft. You see only:
+You are the in-pair evaluator agent in `academic-paper full` mode under the v3.6.6 generator-evaluator contract gate. This is your Phase 6a paper-blind pre-commitment turn. You have NOT yet seen the draft under review (the Phase 5a Corrected Draft on the first review, or the writer's Revised Draft in later rounds). You see only:
 
 - The `evaluator_full` contract JSON (your acceptance criteria as defined in `shared/contracts/evaluator/full.json`).
 - Paper metadata: `title`, `field`, `word_count`.
@@ -508,7 +512,7 @@ Your task is to commit, in writing, the contract paraphrase + scoring plan you i
    exact unbulleted line `criteria_binding_unavailable`.
 4. Terminal `[PRE-COMMITMENT-ACKNOWLEDGED]` tag on its own line as the very last line of your output.
 
-**Lint constraints (5 checks)**: required sections in order; paraphrase paragraph count ≥ minimum_dimensions; one `### <Dn>: <name>` subsection per acceptance dimension in both Contract Paraphrase + Scoring Plan; each Scoring Plan subsection contains the four-field shape; output content references contract JSON + paper metadata + writer `<phase4a_output>` only (no full draft / paper content — those arrive only in Phase 6b).
+**Lint constraints (5 checks)**: required sections in order; paraphrase paragraph count ≥ minimum_dimensions; one `### <Dn>: <name>` subsection per acceptance dimension in both Contract Paraphrase + Scoring Plan; each Scoring Plan subsection contains the four-field shape; output content references contract JSON + paper metadata + writer `<phase4a_output>` plus the paper-blind #684 pointer authority only (no full draft / paper content — those arrive only in Phase 6b).
 
 **Retry**: if your output fails Phase 6a lint, you will be retried once with the specific lint gap hinted in the next system prompt. Second failure marks Phase 6 unusable and emits `[GENERATOR-PHASE-ABORTED: role=evaluator, contract=<id>, reason=phase6a_lint_failed]`.
 
@@ -519,11 +523,11 @@ You are the in-pair evaluator agent in `academic-paper full` mode under the v3.6
 - The `evaluator_full` contract JSON (re-injected — same baseline as Phase 6a).
 - Your own Phase 6a output, wrapped in `<phase6a_output>...</phase6a_output>` delimiters.
 - The writer's `<phase4a_output>...</phase4a_output>` delimiter block (unconditional per `pre_commitment_check_protocol.check_writer_artifact`).
-- The writer Phase 4b draft (the artefact under review).
+- The Phase 5a Corrected Draft for the first review, or the writer's Revised Draft with its Revision Log for later rounds (the artefact under review).
 - The same #684 manifest and Target Criteria Brief supplied in Phase 6a, when
   available; a changed authority is a visible handoff failure.
 
-Your task is to score the writer's draft against your Phase 6a pre-committed scoring plan, check failure conditions, write the review body, and emit the evaluator decision.
+Your task is to score the draft under review against your Phase 6a pre-committed scoring plan, check failure conditions, write the review body, and emit the evaluator decision.
 
 **Required output sections in this order** (5 lint checks):
 

@@ -44,7 +44,7 @@ appears only in the pasted letter), ask the user which body sent the comments an
 what review, and quote that answer; a reply of only yes or no does not name the body,
 so ask again (#907). If the user names the body but the kind of review is still unclear,
 ask what kind of review produced the comments before choosing the variant (#1123).
-For example, for "This is the formal letter from our research ethics committee",
+For example, for "This is the formal letter from our research ethics committee; help me prepare the reply",
 enter the variant and open the reply by quoting the words the user supplied.
 For "statistical comments from our IRB", ask what kind of review produced the comments.
 
