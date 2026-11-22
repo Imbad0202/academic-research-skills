@@ -32,10 +32,10 @@ TITLE_FORMS = (
     "The title check passes if the two titles are equal under any of the three forms "
     "used by `exact_normalized_title` in `scripts/_text_similarity.py`. "
     "The base form lowercases, replaces ASCII punctuation with spaces, and collapses and trims whitespace. "
-    "The dotted-acronym form first removes the dots in a run of two or more contiguous dotted initials, "
+    "The dotted-acronym form first removes the dots in a run that starts at a word boundary and consists of two or more contiguous dotted ASCII letters, "
     "then applies the base form (`R.A.G.` equals `RAG`). "
     "When both titles contain a Han ideograph in U+4E00-U+9FFF, `_cjk_titles_match` also accepts equal, nonempty Chinese-aware forms. "
-    "This form folds fullwidth ASCII (`甲Ａ` equals `甲A`), strips a supported enclosing wrapper only when that pair encloses the whole title, "
+    "This form folds fullwidth ASCII (`甲Ａ` equals `甲A`), strips one of the wrapper pairs `《》`, `「」`, `『』`, `【】`, `“”`, or `‘’` only when that pair encloses the whole title, "
     "strips the terminal marks `。` and `.`, normalizes whitespace, removes spaces touching Han characters, and preserves letter case."
 )
 DECISION = (
@@ -72,8 +72,8 @@ SIMILARITY = (
     "#431 changed those forms; only the threshold stayed at 0.70."
 )
 NO_MATCH = (
-    "If no DOI candidate is returned and title search yields no non-generic exact normalized title candidate, "
-    "classify as `S2_NOT_FOUND`."
+    "If the reference has a DOI, classify it as `S2_NOT_FOUND` when the DOI lookup returns no candidate. "
+    "If the reference has no DOI, classify it as `S2_NOT_FOUND` when title search returns no non-generic exact normalized title candidate."
 )
 FAIL_BULLET = "- References that FAIL Tier 0 MUST proceed through Tier 1 + Tier 2."
 ID_SENTENCE = (
@@ -166,8 +166,7 @@ def test_doi_mismatch_sentence_keeps_the_script_threshold() -> None:
     threshold."""
     protocol = PROTOCOL.read_text(encoding="utf-8")
     pattern2 = _between(protocol, "### Pattern 2:", "### Pattern 3:")
-    assert "DOI_MISMATCH" in pattern2
-    assert "below 0.70" in pattern2
+    assert "If the title score is below 0.70, flag as `DOI_MISMATCH`" in pattern2
     assert SIMILARITY in pattern2
     assert DOI_SENTENCE in pattern2
     assert "#431 did not change" not in pattern2
@@ -175,8 +174,10 @@ def test_doi_mismatch_sentence_keeps_the_script_threshold() -> None:
 
     agent = AGENT.read_text(encoding="utf-8")
     doi_line = _line_starting(agent, "**DOI mismatch")
-    assert "DOI_MISMATCH" in doi_line
-    assert "below 0.70" in doi_line
+    assert (
+        "If a DOI resolves in S2 but the returned title's score is below 0.70 "
+        "against the reference title, flag as `DOI_MISMATCH`"
+    ) in doi_line
     assert "Compound Deception Pattern #5" in doi_line
     assert SIMILARITY in doi_line
     assert DOI_SENTENCE in doi_line
@@ -187,7 +188,11 @@ def test_doi_mismatch_sentence_keeps_the_script_threshold() -> None:
     assert PROMPT_LEVEL in tier0_pass
     assert "do not compare authors" in tier0_pass
     assert "exact-title verification on a DOI candidate" in tier0_pass
-    assert "without being classified as `S2_NOT_FOUND` or `DOI_MISMATCH`" in tier0_pass
+    assert (
+        "A candidate that fails only the prompt-level title or author requirement is rejected "
+        "without being classified as `S2_NOT_FOUND` or `DOI_MISMATCH`. "
+        "The reference proceeds to Tier 1 + Tier 2 only when no candidate passes Tier 0."
+    ) in tier0_pass
     assert "not a pass condition" in tier0_pass
     assert "0.70" not in tier0_pass
 
