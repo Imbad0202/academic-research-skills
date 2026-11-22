@@ -243,7 +243,7 @@ Routing into Mode B requires explicit user signal — `/ars-<mode>` slash comman
 
 v3.6.6 splits Phase 4 (writer drafting) and Phase 6 (in-pair evaluator review) into paper-blind / paper-visible call pairs gated by the `writer_full` and `evaluator_full` contracts. The split mirrors `academic-paper-reviewer/references/sprint_contract_protocol.md` (the v3.6.2 reviewer pattern) but adapts it for single-agent generator modes that have no panel and (for the writer) no scoring_plan.
 
-The load-bearing mechanism is the **physical separation of calls**: writer Phase 4a never sees the runtime drafting artefacts; evaluator Phase 6a never sees the writer Phase 4b draft. This destroys the "read the paper, then rationalise the standard" drift path on the in-pair self-quality gate.
+The load-bearing mechanism is the **physical separation of calls**: writer Phase 4a never sees the runtime drafting artefacts; evaluator Phase 6a never sees the draft under review (the Phase 5a Corrected Draft on the first review, or the writer's Revised Draft in later rounds). This destroys the "read the paper, then rationalise the standard" drift path on the in-pair self-quality gate.
 
 ### Four-call structure
 
@@ -267,7 +267,7 @@ For each `academic-paper full` invocation, Phase 4 + Phase 6 expand from two sin
    - Lint: 5 structural checks.
 4. **Phase 6b — evaluator paper-visible scoring + decision.**
    - System prompt: `### Phase 6b — Evaluator paper-visible scoring + decision` sub-section in the same agent file.
-   - User content: `evaluator_full` contract JSON (re-injected) + Phase 6a output wrapped in `<phase6a_output>...</phase6a_output>` + the writer's `<phase4a_output>` (unconditional per `pre_commitment_check_protocol.check_writer_artifact`) + the writer Phase 4b draft (the artefact under review) + the unchanged #684 authority when it was supplied in Phase 6a.
+   - User content: `evaluator_full` contract JSON (re-injected) + Phase 6a output wrapped in `<phase6a_output>...</phase6a_output>` + the writer's `<phase4a_output>` (unconditional per `pre_commitment_check_protocol.check_writer_artifact`) + the Phase 5a Corrected Draft for the first review, or the writer's Revised Draft with its Revision Log for later rounds (the artefact under review) + the unchanged #684 authority when it was supplied in Phase 6a.
    - Output: `## Dimension Scores` → `## Failure Condition Checks` → `## Review Body` → `## Evaluator Decision`, plus the role marker/unavailable disclosure and a separately validated constructive sidecar when applicable.
    - Lint: 5 structural checks.
 
