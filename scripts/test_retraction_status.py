@@ -156,6 +156,23 @@ def test_later_reinstatement_wins() -> None:
     assert status.evaluate_retraction_policy(signal, "strict") is None
 
 
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [("retraction", "reinstatement"), ("reinstatement", "retraction")],
+)
+def test_conflicting_latest_crossref_events_are_disputed(first: str, second: str) -> None:
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(_event(first), _event(second)),
+    )
+    context = signal["retraction_context"]
+    crossref = context["resolver_observations"][1]
+    assert crossref["verdict"] == "disputed"
+    assert crossref["event_date"] is None
+    assert context["effective_status"] == "disputed"
+    assert signal["finding"] == "unresolved"
+
+
 def test_conflicting_undated_crossref_events_are_disputed() -> None:
     signal = _resolve(
         openalex={"status": "degraded"},

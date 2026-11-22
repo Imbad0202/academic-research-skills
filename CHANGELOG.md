@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Conflicting Crossref notices with the same latest date now yield `disputed` (#1150).** When a retraction and a reinstatement for the cited DOI share the latest timestamp, either input order produces the same verdict.
+
 - **`academic-paper` `full` mode Phase 6 review inputs name the Phase 5a Corrected Draft for the first review and the writer's Revised Draft with its Revision Log for later rounds (#1136).** `academic-paper/SKILL.md` (Phase 6a overview and Phase 6b user content) and `academic-paper/agents/peer_reviewer_agent.md` (Complete Review Workflow input and Phase 6a/6b contract prompts) previously named the Phase 4b draft (or Complete Draft), contradicting `peer_reviewer_agent.md`'s Input Sources table after #1068. Prompt-level; unmeasured.
 
 - **The `academic-paper` mode guide's committee branch names resubmission organization, as the Activation gate does (#1123 point 5, contributed by @TanmayShah29).** A new test in `scripts/test_check_committee_correspondence.py` checks that the decision tree's committee line and the gate list the same three requests.
