@@ -179,13 +179,25 @@ def run_list(manuscript: Path, out: Path) -> int:
             entries = extract_dois(text)
             handle.write(format_list(entries))
     except BaseException as exc:
+        # Remove the file this call just created. Say so only if that worked.
+        leftover: OSError | None = None
         try:
-            os.unlink(out)  # the file this call just created
-        except OSError:
+            os.unlink(out)
+        except FileNotFoundError:
             pass
-        if isinstance(exc, OSError):
-            raise Stop(f"cannot write output file {out} (removed the new file): {exc}") from exc
-        raise
+        except OSError as unlink_exc:
+            leftover = unlink_exc
+        if isinstance(exc, Stop):
+            problem = str(exc)
+        elif isinstance(exc, OSError):
+            problem = f"cannot write output file {out}: {exc}"
+        else:
+            if leftover is not None:
+                print(f"STOP: interrupted; the new file could not be removed and remains at {out}: {leftover}", file=sys.stderr)
+            raise
+        if leftover is None:
+            raise Stop(problem + " (the new output file was removed)") from exc
+        raise Stop(f"{problem}; the new output file could not be removed and remains at {out}: {leftover}") from exc
     print(f"Wrote {len(entries)} DOI(s) to {out}. Review and edit the file before running `check`.")
     return 0
 

@@ -366,3 +366,118 @@ def test_coverage_is_complete_only_when_every_doi_is_settled_and_every_line_read
     assert "(complete)" in cmr.render(settled)
     only_unknown, _ = report_for(tmp_path, f"{NOFLAG}\tlines 3\n")
     assert only_unknown["state"] == "partial"
+
+
+# --- list: cleanup reporting ----------------------------------------------
+
+
+class _CloseFails(_FailingHandle):
+    """Write works; closing the handle (the final flush) fails with an OSError."""
+
+    def __exit__(self, *exc):
+        self._handle.close()
+        raise self._error
+
+    def write(self, content):
+        self._handle.write(content)
+
+
+def _list_inputs(tmp_path):
+    manuscript = tmp_path / "m.md"
+    manuscript.write_text("10.1000/a\n", encoding="utf-8")
+    return manuscript, tmp_path / "list.txt"
+
+
+def test_close_failure_removes_the_new_file_and_says_so(tmp_path, monkeypatch, capsys):
+    manuscript, out = _list_inputs(tmp_path)
+    real_open = builtins.open
+    monkeypatch.setattr(
+        cmr, "open", lambda *a, **k: _CloseFails(real_open(*a, **k), OSError("flush failed")), raising=False
+    )
+    assert cmr.main(["list", "--manuscript", str(manuscript), "--out", str(out)]) == 2
+    err = capsys.readouterr().err
+    assert "flush failed" in err and "the new output file was removed" in err
+    assert not out.exists()
+
+
+def test_cleanup_success_is_reported_for_a_manuscript_read_failure(tmp_path, capsys):
+    out = tmp_path / "list.txt"
+    assert cmr.main(["list", "--manuscript", str(tmp_path / "gone.md"), "--out", str(out)]) == 2
+    err = capsys.readouterr().err
+    assert "cannot read manuscript" in err and "the new output file was removed" in err
+    assert not out.exists()
+
+
+def test_failed_cleanup_names_the_remaining_file_and_keeps_the_original_error(tmp_path, monkeypatch, capsys):
+    manuscript, out = _list_inputs(tmp_path)
+    real_open = builtins.open
+    monkeypatch.setattr(
+        cmr, "open", lambda *a, **k: _FailingHandle(real_open(*a, **k), OSError("disk full")), raising=False
+    )
+
+    def deny(path):
+        raise PermissionError("locked by another process")
+
+    monkeypatch.setattr(cmr.os, "unlink", deny)
+    assert cmr.main(["list", "--manuscript", str(manuscript), "--out", str(out)]) == 2
+    err = capsys.readouterr().err
+    assert "disk full" in err  # the original error is kept
+    assert "could not be removed and remains at" in err and str(out) in err and "locked by another process" in err
+    assert "was removed" not in err
+    assert out.exists()  # the partial file really is still there
+
+
+def test_failed_cleanup_after_an_interrupt_reports_the_remaining_file_and_reraises(tmp_path, monkeypatch, capsys):
+    manuscript, out = _list_inputs(tmp_path)
+    real_open = builtins.open
+    monkeypatch.setattr(
+        cmr, "open", lambda *a, **k: _FailingHandle(real_open(*a, **k), KeyboardInterrupt()), raising=False
+    )
+
+    def deny(path):
+        raise PermissionError("locked")
+
+    monkeypatch.setattr(cmr.os, "unlink", deny)
+    with pytest.raises(KeyboardInterrupt):
+        cmr.run_list(manuscript, out)
+    assert f"remains at {out}" in capsys.readouterr().err
+
+
+def test_cleanup_never_touches_a_pre_existing_file_when_the_open_is_refused(tmp_path, monkeypatch, capsys):
+    out = tmp_path / "list.txt"
+    out.write_text("keep me", encoding="utf-8")
+    calls = []
+    monkeypatch.setattr(cmr.os, "unlink", lambda path: calls.append(path))
+    assert cmr.main(["list", "--manuscript", str(tmp_path / "m.md"), "--out", str(out)]) == 2
+    assert calls == [] and out.read_text(encoding="utf-8") == "keep me"
+
+
+# --- check: record shape and stale date -----------------------------------
+
+
+@pytest.mark.parametrize("message", [{}, "junk", ["x"]])
+def test_an_empty_or_non_object_crossref_message_is_no_record(message):
+    class Client:
+        def _get(self, path, query):
+            return {"message": message}
+
+    envelope, detail = cmr._crossref(Client(), "10.1000/x")
+    assert detail == "no_record" and envelope == {"status": "checked", "records": []}
+
+
+def test_stale_after_is_the_revalidation_window_after_the_check_time(tmp_path, monkeypatch):
+    seen = {}
+    real = cmr.resolve_retraction_signal
+
+    def spy(entry, **kwargs):
+        seen.update(checked_at=kwargs["checked_at"], stale_after=kwargs["stale_after"])
+        return real(entry, **kwargs)
+
+    monkeypatch.setattr(cmr, "resolve_retraction_signal", spy)
+    _, factory = make_clients(OA, CR)
+    now = cmr.datetime(2026, 1, 1, tzinfo=cmr.timezone.utc)
+    cmr.build_report(write_list(tmp_path, f"{CLEAN}\n"), factory, now=now)
+    expected = now + cmr.timedelta(days=cmr.CACHE_REVALIDATE_DAYS)
+    assert seen["checked_at"] == "2026-01-01T00:00:00Z"
+    assert seen["stale_after"] == expected.strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert seen["stale_after"] > seen["checked_at"]
