@@ -23,7 +23,7 @@ All notable changes to this project will be documented in this file.
 
 - **The `academic-paper` full-mode Phase 6a evaluator prompt now allows the paper-blind #684 pointer authority in its lint instructions (#1143, reported by @Imbad0202).** This agrees with the instruction to reproduce the supplied `INTERNAL` binding marker after the Scoring Plan. Prompt-level; unmeasured.
 
-- **The `academic-paper` formatter's two #1071 quality-gate exceptions now apply only to an item that a reported incoming mismatch requires it to keep (#1152, reported by @Imbad0202).** In the `Format compliance` and `Journal requirements` rows, the sentence from #1127 could be read as letting any citation left verbatim pass, including one the formatter failed to convert; the condition now comes first and covers both the retained citation and the preserved reference-list entry. The wording came from the maintainer's review of #1127. Prompt-level; unmeasured.
+- **The `academic-paper` formatter's two #1071 quality-gate exceptions now apply only to an item that a reported incoming mismatch requires it to keep (#1152, reported by @Imbad0202).** In the `Format compliance` and `Journal requirements` rows, the sentence from #1127 could be read as letting any citation left verbatim pass, including one the formatter failed to convert; the condition now comes first and covers both the retained citation and the preserved reference-list entry. The earlier wording came from the maintainer's review of #1127. Prompt-level; unmeasured.
 
 ## [3.24.4] - 2026-11-19 — A committee-correspondence variant scoped to research ethics review, below-consensus findings in the roadmap and letter, and GPT-6.2 Astra as the recommended OpenAI verifier
 
