@@ -203,8 +203,8 @@ These are screening flags for further scrutiny, not standalone proof of fabricat
 - When a citation field conflicts, look up the work by title and authors and check the publisher record. If the work is found, record and correct the wrong field, then assess the corrected record below. If the search does not find the work, classify it as `UNVERIFIABLE` unless independent positive evidence meets the `FABRICATED` condition.
 - `S2_VERIFIED`: Semantic Scholar API match (Levenshtein >= 0.70 + year match). Strongest programmatic evidence. → Record the match.
 - `VERIFIED`: DOI resolves and title and authors match (Tier 1). Journal indexing flags do not change this verdict. → Record the verified source.
-- `PLAUSIBLE`: No DOI but WebSearch confirms existence (Tier 2). → Record the supporting source.
-- `UNVERIFIABLE`: Existence remains unconfirmed after lookup across Tiers 0–2, or lookup tools are unavailable, and there is no positive evidence of invention. A screening flag leads to this outcome only when existence remains unconfirmed. → Keep and flag for human review.
+- `PLAUSIBLE`: Publisher record or WebSearch confirms existence when the DOI is missing or does not resolve (Tier 2). → Record the supporting source and the DOI result.
+- `UNVERIFIABLE`: Existence remains unconfirmed and there is no positive evidence of invention, whether because lookup across Tiers 0–2 was exhausted or because lookup tools are unavailable. A screening flag leads to this outcome only when existence remains unconfirmed. → Keep and flag for human review.
 - `FABRICATED`: Positive evidence establishes that the cited work itself was invented. → CRITICAL, must remove
 
 ### 5. Currency Assessment

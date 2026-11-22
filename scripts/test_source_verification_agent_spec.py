@@ -57,13 +57,24 @@ def test_output_format_has_claim_verification_verdicts_section() -> None:
     )
 
     verdicts_block = template[verdicts_pos:decomp_pos]
-    header = next(line for line in verdicts_block.splitlines() if line.startswith("|"))
+    table_lines = [line for line in verdicts_block.splitlines() if line.startswith("|")]
+    assert len(table_lines) >= 3, "Missing header, separator, or example row in Claim Verification Verdicts table"
+    header, _, example_row = table_lines[:3]
     columns = [cell.strip() for cell in header.strip("|").split("|")]
     assert columns == ["Claim", "Verdict", "Epistemic Status", "Independent Sources", "Basis / Notes"]
-    assert "undetermined (for Unverifiable)" in verdicts_block
+    cells = dict(zip(columns, (cell.strip() for cell in example_row.strip("|").split("|")), strict=True))
     for verdict in ("Verified", "Partially True", "False", "Unverifiable"):
-        assert verdict in verdicts_block, f"Missing verdict option {verdict!r} in Claim Verification Verdicts table"
+        assert verdict in cells["Verdict"], f"Missing verdict option {verdict!r} in Verdict cell"
+    for status in (
+        "established fact",
+        "supported hypothesis",
+        "contested claim",
+        "speculation",
+        "undetermined (for Unverifiable)",
+    ):
+        assert status in cells["Epistemic Status"], f"Missing status option {status!r} in Epistemic Status cell"
 
+    assert "**Factual Claims Checked**: X / Y (Z%; target >= 30%)" in template
     assert "Count only claims checked against two or more independent sources in X." in template
     assert "Keep attempts with fewer sources in the verdict table." in template
 
@@ -75,16 +86,27 @@ def test_unverifiable_and_fabricated_outcomes_do_not_overlap() -> None:
     rows = re.findall(r"^- `([A-Z0-9_]+)`: (.*)$", outcomes, re.MULTILINE)
     lines = dict(rows)
     assert len(rows) == len(lines), "Each verification verdict must have exactly one outcome row"
+    conditions = {verdict: line.partition("→")[0].strip() for verdict, line in lines.items()}
     actions = {verdict: line.partition("→")[2].strip() for verdict, line in lines.items()}
     assert set(actions) == {"S2_VERIFIED", "VERIFIED", "PLAUSIBLE", "UNVERIFIABLE", "FABRICATED"}
-    assert all(actions.values())
+    assert all(conditions.values()) and all(actions.values())
     assert actions["UNVERIFIABLE"] == "Keep and flag for human review."
     assert actions["FABRICATED"] == "CRITICAL, must remove"
     assert {verdict for verdict, action in actions.items() if "remove" in action.lower()} == {"FABRICATED"}
-    assert "Positive evidence establishes that the cited work itself was invented" in lines["FABRICATED"]
+    other_verdicts = set(lines) - {"FABRICATED"}
+    assert not any(other in conditions["FABRICATED"] for other in other_verdicts)
+    assert not any(phrase in conditions["FABRICATED"].lower() for phrase in ("classify as", "mark as", "instead"))
+    assert "Positive evidence establishes that the cited work itself was invented" in conditions["FABRICATED"]
     assert "DOI_MISMATCH" not in lines["FABRICATED"]
-    assert "only when existence remains unconfirmed" in lines["UNVERIFIABLE"]
-    assert "Journal indexing flags do not change this verdict" in lines["VERIFIED"]
+    assert (
+        "Existence remains unconfirmed and there is no positive evidence of invention, "
+        "whether because lookup across Tiers 0–2 was exhausted or because lookup tools are unavailable."
+    ) in conditions["UNVERIFIABLE"]
+    assert "only when existence remains unconfirmed" in conditions["UNVERIFIABLE"]
+    assert "publisher record" in conditions["PLAUSIBLE"].lower()
+    assert "missing or does not resolve" in conditions["PLAUSIBLE"]
+    assert "DOI result" in actions["PLAUSIBLE"]
+    assert "Journal indexing flags do not change this verdict" in conditions["VERIFIED"]
 
 
 def test_red_flags_do_not_equate_missing_index_with_nonexistent_journal() -> None:
