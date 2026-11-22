@@ -424,11 +424,7 @@ def _atomic_replace(path: Path, raw: bytes, *, expected_identity: tuple[int, int
             _assert_identity(path, expected_identity)
         os.replace(temporary, path)
         temporary = None
-        directory_fd = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+        _anchored_open.fsync_directory(path.parent)
     except OSError as exc:
         raise ActivityError("WRITE", f"atomic write failed: {exc.__class__.__name__}") from None
     finally:
@@ -456,11 +452,7 @@ def _atomic_create(path: Path, raw: bytes) -> None:
         os.link(temporary, path)
         os.unlink(temporary)
         temporary = None
-        directory_fd = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+        _anchored_open.fsync_directory(path.parent)
     except FileExistsError:
         raise ActivityError("CONFLICT", "output path already exists") from None
     except OSError as exc:
@@ -1528,11 +1520,7 @@ def _cmd_delete_store(args: argparse.Namespace) -> str:
         try:
             _assert_identity(path, store_identity)
             os.unlink(path)
-            directory_fd = os.open(path.parent, os.O_RDONLY)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+            _anchored_open.fsync_directory(path.parent)
         except OSError as exc:
             raise ActivityError("WRITE", f"store deletion failed: {exc.__class__.__name__}") from None
     return "[ARS-ADJUDICATION-ACTIVITY] deleted_store=true"
