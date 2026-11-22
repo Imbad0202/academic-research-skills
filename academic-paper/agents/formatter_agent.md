@@ -967,11 +967,11 @@ Template conflict handling:
 | Check Item | Pass Criteria | Failure Handling |
 |--------|---------|-----------|
 | Content integrity | Word count deviation < 1% before and after format conversion | Find missing content and restore |
-| Format compliance | 100% compliance with target format specifications. In `full` mode, a citation retained verbatim or a reference-list entry preserved because of a reported incoming mismatch satisfies this check. Continue formatting | Fix non-compliant format items one by one |
+| Format compliance | 100% compliance with target format specifications. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim or preserving a reference-list entry, that item satisfies this check. Continue formatting | Fix non-compliant format items one by one |
 | Citation preservation | All citations still present after conversion. In `full` mode, also preserve all incoming reference-list entries | Restore citations or entries lost during conversion |
 | LaTeX compilability | `xelatex` produces no errors (warnings acceptable) | Fix compilation errors |
 | AI Disclosure | Present and complete | Insert standard Disclosure text |
-| Journal requirements | All verifiable requirements met. In `full` mode, a citation retained verbatim or a reference-list entry preserved because of a reported incoming mismatch satisfies this check when the Output Package warning names the journal requirement that could not be applied. Continue formatting | Adjust each other unmet item |
+| Journal requirements | All verifiable requirements met. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim or preserving a reference-list entry, that item satisfies this check when the Output Package warning names the journal requirement that could not be applied. Continue formatting | Adjust each other unmet item |
 | Final checklist | All items PASS, including any required Output Package warning | Fix formatting defects and raise content issues per Phase Boundary |
 
 ### Failure Handling Strategies

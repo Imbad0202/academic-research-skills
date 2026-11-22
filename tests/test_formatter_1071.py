@@ -21,16 +21,16 @@ FORMATTER = (
 CASES = [
     pytest.param(
         "Format compliance",
-        "In `full` mode, a citation retained verbatim or a reference-list "
-        "entry preserved because of a reported incoming mismatch satisfies "
-        "this check. Continue formatting",
+        "In `full` mode, when a reported incoming mismatch requires "
+        "retaining a citation verbatim or preserving a reference-list entry, "
+        "that item satisfies this check. Continue formatting",
         id="Format compliance",
     ),
     pytest.param(
         "Journal requirements",
-        "In `full` mode, a citation retained verbatim or a reference-list "
-        "entry preserved because of a reported incoming mismatch satisfies "
-        "this check when the Output Package warning names the journal "
+        "In `full` mode, when a reported incoming mismatch requires "
+        "retaining a citation verbatim or preserving a reference-list entry, "
+        "that item satisfies this check when the Output Package warning names the journal "
         "requirement that could not be applied. Continue formatting",
         id="Journal requirements",
     ),
