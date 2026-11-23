@@ -187,6 +187,10 @@ class ArxivClient:
             return None
         entry = entries[0]
         title = _extract_title(entry)
+        # A blank title on either side was not cross-checked. Two empty
+        # strings score 1.0, so require text before scoring (#1163).
+        if not title.strip() or not expected_title.strip():
+            return None
         if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return _entry_to_dict(entry)
         return None  # ID_MISMATCH

@@ -209,6 +209,14 @@ id = "v3.10-182-arxiv-client"
 path = "scripts/test_arxiv_client.py"
 
 [[pytest]]
+id = "1163-openalex-client"
+path = "scripts/test_openalex_client.py"
+
+[[pytest]]
+id = "1163-crossref-client"
+path = "scripts/test_crossref_client.py"
+
+[[pytest]]
 id = "511-transport-fixture-citation-gate"
 path = "scripts/test_transport_fixture_citation_gate.py"
 

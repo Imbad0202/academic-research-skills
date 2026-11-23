@@ -78,6 +78,43 @@ def test_doi_lookup_with_title_cross_check(monkeypatch):
     assert result is None  # DOI_MISMATCH
 
 
+@pytest.mark.parametrize(
+    ("expected_title", "titles"),
+    [
+        pytest.param("", [], id="both-empty"),
+        pytest.param("   ", [], id="whitespace-expected-missing-returned"),
+        pytest.param("Attention Is All You Need", [], id="populated-expected-missing-returned"),
+        pytest.param("", ["Attention Is All You Need"], id="empty-expected-populated-returned"),
+        pytest.param("   ", ["Attention Is All You Need"], id="whitespace-expected-populated-returned"),
+        pytest.param("Attention Is All You Need", ["   "], id="populated-expected-whitespace-returned"),
+        pytest.param("", ["   "], id="empty-expected-whitespace-returned"),
+        pytest.param("   ", ["   "], id="both-whitespace"),
+    ],
+)
+def test_doi_lookup_blank_title_is_not_a_match(expected_title, titles):
+    """#1163: a DOI hit requires text on both titles. An empty title list is missing."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "title": titles,
+            "DOI": "10.5555/3295222.3295349",
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.doi_lookup_with_title_check(
+            doi="10.5555/3295222.3295349",
+            expected_title=expected_title,
+        )
+
+    assert result is None
+
+
 def test_doi_lookup_with_matching_title(monkeypatch):
     """DOI hit + matching title -> success."""
     from crossref_client import CrossrefClient

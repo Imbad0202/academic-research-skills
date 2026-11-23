@@ -184,6 +184,10 @@ class CrossrefClient:
             return None
         message = data.get("message", {})
         title = _extract_title(message)
+        # A blank title on either side was not cross-checked. Two empty
+        # strings score 1.0, so require text before scoring (#1163).
+        if not title.strip() or not expected_title.strip():
+            return None
         if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return message
         return None  # DOI_MISMATCH

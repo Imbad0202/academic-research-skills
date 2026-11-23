@@ -194,6 +194,10 @@ class OpenAlexClient:
         quoted_doi = urllib.parse.quote(doi, safe="")
         data = self._get(f"/works/doi:{quoted_doi}", {"select": _FIELDS})
         title = data.get("title") or ""
+        # A blank title on either side was not cross-checked. Two empty
+        # strings score 1.0, so require text before scoring (#1163).
+        if not title.strip() or not expected_title.strip():
+            return None
         if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return data
         return None  # DOI_MISMATCH
