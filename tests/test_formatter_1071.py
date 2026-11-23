@@ -17,16 +17,22 @@ CASES = [
     pytest.param(
         "Format compliance",
         "In `full` mode, when a reported incoming mismatch requires "
-        "retaining a citation verbatim or preserving a reference-list entry, "
-        "that item satisfies this check. Continue formatting",
+        "retaining a citation verbatim, that citation satisfies this check. "
+        "When such a mismatch requires preserving a reference-list entry, "
+        "the entry still follows the target format; only a rule that would "
+        "remove the entry does not apply to it. Continue formatting",
         id="Format compliance",
     ),
     pytest.param(
         "Journal requirements",
         "In `full` mode, when a reported incoming mismatch requires "
-        "retaining a citation verbatim or preserving a reference-list entry, "
-        "that item satisfies this check when the Output Package warning names the journal "
-        "requirement that could not be applied. Continue formatting",
+        "retaining a citation verbatim, a journal requirement that would "
+        "change that citation does not apply to that citation. When such a "
+        "mismatch requires preserving a reference-list entry, a journal "
+        "requirement that would remove the entry does not apply to that "
+        "entry, and every other requirement still does. The Output Package "
+        "warning names each requirement not applied this way; all other "
+        "citations and entries are checked as usual. Continue formatting",
         id="Journal requirements",
     ),
     pytest.param(
@@ -71,6 +77,8 @@ def test_step_4_format_compliance_accepts_required_preservation() -> None:
     assert (
         "- Format compliance check: output matches target format rules. "
         "In `full` mode, when a reported incoming mismatch requires retaining "
-        "a citation verbatim or preserving a reference-list entry, "
-        "that item satisfies this check."
+        "a citation verbatim, that citation satisfies this check. "
+        "When such a mismatch requires preserving a reference-list entry, "
+        "the entry still follows the target format; only a rule that would "
+        "remove the entry does not apply to it."
     ) in " ".join(step_4.split())

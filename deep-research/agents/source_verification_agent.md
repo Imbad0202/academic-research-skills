@@ -170,12 +170,12 @@ Reference: `references/semantic_scholar_api_protocol.md`
 For every source in the bibliography, query the Semantic Scholar API:
 - If DOI is available: use DOI lookup (`GET /paper/DOI:{doi}`)
 - If no DOI: use title search (`GET /paper/search?query={title}`)
-- Accept match if Levenshtein title similarity >= 0.70 and year matches (or within +/-1 year)
-- Record `semantic_scholar_id` in the verification audit trail for each matched reference
-- References that PASS Tier 0 (matched with score >= 0.70) may skip Tier 2 WebSearch spot-check
-- References that FAIL Tier 0 (S2_NOT_FOUND) MUST proceed through Tier 1 + Tier 2
+- The title check passes if the two titles are equal under any of the three forms used by `exact_normalized_title` in `scripts/_text_similarity.py`. The base form lowercases, replaces ASCII punctuation with spaces, and collapses and trims whitespace. The dotted-acronym form first removes the dots in a run that starts at a word boundary and consists of two or more contiguous dotted ASCII letters, then applies the base form (`R.A.G.` equals `RAG`). When both titles contain a Han ideograph in U+4E00-U+9FFF, `_cjk_titles_match` also accepts equal, nonempty Chinese-aware forms. This form folds fullwidth ASCII (`甲Ａ` equals `甲A`), strips one of the wrapper pairs `《》`, `「」`, `『』`, `【】`, `“”`, or `‘’` only when that pair encloses the whole title, strips the terminal marks `。` and `.`, normalizes whitespace, removes spaces touching Han characters, and preserves letter case. Passing the title check is not a Tier 0 pass, which also requires the first-author check. A candidate passes Tier 0 (`S2_VERIFIED`) only when its returned title is an exact normalized match for the reference title and its first author's family name matches the reference's first author's family name case-insensitively. If either side has no author, the check fails. This applies to a DOI lookup and a title search alike, subject to the generic-title exclusion on title search. A generic query title such as `Editorial`, `Introduction`, or `Book Review` cannot pass by title search and requires a DOI lookup. For every title-search result, check both the exact normalized title and the first author's family name against the reference. Compare family names case-insensitively. If either side has no author, the author check fails. Only after checking every result, use matching year as a tie-break among those that pass both checks. Year is not a pass condition. The resolver's title-search scoring in `scripts/semantic_scholar_client.py` adds 0.05 when the year is equal among candidates that already have an exact normalized title, and it never rejects a candidate for the year; that scoring does not compare authors. A similarity score does not pass the title check: "Attention Is All You Need" and "Attention Is Not All You Need" are different works. Both the first-author comparison on either path and exact-title verification on a DOI candidate are prompt-level requirements. The scripts do not compare authors. `_lookup_by_doi` returns `matched: True` once the DOI title cross-check clears its threshold (`scripts/semantic_scholar_client.py`).
+- Record `semantic_scholar_id` in the verification audit trail for deduplication only when the reference passes Tier 0.
+- References that PASS Tier 0 may skip the Tier 2 WebSearch spot-check
+- References that FAIL Tier 0 MUST proceed through Tier 1 + Tier 2.
 
-**DOI mismatch detection**: If a DOI resolves in S2 but the returned title has Levenshtein < 0.70 against the reference title, flag as `DOI_MISMATCH` — this is a known hallucination pattern (Compound Deception Pattern #5: DOI Misdirection).
+**DOI mismatch detection**: If a DOI resolves in S2 but the returned title's score is below 0.70 against the reference title, flag as `DOI_MISMATCH` — this is a known hallucination pattern (Compound Deception Pattern #5: DOI Misdirection). The title score is `_similarity` in `scripts/_text_similarity.py`. It returns `1.0` for a Chinese-aware exact match and otherwise takes the higher of the base and dotted-acronym `difflib.SequenceMatcher.ratio()` scores, not a Levenshtein distance. The helper now accepts the three forms; only the threshold stayed at 0.70. A DOI candidate at or above 0.70 whose title is not an exact normalized match does not trigger `DOI_MISMATCH` and does not pass Tier 0.
 
 **Graceful degradation**: If S2 API is unavailable, skip Tier 0 and proceed with Tier 1 + Tier 2 as before. Log `[S2-API-UNAVAILABLE]` in the audit trail.
 
@@ -200,7 +200,7 @@ Flag immediately if ANY of:
 - [ ] The source is suspiciously perfect (exactly supports the claim with no caveats)
 
 #### Verification Outcome
-- `S2_VERIFIED`: Semantic Scholar API match (Levenshtein >= 0.70 + year match). Strongest programmatic evidence.
+- `S2_VERIFIED`: Tier 0 pass (exact normalized title + case-insensitive first-author family name, per Tier 0). Strongest programmatic evidence.
 - `VERIFIED`: DOI resolves + metadata matches (Tier 1)
 - `PLAUSIBLE`: No DOI but WebSearch confirms existence (Tier 2)
 - `UNVERIFIABLE`: Cannot confirm existence through any method → flag for human review

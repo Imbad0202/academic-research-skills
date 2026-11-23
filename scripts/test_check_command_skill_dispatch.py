@@ -85,6 +85,27 @@ def test_session_announce_routes_models_to_core_skills(source):
     assert "Requests outside academic research and writing do not invoke ARS" in context
 
 
+@pytest.mark.parametrize("source", ["startup", "clear", "resume", "compact", "fork"])
+def test_session_announce_lists_plugin_agents_by_their_names(source):
+    # #1168: the resume/compact form kept the pre-#1037 names.
+    import yaml
+
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PLUGIN_ROOT"}
+    result = subprocess.run(
+        ["bash", str(REPO / "scripts/announce-ars-loaded.sh")],
+        input=json.dumps({"source": source}), text=True, capture_output=True,
+        env=env, check=True,
+    )
+    context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    lists = re.findall(r"Plugin agents(?: \([^)]*\))?: ([^.\n]+)\.", context)
+    assert len(lists) == 1
+    names = [
+        yaml.safe_load(path.read_text().split("---", 2)[1])["name"]
+        for path in (REPO / "agents").glob("*.md")
+    ]
+    assert sorted(lists[0].split(", ")) == sorted(names)
+
+
 def test_citation_grader_matches_only_core_skill_name():
     import yaml
 
