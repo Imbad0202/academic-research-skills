@@ -197,6 +197,7 @@ ARS Stage 2 寫作      →  用驗證過的實驗結果撰寫論文
 "轉換成 LaTeX" / "引用格式轉 IEEE"            → format-convert mode（格式轉換）
 "檢查引用格式"                                → citation-check mode（引用檢查）
 "幫我生成 NeurIPS 的 AI 使用揭露"             → disclosure mode（AI 揭露）
+"請根據審稿意見，逐點檢查我的回覆草稿"        → rebuttal-audit mode
 ```
 
 #### Academic Paper Reviewer（論文審查，6 種模式）

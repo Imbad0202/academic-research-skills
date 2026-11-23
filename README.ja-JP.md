@@ -187,6 +187,7 @@ You: "status"
 "Convert to LaTeX" / "Convert citations to IEEE"      → format-convert モード
 "Check citations"                                     → citation-check モード
 "Generate an AI disclosure statement for NeurIPS"     → disclosure モード
+"Audit my rebuttal draft against the reviews"         → rebuttal-audit モード
 ```
 
 #### Academic Paper Reviewer（6 モード）
