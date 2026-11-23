@@ -151,7 +151,32 @@ def _crossref_events(
                     if key not in seen:
                         seen.add(key)
                         events.append((event, precision))
-    return events
+
+    groups: dict[tuple, list[int]] = {}
+    for index, (event, _) in enumerate(events):
+        identity = tuple(sorted((key, value) for key, value in event.items() if key != "date"))
+        groups.setdefault(identity, []).append(index)
+
+    superseded: set[int] = set()
+    for indices in groups.values():
+        if len(indices) < 2:
+            continue
+        dated = []
+        for index in indices:
+            event, precision = events[index]
+            parsed = _parse_datetime(event["date"])
+            if parsed is not None and precision is not None:
+                dated.append((index, precision, parsed))
+
+        for index, precision, parsed in dated:
+            if any(
+                _DATE_PRECISION_RANK[finer_precision] > _DATE_PRECISION_RANK[precision]
+                and _date_at_precision(finer_date, precision) == _date_at_precision(parsed, precision)
+                for _, finer_precision, finer_date in dated
+            ):
+                superseded.add(index)
+
+    return [pair for index, pair in enumerate(events) if index not in superseded]
 
 
 def _reduce_crossref(records: Sequence[Mapping[str, Any]], cited_doi: str) -> dict[str, Any]:
