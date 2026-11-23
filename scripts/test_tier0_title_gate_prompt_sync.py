@@ -13,6 +13,10 @@ otherwise the higher of the base and dotted-acronym
 ``difflib.SequenceMatcher.ratio()`` scores. ``DOI_MISMATCH`` fires only below
 0.70. Year only breaks ties after both checks.
 
+#1148 pins the OpenAlex, Crossref, and arXiv protocols to that exact-title
+search rule, and pins both S2 Tier 0 rows in ``docs/ARCHITECTURE.md``. Their
+DOI and arXiv ID cross-checks still score titles with ``_similarity`` at 0.70.
+
 Run:
     PYTHONPATH=. python -m pytest scripts/test_tier0_title_gate_prompt_sync.py -v
 """
@@ -20,6 +24,8 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -216,7 +222,220 @@ def test_doi_mismatch_sentence_keeps_the_script_threshold() -> None:
     ) in dedup
 
 
-if __name__ == "__main__":
-    import pytest
+EXACT_TITLE_SINCE_431 = (
+    "Title search has required an exact normalized title since #431, "
+    "and the helper now accepts the three forms."
+)
+COUNTEREXAMPLE = (
+    'A similarity score alone does not pass the title check: '
+    '"Attention Is All You Need" and "Attention Is Not All You Need" '
+    "score 0.926 and are different works."
+)
+API_ORDER = "Equal scores retain API result order."
+AUTHOR_CHECK = (
+    "For every title-search result, check both the exact normalized title "
+    "and the first author's family name"
+)
+TIER0_CONJUNCTION = (
+    "exact normalized title + case-insensitive first-author family name"
+)
+ARCHITECTURE = REPO_ROOT / "docs" / "ARCHITECTURE.md"
+S2_FAILURE_ROW = (
+    "| S2 API verification | 🤖 | 1 | "
+    "No candidate passes Tier 0 (exact normalized title + case-insensitive first-author family name). "
+    "If either side has no author, the check fails. "
+    "A DOI title score below 0.70 triggers `DOI_MISMATCH`. "
+    "| References that FAIL Tier 0 MUST proceed through Tier 1 + Tier 2. |"
+)
+SIBLING_PROTOCOLS = (
+    {
+        "name": "openalex",
+        "relative": "deep-research/references/openalex_api_protocol.md",
+        "client": "openalex_client.py",
+        "year_source": "The client reads the year from `publication_year`.",
+        "generic": (
+            "A generic query title such as `Editorial`, `Introduction`, or `Book Review` "
+            "cannot pass by title search and requires a DOI lookup."
+        ),
+        "label": "**Matching rule (mirrors S2 `DOI_MISMATCH` pattern):**",
+        "cross_check": "Cross-check the returned `title` against the reference title.",
+        "below": (
+            "If the title score is below 0.70, the DOI cross-check fails (`DOI_MISMATCH`) "
+            "and the caller falls through to title search."
+        ),
+        "at_or_above": "At or above 0.70, the client returns the DOI record.",
+        "pattern1_extra": (),
+        "unmatched_start": "## `openalex_unmatched` derivation",
+        "unmatched_end": "## `retraction_status`",
+        "unmatched": (
+            "DOI present: the DOI lookup misses or fails the title cross-check, and the title search yields no exact normalized title match.",
+            "DOI absent: the title search yields no exact normalized title match.",
+        ),
+    },
+    {
+        "name": "crossref",
+        "relative": "deep-research/references/crossref_api_protocol.md",
+        "client": "crossref_client.py",
+        "year_source": (
+            "The client reads `date-parts[0][0]` from `issued`, then `published-print`, "
+            "then `published-online`, taking the first available value."
+        ),
+        "generic": (
+            "A generic query title such as `Editorial`, `Introduction`, or `Book Review` "
+            "cannot pass by title search and requires a DOI lookup."
+        ),
+        "label": "**Matching rule (mirrors S2 `DOI_MISMATCH` pattern):**",
+        "cross_check": "Cross-check the first entry in Crossref's `title` list against the reference title.",
+        "below": (
+            "If the title score is below 0.70, the DOI cross-check fails (`DOI_MISMATCH`) "
+            "and the caller falls through to title search."
+        ),
+        "at_or_above": "At or above 0.70, the client returns the DOI record.",
+        "pattern1_extra": (),
+        "unmatched_start": "## `crossref_unmatched` derivation",
+        "unmatched_end": "## `retraction_status`",
+        "unmatched": (
+            "DOI present: the DOI lookup misses or fails the title cross-check, and the title search yields no exact normalized title match.",
+            "DOI absent: the title search yields no exact normalized title match.",
+        ),
+    },
+    {
+        "name": "arxiv",
+        "relative": "deep-research/references/arxiv_api_protocol.md",
+        "client": "arxiv_client.py",
+        "year_source": "The client reads the year from the leading four digits of `<published>`.",
+        "generic": (
+            "A generic query title such as `Editorial`, `Introduction`, or `Book Review` "
+            "cannot pass by title search and requires an arXiv ID lookup."
+        ),
+        "label": "**Matching rule (mirrors the Crossref/S2 `DOI_MISMATCH` pattern):**",
+        "cross_check": "Cross-check the resolved entry's title against the reference title.",
+        "below": (
+            "If the title score is below 0.70, the ID cross-check fails (`ID_MISMATCH`) "
+            "and the caller falls through to title search."
+        ),
+        "at_or_above": "At or above 0.70, the client returns the entry.",
+        "pattern1_extra": (
+            "An empty feed is an ID miss and also falls through to title search.",
+        ),
+        "unmatched_start": "## `arxiv_unmatched` derivation",
+        "unmatched_end": "## Degradation handling",
+        "unmatched": (
+            "`true` if and only if the citation **has an arXiv ID**, the ID lookup returns an empty feed or fails the title cross-check, and the title-search fallback yields no exact normalized title match.",
+        ),
+    },
+)
 
+
+def _resolver_year(client: str) -> str:
+    scored = RESOLVER_YEAR.replace("semantic_scholar_client.py", client)
+    if "semantic_scholar_client.py" in scored or client not in scored:
+        raise AssertionError(client)
+    return scored
+
+
+@pytest.mark.parametrize("protocol", SIBLING_PROTOCOLS, ids=[item["name"] for item in SIBLING_PROTOCOLS])
+def test_sibling_title_search_requires_exact_normalized_title(protocol: dict) -> None:
+    """Pattern 2 accepts a title only as an exact normalized match. A matching
+    year adds 0.05 among those candidates, and a tie keeps API order."""
+    text = (REPO_ROOT / protocol["relative"]).read_text(encoding="utf-8")
+    pattern2 = _between(text, "### Pattern 2:", protocol["unmatched_start"])
+    assert TITLE_FORMS in pattern2
+    assert EXACT_TITLE_SINCE_431 in pattern2
+    assert COUNTEREXAMPLE in pattern2
+    assert protocol["generic"] in pattern2
+    assert _resolver_year(protocol["client"]) in pattern2
+    assert protocol["year_source"] in pattern2
+    assert "Year is not a pass condition." in pattern2
+    assert API_ORDER in pattern2
+    assert ">= 0.70" not in pattern2
+    assert "Accept if similarity" not in pattern2
+    assert "populated DOI" not in pattern2
+    assert "meeting threshold" not in pattern2
+    assert "Levenshtein" not in pattern2
+    assert AUTHOR_CHECK not in pattern2
+    if protocol["name"] == "arxiv":
+        assert "DOI lookup" not in pattern2
+    else:
+        assert "arXiv ID lookup" not in pattern2
+
+
+@pytest.mark.parametrize("protocol", SIBLING_PROTOCOLS, ids=[item["name"] for item in SIBLING_PROTOCOLS])
+def test_sibling_identifier_cross_check_uses_similarity_threshold(protocol: dict) -> None:
+    """Pattern 1 scores the title with ``_similarity``. Below 0.70 the
+    cross-check fails and title search runs; at or above 0.70 the client
+    returns the record."""
+    text = (REPO_ROOT / protocol["relative"]).read_text(encoding="utf-8")
+    pattern1 = _between(text, "### Pattern 1:", "### Pattern 2:")
+    assert protocol["label"] in pattern1
+    assert protocol["cross_check"] in pattern1
+    assert SIMILARITY in pattern1
+    assert protocol["below"] in pattern1
+    assert protocol["at_or_above"] in pattern1
+    for extra in protocol["pattern1_extra"]:
+        assert extra in pattern1
+    if protocol["name"] == "arxiv":
+        assert "fails (`DOI_MISMATCH`)" not in pattern1
+        assert "returns the DOI record" not in pattern1
+    else:
+        assert "fails (`ID_MISMATCH`)" not in pattern1
+        assert "empty feed" not in pattern1
+
+
+@pytest.mark.parametrize("protocol", SIBLING_PROTOCOLS, ids=[item["name"] for item in SIBLING_PROTOCOLS])
+def test_sibling_unmatched_requires_exact_normalized_title(protocol: dict) -> None:
+    """Unmatched follows the exact-title search. ``meeting threshold`` is not
+    an accept condition."""
+    text = (REPO_ROOT / protocol["relative"]).read_text(encoding="utf-8")
+    section = _between(text, protocol["unmatched_start"], protocol["unmatched_end"])
+    for clause in protocol["unmatched"]:
+        assert clause in section
+    assert "exact normalized title" in section
+    assert "meeting threshold" not in section
+
+
+@pytest.mark.parametrize(
+    ("prefix", "required", "forbidden", "exact"),
+    [
+        (
+            "| **1. RESEARCH** |",
+            (
+                "S2 API Tier-0 verification (exact normalized title + case-insensitive first-author family name)",
+            ),
+            ("0.70", "Levenshtein", "DOI_MISMATCH", "Tier 1 + Tier 2"),
+            None,
+        ),
+        (
+            "| S2 API verification |",
+            (
+                TIER0_CONJUNCTION,
+                "If either side has no author, the check fails.",
+                "A DOI title score below 0.70 triggers `DOI_MISMATCH`.",
+                "References that FAIL Tier 0 MUST proceed through Tier 1 + Tier 2.",
+            ),
+            ("Levenshtein",),
+            S2_FAILURE_ROW,
+        ),
+    ],
+    ids=["research-stage", "s2-failure"],
+)
+def test_architecture_tier0_row_names_title_and_first_author(
+    prefix: str,
+    required: tuple[str, ...],
+    forbidden: tuple[str, ...],
+    exact: str | None,
+) -> None:
+    """Each architecture row is read by its own prefix. The DOI 0.70 threshold
+    and the Tier 1 + Tier 2 route belong to the failure row."""
+    text = ARCHITECTURE.read_text(encoding="utf-8")
+    row = _line_starting(text, prefix)
+    for clause in required:
+        assert clause in row
+    for clause in forbidden:
+        assert clause not in row
+    if exact is not None:
+        assert row == exact
+
+
+if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
