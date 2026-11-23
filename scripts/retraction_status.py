@@ -152,10 +152,18 @@ def _crossref_events(
                         seen.add(key)
                         events.append((event, precision))
 
+    # Copies of one notice share a non-empty notice DOI or a non-empty record id.
+    # A missing, empty, or whitespace-only value is not an identifier, and a
+    # DOI-only event does not match a record-id-only event.
     groups: dict[tuple, list[int]] = {}
     for index, (event, _) in enumerate(events):
-        identity = tuple(sorted((key, value) for key, value in event.items() if key != "date"))
-        groups.setdefault(identity, []).append(index)
+        for field in ("notice_doi", "record_id"):
+            raw_value = event[field]
+            value = raw_value.strip() if isinstance(raw_value, str) else ""
+            if not value:
+                continue
+            key = (event["kind"], event["direction"], event["source"], field, value)
+            groups.setdefault(key, []).append(index)
 
     superseded: set[int] = set()
     for indices in groups.values():
