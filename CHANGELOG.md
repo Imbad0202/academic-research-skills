@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Crossref retraction and reinstatement notices now yield `disputed` when their dates are too imprecise to order (#1154, contributed by @pinjun99).** A retraction dated only to 2024 and a reinstatement dated 10 February 2024 could have occurred in either order. Notices in different years, or in different months when both specify a month, can still be ordered.
+
 - **Conflicting Crossref notices with the same latest timestamp now yield `disputed` (#1150).** When a retraction and a reinstatement for the cited DOI share the latest timestamp, either input order produces the same verdict.
 
 - **`academic-paper` `full` mode Phase 6 review inputs name the Phase 5a Corrected Draft for the first review and the writer's Revised Draft with its Revision Log for later rounds (#1136).** `academic-paper/SKILL.md` (Phase 6a overview and Phase 6b user content) and `academic-paper/agents/peer_reviewer_agent.md` (Complete Review Workflow input and Phase 6a/6b contract prompts) previously named the Phase 4b draft (or Complete Draft), contradicting `peer_reviewer_agent.md`'s Input Sources table after #1068. Prompt-level; unmeasured.
