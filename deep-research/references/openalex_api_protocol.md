@@ -23,7 +23,7 @@ OpenAlex coverage complements Semantic Scholar for OA venues, monographs, and wo
 GET /works/doi:{doi}?select=id,title,authorships,publication_year,doi,primary_location,is_retracted
 ```
 
-**Matching rule (mirrors S2 `DOI_MISMATCH` pattern):** DOI lookup hits are gated by a Levenshtein 0.70 title cross-check. If the returned `title` field fails the threshold against the entry's canonical title, the DOI hit is rejected (DOI_MISMATCH — a known hallucination pattern where a fabricated DOI resolves to an unrelated paper). The caller falls through to title search.
+**Matching rule (mirrors S2 `DOI_MISMATCH` pattern):** Cross-check the returned `title` against the reference title. The title score is `_similarity` in `scripts/_text_similarity.py`. It returns `1.0` for a Chinese-aware exact match and otherwise takes the higher of the base and dotted-acronym `difflib.SequenceMatcher.ratio()` scores, not a Levenshtein distance. The helper now accepts the three forms; only the threshold stayed at 0.70. If the title score is below 0.70, the DOI cross-check fails (`DOI_MISMATCH`) and the caller falls through to title search. At or above 0.70, the client returns the DOI record.
 
 ### Pattern 2: Title Search (fallback when DOI absent or DOI_MISMATCH)
 
@@ -31,13 +31,13 @@ GET /works/doi:{doi}?select=id,title,authorships,publication_year,doi,primary_lo
 GET /works?search={url_encoded_title}&per-page=5&select=id,title,authorships,publication_year,doi,primary_location,is_retracted
 ```
 
-**Matching rule:** Compute Levenshtein similarity between query title and each result title (case-insensitive, punctuation stripped) per `_normalize_title` in the client. Accept if similarity >= 0.70 (matching PaperOrchestra threshold). If multiple candidates pass, prefer matching-year tiebreaker, then highest similarity, then candidate with populated DOI.
+**Matching rule**: The title check passes if the two titles are equal under any of the three forms used by `exact_normalized_title` in `scripts/_text_similarity.py`. The base form lowercases, replaces ASCII punctuation with spaces, and collapses and trims whitespace. The dotted-acronym form first removes the dots in a run that starts at a word boundary and consists of two or more contiguous dotted ASCII letters, then applies the base form (`R.A.G.` equals `RAG`). When both titles contain a Han ideograph in U+4E00-U+9FFF, `_cjk_titles_match` also accepts equal, nonempty Chinese-aware forms. This form folds fullwidth ASCII (`甲Ａ` equals `甲A`), strips one of the wrapper pairs `《》`, `「」`, `『』`, `【】`, `“”`, or `‘’` only when that pair encloses the whole title, strips the terminal marks `。` and `.`, normalizes whitespace, removes spaces touching Han characters, and preserves letter case. Title search has required an exact normalized title since #431, and the helper now accepts the three forms. A similarity score alone does not pass the title check: "Attention Is All You Need" and "Attention Is Not All You Need" score 0.926 and are different works. A generic query title such as `Editorial`, `Introduction`, or `Book Review` cannot pass by title search and requires a DOI lookup. Year is not a pass condition. The resolver's title-search scoring in `scripts/openalex_client.py` adds 0.05 when the year is equal among candidates that already have an exact normalized title, and it never rejects a candidate for the year; that scoring does not compare authors. The client reads the year from `publication_year`. Equal scores retain API result order.
 
 ## `openalex_unmatched` derivation
 
 `true` if and only if:
-- DOI present: DOI lookup either misses or fails the title cross-check, AND title search returns no match meeting threshold; OR
-- DOI absent: title search alone returns no match meeting threshold.
+- DOI present: the DOI lookup misses or fails the title cross-check, and the title search yields no exact normalized title match.
+- DOI absent: the title search yields no exact normalized title match.
 
 The check fires only when `obtained_via != 'manual'` (manual entries are user-vouched per spec v3.9.0 §3.1).
 
