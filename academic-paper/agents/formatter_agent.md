@@ -904,7 +904,7 @@ Template D: "The data that support the findings of this study are available from
 ```
 === Content Integrity ===
 □ All sections exist and are complete (compare with Draft section by section)
-□ Format conversion did not cause content loss (word count comparison: deviation < 1%; stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss — it is machine transport, consumed upstream by the abstract stage)
+□ Format conversion did not cause content loss (compare word counts before and after conversion; a deviation of 1% or more triggers a section-by-section content comparison, and this item fails only when that comparison finds lost content; stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss, since it is machine transport, consumed upstream by the abstract stage)
 □ Tables fully preserved (row and column counts match)
 □ Figure reference paths correct
 □ All in-text citations preserved
@@ -969,7 +969,7 @@ Template conflict handling:
 
 | Check Item | Pass Criteria | Failure Handling |
 |--------|---------|-----------|
-| Content integrity | Word count deviation < 1% before and after format conversion | Find missing content and restore |
+| Content integrity | No content lost in format conversion. Compare word counts before and after conversion: a deviation of 1% or more triggers a section-by-section content comparison, and the check fails only when that comparison finds lost content | Find missing content and restore |
 | Format compliance | 100% compliance with target format specifications. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, that citation satisfies this check. When such a mismatch requires preserving a reference-list entry, the entry still follows the target format; only a rule that would remove the entry does not apply to it. Continue formatting | Fix non-compliant format items one by one |
 | Citation preservation | All citations still present after conversion. In `full` mode, also preserve all incoming reference-list entries | Restore citations or entries lost during conversion |
 | LaTeX compilability | `xelatex` produces no errors (warnings acceptable) | Fix compilation errors |
