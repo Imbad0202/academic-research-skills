@@ -187,6 +187,7 @@ ARS Stage 2 写作      →  用验证过的实验结果撰写论文
 "转换成 LaTeX" / "引用格式转 IEEE"            → format-convert mode（格式转换）
 "检查引用格式"                                → citation-check mode（引用检查）
 "帮我生成 NeurIPS 的 AI 使用声明"             → disclosure mode（AI 使用声明）
+"请根据审稿意见，逐条检查我的回复草稿"        → rebuttal-audit mode
 ```
 
 #### Academic Paper Reviewer（论文审查，6 种模式）
