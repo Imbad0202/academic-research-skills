@@ -204,6 +204,12 @@ class DoiLookupTest(unittest.TestCase):
         self.assertEqual(urlopen.call_count, 1)
         self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
 
+    def test_doi_hit_punctuation_only_titles_is_miss(self) -> None:
+        result, urlopen = self._lookup_doi_hit("---", "...")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
     def _lookup_doi_then_search(
         self, returned_title: str | None,
     ) -> tuple[dict, MagicMock]:

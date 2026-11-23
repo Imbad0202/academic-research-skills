@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Semantic Scholar, OpenAlex, and Crossref DOI lookups and arXiv ID lookups now require both the reference title and the returned title to contain text before accepting an identifier match. (#1163, contributed by @pinjun99)
+- **Identifier matches now require text in both normalized titles (#1163, contributed by @pinjun99).** Semantic Scholar, OpenAlex, and Crossref DOI lookups and arXiv ID lookups reject hits when either title normalizes to an empty string. Semantic Scholar also skips title search when the reference title normalizes to an empty string.
 
 - **Conflicting Crossref notices with the same latest timestamp now yield `disputed` (#1150).** When a retraction and a reinstatement for the cited DOI share the latest timestamp, either input order produces the same verdict.
 

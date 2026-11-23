@@ -29,6 +29,7 @@ try:
         _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
         _similarity,
         exact_normalized_title,
         generic_title,
@@ -38,6 +39,7 @@ except ImportError:
         _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
         _similarity,
         exact_normalized_title,
         generic_title,
@@ -186,7 +188,7 @@ class CrossrefClient:
         title = _extract_title(message)
         # A blank title on either side was not cross-checked. Two empty
         # strings score 1.0, so require text before scoring (#1163).
-        if not title.strip() or not expected_title.strip():
+        if not _normalize_title(title) or not _normalize_title(expected_title):
             return None
         if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return message

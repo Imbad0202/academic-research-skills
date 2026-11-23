@@ -37,6 +37,7 @@ try:
     from _text_similarity import (
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
         _similarity,
         exact_normalized_title,
         generic_title,
@@ -45,6 +46,7 @@ except ImportError:
     from scripts._text_similarity import (
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
         _similarity,
         exact_normalized_title,
         generic_title,
@@ -189,7 +191,7 @@ class ArxivClient:
         title = _extract_title(entry)
         # A blank title on either side was not cross-checked. Two empty
         # strings score 1.0, so require text before scoring (#1163).
-        if not title.strip() or not expected_title.strip():
+        if not _normalize_title(title) or not _normalize_title(expected_title):
             return None
         if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return _entry_to_dict(entry)
