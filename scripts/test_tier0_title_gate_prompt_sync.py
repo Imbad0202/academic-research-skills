@@ -69,11 +69,11 @@ SIMILARITY = (
     "The title score is `_similarity` in `scripts/_text_similarity.py`. "
     "It returns `1.0` for a Chinese-aware exact match and otherwise takes the higher of the base and "
     "dotted-acronym `difflib.SequenceMatcher.ratio()` scores, not a Levenshtein distance. "
-    "#431 changed those forms; only the threshold stayed at 0.70."
+    "The helper now accepts the three forms; only the threshold stayed at 0.70."
 )
 NO_MATCH = (
     "If the reference has a DOI, classify it as `S2_NOT_FOUND` when the DOI lookup returns no candidate. "
-    "If the reference has no DOI, classify it as `S2_NOT_FOUND` when title search returns no non-generic exact normalized title candidate."
+    "If the reference has no DOI, classify it as `S2_NOT_FOUND` when its title is generic, or when title search returns no candidate with an exact normalized title."
 )
 FAIL_BULLET = "- References that FAIL Tier 0 MUST proceed through Tier 1 + Tier 2."
 ID_SENTENCE = (
@@ -131,8 +131,9 @@ def test_s2_verified_row_names_exact_title_not_a_threshold() -> None:
             break
     assert row, "S2_VERIFIED row missing"
     assert "0.70" not in row
-    assert "exact normalized" in row
-    assert "first-author" in row
+    assert (
+        "exact normalized title + case-insensitive first-author family name"
+    ) in row
     assert "Levenshtein" not in row
     assert "year match" not in row
 
@@ -142,6 +143,11 @@ def test_pattern1_names_exact_normalized_title_and_not_a_threshold() -> None:
     pattern1 = _between(protocol, "### Pattern 1:", "### Pattern 2:")
     for clause in (TITLE_FORMS, DECISION, RESOLVER_YEAR):
         assert clause in pattern1
+    assert (
+        "Title search has required an exact normalized title since #431, "
+        "and the helper now accepts the three forms."
+    ) in pattern1
+    assert "applied this title check to title-search results since #431" not in pattern1
     assert "exact_normalized_title" in pattern1
     assert ">= 0.70" not in pattern1
     assert "Accept if similarity >= 0.70" not in pattern1
@@ -191,7 +197,8 @@ def test_doi_mismatch_sentence_keeps_the_script_threshold() -> None:
     assert (
         "A candidate that fails only the prompt-level title or author requirement is rejected "
         "without being classified as `S2_NOT_FOUND` or `DOI_MISMATCH`. "
-        "The reference proceeds to Tier 1 + Tier 2 only when no candidate passes Tier 0."
+        "If no candidate passes Tier 0, the reference proceeds to Tier 1 + Tier 2. "
+        "A failed candidate does not by itself send on a reference that another candidate passes."
     ) in tier0_pass
     assert "not a pass condition" in tier0_pass
     assert "0.70" not in tier0_pass

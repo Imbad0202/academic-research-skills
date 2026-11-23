@@ -175,7 +175,7 @@ For every source in the bibliography, query the Semantic Scholar API:
 - References that PASS Tier 0 may skip the Tier 2 WebSearch spot-check
 - References that FAIL Tier 0 MUST proceed through Tier 1 + Tier 2.
 
-**DOI mismatch detection**: If a DOI resolves in S2 but the returned title's score is below 0.70 against the reference title, flag as `DOI_MISMATCH` — this is a known hallucination pattern (Compound Deception Pattern #5: DOI Misdirection). The title score is `_similarity` in `scripts/_text_similarity.py`. It returns `1.0` for a Chinese-aware exact match and otherwise takes the higher of the base and dotted-acronym `difflib.SequenceMatcher.ratio()` scores, not a Levenshtein distance. #431 changed those forms; only the threshold stayed at 0.70. A DOI candidate at or above 0.70 whose title is not an exact normalized match does not trigger `DOI_MISMATCH` and does not pass Tier 0.
+**DOI mismatch detection**: If a DOI resolves in S2 but the returned title's score is below 0.70 against the reference title, flag as `DOI_MISMATCH` — this is a known hallucination pattern (Compound Deception Pattern #5: DOI Misdirection). The title score is `_similarity` in `scripts/_text_similarity.py`. It returns `1.0` for a Chinese-aware exact match and otherwise takes the higher of the base and dotted-acronym `difflib.SequenceMatcher.ratio()` scores, not a Levenshtein distance. The helper now accepts the three forms; only the threshold stayed at 0.70. A DOI candidate at or above 0.70 whose title is not an exact normalized match does not trigger `DOI_MISMATCH` and does not pass Tier 0.
 
 **Graceful degradation**: If S2 API is unavailable, skip Tier 0 and proceed with Tier 1 + Tier 2 as before. Log `[S2-API-UNAVAILABLE]` in the audit trail.
 
