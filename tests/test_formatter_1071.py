@@ -1,9 +1,4 @@
-"""Pin the #1071 formatter quality-gate exceptions and Phase 7 caller row.
-
-Each case reads ``academic-paper/agents/formatter_agent.md`` and selects the
-one Markdown table row whose first cell is the case id. The required literal
-must occur in that row, so a one-row regression fails only its own case.
-"""
+"""Pin the formatter's Step 4 check, quality-gate exceptions, and Phase 7 caller row."""
 
 from __future__ import annotations
 
@@ -68,3 +63,14 @@ def test_formatter_1071_row_contains_literal(
         f"found {len(rows)}"
     )
     assert required_literal in rows[0]
+
+
+def test_step_4_format_compliance_accepts_required_preservation() -> None:
+    text = FORMATTER.read_text(encoding="utf-8")
+    step_4 = text.split("Step 4: Verification\n", 1)[1].split("\n```", 1)[0]
+    assert (
+        "- Format compliance check: output matches target format rules. "
+        "In `full` mode, when a reported incoming mismatch requires retaining "
+        "a citation verbatim or preserving a reference-list entry, "
+        "that item satisfies this check."
+    ) in " ".join(step_4.split())

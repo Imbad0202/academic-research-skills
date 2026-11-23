@@ -305,7 +305,8 @@ Step 4: Verification
     and list entries; in `full` mode, carry forward any reported input mismatches
     (in other modes, check that each in-text citation has a list entry)
   - Format compliance check: output matches target format rules. In `full` mode,
-    a citation retained verbatim because of a reported incoming mismatch passes.
+    when a reported incoming mismatch requires retaining a citation verbatim
+    or preserving a reference-list entry, that item satisfies this check.
 ```
 
 ### Format-Specific Features
