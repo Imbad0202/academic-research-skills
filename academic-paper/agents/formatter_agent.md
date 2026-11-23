@@ -340,7 +340,7 @@ When converting **from** Chicago Notes-Bibliography:
 
 When converting **to** numbered formats:
 - Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package.
-- Replace author-year citations with bracketed numbers. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
+- Replace author-year citations with [Number] for IEEE and (Number) for Vancouver. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
 - Reorder the reference list numerically
 
 When converting **from** numbered formats:
@@ -969,7 +969,7 @@ Template conflict handling:
 
 | Check Item | Pass Criteria | Failure Handling |
 |--------|---------|-----------|
-| Content integrity | Word count deviation < 1% before and after format conversion | Find missing content and restore |
+| Content integrity | Word count deviation < 1% before and after format conversion | Find missing content and restore it. Author fields removed for the blind-review version are an allowed difference. Do not restore those fields in that version. |
 | Format compliance | 100% compliance with target format specifications. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, that citation satisfies this check. When such a mismatch requires preserving a reference-list entry, the entry still follows the target format; only a rule that would remove the entry does not apply to it. Continue formatting | Fix non-compliant format items one by one |
 | Citation preservation | All citations still present after conversion. In `full` mode, also preserve all incoming reference-list entries | Restore citations or entries lost during conversion |
 | LaTeX compilability | `xelatex` produces no errors (warnings acceptable) | Fix compilation errors |
@@ -987,7 +987,7 @@ Quality gate not passed ->
 │   3. Re-compile to verify
 ├── Content loss ->
 │   1. Compare Draft and Formatted output section by section
-│   2. Find missing paragraphs, re-insert
+│   2. Re-insert missing paragraphs. Author fields removed for the blind-review version are an allowed difference. Do not re-insert those fields in that version.
 │   3. Re-run final checklist
 ├── Journal format non-compliance ->
 │   1. List specific non-compliant items
