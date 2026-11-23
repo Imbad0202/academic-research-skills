@@ -974,7 +974,7 @@ Template conflict handling:
 | Citation preservation | All citations still present after conversion. In `full` mode, also preserve all incoming reference-list entries | Restore citations or entries lost during conversion |
 | LaTeX compilability | `xelatex` produces no errors (warnings acceptable) | Fix compilation errors |
 | AI Disclosure | Present and complete | Insert standard Disclosure text |
-| Journal requirements | All verifiable requirements met. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, or requires preserving a reference-list entry that a journal requirement would remove, that requirement satisfies this check when the Output Package warning names it as not applied. Continue formatting | Adjust each other unmet item |
+| Journal requirements | All verifiable requirements met. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, a journal requirement that would change that citation does not apply to that citation. When such a mismatch requires preserving a reference-list entry, a journal requirement that would remove the entry does not apply to that entry, and every other requirement still does. The Output Package warning names each requirement not applied this way; all other citations and entries are checked as usual. Continue formatting | Adjust each other unmet item |
 | Final checklist | All items PASS, including any required Output Package warning | Fix formatting defects and raise content issues per Phase Boundary |
 
 ### Failure Handling Strategies
