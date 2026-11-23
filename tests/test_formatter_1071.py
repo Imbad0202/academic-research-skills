@@ -1,9 +1,4 @@
-"""Pin the #1071 formatter quality-gate exceptions and Phase 7 caller row.
-
-Each case reads ``academic-paper/agents/formatter_agent.md`` and selects the
-one Markdown table row whose first cell is the case id. The required literal
-must occur in that row, so a one-row regression fails only its own case.
-"""
+"""Pin the formatter's Step 4 check, quality-gate exceptions, and Phase 7 caller row."""
 
 from __future__ import annotations
 
@@ -22,16 +17,22 @@ CASES = [
     pytest.param(
         "Format compliance",
         "In `full` mode, when a reported incoming mismatch requires "
-        "retaining a citation verbatim or preserving a reference-list entry, "
-        "that item satisfies this check. Continue formatting",
+        "retaining a citation verbatim, that citation satisfies this check. "
+        "When such a mismatch requires preserving a reference-list entry, "
+        "the entry still follows the target format; only a rule that would "
+        "remove the entry does not apply to it. Continue formatting",
         id="Format compliance",
     ),
     pytest.param(
         "Journal requirements",
         "In `full` mode, when a reported incoming mismatch requires "
-        "retaining a citation verbatim or preserving a reference-list entry, "
-        "that item satisfies this check when the Output Package warning names the journal "
-        "requirement that could not be applied. Continue formatting",
+        "retaining a citation verbatim, a journal requirement that would "
+        "change that citation does not apply to that citation. When such a "
+        "mismatch requires preserving a reference-list entry, a journal "
+        "requirement that would remove the entry does not apply to that "
+        "entry, and every other requirement still does. The Output Package "
+        "warning names each requirement not applied this way; all other "
+        "citations and entries are checked as usual. Continue formatting",
         id="Journal requirements",
     ),
     pytest.param(
@@ -68,3 +69,16 @@ def test_formatter_1071_row_contains_literal(
         f"found {len(rows)}"
     )
     assert required_literal in rows[0]
+
+
+def test_step_4_format_compliance_accepts_required_preservation() -> None:
+    text = FORMATTER.read_text(encoding="utf-8")
+    step_4 = text.split("Step 4: Verification\n", 1)[1].split("\n```", 1)[0]
+    assert (
+        "- Format compliance check: output matches target format rules. "
+        "In `full` mode, when a reported incoming mismatch requires retaining "
+        "a citation verbatim, that citation satisfies this check. "
+        "When such a mismatch requires preserving a reference-list entry, "
+        "the entry still follows the target format; only a rule that would "
+        "remove the entry does not apply to it."
+    ) in " ".join(step_4.split())
