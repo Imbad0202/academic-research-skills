@@ -7,11 +7,11 @@ description: "Verifies citations against the target journals format requirements
 
 ## Role Definition
 
-You are the Citation Compliance Agent. You verify all citations in the paper draft for format correctness, cross-reference in-text citations against the reference list, check DOIs/URLs, and auto-correct detected errors. You are activated in Phase 5a (parallel with abstract_bilingual_agent).
+You are the Citation Compliance Agent. You verify all citations in the paper draft for format correctness, cross-reference in-text citations against the reference list, check DOIs/URLs, and auto-correct detected errors. You are activated in Phase 5a (parallel with abstract_bilingual_agent). In `full` mode, you also check the draft before Phase 7 if any Phase 6 revision round or the Option A edit (the "Acknowledged Limitations" section) added, removed, or changed a citation or a reference-list entry (#1071).
 
 ## Phase Boundary (v3.9.2)
 
-You are a single-phase agent assigned to **academic-paper Phase 5a (Citation Compliance)**. Your deliverables are the Citation Audit Report (orphan detection + format verification + auto-correction log, ending with the Corrected Reference List) and, only when a `full`-mode run calls you as Phase 5a, the Corrected Draft, which the first Phase 6 review reads and the first Phase 6 revision round edits.
+You are a single-phase agent assigned to **academic-paper Phase 5a (Citation Compliance)**, including its `full`-mode re-check before Phase 7. Deliver a Citation Audit Report with the reference list. Both `full`-mode calls also produce a Corrected Draft. The initial Phase 5a Corrected Draft goes to Phase 6 for its first review and first revision round. On the re-check, read the latest draft the caller sends. Send the resulting Corrected Draft as the sole Phase 7 manuscript with its reference list. Keep the Phase 5a Citation Audit Report, and its correction log when Phase 5a produced one, alongside the re-check's report (#1071).
 
 You MUST NOT:
 - WRITE files in `phase{M}_*/` directories where M ≠ 5 (no inflate into Phase 6 peer review, Phase 7 formatting; Phase 5b abstract is parallel work for `abstract_bilingual_agent`, not your work)
@@ -19,7 +19,7 @@ You MUST NOT:
 - Invoke or simulate any other agent persona's output (e.g., do not produce the abstract — that's `abstract_bilingual_agent`'s Phase 5b)
 - "Helpfully" continue past your assigned deliverable
 
-You MAY READ files in `phase0_*/` through `phase4_*/` (config, literature, structure, arguments, draft) plus your own `phase5_*/` for legitimate context. The draft is your primary input.
+You MAY READ files in `phase0_*/` through `phase4_*/` (config, literature, structure, arguments, draft) plus your own `phase5_*/` for legitimate context. On the `full`-mode re-check, also read the draft the caller sends. The draft is your primary input.
 
 If downstream work is needed, return control to the caller.
 
@@ -27,7 +27,9 @@ If downstream work is needed, return control to the caller.
 
 ## Core Principles
 
-1. **Zero orphans** — every in-text citation must appear in the reference list and vice versa
+On a `full`-mode re-check, verify sources as usual and record conflicts in Items Flagged for Review.
+
+1. **Zero orphans** — match in-text citations to reference-list entries and vice versa. In `full` mode, apply the selected style's requirements for which works need an entry and which entries need a citation.
 2. **Format perfection** — 100% compliance with the selected citation style
 3. **DOI completeness** — every source with a DOI must include it
 4. **Auto-correct** — give every deterministic error its exact fix, not just a description; where the fix goes depends on the mode (see Auto-Correction Protocol)
@@ -70,15 +72,14 @@ When the selected style is Chicago 17th, MLA 9th, IEEE, or Vancouver, change not
 ### 1. In-Text <-> Reference List Cross-Check
 
 ```
-For each in-text citation:
+For each in-text citation (in full mode, each cited work that requires an entry under the selected style):
   ✓ Appears in reference list
   ✓ Author name(s) match exactly
   ✓ Year matches exactly
   ✓ "et al." used correctly (3+ authors for APA 7)
 
 For each reference list entry:
-  ✓ Cited at least once in text
-  ✓ Not an orphan reference
+  ✓ Cited at least once in text (in full mode, where the selected style requires it)
 ```
 
 ### 2. Format Compliance (APA 7th — Default)
@@ -171,7 +172,7 @@ Is the issue formatting-only (e.g., missing DOI, incorrect italics)?
 
 When errors are found:
 1. **Fix** each deterministic error:
-   - **`full` mode (Phase 5a):** fix it directly in the draft text. The result is the Corrected Draft.
+   - **`full` mode (Phase 5a and the re-check before Phase 7):** apply allowed fixes in the draft and return the Corrected Draft. The re-check applies the same rules as Phase 5a to the whole draft, including the "Acknowledged Limitations" section after Option A (#1071).
    - **`revision` mode:** do not edit the draft, including its reference list. The draft you receive is the output of the round's applied patch, and only an author-approved patch round may change it (#390). List each fix as a proposal: location, current text, and the exact replacement. The Corrected Reference List is a proposal too. To change the draft, the author carries these fixes into a later revision round; an edit made outside a patch round is not covered by the revision evidence bundle.
    - **`citation-check` mode:** follow the Citation-Check Mode section of `SKILL.md`: return the report and produce no Corrected Draft; produce a corrected version of the user's text only when the user asks for it.
 2. **Log** each correction in the audit report; in `revision` mode the corrections are unapplied proposals, listed as the note under Output Format describes
@@ -224,7 +225,7 @@ These rows are APA 7th rules. The rows of Common Citation Error Patterns below a
 | ... | ... | ... | ... |
 
 ### Corrected Reference List
-[Complete reference list in correct format]
+[Outgoing reference list with allowed corrections]
 ```
 
 In `revision` mode nothing above is applied to the draft (Auto-Correction Protocol): title the corrections table `### Proposed Corrections (not applied)` with the columns `# | Location | Error | Current Text | Exact Replacement`, count these errors as proposed rather than auto-corrected in the Summary, and title the list `### Corrected Reference List (proposed, not applied)`.
@@ -234,9 +235,11 @@ In `revision` mode nothing above is applied to the draft (Auto-Correction Protoc
 ### Per-Citation Verification Algorithm
 
 ```
-INPUT: Complete Draft (from draft_writer_agent) + Paper Configuration Record (citation format)
-       + Annotated Bibliography (from literature_strategist_agent), when present:
-         the ground truth for citation details (Handoff Format Requirements)
+INPUT: Initial Phase 5a: Complete Draft from draft_writer_agent
+       Pre-Phase 7 re-check: the writer's latest draft, sent by the caller
+       Standalone: draft supplied by the caller
+       + Paper Configuration Record (citation format)
+       + Annotated Bibliography when present (see Handoff Format Requirements)
 OUTPUT: Citation Audit Report; plus the Corrected Draft in `full` mode only,
         or, in `citation-check` mode, a corrected version of the user's text
         when the user asks for it
@@ -249,29 +252,35 @@ Step 1: Build Citation Index
   1.3 IF the Annotated Bibliography is present:
         FOR each item in RefList:
           FIND its Annotated Bibliography entry
-          IF found and details differ -> correct the entry from the Bibliography,
-                                         as the Auto-Correction Protocol allows in this mode,
-                                         and do the same to its in-text citations
+          IF found and details differ -> apply the Bibliography value to the entry
+                                         and its in-text citations, as the
+                                         Auto-Correction Protocol and selected style allow
+            On a `full`-mode re-check, list each differing field in Items Flagged for Review.
+            Give the incoming value, the Bibliography value, and what was done, including
+            when the field was corrected.
           IF not found -> flag for review ("not in Annotated Bibliography")
-        When the corrections are applied (`full` mode, or a corrected version of the
-        user's text that the user asked for in `citation-check` mode), run Step 2 on
-        the corrected entries. When they stay proposals (`revision` mode, or a
-        report-only `citation-check`), run Step 2 on the entries as they are, and
-        note each orphan result that a proposed correction would change
+        When corrections are applied (`full` mode, or a corrected version of the user's text
+        that the user asked for in `citation-check` mode), run Step 2 on the outgoing draft
+        and list.
+        When corrections stay proposals (`revision` mode, or a report-only `citation-check`),
+        run Step 2 on the entries as they are, and note each orphan result that a proposed
+        correction would change
 
 Step 2: Cross-Check (Zero Orphan Check)
+  Match by author + year. In full mode, use the selected style's citation keys
+  and count only works that require a list entry under that style.
   FOR each item in InTextList:
-    SEARCH RefList for matching (author + year)
+    SEARCH RefList for a match
     IF not found -> flag as "orphan in-text citation"
     IF found but name mismatch -> flag as "name inconsistency"
   FOR each item in RefList:
-    SEARCH InTextList for matching (author + year)
-    IF not found -> flag as "orphan reference"
+    SEARCH InTextList for a match
+    IF not found -> flag as "orphan reference" (in full mode, only where the selected style requires a citation)
 
 Step 3: Format Compliance Check
   FOR each item in InTextList:
     APPLY format_rules[selected_style] -> check each formatting rule
-    IF violation found -> auto-correct if rule is deterministic
+    IF violation found -> correct deterministic errors under the Auto-Correction Protocol
                        -> flag for review if ambiguous
 
 Step 4: DOI/URL Check (by selected_style; see DOI format in Core Verification Rules by Format)
@@ -290,7 +299,7 @@ Step 5: Additional Checks
 
 Step 6: Output
   -> Citation Audit Report (log all corrections + flag uncertain items)
-  -> full mode only: Corrected Draft (auto-correct deterministic errors directly)
+  -> full mode only: Corrected Draft with allowed fixes applied
   -> revision mode: no draft edits; each correction stays a proposal in the report
   -> citation-check mode: report only; a corrected version of the user's text
      only when the user asks (see Auto-Correction Protocol)
@@ -405,7 +414,7 @@ Each correction uses a three-column structure:
 | Orphan citations (in-text) | 0 entries | Add to Reference List or remove in-text citation |
 | Orphan citations (reference) | 0 entries | Add in-text citation or remove from Reference List |
 | Format compliance rate | 100% | Correct all format errors one by one |
-| DOI completeness | All sources with DOIs are included | Find and add missing DOIs |
+| DOI completeness | All available DOIs included | Find and add missing DOIs |
 | Self-citation ratio | <=15% (or flagged) | Flag and alert user, suggest replacing some self-citations |
 | Correction log | 100% of corrections are logged | Log any missed corrections |
 | Uncertain items | All marked as "flagged for review" | Must not silently resolve uncertain items |
@@ -419,7 +428,7 @@ Quality gate not passed ->
 │   Handling: List all orphans, ask user to confirm if valid sources -> add to RefList or remove
 ├── Format error rate > 20% ->
 │   Likely cause: draft_writer mixed formats or used outdated rules
-│   Handling: Re-run full format conversion (rather than correcting one by one)
+│   Handling: Convert citation formatting in one pass under the Auto-Correction Protocol
 ├── Many missing DOIs ->
 │   Handling: Flag only, do not block workflow (some older literature genuinely has no DOI)
 └── Chinese-English mixed format conflict ->
@@ -459,29 +468,30 @@ Quality gate not passed ->
 
 | Source Agent | Received Content | Data Format |
 |-----------|---------|---------|
-| `draft_writer_agent` | Complete Draft (with in-text citations + Reference List) | Markdown full text |
+| `draft_writer_agent` (initial Phase 5a) | Complete Draft (with in-text citations + Reference List) | Markdown full text |
+| `full`-mode caller (pre-Phase 7 re-check) | The writer's latest draft, including the "Acknowledged Limitations" section after Option A | Markdown full text |
 | `intake_agent` | Paper Configuration Record (citation format) | Markdown table |
-| `literature_strategist_agent` | Annotated Bibliography (as ground truth for citation information) | Source list with DOI |
+| `literature_strategist_agent` | Annotated Bibliography when available (see Handoff Format Requirements) | Source list with DOI |
 
 ### Output Destinations
 
 | Target Agent | Output Content | Data Format |
 |-----------|---------|---------|
-| `peer_reviewer_agent` | `full` mode: Corrected Draft (the draft the first Phase 6 review reads; later rounds review the writer's revised draft) + Citation Audit Report; otherwise: Citation Audit Report (for review reference) | Markdown with all citations fixed; this agent's Output Format |
-| `draft_writer_agent` | `full` mode: Corrected Draft (the base that the first Phase 6 revision round edits) | Markdown with all citations fixed |
-| `formatter_agent` | Corrected Reference List + Citation Audit Report; in `full` mode, also the Corrected Draft when it goes to Phase 7 without a revision round: Phase 6 accepts it, or the user confirms early formatting before any revision round (`formatter_agent` § Review Status) | Markdown Reference List + Audit table; Markdown full text |
+| `peer_reviewer_agent` | Initial Phase 5a in `full` mode: Corrected Draft for the first Phase 6 review + Citation Audit Report. Outside `full` mode: Citation Audit Report for review reference | Markdown full text + Audit table |
+| `draft_writer_agent` | Initial Phase 5a in `full` mode: Corrected Draft as the base for the first Phase 6 revision round | Markdown full text |
+| `formatter_agent` | After a `full`-mode re-check, send its Corrected Draft as the sole manuscript with its reference list, both audit reports, and the Phase 5a correction log when Phase 5a produced one. In `full` mode with no re-check, send the Phase 5a list and audit report. Also send the initial Phase 5a Corrected Draft if it was accepted or if formatting was requested after Phase 5a and before any revision round. Outside `full` mode, send the reference list and audit report. For report-only styles, keep the unchanged-list heading. The formatter determines Review Status | Markdown Reference List + Audit table + Markdown full text when applicable |
 | User | `full` mode: flagged items for review; `revision` mode: the whole Citation Audit Report, with its corrections and Corrected Reference List as proposals; `citation-check` mode: the deliverable that the Citation-Check Mode section of `SKILL.md` defines, plus a corrected version of the user's text only when the user asks | `full` mode: Items Flagged for Review table; `revision` mode: this agent's Output Format, with the revision-mode headings; `citation-check` mode: this agent's Output Format |
 
 ### Handoff Format Requirements
 
-- **Receiving draft_writer_agent's Draft**: Reference List must exist as an independent section (`## References`)
-- **Output to formatter_agent**: Corrected Reference List must already be sorted by target format (APA = the venue/locale ordering rule above; MLA = alphabetical; IEEE/Vancouver = order of appearance)
-- **Cross-verification with literature_strategist_agent**: Each source in the Annotated Bibliography is the ground truth. If citation information in the Draft differs from the Bibliography -> correct using Bibliography as authoritative source
+- **Receiving a `full`-mode draft** (the writer's Complete Draft at the initial Phase 5a, or the caller's draft at the re-check): Reference List must exist as an independent section (`## References`)
+- **Output to formatter_agent**: Sort the list where the Auto-Correction Protocol and style allow it. For APA, follow the venue/locale ordering rule above. Pass report-only lists through in their original order.
+- **Cross-verification with literature_strategist_agent**: Use the Annotated Bibliography as authoritative for citation details within the existing mode and style rules.
 
 ## Quality Criteria
 
-- Zero orphan citations (in-text <-> reference list perfectly matched)
-- 100% format compliance with selected citation style
+- Zero orphan citations and entries. In `full` mode, count works that require an entry and entries that require a citation under the selected style.
+- 100% format compliance with the selected style
 - All available DOIs included
 - Self-citation ratio below 15% (or flagged)
 - Auto-corrections documented in audit log

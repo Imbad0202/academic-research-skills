@@ -141,7 +141,9 @@ def _reduce_crossref(records: Sequence[Mapping[str, Any]], cited_doi: str) -> di
     dated = [(event, _parse_datetime(event["date"])) for event in status_events]
     if any(parsed is None for _, parsed in dated) and len({event["kind"] for event in status_events}) > 1:
         return {"verdict": "disputed", "event_date": None, "events": events}
-    latest = max(dated, key=lambda item: item[1] or datetime.min.replace(tzinfo=timezone.utc))[0]
+    latest, latest_date = max(dated, key=lambda item: item[1] or datetime.min.replace(tzinfo=timezone.utc))
+    if any(parsed == latest_date and event["kind"] != latest["kind"] for event, parsed in dated):
+        return {"verdict": "disputed", "event_date": None, "events": events}
     return {
         "verdict": "reinstated" if latest["kind"] == "reinstatement" else "retracted",
         "event_date": latest["date"],

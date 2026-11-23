@@ -351,14 +351,15 @@ Quality gate not passed ->
 
 | Target Agent | Output Content | Data Format |
 |-----------|---------|---------|
-| `citation_compliance_agent` | Complete Draft (with all in-text citations) | This agent's Output Format |
+| `citation_compliance_agent` (initial Phase 5a) | Complete Draft (with all in-text citations) | This agent's Output Format |
 | `abstract_bilingual_agent` | Complete Draft (for abstract writing) | Full text Markdown |
 | `peer_reviewer_agent` | Complete Draft + Draft Metadata (in `full` mode the first review reads the Corrected Draft from `citation_compliance_agent`; later rounds read your Revised Draft + Revision Log) | Full text + Word Count table |
-| `formatter_agent` | Final Revised Draft: the version peer review accepted, or, without an Accept, the latest draft, with the "Acknowledged Limitations" section after Option A, which the formatter formats only after the user confirms it (`formatter_agent` § Review Status) | Markdown with citations |
+| `formatter_agent` | In `full` mode, when no citation re-check is due, send the accepted revision or the latest revised draft on the early-formatting or unaccepted revision path. With no revision round (a Round 1 Accept, or early formatting after Phase 5a and before any revision round), the initial Phase 5a Corrected Draft from `citation_compliance_agent` goes to Phase 7. Include the "Acknowledged Limitations" section after Option A. The formatter handles Review Status confirmation. In other modes, send the Final Revised Draft: the version peer review accepted, or, without an Accept, the latest draft, with the "Acknowledged Limitations" section after Option A, which the formatter formats only after the user confirms it (`formatter_agent` § Review Status). | Markdown with citations |
 
 ### Handoff Format Requirements
 
 - **Output to citation_compliance_agent**: All in-text citations must use a consistent format placeholder, such as `(Author, Year)` or `Author (Year)`, without mixing
+- **Pre-Phase 7 citation re-check (`full` mode)**: A re-check is due if any revision round or the Option A edit added, removed, or changed a citation or a reference-list entry. The caller then sends your latest draft to `citation_compliance_agent`, including the "Acknowledged Limitations" section after Option A. The re-check's Corrected Draft is the sole Phase 7 manuscript (#1071).
 - **Revision round receiving peer_reviewer_agent feedback**: Each Issue must have `Section` + `Severity` + `Suggested Fix`, so draft_writer can locate edit points directly
 - **Revision log**: Every revision must output a Revision Log (see format above) so peer_reviewer can quickly track in Round 2
 
