@@ -99,6 +99,45 @@ def test_arxiv_id_lookup_with_title_cross_check():
     assert result is None  # ID_MISMATCH
 
 
+def _identified_entry(title_xml: str) -> str:
+    """One Atom entry with an arXiv id. `title_xml` is the raw title element."""
+    return (
+        "<entry>"
+        "<id>http://arxiv.org/abs/1706.03762v5</id>"
+        f"{title_xml}"
+        "<published>2017-06-12T00:00:00Z</published>"
+        "</entry>"
+    )
+
+
+@pytest.mark.parametrize(
+    ("expected_title", "title_xml"),
+    [
+        pytest.param("", "<title/>", id="both-empty"),
+        pytest.param("   ", "<title/>", id="whitespace-expected-missing-returned"),
+        pytest.param("Attention Is All You Need", "<title/>", id="populated-expected-missing-returned"),
+        pytest.param("", "<title>Attention Is All You Need</title>", id="empty-expected-populated-returned"),
+        pytest.param("   ", "<title>Attention Is All You Need</title>", id="whitespace-expected-populated-returned"),
+        pytest.param("Attention Is All You Need", "<title>   </title>", id="populated-expected-whitespace-returned"),
+        pytest.param("", "<title>   </title>", id="empty-expected-whitespace-returned"),
+        pytest.param("   ", "<title>   </title>", id="both-whitespace"),
+    ],
+)
+def test_arxiv_id_lookup_blank_title_is_not_a_match(expected_title, title_xml):
+    """#1163: an ID hit requires text on both titles. An empty title element is missing."""
+    from arxiv_client import ArxivClient
+
+    body = _atom([_identified_entry(title_xml)])
+    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+        client = ArxivClient()
+        result = client.arxiv_id_lookup(
+            arxiv_id="1706.03762",
+            expected_title=expected_title,
+        )
+
+    assert result is None
+
+
 def test_arxiv_id_lookup_with_matching_title():
     """ID hit + matching title -> success (returns the entry dict)."""
     from arxiv_client import ArxivClient
