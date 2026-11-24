@@ -9,8 +9,15 @@ A suite of Claude Code skills for rigorous academic research, paper writing, pee
 | `deep-research` v2.12.1 | 13-agent research team | full, quick, socratic, review, lit-review, three-way-scan, fact-check, systematic-review |
 | `academic-paper` v3.3.1 | 12-agent paper writing | full, plan, outline-only, revision, revision-coach, abstract-only, lit-review, format-convert, citation-check, disclosure, rebuttal-audit |
 | `academic-paper-reviewer` v1.11.1 | Multi-perspective paper review (5 reviewers + optional cross-model DA critique) | full, re-review, quick, methodology-focus, guided, calibration |
-| `academic-pipeline` v3.24.4 | Full pipeline orchestrator | (coordinates all above) |
+| `academic-pipeline` v3.24.5 | Full pipeline orchestrator | (coordinates all above) |
 | `sr-screener` v1.0.0 | Protocol-driven study screening (2 blinded AI reviewers + adjudicator) | protocol, quick, pilot, ta-screen, ft-screen, adjudicate, audit, report |
+
+## v3.24.5 Key Additions (a citation re-check after revision + an exact-title Tier 0 rule + a premise check for a claim the user names)
+
+- **`academic-paper` `full` mode re-checks citations before Phase 7 when a Phase 6 revision round or the Option A edit added, removed, or changed a citation or a reference-list entry (#1071).** The formatter uses the re-check's draft and reference list. A citation edit the user asks for in chat outside a revision round is not covered (#1145). The formatter keeps a citation or reference-list entry that a reported incoming mismatch requires it to keep, and a preserved entry still follows the target format; the CHANGELOG entries give the exact exceptions (#1152, #1155, #1161). Prompt-level; unmeasured.
+- **Tier 0 accepts a title-search match only on an exact normalized title and also asks for the first author's family name (#1146).** The author check and the exact-title check on a DOI hit are prompt-level; the scripts are unchanged. The OpenAlex, Crossref, and arXiv protocols describe the same rule (#1148). DOI and arXiv ID lookups reject a hit when either title normalizes to an empty string (#1163), and a Crossref retraction and reinstatement with the same latest timestamp give `disputed` in either input order (#1150).
+- **`source_verification_agent` checks a claim's premises when the user asks for it (#1128).** It lists one to four premises and marks each against the sources that passed Reference Existence Verification. It never accepts or rejects the claim and is a single-agent assessment; the CHANGELOG entry lists its known limits. Prompt-level; unmeasured.
+- **Smaller changes.** Phase 6 review inputs name the draft each round reviews (#1136); the Phase 6a lint line allows the #684 pointer authority (#1143); two committee-correspondence pointers match the Activation gate (#1123, #1132); `timeline_extraction_agent` no longer cites a check that does not exist (#1129); after a resume or a compaction the SessionStart announce uses the plugin agents' current names (#1168); the README names the DeepSeek Harness (DSH) sibling distribution, whose code the ARS maintainer did not audit or run (#1126); three translated READMEs add the `rebuttal-audit` example (#1176).
 
 ## v3.24.4 Key Additions (a committee-correspondence variant scoped to research ethics review + below-consensus findings in the roadmap and letter + GPT-6.2 Astra as the recommended OpenAI verifier)
 
@@ -462,7 +469,7 @@ Materials: Editorial Decision Letter, Revision Roadmap, Per-reviewer detailed co
 Materials in: screening protocol source (proposal, PROSPERO record, or `systematic-review` mode protocol), database exports (RIS, PubMed .nbib, Web of Science, CSV), full-text PDFs. Materials out: `*_literature_corpus.yaml` (`literature_corpus[]` entries for the Material Passport), PRISMA 2020 counts, methods draft, exclusion reasons, screening log.
 
 ## Version Info
-- **Suite version**: 3.24.4 (per CHANGELOG.md)
-- **Last Updated**: 2026-11-19
+- **Suite version**: 3.24.5 (per CHANGELOG.md)
+- **Last Updated**: 2026-11-24
 - **Author**: Cheng-I Wu
 - **License**: CC-BY-NC 4.0
