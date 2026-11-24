@@ -20,6 +20,8 @@ All notable changes to this project will be documented in this file.
 
 - **Identifier matches now require text in both normalized titles (#1163, contributed by @pinjun99).** Semantic Scholar, OpenAlex, and Crossref DOI lookups and arXiv ID lookups reject hits when either title normalizes to an empty string. Semantic Scholar also skips title search when the reference title normalizes to an empty string.
 
+- **OpenAlex, Crossref, and arXiv now skip title searches when the reference title is null or normalizes to empty, and handle null reference titles during identifier cross-checks.** Crossref treats a null first title variant as missing. Semantic Scholar title search skips hits without a paper ID so a later valid hit can match (#1171, #1177).
+
 - **Conflicting Crossref notices with the same latest timestamp now yield `disputed` (#1150).** When a retraction and a reinstatement for the cited DOI share the latest timestamp, either input order produces the same verdict.
 
 - **`academic-paper` `full` mode Phase 6 review inputs name the Phase 5a Corrected Draft for the first review and the writer's Revised Draft with its Revision Log for later rounds (#1136).** `academic-paper/SKILL.md` (Phase 6a overview and Phase 6b user content) and `academic-paper/agents/peer_reviewer_agent.md` (Complete Review Workflow input and Phase 6a/6b contract prompts) previously named the Phase 4b draft (or Complete Draft), contradicting `peer_reviewer_agent.md`'s Input Sources table after #1068. Prompt-level; unmeasured.

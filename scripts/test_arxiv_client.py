@@ -121,6 +121,7 @@ def _identified_entry(title_xml: str) -> str:
         pytest.param("Attention Is All You Need", "<title>   </title>", id="populated-expected-whitespace-returned"),
         pytest.param("", "<title>   </title>", id="empty-expected-whitespace-returned"),
         pytest.param("   ", "<title>   </title>", id="both-whitespace"),
+        pytest.param(None, "<title>Attention Is All You Need</title>", id="null-expected-populated-returned"),
     ],
 )
 def test_arxiv_id_lookup_blank_title_is_not_a_match(expected_title, title_xml):
@@ -217,6 +218,34 @@ def test_arxiv_id_as_full_url_falls_through_to_title():
         # The resolver wrapper would then fall through to title_search:
         title_hit = client.title_search("Attention Is All You Need")
         assert title_hit is not None
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        pytest.param(None, id="none"),
+        pytest.param("", id="empty"),
+        pytest.param("   ", id="whitespace"),
+        pytest.param("---", id="punctuation"),
+    ],
+)
+def test_title_search_blank_title_does_not_query(title):
+    """#1177: a null or empty-normalized title is a miss and sends no request.
+
+    The configured hit has a punctuation-only title, which normalizes to the
+    same empty string and would otherwise match.
+    """
+    import xml.etree.ElementTree as ET
+
+    from arxiv_client import ArxivClient
+
+    root = ET.fromstring(_atom([_entry("---")]))
+    entries = root.findall("{http://www.w3.org/2005/Atom}entry")
+    client = ArxivClient()
+    client._get = MagicMock(return_value=entries)
+
+    assert client.title_search(title) is None
+    client._get.assert_not_called()
 
 
 def test_title_search_empty_title_is_miss_not_crash():
