@@ -20,6 +20,8 @@ All notable changes to this project will be documented in this file.
 
 - **Identifier matches now require text in both normalized titles (#1163, contributed by @pinjun99).** Semantic Scholar, OpenAlex, and Crossref DOI lookups and arXiv ID lookups reject hits when either title normalizes to an empty string. Semantic Scholar also skips title search when the reference title normalizes to an empty string.
 
+- **OpenAlex, Crossref, and arXiv now skip title searches when the reference title is null or normalizes to empty, and handle null reference titles during identifier cross-checks (#1171, #1177).** Crossref treats a null first title variant as missing. Semantic Scholar title search skips hits without a paper ID so a later valid hit can match.
+
 - **Crossref retraction and reinstatement notices now yield `disputed` when their reported dates are too imprecise to order (#1154, contributed by @pinjun99).** Notices in different years, or in different months when both specify a month, can still be ordered. A retraction reported as both 2024 and 10 February 2024 remains disputed against a 1 June 2024 reinstatement. Merging reports of one notice across date precisions is tracked in #1170.
 
 - **Conflicting Crossref notices with the same latest timestamp now yield `disputed` (#1150).** When a retraction and a reinstatement for the cited DOI share the latest timestamp, either input order produces the same verdict.

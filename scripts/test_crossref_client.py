@@ -54,6 +54,32 @@ def test_title_search_no_match_below_threshold(monkeypatch):
     assert result is None
 
 
+@pytest.mark.parametrize(
+    "title",
+    [
+        pytest.param(None, id="none"),
+        pytest.param("", id="empty"),
+        pytest.param("   ", id="whitespace"),
+        pytest.param("---", id="punctuation"),
+    ],
+)
+def test_title_search_blank_title_does_not_query(title):
+    """#1177: a null or empty-normalized title is a miss and sends no request.
+
+    The configured hit has a punctuation-only title, which normalizes to the
+    same empty string and would otherwise match.
+    """
+    from crossref_client import CrossrefClient
+
+    client = CrossrefClient()
+    client._get = MagicMock(return_value={
+        "message": {"items": [{"title": ["---"], "DOI": "10.0000/punct"}]}
+    })
+
+    assert client.title_search(title) is None
+    client._get.assert_not_called()
+
+
 def test_doi_lookup_with_title_cross_check(monkeypatch):
     """DOI hit MUST pass Levenshtein 0.70 title cross-check (DOI_MISMATCH)."""
     from crossref_client import CrossrefClient
@@ -89,6 +115,7 @@ def test_doi_lookup_with_title_cross_check(monkeypatch):
         pytest.param("Attention Is All You Need", ["   "], id="populated-expected-whitespace-returned"),
         pytest.param("", ["   "], id="empty-expected-whitespace-returned"),
         pytest.param("   ", ["   "], id="both-whitespace"),
+        pytest.param(None, ["Attention Is All You Need"], id="null-expected-populated-returned"),
     ],
 )
 def test_doi_lookup_blank_title_is_not_a_match(expected_title, titles):
@@ -113,6 +140,62 @@ def test_doi_lookup_blank_title_is_not_a_match(expected_title, titles):
         )
 
     assert result is None
+
+
+def test_doi_lookup_null_first_title_variant_is_miss():
+    """#1171: a null first Crossref title variant is a missing title.
+
+    A later language variant is not consulted. The first-variant rule still
+    applies when that first element is null.
+    """
+    from crossref_client import CrossrefClient
+
+    for titles in ([None], [None, "Attention Is All You Need"]):
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "message": {
+                "title": titles,
+                "DOI": "10.5555/3295222.3295349",
+            }
+        }).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=None)
+
+        with patch("urllib.request.urlopen", return_value=mock_response):
+            client = CrossrefClient()
+            result = client.doi_lookup_with_title_check(
+                doi="10.5555/3295222.3295349",
+                expected_title="Attention Is All You Need",
+            )
+
+        assert result is None
+
+
+def test_title_search_null_first_variant_reaches_later_exact_candidate():
+    """#1171: a null title on the first candidate must not hide a later exact hit."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "items": [
+                {"title": [None], "DOI": "10.0000/null-title"},
+                {
+                    "title": ["Attention Is All You Need"],
+                    "DOI": "10.5555/3295222.3295349",
+                },
+            ]
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.title_search("Attention Is All You Need")
+
+    assert result is not None
+    assert result["DOI"] == "10.5555/3295222.3295349"
 
 
 def test_doi_lookup_with_matching_title(monkeypatch):

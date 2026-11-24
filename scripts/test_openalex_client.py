@@ -53,6 +53,30 @@ def test_title_search_no_match_below_threshold(monkeypatch):
     assert result is None
 
 
+@pytest.mark.parametrize(
+    "title",
+    [
+        pytest.param(None, id="none"),
+        pytest.param("", id="empty"),
+        pytest.param("   ", id="whitespace"),
+        pytest.param("---", id="punctuation"),
+    ],
+)
+def test_title_search_blank_title_does_not_query(title):
+    """#1177: a null or empty-normalized title is a miss and sends no request.
+
+    The configured hit has a punctuation-only title, which normalizes to the
+    same empty string and would otherwise match.
+    """
+    from openalex_client import OpenAlexClient
+
+    client = OpenAlexClient()
+    client._get = MagicMock(return_value={"results": [{"title": "---"}]})
+
+    assert client.title_search(title) is None
+    client._get.assert_not_called()
+
+
 def test_doi_lookup_with_title_cross_check(monkeypatch):
     """DOI hit MUST pass Levenshtein 0.70 title cross-check (DOI_MISMATCH pattern)."""
     from openalex_client import OpenAlexClient
@@ -87,6 +111,7 @@ def test_doi_lookup_with_title_cross_check(monkeypatch):
         pytest.param("Attention Is All You Need", "   ", id="populated-expected-whitespace-returned"),
         pytest.param("", "   ", id="empty-expected-whitespace-returned"),
         pytest.param("   ", "   ", id="both-whitespace"),
+        pytest.param(None, "Attention Is All You Need", id="null-expected-populated-returned"),
     ],
 )
 def test_doi_lookup_blank_title_is_not_a_match(expected_title, returned_title):
