@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 
 - **Identifier matches now require text in both normalized titles (#1163, contributed by @pinjun99).** Semantic Scholar, OpenAlex, and Crossref DOI lookups and arXiv ID lookups reject hits when either title normalizes to an empty string. Semantic Scholar also skips title search when the reference title normalizes to an empty string.
 
-- **OpenAlex, Crossref, and arXiv now skip title searches when the reference title is null or normalizes to empty, and handle null reference titles during identifier cross-checks.** Crossref treats a null first title variant as missing. Semantic Scholar title search skips hits without a paper ID so a later valid hit can match (#1171, #1177).
+- **OpenAlex, Crossref, and arXiv now skip title searches when the reference title is null or normalizes to empty, and handle null reference titles during identifier cross-checks (#1171, #1177).** Crossref treats a null first title variant as missing. Semantic Scholar title search skips hits without a paper ID so a later valid hit can match.
 
 - **Conflicting Crossref notices with the same latest timestamp now yield `disputed` (#1150).** When a retraction and a reinstatement for the cited DOI share the latest timestamp, either input order produces the same verdict.
 

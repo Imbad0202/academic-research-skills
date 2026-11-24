@@ -298,7 +298,9 @@ class TitleSearchTest(unittest.TestCase):
 
     def test_exact_hit_without_paper_id_is_no_match(self) -> None:
         """#1171: lookup with no DOI does not match an exact hit that has no paperId."""
-        client = ssc.SemanticScholarClient()
+        client = ssc.SemanticScholarClient(
+            min_interval_seconds=0, sleep=lambda _seconds: None
+        )
         papers = (
             {"title": "AI in education", "year": 2024},
             {"paperId": None, "title": "AI in education", "year": 2024},

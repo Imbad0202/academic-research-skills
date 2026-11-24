@@ -248,19 +248,6 @@ def test_title_search_blank_title_does_not_query(title):
     client._get.assert_not_called()
 
 
-def test_title_search_empty_title_is_miss_not_crash():
-    """An empty title produces a ti:"" query; the client must not crash and
-    returns None (no candidate meets the 0.70 threshold against "")."""
-    from arxiv_client import ArxivClient
-
-    body = _atom([])  # arXiv returns no entries for an empty title query
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
-        client = ArxivClient()
-        result = client.title_search("")
-
-    assert result is None
-
-
 def test_title_search_prefers_matching_year():
     """Two same-title candidates - matching publication year wins via 0.05 bonus."""
     from arxiv_client import ArxivClient
