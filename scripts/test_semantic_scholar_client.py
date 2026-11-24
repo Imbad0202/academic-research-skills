@@ -146,6 +146,107 @@ class DoiLookupTest(unittest.TestCase):
             )
         self.assertEqual(result, {"matched": True, "paperId": "title-hit"})
 
+    def _lookup_doi_hit(
+        self, reference_title: str, returned_title: str | None,
+    ) -> tuple[dict, MagicMock]:
+        """DOI lookup whose hit carries a paperId. `returned_title` None omits title."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        payload: dict = {"paperId": "doi-hit"}
+        if returned_title is not None:
+            payload["title"] = returned_title
+        urlopen = MagicMock(return_value=_mock_response(payload))
+        with patch("urllib.request.urlopen", urlopen):
+            result = client.lookup({
+                "title": reference_title,
+                "doi": "10.1234/xyz",
+            })
+        return result, urlopen
+
+    def test_doi_hit_empty_reference_and_missing_title_is_miss(self) -> None:
+        """#1163: both titles empty is an identifier miss, and no title search."""
+        result, urlopen = self._lookup_doi_hit("", None)
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_empty_reference_and_populated_title_is_miss(self) -> None:
+        """An empty reference title does not match a populated returned title."""
+        result, urlopen = self._lookup_doi_hit("", "Attention Is All You Need")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_whitespace_reference_and_missing_title_is_miss(self) -> None:
+        """Whitespace-only reference text is empty and does not match a missing title."""
+        result, urlopen = self._lookup_doi_hit("   ", None)
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_whitespace_reference_and_populated_title_is_miss(self) -> None:
+        """Whitespace alone cannot trigger a title search after the DOI hit."""
+        result, urlopen = self._lookup_doi_hit("   ", "Attention Is All You Need")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_empty_reference_and_whitespace_title_is_miss(self) -> None:
+        """A whitespace-only returned title is empty on that side too."""
+        result, urlopen = self._lookup_doi_hit("", "   ")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_whitespace_reference_and_whitespace_title_is_miss(self) -> None:
+        """Whitespace-only text on both sides is not an identifier match."""
+        result, urlopen = self._lookup_doi_hit("   ", "   ")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_punctuation_only_titles_is_miss(self) -> None:
+        result, urlopen = self._lookup_doi_hit("---", "...")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def _lookup_doi_then_search(
+        self, returned_title: str | None,
+    ) -> tuple[dict, MagicMock]:
+        """Populated reference title; DOI hit title is missing or blank; search hits."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        doi_payload: dict = {"paperId": "doi-hit"}
+        if returned_title is not None:
+            doi_payload["title"] = returned_title
+        title_payload = {
+            "data": [
+                {"paperId": "search-hit", "title": "AI in education", "year": 2024}
+            ]
+        }
+        urlopen = MagicMock(side_effect=[
+            _mock_response(doi_payload),
+            _mock_response(title_payload),
+        ])
+        with patch("urllib.request.urlopen", urlopen):
+            result = client.lookup({
+                "title": "AI in education",
+                "doi": "10.1234/xyz",
+                "year": 2024,
+            })
+        return result, urlopen
+
+    def test_doi_hit_missing_returned_title_uses_title_search(self) -> None:
+        """A usable reference title still searches when the DOI record has no title."""
+        result, urlopen = self._lookup_doi_then_search(None)
+        self.assertEqual(result, {"matched": True, "paperId": "search-hit"})
+        self.assertEqual(urlopen.call_count, 2)
+
+    def test_doi_hit_whitespace_returned_title_uses_title_search(self) -> None:
+        """A whitespace-only returned title is a DOI miss, then title search may match."""
+        result, urlopen = self._lookup_doi_then_search("   ")
+        self.assertEqual(result, {"matched": True, "paperId": "search-hit"})
+        self.assertEqual(urlopen.call_count, 2)
+
     def test_doi_404_and_title_404_returns_no_match(self) -> None:
         """Both endpoints miss: now legitimate unmatched."""
         client = ssc.SemanticScholarClient(sleep=MagicMock())

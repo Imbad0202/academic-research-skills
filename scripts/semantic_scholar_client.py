@@ -153,7 +153,8 @@ class SemanticScholarClient:
                 return doi_result
             # DOI miss or DOI_MISMATCH: fall through to title search
             # per protocol §Vector 2 "neither DOI nor title" rule.
-        if title:
+        # Whitespace-only text is blank and must not start a title search (#1163).
+        if _normalize_title(title):
             return self._lookup_by_title(title, entry.get("year"))
         return {"matched": False, "paperId": None}
 
@@ -250,6 +251,10 @@ class SemanticScholarClient:
         # Per protocol: cross-check title; DOI_MISMATCH counts as no-match
         # for this binary signal.
         returned_title = data.get("title") or ""
+        # A blank title on either side was not cross-checked. Two empty
+        # strings score 1.0, so require text before scoring (#1163).
+        if not _normalize_title(expected_title) or not _normalize_title(returned_title):
+            return {"matched": False, "paperId": None}
         if _similarity(expected_title, returned_title) < _TITLE_SIMILARITY_THRESHOLD:
             return {"matched": False, "paperId": None}
         return {"matched": True, "paperId": data["paperId"]}
