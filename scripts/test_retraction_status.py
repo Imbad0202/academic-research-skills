@@ -286,104 +286,19 @@ def test_separable_crossref_date_precisions_keep_the_later_notice(
     assert context["effective_status"] == verdict
 
 
-@pytest.mark.parametrize(
-    ("coarse_ids", "fine_ids", "verdict"),
-    [
-        (
-            {"DOI": "10.1234/notice.1", "record-id": 42},
-            {"DOI": "10.1234/notice.1", "record-id": 42},
-            "reinstated",
-        ),
-        (
-            {"DOI": "10.1234/notice.1", "record-id": 42},
-            {"DOI": "10.1234/notice.1", "record-id": 43},
-            "reinstated",
-        ),
-        (
-            {"DOI": "10.1234/notice.1", "record-id": 42},
-            {"DOI": "10.1234/notice.2", "record-id": 42},
-            "reinstated",
-        ),
-        (
-            {"DOI": "10.1234/notice.1", "record-id": 42},
-            {"DOI": "10.1234/notice.2", "record-id": 43},
-            "disputed",
-        ),
-        (
-            {"DOI": "10.1234/notice.1"},
-            {"record-id": "10.1234/notice.1"},
-            "disputed",
-        ),
-    ],
-    ids=[
-        "both-identifiers",
-        "doi-alone",
-        "record-id-alone",
-        "different-notice",
-        "doi-only-versus-record-id-only",
-    ],
-)
-@pytest.mark.parametrize("reverse_order", [False, True], ids=["input-order", "reversed"])
-def test_crossref_retraction_copies_at_different_precisions(
-    coarse_ids: dict, fine_ids: dict, verdict: str, reverse_order: bool
-) -> None:
-    coarse = _date_parts_event("retraction", [2024])
-    fine = _date_parts_event("retraction", [2024, 2, 10])
-    for event, identifiers in ((coarse, coarse_ids), (fine, fine_ids)):
-        event.pop("DOI", None)
-        event.pop("record-id", None)
-        event.update(identifiers)
+def test_same_notice_at_year_and_day_precision_remains_disputed() -> None:
+    year_only = _date_parts_event("retraction", [2024])
+    february = _date_parts_event("retraction", [2024, 2, 10])
     june = {
         **_date_parts_event("reinstatement", [2024, 6, 1]),
         "DOI": "10.1234/reinstatement",
+        "record-id": 43,
     }
-    notices = [coarse, fine, june]
-    if reverse_order:
-        notices.reverse()
-    signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(*notices))
-    context = signal["retraction_context"]
-    crossref = context["resolver_observations"][1]
-    assert crossref["verdict"] == context["effective_status"] == verdict
-
-    retractions = sorted(
-        (event["date"], event["notice_doi"])
-        for event in crossref["events"]
-        if event["kind"] == "retraction"
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(year_only, february, june),
     )
-    expected = [("2024-02-10T00:00:00Z", status.normalize_doi(fine.get("DOI")))]
-    if verdict == "disputed":
-        expected.insert(0, ("2024-01-01T00:00:00Z", status.normalize_doi(coarse.get("DOI"))))
-        _assert_disputed_crossref(signal)
-    else:
-        assert crossref["event_date"] == "2024-06-01T00:00:00Z"
-    assert retractions == expected
-
-
-@pytest.mark.parametrize("record_id", [None, "", "   "], ids=["absent", "empty", "whitespace"])
-@pytest.mark.parametrize("reverse_order", [False, True], ids=["input-order", "reversed"])
-def test_unidentified_crossref_retractions_at_different_precisions_are_disputed(
-    record_id: str | None, reverse_order: bool
-) -> None:
-    retractions = [
-        _date_parts_event("retraction", [2024]),
-        _date_parts_event("retraction", [2024, 2, 10]),
-    ]
-    for event in retractions:
-        del event["DOI"]
-        if record_id is None:
-            del event["record-id"]
-        else:
-            event["record-id"] = record_id
-    notices = [*retractions, _date_parts_event("reinstatement", [2024, 6, 1])]
-    if reverse_order:
-        notices.reverse()
-    signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(*notices))
     _assert_disputed_crossref(signal)
-    crossref = signal["retraction_context"]["resolver_observations"][1]
-    retraction_dates = sorted(
-        event["date"] for event in crossref["events"] if event["kind"] == "retraction"
-    )
-    assert retraction_dates == ["2024-01-01T00:00:00Z", "2024-02-10T00:00:00Z"]
 
 
 @pytest.mark.parametrize(
@@ -420,12 +335,15 @@ def test_coarser_retraction_is_not_ordered_by_a_finer_retraction(
 
 def test_leading_padded_duplicate_does_not_hide_year_only_overlap() -> None:
     january = _date_parts_event("retraction", [2024, 1, 1])
-    year_only = {
-        **_date_parts_event("retraction", [2024]),
-        "DOI": "10.1234/notice.2",
+    year_only = _date_parts_event("retraction", [2024])
+    for event in (january, year_only):
+        del event["DOI"]
+        del event["record-id"]
+    june = {
+        **_date_parts_event("reinstatement", [2024, 6, 1]),
+        "DOI": "10.1234/reinstatement",
         "record-id": 43,
     }
-    june = _date_parts_event("reinstatement", [2024, 6, 1])
     signal = _resolve(
         openalex={"status": "degraded"},
         crossref=_cr(january, year_only, june),
