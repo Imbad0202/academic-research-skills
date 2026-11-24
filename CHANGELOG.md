@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Literature resolvers now treat dropped connections and malformed HTTP status lines as API failures (#1181, contributed by @pinjun99).** OpenAlex, Crossref, and arXiv raise their existing unavailable errors when a request fails before a status line arrives or the status line is invalid. Semantic Scholar also latches the outage on a malformed status line and skips further requests for the batch.
+
 - **The OpenAlex, Crossref, and arXiv protocols now describe the exact-title search rule from #431 (#1148).** All three protocols require an exact normalized title for title search and describe the matching-year preference among exact candidates. The DOI and arXiv ID cross-checks identify `_similarity` as the title score and retain the 0.70 threshold. `docs/ARCHITECTURE.md` now gives the S2 Tier 0 title and first-author requirements. The existing prompt-sync test covers the three protocols and both architecture rows. Prompt-level; unmeasured.
 
 - **After a resume or a compaction, the SessionStart announce names the plugin agents by their #1037 names (#1168).** The `compact|resume` branch of `scripts/announce-ars-loaded.sh` still listed `synthesis_agent`, `research_architect_agent`, `report_compiler_agent`, and `screening_reviewer_agent`; it now lists `synthesis-agent`, `research-architect-agent`, `report-compiler-agent`, and `screening-reviewer-agent`, as the startup branch does. A test in `scripts/test_check_command_skill_dispatch.py` runs the hook for `startup`, `clear`, `resume`, `compact`, and `fork` and checks that the context has one `Plugin agents` list and that it matches the frontmatter `name` of each file in `agents/`.

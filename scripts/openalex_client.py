@@ -184,7 +184,7 @@ class OpenAlexClient:
                         self._last_request_at = time.monotonic()
                         continue
                 raise OpenAlexUnavailable(f"OpenAlex HTTP {e.code}: {e.reason}") from e
-            except (urllib.error.URLError, TimeoutError) as e:
+            except (OSError, http.client.HTTPException) as e:
                 raise OpenAlexUnavailable(f"OpenAlex network error: {e}") from e
 
         raise OpenAlexUnavailable("OpenAlex rate limit exhausted after retries")

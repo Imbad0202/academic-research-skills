@@ -14,6 +14,7 @@ tool can switch over without code changes.
 """
 from __future__ import annotations
 
+import http.client
 import os
 import time
 import urllib.error
@@ -221,7 +222,7 @@ class SemanticScholarClient:
                 # batch on network error.
                 self._latched_unavailable = True
                 raise SemanticScholarUnavailable(f"S2 API network error: {e}") from e
-            except (OSError, TimeoutError) as e:
+            except (OSError, http.client.HTTPException) as e:
                 # Response-body read timeouts (socket.timeout subclasses
                 # OSError; TimeoutError is the 3.10+ alias) and other
                 # transient I/O failures during resp.read() must be
@@ -238,7 +239,7 @@ class SemanticScholarClient:
                 # entry × N entries.
                 self._latched_unavailable = True
                 raise SemanticScholarUnavailable(
-                    f"S2 API I/O failure during response read: {e}"
+                    f"S2 API I/O failure during request: {e}"
                 ) from e
         raise SemanticScholarUnavailable(f"S2 API exhausted {_MAX_RETRIES} retries")
 
