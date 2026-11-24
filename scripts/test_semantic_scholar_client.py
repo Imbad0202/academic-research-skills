@@ -296,6 +296,44 @@ class TitleSearchTest(unittest.TestCase):
             result = client.lookup({"title": "Unknown paper"})
         self.assertEqual(result, {"matched": False, "paperId": None})
 
+    def test_exact_hit_without_paper_id_is_no_match(self) -> None:
+        """#1171: lookup with no DOI does not match an exact hit that has no paperId."""
+        client = ssc.SemanticScholarClient(
+            min_interval_seconds=0, sleep=lambda _seconds: None
+        )
+        papers = (
+            {"title": "AI in education", "year": 2024},
+            {"paperId": None, "title": "AI in education", "year": 2024},
+            {"paperId": "", "title": "AI in education", "year": 2024},
+        )
+        for paper in papers:
+            with self.subTest(paperId=paper.get("paperId", "omitted")):
+                payload = {"data": [paper]}
+                with patch(
+                    "urllib.request.urlopen", _mock_urlopen_returning(payload)
+                ):
+                    result = client.lookup({"title": "AI in education", "year": 2024})
+                self.assertEqual(result, {"matched": False, "paperId": None})
+
+    def test_idless_hit_does_not_hide_later_hit_with_paper_id(self) -> None:
+        """#1171: an earlier exact hit without a paperId yields to a later one that has one.
+
+        The two hits share a title and year, so the tie keeps whichever eligible
+        hit is seen first.
+        """
+        client = ssc.SemanticScholarClient()
+        payload = {
+            "data": [
+                {"title": "AI in education", "year": 2024},
+                {"paperId": "second-id", "title": "AI in education", "year": 2024},
+            ]
+        }
+        with patch(
+            "urllib.request.urlopen", _mock_urlopen_returning(payload)
+        ):
+            result = client.lookup({"title": "AI in education", "year": 2024})
+        self.assertEqual(result, {"matched": True, "paperId": "second-id"})
+
 
 class FailureHandlingTest(unittest.TestCase):
     def _raise_http(self, code: int):

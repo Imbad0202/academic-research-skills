@@ -280,6 +280,11 @@ class SemanticScholarClient:
         candidates = data.get("data") or []
         best: tuple[float, dict[str, Any]] | None = None
         for cand in candidates:
+            # A hit with no paperId cannot match, and must not keep a tie
+            # ahead of a later hit that has one (#1171). Same eligibility
+            # check as _lookup_by_doi.
+            if not cand.get("paperId"):
+                continue
             cand_title = cand.get("title") or ""
             sim = _similarity(title, cand_title)
             if sim < _TITLE_SIMILARITY_THRESHOLD:
