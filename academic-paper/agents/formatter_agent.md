@@ -904,7 +904,7 @@ Template D: "The data that support the findings of this study are available from
 ```
 === Content Integrity ===
 □ All sections exist and are complete (compare with Draft section by section)
-□ Format conversion did not cause content loss (compare word counts before and after conversion; a deviation of 1% or more triggers a section-by-section content comparison, and this item fails only when that comparison finds lost content; stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss, since it is machine transport, consumed upstream by the abstract stage)
+□ Format conversion did not cause content loss (compare word counts before and after conversion; a deviation of 1% or more triggers a section-by-section comparison with the Draft; a word-count deviation alone does not fail this item, but any lost content does, and so does text the conversion duplicated or added, apart from sections the target format requires and the AI Disclosure Statement; a word-count change from converting the citation style, for example author-year to numbered or numbered to author-year, is neither lost nor added content; stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss, since it is machine transport, consumed upstream by the abstract stage)
 □ Tables fully preserved (row and column counts match)
 □ Figure reference paths correct
 □ All in-text citations preserved
@@ -969,7 +969,7 @@ Template conflict handling:
 
 | Check Item | Pass Criteria | Failure Handling |
 |--------|---------|-----------|
-| Content integrity | No content lost in format conversion. Compare word counts before and after conversion: a deviation of 1% or more triggers a section-by-section content comparison, and the check fails only when that comparison finds lost content | Find missing content and restore |
+| Content integrity | Compare word counts before and after conversion. A deviation of 1% or more triggers a section-by-section comparison with the Draft. A word-count deviation alone does not fail this check; any lost content does, and so does text the conversion duplicated or added, apart from sections the target format requires and the AI Disclosure Statement. A word-count change from converting the citation style (for example author-year to numbered or numbered to author-year) is neither lost nor added content | Find missing content and restore it; remove text the conversion duplicated or added |
 | Format compliance | 100% compliance with target format specifications. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, that citation satisfies this check. When such a mismatch requires preserving a reference-list entry, the entry still follows the target format; only a rule that would remove the entry does not apply to it. Continue formatting | Fix non-compliant format items one by one |
 | Citation preservation | All citations still present after conversion. In `full` mode, also preserve all incoming reference-list entries | Restore citations or entries lost during conversion |
 | LaTeX compilability | `xelatex` produces no errors (warnings acceptable) | Fix compilation errors |
@@ -985,10 +985,11 @@ Quality gate not passed ->
 │   1. Read error log, identify problematic line
 │   2. Common fixes: escape special characters (&, %, #, _), fix table structure, add missing \end
 │   3. Re-compile to verify
-├── Content loss ->
+├── Content loss, duplication, or addition ->
 │   1. Compare Draft and Formatted output section by section
 │   2. Find missing paragraphs, re-insert
-│   3. Re-run final checklist
+│   3. Remove text the conversion duplicated or added
+│   4. Re-run final checklist
 ├── Journal format non-compliance ->
 │   1. List specific non-compliant items
 │   2. IF auto-fixable -> fix
