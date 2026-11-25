@@ -109,6 +109,17 @@ def _windows_uname_dir():
     return d
 
 
+def _linux_uname_dir():
+    """A directory holding only a fake `uname` that reports a plain Linux kernel string.
+    Must be placed before _minimal_sys_path() (which symlinks the real `uname`) on PATH for
+    any test that needs run_guard.sh's walk to stay off regardless of what the actual test
+    host's own `uname -s` happens to report (#1130 round 4 item 3: a test that instead relied
+    on the ambient host not being MINGW/MSYS/Cygwin would fail for real on such a host)."""
+    d = tempfile.mkdtemp(prefix="ars_linux_uname_")
+    _fake_uname(os.path.join(d, "uname"), kernel="Linux")
+    return d
+
+
 # System dirs that hold sh/cat/grep/command/mktemp/sleep/kill/timeout. bin_dir goes FIRST
 # on PATH so our injected fake py/python3/python (and any stub that shadows the system one)
 # win interpreter resolution, while the launcher's own shell utilities still resolve.
@@ -792,11 +803,11 @@ class LauncherInfraProtectionTest(unittest.TestCase):
 
 class LauncherWindowsAppsExclusionTest(unittest.TestCase):
     """#1025: a real interpreter reachable outside WindowsApps is preferred over the alias
-    candidates. On a host where ARS_GUARD_FORCE_PATH_WALK (or a real MINGW/MSYS/Cygwin shell)
-    engages the walk, anything sitting in a WindowsApps-named path COMPONENT is skipped even
-    if it would otherwise be the first match on PATH; if nothing else is reachable, the walk
-    finds nothing and the unmodified candidate loop below still uses the WindowsApps one,
-    since something has to run the guard."""
+    candidates. On a host where a real MINGW/MSYS/Cygwin shell (or, in tests, a stubbed
+    `uname -s`) engages the walk, anything sitting in a WindowsApps-named path COMPONENT is
+    skipped even if it would otherwise be the first match on PATH; if nothing else is
+    reachable, the walk finds nothing and the unmodified candidate loop below still uses the
+    WindowsApps one, since something has to run the guard."""
 
     def _run_with_path(self, path, payload, extra_env=None, probe_bound=None):
         # Prepend a fake `uname` reporting a MINGW kernel string, so the walk engages the
@@ -1033,6 +1044,43 @@ class LauncherWindowsAppsExclusionTest(unittest.TestCase):
                              "the walk must stop at the first match and never consider a "
                              "later, healthier candidate")
 
+    def test_walk_is_directory_first_not_name_first(self):
+        # #1130 round 4 item 1: the walk must try every name in one directory before moving
+        # to the next directory, not try one name across the whole PATH before trying the
+        # next name. An early directory holding only python3, and a later directory holding a
+        # py that records its run, distinguishes the two orders: directory-first finds the
+        # early python3 and never reaches the later directory at all; name-first would walk
+        # the whole PATH looking for py first and find the later one before ever trying the
+        # early python3.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            early_dir = os.path.join(base, "early")
+            later_dir = os.path.join(base, "later")
+            os.makedirs(early_dir)
+            os.makedirs(later_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(early_dir, "python3"), marker_file, "early_python3")
+            # A fake `py` launcher: strips a leading -3 (real CPython does not understand it)
+            # before delegating, the same way the real Windows py launcher consumes -3 to pick
+            # a version rather than forwarding it to the interpreter it starts.
+            py_path = os.path.join(later_dir, "py")
+            _write_exec(py_path,
+                        f'#!/bin/sh\necho later_py >> "{marker_file}"\n'
+                        f'[ "$1" = "-3" ] && shift\nexec "{REAL_PY}" "$@"\n')
+            path = os.pathsep.join([early_dir, later_dir, _minimal_sys_path()])
+            full_path = os.pathsep.join([_windows_uname_dir(), path])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            env = {"PATH": full_path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND, "CLAUDE_PROJECT_DIR": ws}
+            proc = subprocess.run(
+                [_SH, LAUNCHER], input=json.dumps(payload), env=env,
+                capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+            )
+            self.assertEqual(proc.returncode, 0, f"err={proc.stderr!r}")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("early_python3"), 1,
+                             "directory-first: the early directory's python3 must run")
+            self.assertEqual(ran.count("later_py"), 0,
+                             "directory-first: the later directory's py must never be reached")
+
     def test_trailing_slash_path_entry_does_not_build_double_slash(self):
         # #1130 round 1 smaller item / round 2 item 5: a PATH entry ending in "/" must build
         # ".../name", not ".../name" with a doubled slash (which MSYS can read as a UNC or
@@ -1083,9 +1131,10 @@ class LauncherWindowsAppsExclusionTest(unittest.TestCase):
             _fake_recording_python(os.path.join(real_dir, "python3"), marker_file, "real")
             path = os.pathsep.join([windowsapps_dir, real_dir, _minimal_sys_path()])
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            env = {"PATH": path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND, "CLAUDE_PROJECT_DIR": ws}
-            # No fake uname prepended: run_guard.sh sees whatever `uname -s` this test host
-            # actually reports, which is not MINGW/MSYS/CYGWIN.
+            full_path = os.pathsep.join([_linux_uname_dir(), path])
+            env = {"PATH": full_path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND, "CLAUDE_PROJECT_DIR": ws}
+            # A stubbed `uname -s` reports a plain Linux kernel string, so this test proves
+            # the walk stays off regardless of what the real test host's own uname reports.
             proc = subprocess.run(
                 [_SH, LAUNCHER], input=json.dumps(payload), env=env,
                 capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,

@@ -359,23 +359,23 @@ try_candidate() {
 # `.exe` form) and prints the FIRST matching "name path" pair, then exits immediately,
 # starting no interpreter. PATH is inherited from the parent shell's environment.
 _ARS_DISCOVER_SCRIPT='
-for name in py python3 python; do
-    _rest=$PATH
-    while [ -n "$_rest" ]; do
-        case $_rest in
-            *:*) dir=${_rest%%:*}; _rest=${_rest#*:} ;;
-            *)   dir=$_rest; _rest= ;;
-        esac
-        case $dir in
-            /*) ;;
-            *) continue ;;
-        esac
-        case "/$dir/" in
-            */[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]/*) continue ;;
-        esac
-        case $dir in
-            */) dir=${dir%/} ;;
-        esac
+_rest=$PATH
+while [ -n "$_rest" ]; do
+    case $_rest in
+        *:*) dir=${_rest%%:*}; _rest=${_rest#*:} ;;
+        *)   dir=$_rest; _rest= ;;
+    esac
+    case $dir in
+        /*) ;;
+        *) continue ;;
+    esac
+    case "/$dir/" in
+        */[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]/*) continue ;;
+    esac
+    case $dir in
+        */) dir=${dir%/} ;;
+    esac
+    for name in py python3 python; do
         for cand_path in "$dir/$name" "$dir/$name.exe"; do
             if [ -f "$cand_path" ] && [ -x "$cand_path" ]; then
                 printf "%s %s\n" "$name" "$cand_path"
@@ -418,7 +418,7 @@ try_non_windowsapps_candidates
 #     itself) -> the guard is BROKEN; per the maintainer
 #     decision (section 3.2.1) degrade to pass-through + exit 0, never block, and do not run
 #     the guard again under another candidate.
-# This loop is byte-for-byte what it was before #1025, on every platform, whether or not the
+# This loop behaves as it did before #1025, on every platform, whether or not the
 # walk above ran: exactly `command -v "$1" >/dev/null 2>&1 || continue` then `try_candidate
 # "$@"`. It has no knowledge of what the walk above already tried (see the known limit noted
 # where the walk is introduced); round 2 added a resolved-path/skip-list variant of this loop
