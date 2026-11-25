@@ -60,7 +60,7 @@ TREE_BRANCH = (
     "check does not allow\n"
     "│   4. Re-run final checklist\n"
 )
-QUALITY_CHECKLIST_ITEM = "- [ ] No content lost, duplicated, or added during formatting"
+QUALITY_CHECKLIST_ITEM = "- [ ] No content lost during formatting"
 AI_DISCLOSURE_FAILURE_HANDLING = (
     "Insert the standard Disclosure text, or complete an existing statement in place "
     "with it"
