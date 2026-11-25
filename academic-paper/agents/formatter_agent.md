@@ -340,7 +340,7 @@ When converting **from** Chicago Notes-Bibliography:
 
 When converting **to** numbered formats:
 - Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package.
-- Replace author-year citations with bracketed numbers. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
+- Replace author-year citations with [Number] for IEEE and (Number) for Vancouver. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
 - Reorder the reference list numerically
 
 When converting **from** numbered formats:
@@ -354,12 +354,12 @@ After conversion, verify all of the following:
 
 - [ ] Total citation count matches (in-text: input count == output count)
 - [ ] Total reference count matches (reference list: input count == output count)
-- [ ] All author names preserved (no names lost or misspelled)
+- [ ] Reference-list author names follow the target style, including an applicable journal requirement: preserve author order and spelling. List the names required by the target rule that are available in the input. If the input author list is already truncated and the required names are unavailable, add no names: format the supplied names in the target style and raise the missing names as a content issue per Phase Boundary. Truncate only as that rule specifies (Vancouver lists all six authors when there are six, and the first six followed by et al. for more than six; a style that requires all seven names retains all seven when all seven names are available).
 - [ ] All years preserved
 - [ ] All titles preserved (case may change per target format rules)
 - [ ] All DOIs preserved
 - [ ] All volume/issue/page numbers preserved
-- [ ] In-text citation style matches target format. In `full` mode, a citation retained verbatim because of a reported incoming mismatch satisfies this check. Continue formatting.
+- [ ] In-text citation style matches target format. Where the target in-text style shows author names, preserve their spelling from the input. In `full` mode, a citation retained verbatim because of a reported incoming mismatch satisfies this check. Continue formatting.
 - [ ] Reference list ordering matches target format (alphabetical vs. numerical)
 - [ ] Conversion preserved citation-to-entry links. In `full` mode, incoming mismatches are in the Output Package warning. In other modes, check for orphan citations and entries.
 
@@ -371,7 +371,7 @@ Before delivering the output, verify:
 
 ### Content Integrity
 - [ ] All sections present and complete
-- [ ] No content lost during formatting
+- [ ] No content lost during formatting. In the blind-review version only, all author information removed as directed by the Author Information step is an allowed difference.
 - [ ] Tables and figures preserved
 - [ ] In `full` mode, citation content and all incoming reference-list entries preserved during formatting. In other modes, citations intact and correctly formatted, and the reference list complete.
 - [ ] In `full` mode, the incoming draft and list were compared before conversion and any findings are in the Output Package warning (Handoff Format Requirements)
@@ -904,7 +904,7 @@ Template D: "The data that support the findings of this study are available from
 ```
 === Content Integrity ===
 □ All sections exist and are complete (compare with Draft section by section)
-□ Format conversion did not cause content loss (word count comparison: deviation < 1%; stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss — it is machine transport, consumed upstream by the abstract stage)
+□ Format conversion did not lose, duplicate, or add content (compare word counts before and after conversion; a deviation of 1% or more triggers a section-by-section comparison with the Draft, the selected reference list, and the bilingual abstracts and keywords; a word-count deviation alone does not fail this item, but any lost content does, and so does text the conversion duplicated and text it added that is in none of those inputs; a section this file tells the formatter to add, such as the Data Availability Statement or the AI Disclosure Statement, may be added once when the Draft does not already have it, and a second copy still fails; a missing Abstract or Limitations section is reported, not written (Step 2.4 / 2.6); an existing AI Disclosure Statement that is incomplete may be completed in place with the standard text; a word-count change from converting the citation style, for example author-year to numbered or numbered to author-year, or from reformatting reference-list entries to the target style, for example abbreviated journal titles or `et al.`, is neither lost nor added content; stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss, since it is machine transport, consumed upstream by the abstract stage. In the blind-review version only, removing all author information as directed by the Author Information step is an allowed difference)
 □ Tables fully preserved (row and column counts match)
 □ Figure reference paths correct
 □ All in-text citations preserved
@@ -969,11 +969,11 @@ Template conflict handling:
 
 | Check Item | Pass Criteria | Failure Handling |
 |--------|---------|-----------|
-| Content integrity | Word count deviation < 1% before and after format conversion | Find missing content and restore |
+| Content integrity | Compare word counts before and after conversion. A deviation of 1% or more triggers a section-by-section comparison with the Draft, the selected reference list, and the bilingual abstracts and keywords. A word-count deviation alone does not fail this check; any lost content does, and so does text the conversion duplicated and text it added that is in none of those inputs. A section this file tells the formatter to add, such as the Data Availability Statement or the AI Disclosure Statement, may be added once when the Draft does not already have it; a second copy still fails. A missing Abstract or Limitations section is reported, not written (Step 2.4 / 2.6). An existing AI Disclosure Statement that is incomplete may be completed in place with the standard text. A word-count change from converting the citation style (for example author-year to numbered or numbered to author-year), or from reformatting reference-list entries to the target style (for example abbreviated journal titles or `et al.`), is neither lost nor added content. Stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss. In the blind-review version only, removing all author information as directed by the Author Information step is an allowed difference. | Restore missing content. In the blind-review version only, leave out all author information removed as directed by the Author Information step. Remove text the conversion duplicated and any addition this check does not allow. |
 | Format compliance | 100% compliance with target format specifications. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, that citation satisfies this check. When such a mismatch requires preserving a reference-list entry, the entry still follows the target format; only a rule that would remove the entry does not apply to it. Continue formatting | Fix non-compliant format items one by one |
 | Citation preservation | All citations still present after conversion. In `full` mode, also preserve all incoming reference-list entries | Restore citations or entries lost during conversion |
 | LaTeX compilability | `xelatex` produces no errors (warnings acceptable) | Fix compilation errors |
-| AI Disclosure | Present and complete | Insert standard Disclosure text |
+| AI Disclosure | Present and complete | Insert the standard Disclosure text, or complete an existing statement in place with it |
 | Journal requirements | All verifiable requirements met. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, a journal requirement that would change that citation does not apply to that citation. When such a mismatch requires preserving a reference-list entry, a journal requirement that would remove the entry does not apply to that entry, and every other requirement still does. The Output Package warning names each requirement not applied this way; all other citations and entries are checked as usual. Continue formatting | Adjust each other unmet item |
 | Final checklist | All items PASS, including any required Output Package warning | Fix formatting defects and raise content issues per Phase Boundary |
 
@@ -985,10 +985,11 @@ Quality gate not passed ->
 │   1. Read error log, identify problematic line
 │   2. Common fixes: escape special characters (&, %, #, _), fix table structure, add missing \end
 │   3. Re-compile to verify
-├── Content loss ->
-│   1. Compare Draft and Formatted output section by section
-│   2. Find missing paragraphs, re-insert
-│   3. Re-run final checklist
+├── Content loss, duplication, or addition ->
+│   1. Compare the Draft, the selected reference list, and the bilingual abstracts and keywords with the Formatted output section by section
+│   2. Re-insert missing text. In the blind-review version only, leave out all author information removed as directed by the Author Information step.
+│   3. Remove text the conversion duplicated and any addition the Content integrity check does not allow
+│   4. Re-run final checklist
 ├── Journal format non-compliance ->
 │   1. List specific non-compliant items
 │   2. IF auto-fixable -> fix
