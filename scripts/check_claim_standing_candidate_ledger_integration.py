@@ -31,10 +31,10 @@ FIXTURES = (
     Path("scripts/fixtures/claim_standing_candidate_ledger/retrieval_input.json"),
 )
 RESOLVER_HASHES = {
-    Path("scripts/semantic_scholar_client.py"): "86e2c3d713804d0e9f4d095e245db0521afb0d198686434515a0c1b225d0f787",
-    Path("scripts/openalex_client.py"): "e90207a2b591a385dab61a55a86a92a6623cb60c428edce360a4199947209cda",
-    Path("scripts/crossref_client.py"): "06da046164f882e20383cd63ec9e9b6da2507d7a5e1f23066adebb88f2256e25",
-    Path("scripts/arxiv_client.py"): "76ace0911bf98b1a288e64ee41f4c2caf993b9df48ef3abb0c57b8446acf02a7",
+    Path("scripts/semantic_scholar_client.py"): "06ffe21c8aff0e0c991bcde2bc04498f679cb043f6db3f9ac5c55f30b8b01454",
+    Path("scripts/openalex_client.py"): "3092962fbd683b0bff3a21096f9fca94b895c9aefca895a7d0b799a9f46cce03",
+    Path("scripts/crossref_client.py"): "521ae9363a517cd8253fcc57ca2b0f27997928f7de9136b059a16548b853674a",
+    Path("scripts/arxiv_client.py"): "79ea83f2a9161967d0e18ff614de41585db7b83d2785bdfc716fc9a50a65c67d",
 }
 ALLOWED_RUNTIME_DIRECT_IMPORTS = {
     "argparse",

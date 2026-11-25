@@ -205,6 +205,152 @@ def test_two_latest_crossref_reinstatements_are_reinstated() -> None:
     assert context["effective_status"] == "reinstated"
 
 
+def _date_parts_event(kind: str, parts: list[int]) -> dict:
+    event = _event(kind, None)
+    event["updated"] = {"date-parts": [parts]}
+    return event
+
+
+def _assert_disputed_crossref(signal: dict) -> None:
+    context = signal["retraction_context"]
+    crossref = context["resolver_observations"][1]
+    assert crossref["verdict"] == "disputed"
+    assert crossref["event_date"] is None
+    assert context["effective_status"] == "disputed"
+    assert signal["finding"] == "unresolved"
+
+
+@pytest.mark.parametrize(
+    ("parts_a", "stamp_b"),
+    [
+        ([2024], [2024, 2]),
+        ([2024], [2024, 2, 10]),
+        ([2024, 2], [2024, 2, 10]),
+        ([2024, 2, 10], "2024-02-10T15:00:00Z"),
+    ],
+    ids=["year-vs-year-month", "year-vs-full-date", "year-month-vs-full-date", "full-date-vs-date-time"],
+)
+@pytest.mark.parametrize(
+    ("kind_a", "kind_b"),
+    [("retraction", "reinstatement"), ("reinstatement", "retraction")],
+    ids=["a-retraction-b-reinstatement", "a-reinstatement-b-retraction"],
+)
+@pytest.mark.parametrize("reverse_order", [False, True], ids=["input-order", "reversed"])
+def test_overlapping_crossref_date_precisions_are_disputed(
+    parts_a: list[int],
+    stamp_b: list[int] | str,
+    kind_a: str,
+    kind_b: str,
+    reverse_order: bool,
+) -> None:
+    notice_a = _date_parts_event(kind_a, parts_a)
+    if isinstance(stamp_b, str):
+        notice_b = _event(kind_b, stamp_b)
+    else:
+        notice_b = _date_parts_event(kind_b, stamp_b)
+    notices = [notice_b, notice_a] if reverse_order else [notice_a, notice_b]
+    signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(*notices))
+    _assert_disputed_crossref(signal)
+
+
+@pytest.mark.parametrize(
+    ("parts_a", "parts_b", "event_date"),
+    [
+        ([2024], [2025, 1, 1], "2025-01-01T00:00:00Z"),
+        ([2024, 2], [2024, 3, 1], "2024-03-01T00:00:00Z"),
+        ([2024, 12, 31], [2025], "2025-01-01T00:00:00Z"),
+    ],
+    ids=["different-years", "different-months", "finer-date-earlier"],
+)
+@pytest.mark.parametrize(
+    ("kind_a", "kind_b"),
+    [("retraction", "reinstatement"), ("reinstatement", "retraction")],
+    ids=["a-retraction-b-reinstatement", "a-reinstatement-b-retraction"],
+)
+def test_separable_crossref_date_precisions_keep_the_later_notice(
+    parts_a: list[int],
+    parts_b: list[int],
+    event_date: str,
+    kind_a: str,
+    kind_b: str,
+) -> None:
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(_date_parts_event(kind_a, parts_a), _date_parts_event(kind_b, parts_b)),
+    )
+    context = signal["retraction_context"]
+    crossref = context["resolver_observations"][1]
+    verdict = "reinstated" if kind_b == "reinstatement" else "retracted"
+    assert crossref["verdict"] == verdict
+    assert crossref["event_date"] == event_date
+    assert context["effective_status"] == verdict
+
+
+def test_same_notice_at_year_and_day_precision_remains_disputed() -> None:
+    year_only = _date_parts_event("retraction", [2024])
+    february = _date_parts_event("retraction", [2024, 2, 10])
+    june = {
+        **_date_parts_event("reinstatement", [2024, 6, 1]),
+        "DOI": "10.1234/reinstatement",
+        "record-id": 43,
+    }
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(year_only, february, june),
+    )
+    _assert_disputed_crossref(signal)
+
+
+@pytest.mark.parametrize(
+    ("reinstatement_parts", "disputed"),
+    [
+        ([2024, 6, 1], True),
+        ([2025, 1, 1], False),
+    ],
+    ids=["same-year-reinstatement", "later-year-reinstatement"],
+)
+def test_coarser_retraction_is_not_ordered_by_a_finer_retraction(
+    reinstatement_parts: list[int],
+    disputed: bool,
+) -> None:
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(
+            _date_parts_event("retraction", [2024]),
+            {
+                **_date_parts_event("retraction", [2024, 2, 10]),
+                "DOI": "10.1234/notice.2",
+                "record-id": 43,
+            },
+            _date_parts_event("reinstatement", reinstatement_parts),
+        ),
+    )
+    if disputed:
+        _assert_disputed_crossref(signal)
+        return
+    context = signal["retraction_context"]
+    assert context["resolver_observations"][1]["verdict"] == "reinstated"
+    assert context["effective_status"] == "reinstated"
+
+
+def test_leading_padded_duplicate_does_not_hide_year_only_overlap() -> None:
+    january = _date_parts_event("retraction", [2024, 1, 1])
+    year_only = _date_parts_event("retraction", [2024])
+    for event in (january, year_only):
+        del event["DOI"]
+        del event["record-id"]
+    june = {
+        **_date_parts_event("reinstatement", [2024, 6, 1]),
+        "DOI": "10.1234/reinstatement",
+        "record-id": 43,
+    }
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(january, year_only, june),
+    )
+    _assert_disputed_crossref(signal)
+
+
 def test_conflicting_undated_crossref_events_are_disputed() -> None:
     signal = _resolve(
         openalex={"status": "degraded"},
