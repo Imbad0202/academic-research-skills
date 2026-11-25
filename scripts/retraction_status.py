@@ -13,7 +13,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, NamedTuple, Sequence
 
 try:
     from bibliographic_integrity_signals import _signal_id, validation_errors
@@ -62,45 +62,137 @@ def _canonical_sha(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-_DATE_PRECISION_RANK = {
-    "year": 0,
-    "year-month": 1,
-    "full-date": 2,
-    "date-time": 3,
-}
+_DATE_PRECISIONS = {"year", "year-month", "full-date", "date-time"}
+
+
+def _stamp_from_date_parts(parts: Any) -> tuple[str, str] | None:
+    if not isinstance(parts, list) or not parts or not isinstance(parts[0], list):
+        return None
+    components = parts[0][:3]
+    if not components:
+        return None
+    # bool is a subclass of int; JSON true must not become month 1 or day 1.
+    if not all(type(component) is int for component in components):
+        return None
+    precision = {1: "year", 2: "year-month", 3: "full-date"}[len(components)]
+    try:
+        year, month, day = (list(components) + [1, 1])[:3]
+        stamp = datetime(year, month, day, tzinfo=timezone.utc).isoformat().replace(
+            "+00:00", "Z"
+        )
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return stamp, precision
 
 
 def _event_date(event: Mapping[str, Any]) -> tuple[str | None, str | None]:
     updated = event.get("updated")
-    if isinstance(updated, Mapping):
-        value = updated.get("date-time")
-        if isinstance(value, str) and _parse_datetime(value):
-            return value, "date-time"
-        parts = updated.get("date-parts")
-        if isinstance(parts, list) and parts and isinstance(parts[0], list):
-            try:
-                components = parts[0][:3]
-                if not components:
-                    return None, None
-                precision = {1: "year", 2: "year-month", 3: "full-date"}[len(components)]
-                year, month, day = (list(components) + [1, 1])[:3]
-                stamp = datetime(year, month, day, tzinfo=timezone.utc).isoformat().replace(
-                    "+00:00", "Z"
-                )
-                return stamp, precision
-            except (TypeError, ValueError):
-                return None, None
+    if not isinstance(updated, Mapping):
+        return None, None
+    parts_stamp = _stamp_from_date_parts(updated.get("date-parts"))
+    # A year or year-month is the precision Crossref stated. A padded date-time
+    # on the same report must not turn it into an instant.
+    if parts_stamp is not None and parts_stamp[1] in {"year", "year-month"}:
+        return parts_stamp
+    value = updated.get("date-time")
+    if isinstance(value, str) and _parse_datetime(value) is not None:
+        return value, "date-time"
+    if parts_stamp is not None:
+        return parts_stamp
     return None, None
 
 
-def _date_at_precision(parsed: datetime, precision: str) -> Any:
-    if precision == "year":
-        return parsed.year
-    if precision == "year-month":
-        return parsed.year, parsed.month
+def _end_of_utc_day(year: int, month: int, day: int) -> datetime:
+    return datetime(year, month, day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+
+
+def _inclusive_bounds(parsed: datetime, precision: str) -> tuple[datetime, datetime]:
+    if precision == "date-time":
+        return parsed, parsed
     if precision == "full-date":
-        return parsed.date()
-    return parsed
+        start = datetime(parsed.year, parsed.month, parsed.day, tzinfo=timezone.utc)
+        return start, _end_of_utc_day(parsed.year, parsed.month, parsed.day)
+    if precision == "year-month":
+        start = datetime(parsed.year, parsed.month, 1, tzinfo=timezone.utc)
+        if parsed.month == 12:
+            last_day = 31
+        else:
+            last_day = (datetime(parsed.year, parsed.month + 1, 1) - timedelta(days=1)).day
+        return start, _end_of_utc_day(parsed.year, parsed.month, last_day)
+    if precision == "year":
+        start = datetime(parsed.year, 1, 1, tzinfo=timezone.utc)
+        return start, _end_of_utc_day(parsed.year, 12, 31)
+    raise ValueError(precision)
+
+
+def _day_stamp(value: datetime) -> str:
+    return datetime(value.year, value.month, value.day, tzinfo=timezone.utc).isoformat().replace(
+        "+00:00", "Z"
+    )
+
+
+class _Notice(NamedTuple):
+    kind: str
+    earliest: datetime | None
+    latest: datetime | None
+    exact_stamp: str | None
+
+
+def _notice_span(kind: str, reports: Sequence[tuple[Mapping[str, Any], str, datetime]]) -> _Notice:
+    bounds = [
+        (*_inclusive_bounds(parsed, precision), precision, event.get("date"))
+        for event, precision, parsed in reports
+    ]
+    earliest = min(item[0] for item in bounds)
+    latest = max(item[1] for item in bounds)
+    exact_stamp = None
+    if earliest == latest:
+        for _start, end, precision, stamp in bounds:
+            if precision == "date-time" and end == latest and isinstance(stamp, str):
+                exact_stamp = stamp
+                break
+    return _Notice(kind, earliest, latest, exact_stamp)
+
+
+def _finishes_latest(notice: _Notice, notices: Sequence[_Notice]) -> bool:
+    if notice.earliest is None or notice.latest is None:
+        return True
+    for other in notices:
+        if other is notice:
+            continue
+        if other.earliest is None or notice.latest < other.earliest:
+            return False
+    return True
+
+
+def _timing_bounds(notices: Sequence[_Notice]) -> tuple[datetime | None, datetime | None] | None:
+    lowers = [notice.earliest for notice in notices if notice.earliest is not None]
+    if not lowers:
+        return None
+    earliest = max(lowers)
+    if any(notice.latest is None for notice in notices):
+        return earliest, None
+    latest = max(notice.latest for notice in notices if notice.latest is not None)
+    return earliest, latest
+
+
+def _published_event_date(
+    notices: Sequence[_Notice],
+) -> tuple[str | None, tuple[datetime, datetime] | None]:
+    if any(notice.earliest is None or notice.latest is None for notice in notices):
+        return None, None
+    earliest = max(notice.earliest for notice in notices if notice.earliest is not None)
+    latest = max(notice.latest for notice in notices if notice.latest is not None)
+    bounds = (earliest, latest)
+    if earliest.date() != latest.date():
+        return None, bounds
+    if earliest == latest:
+        for notice in notices:
+            if notice.exact_stamp and notice.latest == latest:
+                return notice.exact_stamp, bounds
+        rendered = latest.isoformat().replace("+00:00", "Z")
+        return rendered, bounds
+    return _day_stamp(earliest), bounds
 
 
 def _event_kind(event: Mapping[str, Any]) -> str | None:
@@ -155,7 +247,9 @@ def _crossref_events(
     return events
 
 
-def _reduce_crossref(records: Sequence[Mapping[str, Any]], cited_doi: str) -> dict[str, Any]:
+def _reduce_crossref(
+    records: Sequence[Mapping[str, Any]], cited_doi: str
+) -> tuple[dict[str, Any], tuple[datetime | None, datetime | None] | None]:
     pairs = _crossref_events(records, cited_doi)
     events: list[dict[str, Any]] = []
     seen_events: set[str] = set()
@@ -166,43 +260,62 @@ def _reduce_crossref(records: Sequence[Mapping[str, Any]], cited_doi: str) -> di
             events.append(event)
     has_cited_record = any(normalize_doi(record.get("DOI")) == cited_doi for record in records)
     if not events:
-        return {
+        reduced = {
             "verdict": "not_retracted" if has_cited_record else "unknown",
             "event_date": None,
             "events": [],
         }
-    status_pairs = [
-        (event, precision)
-        for event, precision in pairs
-        if event["kind"] in {"retraction", "reinstatement"}
-    ]
-    dated = [
-        (event, precision, _parse_datetime(event["date"]))
-        for event, precision in status_pairs
-    ]
-    if any(parsed is None for _, _, parsed in dated) and len({event["kind"] for event, _, _ in dated}) > 1:
-        return {"verdict": "disputed", "event_date": None, "events": events}
-    latest, latest_precision, latest_at = max(
-        dated, key=lambda item: item[2] or datetime.min.replace(tzinfo=timezone.utc)
-    )
-    # A coarser date still covers every finer instant inside it, so compare the
-    # leading event with every opposite-kind notice. Equality cannot be ordered.
-    if latest_at is not None and latest_precision is not None:
-        for event, precision, parsed in dated:
-            if event["kind"] == latest["kind"] or parsed is None or precision is None:
-                continue
-            level = (
-                latest_precision
-                if _DATE_PRECISION_RANK[latest_precision] <= _DATE_PRECISION_RANK[precision]
-                else precision
-            )
-            if _date_at_precision(parsed, level) == _date_at_precision(latest_at, level):
-                return {"verdict": "disputed", "event_date": None, "events": events}
-    return {
-        "verdict": "reinstated" if latest["kind"] == "reinstatement" else "retracted",
-        "event_date": latest["date"],
+        return reduced, None
+    reports: list[tuple[dict[str, Any], str | None, datetime | None]] = []
+    for event, precision in pairs:
+        parsed = _parse_datetime(event["date"]) if isinstance(event.get("date"), str) else None
+        if precision not in _DATE_PRECISIONS:
+            parsed = None
+            precision = None
+        reports.append((event, precision, parsed))
+    if any(parsed is None for _, _, parsed in reports) and len({event["kind"] for event, _, _ in reports}) > 1:
+        return {"verdict": "disputed", "event_date": None, "events": events}, None
+
+    # Reports that share a notice DOI are alternative dates of one notice.
+    # A finer date does not narrow the coarser span.
+    grouped: dict[tuple[Any, ...], list[tuple[dict[str, Any], str | None, datetime | None]]] = {}
+    anon = 0
+    for event, precision, parsed in reports:
+        notice_doi = event.get("notice_doi")
+        if isinstance(notice_doi, str) and notice_doi:
+            key = (notice_doi, event["kind"])
+        else:
+            key = (None, event["kind"], anon)
+            anon += 1
+        grouped.setdefault(key, []).append((event, precision, parsed))
+
+    notices: list[_Notice] = []
+    for group in grouped.values():
+        kind = group[0][0]["kind"]
+        dated: list[tuple[Mapping[str, Any], str, datetime]] = []
+        undated = False
+        for event, precision, parsed in group:
+            if precision is None or parsed is None:
+                undated = True
+                break
+            dated.append((event, precision, parsed))
+        notices.append(_Notice(kind, None, None, None) if undated else _notice_span(kind, dated))
+
+    winners = [notice for notice in notices if _finishes_latest(notice, notices)]
+    if len({notice.kind for notice in winners}) != 1:
+        return {"verdict": "disputed", "event_date": None, "events": events}, None
+    kind = winners[0].kind
+    event_date, _ = _published_event_date(winners)
+    # Timing uses every notice of the winning kind, including dated notices
+    # that an undated peer evicted from the winner set. The latest event is
+    # still at least as late as the latest known lower bound.
+    bounds = _timing_bounds([notice for notice in notices if notice.kind == kind])
+    reduced = {
+        "verdict": "reinstated" if kind == "reinstatement" else "retracted",
+        "event_date": event_date,
         "events": events,
     }
+    return reduced, bounds
 
 
 def _resolver_observations(
@@ -210,9 +323,10 @@ def _resolver_observations(
     cited_doi: str,
     openalex: Mapping[str, Any],
     crossref: Mapping[str, Any],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], tuple[datetime | None, datetime | None] | None]:
     observations: list[dict[str, Any]] = []
     evidence: list[dict[str, Any]] = []
+    latest_bounds: tuple[datetime | None, datetime | None] | None = None
 
     oa_status = openalex.get("status")
     oa_record = openalex.get("record")
@@ -243,7 +357,7 @@ def _resolver_observations(
     cr_records = crossref.get("records")
     if cr_status == "checked" and isinstance(cr_records, list):
         records = [record for record in cr_records if isinstance(record, Mapping)]
-        reduced = _reduce_crossref(records, cited_doi)
+        reduced, latest_bounds = _reduce_crossref(records, cited_doi)
         observations.append({
             "resolver": "Crossref",
             "status": "checked",
@@ -268,7 +382,7 @@ def _resolver_observations(
             "observed_value": status,
             "evidence_sha256": None,
         })
-    return observations, evidence
+    return observations, evidence, latest_bounds
 
 
 def _reconcile(observations: Sequence[Mapping[str, Any]]) -> tuple[str, str, str | None]:
@@ -294,14 +408,26 @@ def _load_bearing(affected_claims: Sequence[str], claim_impacts: Mapping[str, st
     return "not_decidable"
 
 
-def _timing(source_acquisition_date: Any, event_date: str | None) -> str:
+def _timing(
+    source_acquisition_date: Any,
+    event_bounds: tuple[datetime | None, datetime | None] | None,
+) -> str:
     acquired = _parse_datetime(source_acquisition_date if isinstance(source_acquisition_date, str) else None)
-    event = _parse_datetime(event_date)
-    if acquired is None or event is None:
+    if acquired is None or event_bounds is None:
         return "not_decidable"
-    if event.date() == acquired.date():
+    earliest, latest = event_bounds
+    acquired_day = acquired.date()
+    if earliest is not None and acquired_day < earliest.date():
+        return "after_acquisition"
+    if latest is not None and acquired_day > latest.date():
+        return "before_acquisition"
+    if (
+        earliest is not None
+        and latest is not None
+        and earliest.date() == latest.date()
+    ):
         return "same_day"
-    return "after_acquisition" if event > acquired else "before_acquisition"
+    return "not_decidable"
 
 
 def resolve_retraction_signal(
@@ -348,9 +474,10 @@ def resolve_retraction_signal(
             "evidence_sha256": None,
         }]
         effective, agreement, event_date = "unknown", "unknown", None
+        latest_bounds = None
         check_status = "not_checked"
     else:
-        observations, evidence = _resolver_observations(
+        observations, evidence, latest_bounds = _resolver_observations(
             cited_doi=doi, openalex=openalex, crossref=crossref
         )
         effective, agreement, event_date = _reconcile(observations)
@@ -426,7 +553,7 @@ def resolve_retraction_signal(
             "load_bearing": _load_bearing(affected_claims, claim_impacts or {}),
             "claim_join_rule": "worst_tier_wins",
             "source_acquisition_date": entry.get("source_acquisition_date") if isinstance(entry.get("source_acquisition_date"), str) else None,
-            "timing_vs_acquisition": _timing(entry.get("source_acquisition_date"), event_date),
+            "timing_vs_acquisition": _timing(entry.get("source_acquisition_date"), latest_bounds),
             "declared_legitimate_citation": {
                 "declared": declared,
                 "declaration_id": declaration_id if isinstance(declaration_id, str) else None,
