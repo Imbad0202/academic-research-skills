@@ -1,5 +1,5 @@
-"""Pin Vancouver in-text parentheses, the blind-review restore exception, and
-style-directed reference-list author names (#1172)."""
+"""Pin Vancouver in-text parentheses, the blind-review integrity exception, and
+style-directed author names (#1172)."""
 
 from __future__ import annotations
 
@@ -13,25 +13,42 @@ NUMBERED_CONVERSION_BULLET = (
 )
 
 CONTENT_INTEGRITY_FAILURE_HANDLING = (
-    "Find missing content and restore it. Manuscript author fields removed for "
-    "the blind-review version are an allowed difference. Do not restore those "
-    "fields in that version. Remove text the conversion duplicated and any "
-    "addition this check does not allow."
+    "Restore missing content. In the blind-review version only, leave out all "
+    "author information removed as directed by the Author Information step. "
+    "Remove text the conversion duplicated and any addition this check does "
+    "not allow."
 )
 
 CONTENT_LOSS_STEP = (
-    "│   2. Find missing text and re-insert it. Manuscript author fields "
-    "removed for the blind-review version are an allowed difference. Do not "
-    "re-insert those fields in that version."
+    "│   2. Re-insert missing text. In the blind-review version only, leave "
+    "out all author information removed as directed by the Author Information "
+    "step."
+)
+
+BLIND_REVIEW_PASS_AFTER_548 = (
+    "Stripping the `<!--protected-hedges: ...-->` control comment (#548) is "
+    "required, not content loss. In the blind-review version only, removing "
+    "all author information as directed by the Author Information step is an "
+    "allowed difference."
 )
 
 REFERENCE_LIST_AUTHOR_CHECKBOX = (
     "- [ ] Reference-list author names follow the target style, including an "
-    "applicable journal requirement: preserve author order and spelling, list "
-    "every required name, and use et al. only where that rule calls for "
-    "truncation (Vancouver lists all six authors when there are six, and the "
-    "first six followed by et al. for more than six; a style that requires all "
-    "seven names retains all seven)."
+    "applicable journal requirement: preserve author order and spelling. List "
+    "the names required by the target rule that are available in the input. "
+    "If the input author list is already truncated and the required names are "
+    "unavailable, preserve the truncated list as supplied and report the "
+    "limitation in the Output Package. Truncate only as that rule specifies "
+    "(Vancouver lists all six authors when there are six, and the first six "
+    "followed by et al. for more than six; a style that requires all seven "
+    "names retains all seven when all seven names are available)."
+)
+
+IN_TEXT_CITATION_CHECKBOX = (
+    "- [ ] In-text citation style matches target format. Where the target "
+    "in-text style shows author names, preserve their spelling from the "
+    "input. In `full` mode, a citation retained verbatim because of a "
+    "reported incoming mismatch satisfies this check. Continue formatting."
 )
 
 OLD_UNCONDITIONAL_AUTHOR_CHECKBOX = (
@@ -105,6 +122,9 @@ def test_content_integrity_failure_handling_allows_blind_review_removal() -> Non
     assert len(header_rows) == 1
     header = _markdown_cells(header_rows[0])
     cells = _markdown_cells(rows[0])
+    assert cells[header.index("Pass Criteria")].endswith(
+        BLIND_REVIEW_PASS_AFTER_548
+    )
     assert cells[header.index("Failure Handling")] == (
         CONTENT_INTEGRITY_FAILURE_HANDLING
     )
@@ -122,25 +142,35 @@ def test_content_loss_recovery_allows_blind_review_removal() -> None:
 def test_verification_checklist_reference_authors_follow_the_target_style() -> None:
     text = FORMATTER.read_text(encoding="utf-8")
     section = text.split("### Verification Checklist\n", 1)[1].split("\n---\n", 1)[0]
-    author_items = [
+    reference_items = [
         line
         for line in section.splitlines()
-        if line.startswith("- [ ]") and "author" in line.lower()
+        if line.startswith("- [ ] Reference-list author names")
     ]
-    assert len(author_items) == 1
-    checkbox = author_items[0]
+    assert len(reference_items) == 1
+    checkbox = reference_items[0]
     assert checkbox == REFERENCE_LIST_AUTHOR_CHECKBOX
+    in_text_items = [
+        line
+        for line in section.splitlines()
+        if line.startswith("- [ ] In-text citation style")
+    ]
+    assert len(in_text_items) == 1
+    assert in_text_items[0] == IN_TEXT_CITATION_CHECKBOX
     assert OLD_UNCONDITIONAL_AUTHOR_CHECKBOX not in section
     for required in (
         "author order",
         "spelling",
-        "every required name",
-        "et al.",
-        "truncation",
         "applicable journal requirement",
+        "names required by the target rule that are available in the input",
+        "already truncated and the required names are unavailable",
+        "preserve the truncated list as supplied",
+        "report the limitation in the Output Package",
+        "Truncate only as that rule specifies",
+        "et al.",
         "all six authors when there are six",
         "first six followed by et al. for more than six",
-        "requires all seven names retains all seven",
+        "retains all seven when all seven names are available",
     ):
         assert required in checkbox
     for adjacent in ADJACENT_REFERENCE_CHECKS:
