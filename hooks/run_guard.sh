@@ -264,7 +264,7 @@ GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 # #1015). If a real interpreter is already reachable on PATH outside WindowsApps, using it
 # instead avoids the alias path entirely, rather than only cutting launches per call (#1015).
 #
-# We only ever look at PATH entries own filesystem paths, never a candidate printed output:
+# We only ever look at PATH entries' own filesystem paths, never a candidate's printed output:
 # an approach that took the interpreter path FROM a probe output kept raising new review
 # findings across three rounds in #1019 and was replaced, so this repeats that lesson rather
 # than the rejected approach.
@@ -272,7 +272,7 @@ GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 # #1130 round 1 review fixed these on the walk below:
 #  - it only runs on MINGW/MSYS/Cygwin shells (item 3; ARS_GUARD_FORCE_PATH_WALK overrides
 #    for tests). On WSL, Windows-PATH interop can put a Windows py.exe on PATH; it prints
-#    the marker, then cannot open this script own Linux guard path, so try_candidate
+#    the marker, then cannot open this script's own Linux guard path, so try_candidate
 #    returns 1 and every write degrades to pass-through. macOS, Linux and plain WSL keep the
 #    unmodified pre-#1025 candidate order instead of running this walk at all.
 #  - it only accepts ABSOLUTE PATH entries (item 1): a relative entry such as `.` would let a
@@ -309,7 +309,7 @@ _path_already_tried() {
 # Bash 3.2 / dash compatible: no ${var,,}. uname -s reliably reports an uppercase MINGW*/
 # MSYS*/CYGWIN* prefix on those shells; ARS_GUARD_FORCE_PATH_WALK is a test-only override
 # (same pattern as ARS_GUARD_FORCE_WATCHDOG above) so the walk can be exercised on any host
-# without depending on the test runner own platform.
+# without depending on the test runner's own platform.
 _ARS_WINDOWS_SHELL=
 case $(uname -s 2>/dev/null) in
     MINGW*|MSYS*|CYGWIN*) _ARS_WINDOWS_SHELL=1 ;;
