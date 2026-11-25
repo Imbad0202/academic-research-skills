@@ -1004,36 +1004,34 @@ class LauncherWindowsAppsExclusionTest(unittest.TestCase):
                              "the guard must not be retried under the WindowsApps candidate "
                              "after a preferred candidate already printed the marker and timed out")
 
-    def test_unhealthy_first_match_tries_next_candidate(self):
-        # #1130 item 5: an unhealthy first match (one that never even prints the marker, like
-        # a Python 2 interpreter hitting a Python-3-only -I flag, or any broken shim) must not
-        # send the launcher straight to the WindowsApps alias; the walk must keep trying later
-        # PATH entries and use a healthy interpreter if one exists further along.
+    def test_walk_tries_only_the_first_match(self):
+        # #1130 round 3: the walk stops at the first absolute, non-WindowsApps match and does
+        # not keep looking for a healthier one further down PATH. A broken first match (one
+        # that never even prints the marker) falls through to the unmodified old loop below,
+        # which is a separate, independent mechanism (see test_preferred_candidate_failure_
+        # degrades_to_passthrough_not_retried for the "marker then fails" case, and the "known
+        # limit" note in run_guard.sh for what the old loop does next); this test is only about
+        # discovery itself never considering the later, healthy entry as a candidate at all.
         with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
-            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
-            unhealthy_dir = os.path.join(base, "unhealthy")
+            broken_dir = os.path.join(base, "broken")
             healthy_dir = os.path.join(base, "healthy")
-            os.makedirs(windowsapps_dir)
-            os.makedirs(unhealthy_dir)
+            os.makedirs(broken_dir)
             os.makedirs(healthy_dir)
             marker_file = os.path.join(base, "ran.log")
-            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
-            # An "unhealthy" shim: executable, but does not understand -I/-c and so never
-            # prints the marker at all (try_candidate sees no marker -> status 2, try next).
-            _write_exec(os.path.join(unhealthy_dir, "python3"), "#!/bin/sh\nexit 1\n")
+            # A "broken" shim: executable, but does not understand -I/-c and so never prints
+            # the marker at all (try_candidate sees no marker -> status 2).
+            _write_exec(os.path.join(broken_dir, "python3"), "#!/bin/sh\nexit 1\n")
             _fake_recording_python(os.path.join(healthy_dir, "python3"), marker_file, "healthy")
-            path = os.pathsep.join([unhealthy_dir, healthy_dir, windowsapps_dir, _minimal_sys_path()])
+            # No WindowsApps directory anywhere on this PATH: the only way the healthy
+            # candidate could ever run is if the walk kept looking past the first match.
+            path = os.pathsep.join([broken_dir, healthy_dir, _minimal_sys_path()])
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0, f"err={err!r}")
-            decision = json.loads(out)
-            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
-                             "must keep walking past the unhealthy first match to the healthy one")
             ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
-            self.assertEqual(ran.count("healthy"), 1)
-            self.assertEqual(ran.count("windowsapps"), 0,
-                             "an unhealthy first match must not send the launcher to the "
-                             "WindowsApps alias while a healthy interpreter is still untried")
+            self.assertEqual(ran.count("healthy"), 0,
+                             "the walk must stop at the first match and never consider a "
+                             "later, healthier candidate")
 
     def test_trailing_slash_path_entry_does_not_build_double_slash(self):
         # #1130 round 1 smaller item / round 2 item 5: a PATH entry ending in "/" must build
@@ -1133,52 +1131,6 @@ class LauncherWindowsAppsExclusionTest(unittest.TestCase):
                              "walk on: the WindowsApps directory must never be tried")
 
 
-class LauncherWindowsAppsSkipListTest(unittest.TestCase):
-    """#1130 round 2 item 6: the skip list between the walk and the unmodified candidate
-    loop below it must not silently drop a candidate that was never actually tried, and
-    an empty PATH entry (a bare `::` or a trailing `:`) must never be read as the current
-    directory."""
-
-    def _run_with_path(self, path, payload, extra_env=None):
-        full_path = os.pathsep.join([_windows_uname_dir(), path])
-        env = {"PATH": full_path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND}
-        if extra_env:
-            env.update(extra_env)
-        proc = subprocess.run(
-            [_SH, LAUNCHER], input=json.dumps(payload), env=env,
-            capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
-        )
-        return proc.returncode, proc.stdout, proc.stderr
-
-    def test_unhealthy_candidate_and_windowsapps_each_run_exactly_once(self):
-        # A healthy WindowsApps python3 sits FIRST on PATH, an unhealthy real python3 (never
-        # prints the marker) sits second. The walk excludes the WindowsApps directory from
-        # discovery, finds and tries only the unhealthy one (status 2: no marker, try the
-        # next candidate -- there is none), and returns having found no usable decision. The
-        # old loop's `command -v python3` then resolves to the FIRST PATH match, the healthy
-        # WindowsApps one, which the skip list has not recorded (the walk only ever tried the
-        # unhealthy path), so it runs and produces "deny". Each interpreter must run exactly
-        # once: the unhealthy one is not retried, and the healthy one is not skipped.
-        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
-            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
-            unhealthy_dir = os.path.join(base, "unhealthy")
-            os.makedirs(windowsapps_dir)
-            os.makedirs(unhealthy_dir)
-            marker_file = os.path.join(base, "ran.log")
-            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
-            unhealthy_path = os.path.join(unhealthy_dir, "python3")
-            _write_exec(unhealthy_path, f'#!/bin/sh\necho unhealthy >> "{marker_file}"\nexit 1\n')
-            path = os.pathsep.join([windowsapps_dir, unhealthy_dir, _minimal_sys_path()])
-            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
-            self.assertEqual(code, 0, f"err={err!r}")
-            decision = json.loads(out)
-            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
-                             "the healthy WindowsApps candidate must still run via the old loop")
-            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
-            self.assertEqual(ran.count("unhealthy"), 1, "the unhealthy candidate must run exactly once")
-            self.assertEqual(ran.count("windowsapps"), 1, "the healthy candidate must run exactly once")
-
     def test_empty_path_entries_are_not_treated_as_absolute_in_the_walk(self):
         # A PATH with a bare "::" (an empty entry mid-string) and a trailing ":" (an empty
         # entry at the end) must never be treated as an absolute candidate BY THE WALK,
@@ -1214,5 +1166,7 @@ class LauncherWindowsAppsSkipListTest(unittest.TestCase):
             self.assertEqual(ran.count("real"), 1,
                              "the walk must find and use the real candidate, not fall through "
                              "to the old loop at all")
+
+
 if __name__ == "__main__":
     unittest.main()
