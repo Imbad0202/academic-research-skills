@@ -26,11 +26,14 @@ ROW_PASS_CRITERIA = (
     "reformatting reference-list entries to the target style (for example "
     "abbreviated journal titles or `et al.`), is neither lost nor added content. "
     "Stripping the `<!--protected-hedges: ...-->` control comment (#548) is "
-    "required, not content loss"
+    "required, not content loss. In the blind-review version only, removing all "
+    "author information as directed by the Author Information step is an allowed "
+    "difference."
 )
 ROW_FAILURE_HANDLING = (
-    "Find missing content and restore it; remove text the conversion duplicated and any "
-    "addition this check does not allow"
+    "Restore missing content. In the blind-review version only, leave out all "
+    "author information removed as directed by the Author Information step. Remove "
+    "text the conversion duplicated and any addition this check does not allow."
 )
 CHECKLIST_ITEM = (
     "□ Format conversion did not lose, duplicate, or add content (compare word "
@@ -49,18 +52,25 @@ CHECKLIST_ITEM = (
     "reference-list entries to the target style, for example abbreviated journal "
     "titles or `et al.`, is neither lost nor added content; stripping the "
     "`<!--protected-hedges: ...-->` control comment (#548) is required, not content "
-    "loss, since it is machine transport, consumed upstream by the abstract stage)"
+    "loss, since it is machine transport, consumed upstream by the abstract stage. "
+    "In the blind-review version only, removing all author information as directed "
+    "by the Author Information step is an allowed difference)"
 )
 TREE_BRANCH = (
     "├── Content loss, duplication, or addition ->\n"
     "│   1. Compare the Draft, the selected reference list, and the bilingual "
     "abstracts and keywords with the Formatted output section by section\n"
-    "│   2. Find missing text, re-insert\n"
+    "│   2. Re-insert missing text. In the blind-review version only, leave out "
+    "all author information removed as directed by the Author Information step.\n"
     "│   3. Remove text the conversion duplicated and any addition the Content integrity "
     "check does not allow\n"
     "│   4. Re-run final checklist\n"
 )
-QUALITY_CHECKLIST_ITEM = "- [ ] No content lost during formatting"
+QUALITY_CHECKLIST_ITEM = (
+    "- [ ] No content lost during formatting. In the blind-review version only, "
+    "all author information removed as directed by the Author Information step "
+    "is an allowed difference."
+)
 AI_DISCLOSURE_FAILURE_HANDLING = (
     "Insert the standard Disclosure text, or complete an existing statement in place "
     "with it"
