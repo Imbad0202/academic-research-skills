@@ -452,10 +452,16 @@ def test_partial_date_parts_precede_a_padded_timestamp(
 def test_invalid_timestamp_does_not_replace_partial_date_parts() -> None:
     event = _date_parts_event("retraction", [2024])
     event["updated"]["date-time"] = "not-a-date"
-    signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(event))
-    crossref = signal["retraction_context"]["resolver_observations"][1]
+    signal = _resolve(
+        entry=_entry(source_acquisition_date="2025-01-01T00:00:00Z"),
+        openalex={"status": "degraded"},
+        crossref=_cr(event),
+    )
+    context = signal["retraction_context"]
+    crossref = context["resolver_observations"][1]
     assert crossref["verdict"] == "retracted"
     assert crossref["event_date"] is None
+    assert context["timing_vs_acquisition"] == "before_acquisition"
 
 
 def test_invalid_timestamp_falls_back_to_full_date_parts() -> None:
@@ -512,12 +518,15 @@ def test_year_9999_notice_dates_do_not_abort_resolution(
     parts: list[int], event_date: str | None
 ) -> None:
     signal = _resolve(
+        entry=_entry(source_acquisition_date="2026-01-01T00:00:00Z"),
         openalex={"status": "degraded"},
         crossref=_cr(_date_parts_event("retraction", parts)),
     )
-    crossref = signal["retraction_context"]["resolver_observations"][1]
+    context = signal["retraction_context"]
+    crossref = context["resolver_observations"][1]
     assert crossref["verdict"] == "retracted"
     assert crossref["event_date"] == event_date
+    assert context["timing_vs_acquisition"] == "after_acquisition"
 
 
 def test_three_part_dates_keep_time_of_day_ordering() -> None:
@@ -639,6 +648,20 @@ def test_one_retraction_doi_with_two_full_dates_stays_retracted(reverse_order: b
     assert crossref["event_date"] is None
     assert context["effective_status"] == "retracted"
     assert context["retraction_event_date"] is None
+
+
+def test_same_retraction_doi_at_year_and_day_precision_keeps_year_timing() -> None:
+    year_only = _dated_notice("retraction", [2024], "10.1234/retraction", 42)
+    february = _dated_notice("retraction", [2024, 2, 10], "10.1234/retraction", 43)
+    signal = _resolve(
+        entry=_entry(source_acquisition_date="2024-01-15T00:00:00Z"),
+        openalex={"status": "degraded"},
+        crossref=_cr(year_only, february),
+    )
+    context = signal["retraction_context"]
+    assert context["effective_status"] == "retracted"
+    assert context["retraction_event_date"] is None
+    assert context["timing_vs_acquisition"] == "not_decidable"
 
 
 @pytest.mark.parametrize(
