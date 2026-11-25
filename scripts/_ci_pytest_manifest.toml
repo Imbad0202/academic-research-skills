@@ -791,3 +791,7 @@ path = "scripts/test_dispatch_panel_claim_audit.py"
 [[pytest]]
 id = "1078-author-letter"
 path = "scripts/test_check_author_letter.py"
+
+[[pytest]]
+id = "1108-manuscript-retraction-check"
+path = "scripts/test_check_manuscript_retractions.py"
