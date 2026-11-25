@@ -77,7 +77,7 @@ def check_relative_markdown_links(rel_path: str) -> None:
 def check_mode_registry() -> None:
     rel_path = "MODE_REGISTRY.md"
     text = read(rel_path)
-    expect_contains(rel_path, "Last updated: v3.24.5 (2026-11-24)")
+    expect_contains(rel_path, "Last updated: v3.24.5 (2026-11-26)")
     for heading in (
         "## deep-research (8 modes)",
         "## academic-paper (11 modes)",
@@ -318,7 +318,7 @@ def check_architecture_component_version() -> None:
 # drop the oldest) — the lint fails on any extra `### v` heading so the section
 # cannot silently regrow (2026-09-15 README slimming).
 README_CHANGELOG_KEEP = (
-    ("3.24.5", "2026-11-24"),
+    ("3.24.5", "2026-11-26"),
     ("3.24.4", "2026-11-19"),
     ("3.24.3", "2026-11-14"),
 )
