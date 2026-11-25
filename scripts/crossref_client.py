@@ -174,7 +174,7 @@ class CrossrefClient:
                     self._last_request_at = time.monotonic()
                     continue
                 raise CrossrefUnavailable(f"Crossref HTTP {e.code}: {e.reason}") from e
-            except (urllib.error.URLError, TimeoutError) as e:
+            except (OSError, http.client.HTTPException) as e:
                 raise CrossrefUnavailable(f"Crossref network error: {e}") from e
 
         raise CrossrefUnavailable("Crossref rate limit exhausted after retries")

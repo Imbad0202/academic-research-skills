@@ -325,6 +325,30 @@ def test_network_error_raises_unavailable():
             client.title_search("anything")
 
 
+@pytest.mark.parametrize(
+    "exc",
+    [
+        http.client.RemoteDisconnected("closed before status"),
+        http.client.BadStatusLine("garbled status"),
+        OSError("connection failed"),
+    ],
+    ids=["RemoteDisconnected", "BadStatusLine", "OSError"],
+)
+def test_urlopen_transport_failure_raises_unavailable(exc):
+    """urlopen itself raises before a response arrives. A drop before the
+    status line, a garbled status line, or a bare OSError must become
+    ArxivUnavailable, with the injected instance as the cause."""
+    from arxiv_client import ArxivClient, ArxivUnavailable
+
+    with patch("urllib.request.urlopen", side_effect=exc) as urlopen:
+        client = ArxivClient()
+        with pytest.raises(ArxivUnavailable) as raised:
+            client.title_search("anything")
+
+    assert raised.value.__cause__ is exc
+    assert urlopen.call_count == 1
+
+
 def test_malformed_xml_body_raises_unavailable():
     """resp.read() returns bytes that aren't well-formed XML (truncated body
     mid-stream: an unclosed tag). Per the §3.7 degradation contract, translate

@@ -2,6 +2,7 @@
 """Tests for Crossref client per deep-research/references/crossref_api_protocol.md."""
 from __future__ import annotations
 
+import http.client
 import json
 import urllib.error
 from unittest.mock import MagicMock, patch
@@ -346,6 +347,30 @@ def test_polite_pool_email_in_user_agent(monkeypatch):
 
 
 # ---------- v3.9.1: #129 response-read failure wrapping (Crossref) ----------
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        http.client.RemoteDisconnected("closed before status"),
+        http.client.BadStatusLine("garbled status"),
+        OSError("connection failed"),
+    ],
+    ids=["RemoteDisconnected", "BadStatusLine", "OSError"],
+)
+def test_urlopen_transport_failure_raises_unavailable(exc):
+    """urlopen itself raises before a response arrives. A drop before the
+    status line, a garbled status line, or a bare OSError must become
+    CrossrefUnavailable, with the injected instance as the cause."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    with patch("urllib.request.urlopen", side_effect=exc) as urlopen:
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable) as raised:
+            client.title_search("any title")
+
+    assert raised.value.__cause__ is exc
+    assert urlopen.call_count == 1
 
 
 def test_oserror_during_read_raises_unavailable(monkeypatch):

@@ -8,6 +8,7 @@ failure modes.
 """
 from __future__ import annotations
 
+import http.client
 import io
 import json
 import sys
@@ -617,6 +618,26 @@ class OutageLatchTest(unittest.TestCase):
             with self.assertRaises(SemanticScholarUnavailable):
                 client.lookup({"title": "Other", "doi": "10.1/z"})
             self.assertEqual(urlopen.call_count, 1, "latched call must skip network")
+
+    def test_urlopen_transport_failure_raises_unavailable(self) -> None:
+        """A drop before the status line or a bare garbled status line at
+        urlopen latches the batch. The first lookup chains the injected
+        instance; the second lookup fails without another request."""
+        cases = (
+            http.client.RemoteDisconnected("closed before status"),
+            http.client.BadStatusLine("garbled status"),
+        )
+        for exc in cases:
+            with self.subTest(type(exc).__name__):
+                client = ssc.SemanticScholarClient(sleep=MagicMock())
+                urlopen = MagicMock(side_effect=exc)
+                with patch("urllib.request.urlopen", urlopen):
+                    with self.assertRaises(SemanticScholarUnavailable) as ctx:
+                        client.lookup({"title": "T", "doi": "10.1/y"})
+                    self.assertIs(ctx.exception.__cause__, exc)
+                    with self.assertRaises(SemanticScholarUnavailable):
+                        client.lookup({"title": "Other", "doi": "10.1/z"})
+                    self.assertEqual(urlopen.call_count, 1)
 
     def test_reset_outage_latch_restores_normal_behavior(self) -> None:
         """A long-running tool between passport batches can call

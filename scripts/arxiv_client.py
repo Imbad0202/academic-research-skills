@@ -171,7 +171,7 @@ class ArxivClient:
                     self._last_request_at = time.monotonic()
                     continue
                 raise ArxivUnavailable(f"arXiv HTTP {e.code}: {e.reason}") from e
-            except (urllib.error.URLError, TimeoutError) as e:
+            except (OSError, http.client.HTTPException) as e:
                 raise ArxivUnavailable(f"arXiv network error: {e}") from e
 
         raise ArxivUnavailable("arXiv rate limit exhausted after retries")
