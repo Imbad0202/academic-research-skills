@@ -71,13 +71,16 @@ def _stamp_from_date_parts(parts: Any) -> tuple[str, str] | None:
     components = parts[0][:3]
     if not components:
         return None
+    # bool is a subclass of int; JSON true must not become month 1 or day 1.
+    if not all(type(component) is int for component in components):
+        return None
     precision = {1: "year", 2: "year-month", 3: "full-date"}[len(components)]
     try:
         year, month, day = (list(components) + [1, 1])[:3]
         stamp = datetime(year, month, day, tzinfo=timezone.utc).isoformat().replace(
             "+00:00", "Z"
         )
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     return stamp, precision
 
@@ -99,24 +102,27 @@ def _event_date(event: Mapping[str, Any]) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _end_of_utc_day(year: int, month: int, day: int) -> datetime:
+    return datetime(year, month, day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+
+
 def _inclusive_bounds(parsed: datetime, precision: str) -> tuple[datetime, datetime]:
     if precision == "date-time":
         return parsed, parsed
     if precision == "full-date":
         start = datetime(parsed.year, parsed.month, parsed.day, tzinfo=timezone.utc)
-        end = start + timedelta(days=1)
-    elif precision == "year-month":
+        return start, _end_of_utc_day(parsed.year, parsed.month, parsed.day)
+    if precision == "year-month":
         start = datetime(parsed.year, parsed.month, 1, tzinfo=timezone.utc)
         if parsed.month == 12:
-            end = datetime(parsed.year + 1, 1, 1, tzinfo=timezone.utc)
+            last_day = 31
         else:
-            end = datetime(parsed.year, parsed.month + 1, 1, tzinfo=timezone.utc)
-    elif precision == "year":
+            last_day = (datetime(parsed.year, parsed.month + 1, 1) - timedelta(days=1)).day
+        return start, _end_of_utc_day(parsed.year, parsed.month, last_day)
+    if precision == "year":
         start = datetime(parsed.year, 1, 1, tzinfo=timezone.utc)
-        end = datetime(parsed.year + 1, 1, 1, tzinfo=timezone.utc)
-    else:
-        raise ValueError(precision)
-    return start, end - timedelta(microseconds=1)
+        return start, _end_of_utc_day(parsed.year, 12, 31)
+    raise ValueError(precision)
 
 
 def _day_stamp(value: datetime) -> str:

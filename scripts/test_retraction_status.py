@@ -467,13 +467,57 @@ def test_invalid_timestamp_falls_back_to_full_date_parts() -> None:
     assert crossref["event_date"] == "2024-06-02T00:00:00Z"
 
 
-def test_malformed_date_parts_fall_back_to_timestamp() -> None:
+@pytest.mark.parametrize(
+    "parts",
+    [["not-a-list"], [[2024, True]], [[10**20]]],
+    ids=["outer-list-shape", "boolean-month", "overflow-year"],
+)
+def test_malformed_date_parts_fall_back_to_timestamp(parts: object) -> None:
     event = _event("retraction", "2024-06-02T15:30:00Z")
-    event["updated"]["date-parts"] = ["not-a-list"]
+    event["updated"]["date-parts"] = parts
     signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(event))
     crossref = signal["retraction_context"]["resolver_observations"][1]
     assert crossref["verdict"] == "retracted"
     assert crossref["event_date"] == "2024-06-02T15:30:00Z"
+
+
+def test_boolean_date_parts_do_not_override_a_later_timestamp() -> None:
+    retraction = _event("retraction", "2024-06-02T12:00:00Z")
+    retraction["DOI"] = "10.1234/retraction"
+    retraction["updated"]["date-parts"] = [[2024, True]]
+    reinstatement = _date_parts_event("reinstatement", [2024, 3, 1])
+    reinstatement["DOI"] = "10.1234/reinstatement"
+    reinstatement["record-id"] = 43
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(retraction, reinstatement),
+    )
+    context = signal["retraction_context"]
+    crossref = context["resolver_observations"][1]
+    assert crossref["verdict"] == "retracted"
+    assert crossref["event_date"] == "2024-06-02T12:00:00Z"
+    assert context["effective_status"] == "retracted"
+
+
+@pytest.mark.parametrize(
+    ("parts", "event_date"),
+    [
+        ([9999], None),
+        ([9999, 12], None),
+        ([9999, 12, 31], "9999-12-31T00:00:00Z"),
+    ],
+    ids=["year-9999", "year-month-9999-12", "full-date-9999-12-31"],
+)
+def test_year_9999_notice_dates_do_not_abort_resolution(
+    parts: list[int], event_date: str | None
+) -> None:
+    signal = _resolve(
+        openalex={"status": "degraded"},
+        crossref=_cr(_date_parts_event("retraction", parts)),
+    )
+    crossref = signal["retraction_context"]["resolver_observations"][1]
+    assert crossref["verdict"] == "retracted"
+    assert crossref["event_date"] == event_date
 
 
 def test_three_part_dates_keep_time_of_day_ordering() -> None:
