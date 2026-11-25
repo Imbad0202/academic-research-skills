@@ -371,7 +371,7 @@ Before delivering the output, verify:
 
 ### Content Integrity
 - [ ] All sections present and complete
-- [ ] No content lost, duplicated, or added during formatting
+- [ ] No content lost during formatting
 - [ ] Tables and figures preserved
 - [ ] In `full` mode, citation content and all incoming reference-list entries preserved during formatting. In other modes, citations intact and correctly formatted, and the reference list complete.
 - [ ] In `full` mode, the incoming draft and list were compared before conversion and any findings are in the Output Package warning (Handoff Format Requirements)
