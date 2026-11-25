@@ -265,56 +265,89 @@ GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 # instead avoids the alias path entirely, rather than only cutting launches per call (#1015).
 #
 # We only ever look at PATH entries' own filesystem paths, never a candidate's printed output:
-# an approach that took the interpreter path FROM a probe output kept raising new review
+# an approach that took the interpreter path FROM a probe's output kept raising new review
 # findings across three rounds in #1019 and was replaced, so this repeats that lesson rather
 # than the rejected approach.
 #
-# #1130 round 1 review fixed these on the walk below:
-#  - it only runs on MINGW/MSYS/Cygwin shells (item 3; ARS_GUARD_FORCE_PATH_WALK overrides
-#    for tests). On WSL, Windows-PATH interop can put a Windows py.exe on PATH; it prints
-#    the marker, then cannot open this script's own Linux guard path, so try_candidate
-#    returns 1 and every write degrades to pass-through. macOS, Linux and plain WSL keep the
-#    unmodified pre-#1025 candidate order instead of running this walk at all.
-#  - it only accepts ABSOLUTE PATH entries (item 1): a relative entry such as `.` would let a
-#    WindowsApps-preceding CWD executable win.
-#  - it splits PATH without word-splitting/globbing (item 2): the previous `set -- $PATH`
-#    under IFS=: does pathname expansion with no `set -f` in effect, so an entry such as
-#    `/opt/kits/[ab]` could glob-expand to a path that was never actually on PATH.
-#  - it matches WindowsApps as a whole, case-insensitive path COMPONENT (item 6): a bare
-#    `*WindowsApps*` substring match both misses `.../windowsapps` and wrongly excludes an
-#    unrelated directory such as `/opt/MyWindowsAppsTools/bin`.
+# #1130 review fixed these on the walk below:
+#  - it only runs on MINGW/MSYS/Cygwin shells (round 1 item 3). Tests exercise this by
+#    stubbing `uname` on the test PATH to print a MINGW/MSYS/CYGWIN string; there is no
+#    production env-var override, since one was tried in round 2 and any non-empty value of
+#    it, including "0", turned the walk on everywhere, including WSL and Linux, bringing back
+#    the exact pass-through this gate exists to prevent. On WSL, Windows-PATH interop can put
+#    a Windows py.exe on PATH; it prints the marker, then cannot open this script's own Linux
+#    guard path, so try_candidate returns 1 and every write degrades to pass-through. macOS,
+#    Linux and plain WSL keep the unmodified pre-#1025 candidate order instead of running
+#    this walk at all.
+#  - it only accepts ABSOLUTE PATH entries (round 1 item 1): a relative entry such as `.`
+#    would let a WindowsApps-preceding CWD executable win.
+#  - it splits PATH without word-splitting/globbing (round 1 item 2): the previous
+#    `set -- $PATH` under IFS=: does pathname expansion with no `set -f` in effect, so an
+#    entry such as `/opt/kits/[ab]` could glob-expand to a path that was never actually on
+#    PATH.
+#  - it matches WindowsApps as a whole, case-insensitive path COMPONENT (round 1 item 6): a
+#    bare `*WindowsApps*` substring match both misses `.../windowsapps` and wrongly excludes
+#    an unrelated directory such as `/opt/MyWindowsAppsTools/bin`.
 #  - it tries EACH non-WindowsApps candidate across every name and PATH entry, not just the
-#    first executable match (item 5): an unhealthy first match (Python 2, a broken shim)
-#    would otherwise send the launcher straight to the WindowsApps alias even though a later,
-#    healthy interpreter exists further down PATH. It also RECORDS every absolute path it
-#    tries so the unmodified candidate loop below never tries the exact same path twice
-#    (which would wait out the probe bound a second time if that path hangs).
+#    first executable match (round 1 item 5): an unhealthy first match (Python 2, a broken
+#    shim) would otherwise send the launcher straight to the WindowsApps alias even though a
+#    later, healthy interpreter exists further down PATH. It also RECORDS every path it tries
+#    so the unmodified candidate loop below never tries the same underlying file twice (which
+#    would wait out the probe bound a second time if that path hangs).
+#  - it tries at most one of `$dir/$name` and `$dir/$name.exe` per directory, and the tried
+#    list treats the two forms (and a `/./` segment variant of the same directory) as the
+#    same key (round 2 item 3): on Cygwin and MSYS, `[ -f "$dir/python" ]` is also true when
+#    only `python.exe` exists on disk, so trying both extensions could run the identical file
+#    twice; `/tools/./bin` and `/tools/bin` are two PATH strings for the same directory for
+#    the same reason. Not independently verified on real Cygwin or MSYS; this follows
+#    Cygwin's documented `.exe` handling.
+#  - the discovery itself (finding candidate paths, starting no interpreter) is bounded by a
+#    single `run_bounded` call (round 2 item 4): the walk now looks at more directories than
+#    the old lookup ever reached, so a stalled network-mounted PATH entry must not be able to
+#    stall a stat() check outside any bound. If the discovery step itself overruns the bound,
+#    the launcher falls straight through to the unmodified old loop below; the guard/
+#    interpreter itself still runs at most once per candidate either way.
 #
 # A preferred candidate that prints the marker and then fails or times out is NOT retried
-# under the next candidate (item 4): the launcher degrades to pass-through for that call
-# instead, since running the guard a second time is not safe in general (a second run could
-# reach a different decision, including one it should have denied). See
-# test_preferred_candidate_failure_degrades_to_passthrough_not_retried.
+# under the next candidate (round 1 item 4): the launcher degrades to pass-through for that
+# call instead, since running the guard a second time is not safe in general (a second run
+# could reach a different decision, including one it should have denied). See
+# test_preferred_candidate_failure_degrades_to_passthrough_not_retried and
+# test_preferred_candidate_timeout_after_marker_degrades_to_passthrough_not_retried.
 PREFERRED_TRIED_PATHS=
+
+# Normalizes a candidate path to a comparison key: collapses a `/./` path segment (two PATH
+# entries can name the same directory, e.g. `/tools/./bin` and `/tools/bin`) and strips a
+# trailing `.exe`/`.EXE` (the walk tries at most one of `$dir/$name` and `$dir/$name.exe` per
+# directory, but the OLD loop's `command -v` can still resolve to whichever form the shell
+# finds, so both forms must collide to the same key). Bash 3.2 / dash compatible.
+_tried_key() {
+    _tk=$1
+    while case $_tk in */./*) true ;; *) false ;; esac; do
+        _tk=${_tk%%/./*}/${_tk#*/./}
+    done
+    case $_tk in
+        *.exe) _tk=${_tk%.exe} ;;
+        *.EXE) _tk=${_tk%.EXE} ;;
+    esac
+    printf '%s\n' "$_tk"
+}
 _record_tried_path() {
-    PREFERRED_TRIED_PATHS="$PREFERRED_TRIED_PATHS$NL$1"
+    PREFERRED_TRIED_PATHS="$PREFERRED_TRIED_PATHS$NL$(_tried_key "$1")"
 }
 _path_already_tried() {
+    _pat_key=$(_tried_key "$1")
     case "$NL$PREFERRED_TRIED_PATHS$NL" in
-        *"$NL$1$NL"*) return 0 ;;
+        *"$NL$_pat_key$NL"*) return 0 ;;
     esac
     return 1
 }
 
-# Bash 3.2 / dash compatible: no ${var,,}. uname -s reliably reports an uppercase MINGW*/
-# MSYS*/CYGWIN* prefix on those shells; ARS_GUARD_FORCE_PATH_WALK is a test-only override
-# (same pattern as ARS_GUARD_FORCE_WATCHDOG above) so the walk can be exercised on any host
-# without depending on the test runner's own platform.
+# uname -s reliably reports an uppercase MINGW*/MSYS*/CYGWIN* prefix on those shells.
 _ARS_WINDOWS_SHELL=
 case $(uname -s 2>/dev/null) in
     MINGW*|MSYS*|CYGWIN*) _ARS_WINDOWS_SHELL=1 ;;
 esac
-[ -n "${ARS_GUARD_FORCE_PATH_WALK:-}" ] && _ARS_WINDOWS_SHELL=1
 
 # Try one candidate: "$@" is the interpreter argv prefix (e.g. `py -3`, or one resolved path,
 # possibly with its own `-3`). Echoes the forwarded decision and returns 0 on a healthy guard
@@ -349,46 +382,66 @@ try_candidate() {
     return 2
 }
 
+# Discovery script run under run_bounded, in its own `sh -c`: walks PATH by hand (absolute
+# entries only, WindowsApps excluded as a whole path component, at most one of the bare name
+# or its `.exe` form per directory) and prints "name path" pairs, one per candidate, starting
+# no interpreter. PATH is inherited from the parent shell's environment.
+_ARS_DISCOVER_SCRIPT='
+for name in py python3 python; do
+    _rest=$PATH
+    while [ -n "$_rest" ]; do
+        case $_rest in
+            *:*) dir=${_rest%%:*}; _rest=${_rest#*:} ;;
+            *)   dir=$_rest; _rest= ;;
+        esac
+        case $dir in
+            /*) ;;
+            *) continue ;;
+        esac
+        case "/$dir/" in
+            */[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]/*) continue ;;
+        esac
+        case $dir in
+            */) dir=${dir%/} ;;
+        esac
+        cand_path="$dir/$name"
+        if [ ! -f "$cand_path" ] || [ ! -x "$cand_path" ]; then
+            cand_path="$dir/$name.exe"
+        fi
+        [ -f "$cand_path" ] && [ -x "$cand_path" ] || continue
+        printf "%s %s\n" "$name" "$cand_path"
+    done
+done
+'
+
 try_non_windowsapps_candidates() {
     [ -n "$_ARS_WINDOWS_SHELL" ] || return 1
-    for name in py python3 python; do
-        _tnwc_rest=$PATH
-        while [ -n "$_tnwc_rest" ]; do
-            case $_tnwc_rest in
-                *:*) dir=${_tnwc_rest%%:*}; _tnwc_rest=${_tnwc_rest#*:} ;;
-                *)   dir=$_tnwc_rest; _tnwc_rest= ;;
-            esac
-            case $dir in
-                /*) ;;
-                *) continue ;;  # relative (or empty, i.e. CWD): skip (item 1)
-            esac
-            case "/$dir/" in
-                */[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]/*) continue ;;  # item 6
-            esac
-            # A trailing slash (dir "/" itself, or any dir a caller put a trailing slash
-            # on) would otherwise build "//name", which MSYS can read as a UNC/network
-            # path instead of a local one (smaller item, #1130 round 1).
-            case $dir in
-                */) dir=${dir%/} ;;
-            esac
-            for ext in "" ".exe"; do
-                cand_path="$dir/$name$ext"
-                [ -f "$cand_path" ] && [ -x "$cand_path" ] || continue
-                _path_already_tried "$cand_path" && continue
-                _record_tried_path "$cand_path"
-                if [ "$name" = "py" ]; then
-                    try_candidate "$cand_path" -3
-                else
-                    try_candidate "$cand_path"
-                fi
-                case $? in
-                    0) exit 0 ;;
-                    1) rm -f "$GUARD_ERR" 2>/dev/null; emit_passthrough_and_exit ;;
-                esac
-                # status 2: this candidate did not produce a usable decision; try the next one.
-            done
-        done
+    _discovered=$(run_bounded sh -c "$_ARS_DISCOVER_SCRIPT" 2>/dev/null)
+    [ $? -eq 0 ] || return 1
+    [ -n "$_discovered" ] || return 1
+    _ivd_ifs=$IFS
+    set -f
+    IFS="$NL"
+    for _line in $_discovered; do
+        IFS=$_ivd_ifs
+        _cand_name=${_line%% *}
+        cand_path=${_line#* }
+        _path_already_tried "$cand_path" && { IFS="$NL"; continue; }
+        _record_tried_path "$cand_path"
+        if [ "$_cand_name" = "py" ]; then
+            try_candidate "$cand_path" -3
+        else
+            try_candidate "$cand_path"
+        fi
+        case $? in
+            0) exit 0 ;;
+            1) rm -f "$GUARD_ERR" 2>/dev/null; emit_passthrough_and_exit ;;
+        esac
+        # status 2: this candidate did not produce a usable decision; try the next one.
+        IFS="$NL"
     done
+    IFS=$_ivd_ifs
+    set +f
     return 1
 }
 try_non_windowsapps_candidates
@@ -403,16 +456,23 @@ try_non_windowsapps_candidates
 #     itself) -> the guard is BROKEN; per the maintainer
 #     decision (section 3.2.1) degrade to pass-through + exit 0, never block, and do not run
 #     the guard again under another candidate.
-# `command -v` resolves each name to its absolute path once, both so try_candidate never pays
-# for a second PATH lookup and so a path the walk above already tried (item 5) is skipped here
-# instead of waiting out the probe bound on the same hung candidate a second time.
+# When the walk above ran, `command -v` resolves each name to its absolute path so a path it
+# already tried (round 1 item 5) is skipped here instead of waiting out the probe bound on the
+# same hung candidate a second time. When the walk did NOT run (not a MINGW/MSYS/Cygwin
+# shell), this loop is byte-for-byte what it was before #1025: no resolved-path lookup, no
+# skip list, exactly `command -v "$1" >/dev/null 2>&1 || continue` then `try_candidate "$@"`.
 for cand in "py -3" "python3" "python"; do
     # shellcheck disable=SC2086  # intentional word-split: "py -3" -> py with arg -3
     set -- $cand
-    _resolved=$(command -v "$1" 2>/dev/null) || continue
-    _path_already_tried "$_resolved" && continue
-    shift
-    try_candidate "$_resolved" "$@"
+    if [ -n "$_ARS_WINDOWS_SHELL" ]; then
+        _resolved=$(command -v "$1" 2>/dev/null) || continue
+        _path_already_tried "$_resolved" && continue
+        shift
+        try_candidate "$_resolved" "$@"
+    else
+        command -v "$1" >/dev/null 2>&1 || continue
+        try_candidate "$@"
+    fi
     _tc_status=$?
     [ "$_tc_status" -eq 2 ] && continue
     [ "$_tc_status" -eq 0 ] && exit 0
