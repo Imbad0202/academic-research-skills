@@ -165,6 +165,17 @@ def _finishes_latest(notice: _Notice, notices: Sequence[_Notice]) -> bool:
     return True
 
 
+def _timing_bounds(notices: Sequence[_Notice]) -> tuple[datetime | None, datetime | None] | None:
+    lowers = [notice.earliest for notice in notices if notice.earliest is not None]
+    if not lowers:
+        return None
+    earliest = max(lowers)
+    if any(notice.latest is None for notice in notices):
+        return earliest, None
+    latest = max(notice.latest for notice in notices if notice.latest is not None)
+    return earliest, latest
+
+
 def _published_event_date(
     notices: Sequence[_Notice],
 ) -> tuple[str | None, tuple[datetime, datetime] | None]:
@@ -238,7 +249,7 @@ def _crossref_events(
 
 def _reduce_crossref(
     records: Sequence[Mapping[str, Any]], cited_doi: str
-) -> tuple[dict[str, Any], tuple[datetime, datetime] | None]:
+) -> tuple[dict[str, Any], tuple[datetime | None, datetime | None] | None]:
     pairs = _crossref_events(records, cited_doi)
     events: list[dict[str, Any]] = []
     seen_events: set[str] = set()
@@ -294,7 +305,11 @@ def _reduce_crossref(
     if len({notice.kind for notice in winners}) != 1:
         return {"verdict": "disputed", "event_date": None, "events": events}, None
     kind = winners[0].kind
-    event_date, bounds = _published_event_date(winners)
+    event_date, _ = _published_event_date(winners)
+    # Timing uses every notice of the winning kind, including dated notices
+    # that an undated peer evicted from the winner set. The latest event is
+    # still at least as late as the latest known lower bound.
+    bounds = _timing_bounds([notice for notice in notices if notice.kind == kind])
     reduced = {
         "verdict": "reinstated" if kind == "reinstatement" else "retracted",
         "event_date": event_date,
@@ -308,10 +323,10 @@ def _resolver_observations(
     cited_doi: str,
     openalex: Mapping[str, Any],
     crossref: Mapping[str, Any],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], tuple[datetime, datetime] | None]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], tuple[datetime | None, datetime | None] | None]:
     observations: list[dict[str, Any]] = []
     evidence: list[dict[str, Any]] = []
-    latest_bounds: tuple[datetime, datetime] | None = None
+    latest_bounds: tuple[datetime | None, datetime | None] | None = None
 
     oa_status = openalex.get("status")
     oa_record = openalex.get("record")
@@ -395,18 +410,22 @@ def _load_bearing(affected_claims: Sequence[str], claim_impacts: Mapping[str, st
 
 def _timing(
     source_acquisition_date: Any,
-    event_bounds: tuple[datetime, datetime] | None,
+    event_bounds: tuple[datetime | None, datetime | None] | None,
 ) -> str:
     acquired = _parse_datetime(source_acquisition_date if isinstance(source_acquisition_date, str) else None)
     if acquired is None or event_bounds is None:
         return "not_decidable"
     earliest, latest = event_bounds
     acquired_day = acquired.date()
-    if acquired_day < earliest.date():
+    if earliest is not None and acquired_day < earliest.date():
         return "after_acquisition"
-    if acquired_day > latest.date():
+    if latest is not None and acquired_day > latest.date():
         return "before_acquisition"
-    if earliest.date() == latest.date():
+    if (
+        earliest is not None
+        and latest is not None
+        and earliest.date() == latest.date()
+    ):
         return "same_day"
     return "not_decidable"
 

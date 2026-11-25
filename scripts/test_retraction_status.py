@@ -688,6 +688,35 @@ def test_later_reinstatement_clears_both_full_date_alternatives() -> None:
     assert context["retraction_event_date"] == "2024-11-01T00:00:00Z"
 
 
+@pytest.mark.parametrize(
+    ("acquired", "timing"),
+    [
+        ("2026-01-15T00:00:00Z", "after_acquisition"),
+        ("2026-06-01T00:00:00Z", "not_decidable"),
+        ("2026-07-01T00:00:00Z", "not_decidable"),
+    ],
+)
+def test_undated_same_kind_notice_keeps_a_known_lower_timing_bound(
+    acquired: str, timing: str
+) -> None:
+    dated = _dated_notice("retraction", [2026, 6, 1], "10.1234/retraction.dated", 42)
+    undated = _event("retraction", None)
+    undated["DOI"] = "10.1234/retraction.undated"
+    undated["record-id"] = 43
+    signal = _resolve(
+        entry=_entry(source_acquisition_date=acquired),
+        openalex={"status": "degraded"},
+        crossref=_cr(dated, undated),
+    )
+    context = signal["retraction_context"]
+    crossref = context["resolver_observations"][1]
+    assert crossref["verdict"] == "retracted"
+    assert crossref["event_date"] is None
+    assert context["effective_status"] == "retracted"
+    assert context["retraction_event_date"] is None
+    assert context["timing_vs_acquisition"] == timing
+
+
 def test_conflicting_undated_crossref_events_are_disputed() -> None:
     signal = _resolve(
         openalex={"status": "degraded"},
