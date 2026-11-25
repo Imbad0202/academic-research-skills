@@ -109,6 +109,7 @@ def _windows_uname_dir():
     return d
 
 
+@functools.lru_cache(maxsize=1)
 def _linux_uname_dir():
     """A directory holding only a fake `uname` that reports a plain Linux kernel string.
     Must be placed before _minimal_sys_path() (which symlinks the real `uname`) on PATH for
@@ -1075,11 +1076,48 @@ class LauncherWindowsAppsExclusionTest(unittest.TestCase):
                 capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
             )
             self.assertEqual(proc.returncode, 0, f"err={proc.stderr!r}")
+            decision = json.loads(proc.stdout)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the early python3 must actually run the guard")
             ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
             self.assertEqual(ran.count("early_python3"), 1,
                              "directory-first: the early directory's python3 must run")
             self.assertEqual(ran.count("later_py"), 0,
                              "directory-first: the later directory's py must never be reached")
+
+    def test_walk_selects_py_and_passes_dash_three(self):
+        # #1130 round 5 item 1: no existing test ever selects `py` through the walk, so the
+        # `-3` branch (try_non_windowsapps_candidates passes `-3` only when the matched name
+        # is `py`) is untested; removing `py` from the walk's candidate names, or dropping the
+        # `-3` it should receive, would still pass every other test in this file. A WindowsApps
+        # `py` sits first on PATH so a walk that skips `py` or drops `-3` falls through to the
+        # unmodified old loop, which finds and runs THAT one instead, failing this test.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            ordinary_dir = os.path.join(base, "Program Files", "PythonLauncher")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(ordinary_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "py"), marker_file, "windowsapps_py")
+            # A fake `py` that records its first argument, fails unless it is exactly -3, and
+            # only then shifts it off and runs a real interpreter, so the test can tell apart
+            # "ran, but without -3" from "ran, with -3" rather than just "ran".
+            ordinary_py = os.path.join(ordinary_dir, "py")
+            _write_exec(ordinary_py,
+                        f'#!/bin/sh\necho "ordinary_py $1" >> "{marker_file}"\n'
+                        f'[ "$1" = "-3" ] || exit 99\nshift\nexec "{REAL_PY}" "$@"\n')
+            path = os.pathsep.join([windowsapps_dir, ordinary_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            decision = json.loads(out)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the ordinary py must actually run the guard, not just exit 99")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("ordinary_py -3"), 1,
+                             "the walk must select py through the ordinary directory and pass -3")
+            self.assertEqual(ran.count("windowsapps_py"), 0,
+                             "the WindowsApps py must never run when an ordinary py is found")
 
     def test_trailing_slash_path_entry_does_not_build_double_slash(self):
         # #1130 round 1 smaller item / round 2 item 5: a PATH entry ending in "/" must build

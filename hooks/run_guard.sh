@@ -393,6 +393,13 @@ try_non_windowsapps_candidates() {
     [ -n "$_discovered" ] || return 1
     _cand_name=${_discovered%% *}
     cand_path=${_discovered#* }
+    # Defensive: if run_bounded's own mktemp fails inside the discovery subshell, it can
+    # print pass-through JSON with status 0 instead of a "name path" line; a malformed,
+    # non-absolute "path" parsed out of that must never reach try_candidate.
+    case $cand_path in
+        /*) ;;
+        *) return 1 ;;
+    esac
     if [ "$_cand_name" = "py" ]; then
         try_candidate "$cand_path" -3
     else
