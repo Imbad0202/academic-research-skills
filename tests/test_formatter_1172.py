@@ -37,8 +37,9 @@ REFERENCE_LIST_AUTHOR_CHECKBOX = (
     "applicable journal requirement: preserve author order and spelling. List "
     "the names required by the target rule that are available in the input. "
     "If the input author list is already truncated and the required names are "
-    "unavailable, preserve the truncated list as supplied and report the "
-    "limitation in the Output Package. Truncate only as that rule specifies "
+    "unavailable, add no names: format the supplied names in the target style "
+    "and raise the missing names as a content issue per Phase Boundary. "
+    "Truncate only as that rule specifies "
     "(Vancouver lists all six authors when there are six, and the first six "
     "followed by et al. for more than six; a style that requires all seven "
     "names retains all seven when all seven names are available)."
@@ -164,8 +165,8 @@ def test_verification_checklist_reference_authors_follow_the_target_style() -> N
         "applicable journal requirement",
         "names required by the target rule that are available in the input",
         "already truncated and the required names are unavailable",
-        "preserve the truncated list as supplied",
-        "report the limitation in the Output Package",
+        "add no names",
+        "raise the missing names as a content issue per Phase Boundary",
         "Truncate only as that rule specifies",
         "et al.",
         "all six authors when there are six",

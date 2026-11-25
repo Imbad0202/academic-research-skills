@@ -354,7 +354,7 @@ After conversion, verify all of the following:
 
 - [ ] Total citation count matches (in-text: input count == output count)
 - [ ] Total reference count matches (reference list: input count == output count)
-- [ ] Reference-list author names follow the target style, including an applicable journal requirement: preserve author order and spelling. List the names required by the target rule that are available in the input. If the input author list is already truncated and the required names are unavailable, preserve the truncated list as supplied and report the limitation in the Output Package. Truncate only as that rule specifies (Vancouver lists all six authors when there are six, and the first six followed by et al. for more than six; a style that requires all seven names retains all seven when all seven names are available).
+- [ ] Reference-list author names follow the target style, including an applicable journal requirement: preserve author order and spelling. List the names required by the target rule that are available in the input. If the input author list is already truncated and the required names are unavailable, add no names: format the supplied names in the target style and raise the missing names as a content issue per Phase Boundary. Truncate only as that rule specifies (Vancouver lists all six authors when there are six, and the first six followed by et al. for more than six; a style that requires all seven names retains all seven when all seven names are available).
 - [ ] All years preserved
 - [ ] All titles preserved (case may change per target format rules)
 - [ ] All DOIs preserved
@@ -371,7 +371,7 @@ Before delivering the output, verify:
 
 ### Content Integrity
 - [ ] All sections present and complete
-- [ ] No content lost during formatting except author information removed as directed for the blind-review version only.
+- [ ] No content lost during formatting. In the blind-review version only, all author information removed as directed by the Author Information step is an allowed difference.
 - [ ] Tables and figures preserved
 - [ ] In `full` mode, citation content and all incoming reference-list entries preserved during formatting. In other modes, citations intact and correctly formatted, and the reference list complete.
 - [ ] In `full` mode, the incoming draft and list were compared before conversion and any findings are in the Output Package warning (Handoff Format Requirements)

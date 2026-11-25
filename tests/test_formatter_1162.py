@@ -67,8 +67,9 @@ TREE_BRANCH = (
     "│   4. Re-run final checklist\n"
 )
 QUALITY_CHECKLIST_ITEM = (
-    "- [ ] No content lost during formatting except author information removed "
-    "as directed for the blind-review version only."
+    "- [ ] No content lost during formatting. In the blind-review version only, "
+    "all author information removed as directed by the Author Information step "
+    "is an allowed difference."
 )
 AI_DISCLOSURE_FAILURE_HANDLING = (
     "Insert the standard Disclosure text, or complete an existing statement in place "
