@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **The `academic-paper` formatter corrects year placement and keeps reference numbers when converting between IEEE and Vancouver (#1187, contributed by @pinjun99).** The LaTeX and Pandoc APA examples identify the target-style setting. The element check preserves all extracted author names when the rendered list is truncated. Both section-completeness checks allow whole author-information sections to be removed for blind review. Prompt-level change, unmeasured.
+
 - **Literature resolvers now treat dropped connections and malformed HTTP status lines as API failures (#1181, contributed by @pinjun99).** OpenAlex, Crossref, and arXiv raise their existing unavailable errors when a request fails before a status line arrives or the status line is invalid. Semantic Scholar also latches the outage on a malformed status line and skips further requests for the batch.
 
 - **The `academic-paper` formatter uses parentheses for Vancouver in-text numbers and square brackets for IEEE (#1172, contributed by @pinjun99).** A word-count deviation of 1% or more triggers a section-by-section comparison. In the blind-review version only, the integrity checks allow removal of all author information as directed by the Author Information step, and recovery leaves it out. Other missing content is restored. The conversion checklist preserves the spelling of in-text author names where shown and checks reference-list names against the target style and applicable journal requirements. When the input list is already truncated and required names are unavailable, it adds no names and raises the missing names as a content issue. Prompt-level change, unmeasured.
