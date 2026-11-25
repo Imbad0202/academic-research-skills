@@ -62,22 +62,45 @@ def _canonical_sha(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _event_date(event: Mapping[str, Any]) -> str | None:
+_DATE_PRECISION_RANK = {
+    "year": 0,
+    "year-month": 1,
+    "full-date": 2,
+    "date-time": 3,
+}
+
+
+def _event_date(event: Mapping[str, Any]) -> tuple[str | None, str | None]:
     updated = event.get("updated")
     if isinstance(updated, Mapping):
         value = updated.get("date-time")
         if isinstance(value, str) and _parse_datetime(value):
-            return value
+            return value, "date-time"
         parts = updated.get("date-parts")
         if isinstance(parts, list) and parts and isinstance(parts[0], list):
             try:
-                year, month, day = (parts[0] + [1, 1])[:3]
-                return datetime(year, month, day, tzinfo=timezone.utc).isoformat().replace(
+                components = parts[0][:3]
+                if not components:
+                    return None, None
+                precision = {1: "year", 2: "year-month", 3: "full-date"}[len(components)]
+                year, month, day = (list(components) + [1, 1])[:3]
+                stamp = datetime(year, month, day, tzinfo=timezone.utc).isoformat().replace(
                     "+00:00", "Z"
                 )
+                return stamp, precision
             except (TypeError, ValueError):
-                return None
-    return None
+                return None, None
+    return None, None
+
+
+def _date_at_precision(parsed: datetime, precision: str) -> Any:
+    if precision == "year":
+        return parsed.year
+    if precision == "year-month":
+        return parsed.year, parsed.month
+    if precision == "full-date":
+        return parsed.date()
+    return parsed
 
 
 def _event_kind(event: Mapping[str, Any]) -> str | None:
@@ -89,8 +112,10 @@ def _event_kind(event: Mapping[str, Any]) -> str | None:
     return None
 
 
-def _crossref_events(records: Sequence[Mapping[str, Any]], cited_doi: str) -> list[dict[str, Any]]:
-    events: list[dict[str, Any]] = []
+def _crossref_events(
+    records: Sequence[Mapping[str, Any]], cited_doi: str
+) -> list[tuple[dict[str, Any], str | None]]:
+    events: list[tuple[dict[str, Any], str | None]] = []
     seen: set[str] = set()
     for record in records:
         record_doi = normalize_doi(record.get("DOI"))
@@ -113,23 +138,32 @@ def _crossref_events(records: Sequence[Mapping[str, Any]], cited_doi: str) -> li
                     kind = _event_kind(raw)
                     if not relevant or kind not in {"retraction", "reinstatement"}:
                         continue
+                    date, precision = _event_date(raw)
                     event = {
                         "kind": kind,
                         "direction": direction,
-                        "date": _event_date(raw),
+                        "date": date,
                         "notice_doi": target if direction == "updated-by" else record_doi,
                         "source": raw.get("source") if isinstance(raw.get("source"), str) else None,
                         "record_id": str(raw["record-id"]) if raw.get("record-id") is not None else None,
                     }
-                    key = _canonical_sha(event)
+                    key = _canonical_sha([event, precision])
                     if key not in seen:
                         seen.add(key)
-                        events.append(event)
+                        events.append((event, precision))
+
     return events
 
 
 def _reduce_crossref(records: Sequence[Mapping[str, Any]], cited_doi: str) -> dict[str, Any]:
-    events = _crossref_events(records, cited_doi)
+    pairs = _crossref_events(records, cited_doi)
+    events: list[dict[str, Any]] = []
+    seen_events: set[str] = set()
+    for event, _precision in pairs:
+        key = _canonical_sha(event)
+        if key not in seen_events:
+            seen_events.add(key)
+            events.append(event)
     has_cited_record = any(normalize_doi(record.get("DOI")) == cited_doi for record in records)
     if not events:
         return {
@@ -137,13 +171,33 @@ def _reduce_crossref(records: Sequence[Mapping[str, Any]], cited_doi: str) -> di
             "event_date": None,
             "events": [],
         }
-    status_events = [event for event in events if event["kind"] in {"retraction", "reinstatement"}]
-    dated = [(event, _parse_datetime(event["date"])) for event in status_events]
-    if any(parsed is None for _, parsed in dated) and len({event["kind"] for event in status_events}) > 1:
+    status_pairs = [
+        (event, precision)
+        for event, precision in pairs
+        if event["kind"] in {"retraction", "reinstatement"}
+    ]
+    dated = [
+        (event, precision, _parse_datetime(event["date"]))
+        for event, precision in status_pairs
+    ]
+    if any(parsed is None for _, _, parsed in dated) and len({event["kind"] for event, _, _ in dated}) > 1:
         return {"verdict": "disputed", "event_date": None, "events": events}
-    latest, latest_date = max(dated, key=lambda item: item[1] or datetime.min.replace(tzinfo=timezone.utc))
-    if any(parsed == latest_date and event["kind"] != latest["kind"] for event, parsed in dated):
-        return {"verdict": "disputed", "event_date": None, "events": events}
+    latest, latest_precision, latest_at = max(
+        dated, key=lambda item: item[2] or datetime.min.replace(tzinfo=timezone.utc)
+    )
+    # A coarser date still covers every finer instant inside it, so compare the
+    # leading event with every opposite-kind notice. Equality cannot be ordered.
+    if latest_at is not None and latest_precision is not None:
+        for event, precision, parsed in dated:
+            if event["kind"] == latest["kind"] or parsed is None or precision is None:
+                continue
+            level = (
+                latest_precision
+                if _DATE_PRECISION_RANK[latest_precision] <= _DATE_PRECISION_RANK[precision]
+                else precision
+            )
+            if _date_at_precision(parsed, level) == _date_at_precision(latest_at, level):
+                return {"verdict": "disputed", "event_date": None, "events": events}
     return {
         "verdict": "reinstated" if latest["kind"] == "reinstatement" else "retracted",
         "event_date": latest["date"],
