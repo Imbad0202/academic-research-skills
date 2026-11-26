@@ -25,6 +25,7 @@ NOTE (honest limitation): this is a POSIX-host simulation. The real Windows Stor
 fallback still need a Windows repro (tracked in the spec §6).
 """
 
+import functools
 import json
 import os
 import shutil
@@ -64,6 +65,60 @@ def _fake_real_python(path, real=REAL_PY):
     """A fake `python3`/`python`/`py` that behaves like a real interpreter by delegating to
     an actual python. Handles the marker probe (`-c ...`) and running the guard script."""
     _write_exec(path, f'#!/bin/sh\nexec "{real}" "$@"\n')
+
+
+def _fake_recording_python(path, marker_file, tag, real=REAL_PY):
+    """A fake python3/python/py that appends `tag` to `marker_file` before delegating to a
+    real interpreter, so a test can assert WHICH candidate actually ran instead of only
+    checking the final decision (#1130 item 7: several different candidates could produce an
+    identical decision, so checking the decision alone does not prove which one executed)."""
+    _write_exec(path, f'#!/bin/sh\necho {tag} >> "{marker_file}"\nexec "{real}" "$@"\n')
+
+
+@functools.lru_cache(maxsize=1)
+def _minimal_sys_path():
+    """A directory with just the external commands run_guard.sh actually calls (cat, dirname,
+    mktemp, rm, setsid, sleep, timeout, sh, uname, true) and nothing named py/python3/python, unlike
+    _SYS_PATH (real /usr/bin, /bin, ...), which on this host already has a real python3 and
+    would silently defeat a test meaning to simulate a host with no interpreter anywhere but
+    WindowsApps (#1130 item 7). command and kill are shell builtins, not external binaries,
+    so nothing needs to be symlinked for them."""
+    d = tempfile.mkdtemp(prefix="ars_min_sys_path_")
+    for name in ("sh", "cat", "dirname", "mktemp", "rm", "setsid", "sleep", "timeout", "uname", "true"):
+        real = shutil.which(name)
+        if real:
+            os.symlink(real, os.path.join(d, name))
+    return d
+
+
+def _fake_uname(path, kernel="MINGW64_NT-10.0"):
+    """A fake `uname` that reports a Windows-shell kernel string, so a test can engage
+    run_guard.sh's WindowsApps-exclusion walk without a real MINGW/MSYS/Cygwin host (#1130
+    round 2 item 1: there is no production env-var override for this; the gate reads real
+    `uname -s` output only)."""
+    _write_exec(path, f'#!/bin/sh\nprintf "%s\\n" "{kernel}"\n')
+
+
+@functools.lru_cache(maxsize=1)
+def _windows_uname_dir():
+    """A directory holding only a fake `uname` that reports a MINGW-style kernel string.
+    Must be placed before _minimal_sys_path() (which symlinks the real `uname`) on PATH for
+    any test that needs run_guard.sh's walk to engage."""
+    d = tempfile.mkdtemp(prefix="ars_win_uname_")
+    _fake_uname(os.path.join(d, "uname"))
+    return d
+
+
+@functools.lru_cache(maxsize=1)
+def _linux_uname_dir():
+    """A directory holding only a fake `uname` that reports a plain Linux kernel string.
+    Must be placed before _minimal_sys_path() (which symlinks the real `uname`) on PATH for
+    any test that needs run_guard.sh's walk to stay off regardless of what the actual test
+    host's own `uname -s` happens to report (#1130 round 4 item 3: a test that instead relied
+    on the ambient host not being MINGW/MSYS/Cygwin would fail for real on such a host)."""
+    d = tempfile.mkdtemp(prefix="ars_linux_uname_")
+    _fake_uname(os.path.join(d, "uname"), kernel="Linux")
+    return d
 
 
 # System dirs that hold sh/cat/grep/command/mktemp/sleep/kill/timeout. bin_dir goes FIRST
@@ -745,6 +800,459 @@ class LauncherInfraProtectionTest(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
                              "writing the launcher itself must be infra-denied")
+
+
+class LauncherWindowsAppsExclusionTest(unittest.TestCase):
+    """#1025: a real interpreter reachable outside WindowsApps is preferred over the alias
+    candidates. On a host where a real MINGW/MSYS/Cygwin shell (or, in tests, a stubbed
+    `uname -s`) engages the walk, anything sitting in a WindowsApps-named path COMPONENT is
+    skipped even if it would otherwise be the first match on PATH; if nothing else is
+    reachable, the walk finds nothing and the unmodified candidate loop below still uses the
+    WindowsApps one, since something has to run the guard."""
+
+    def _run_with_path(self, path, payload, extra_env=None, probe_bound=None):
+        # Prepend a fake `uname` reporting a MINGW kernel string, so the walk engages the
+        # same way it would on a real MINGW/MSYS/Cygwin host (#1130 round 2 item 1: there is
+        # no production env-var override for this anymore).
+        full_path = os.pathsep.join([_windows_uname_dir(), path])
+        env = {"PATH": full_path, "ARS_PROBE_BOUND": probe_bound or _DEFAULT_PROBE_BOUND}
+        if extra_env:
+            env.update(extra_env)
+        proc = subprocess.run(
+            [_SH, LAUNCHER], input=json.dumps(payload), env=env,
+            capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+        )
+        return proc.returncode, proc.stdout, proc.stderr
+
+    def test_windowsapps_entry_skipped_falls_back_to_real_elsewhere(self):
+        # A working interpreter sits in a directory whose path contains "WindowsApps" AND
+        # comes first on PATH; a second, equally real interpreter sits in an ordinary
+        # directory later on PATH. Each fixture RECORDS whether it ran (#1130 item 7: the
+        # old version of this test could not tell which fake actually executed), so this
+        # proves the WindowsApps one is skipped, not merely that SOME interpreter ran.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            real_dir = os.path.join(base, "Program Files", "Python312")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(real_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
+            _fake_recording_python(os.path.join(real_dir, "python3"), marker_file, "real")
+            path = os.pathsep.join([windowsapps_dir, real_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            decision = json.loads(out)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "must skip the WindowsApps candidate and use the real one on PATH")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("windowsapps"), 0, "the WindowsApps interpreter must never run")
+            self.assertEqual(ran.count("real"), 1, "the real interpreter must run exactly once")
+
+    def test_only_windowsapps_present_falls_back_to_alias_candidates_unchanged(self):
+        # No non-WindowsApps interpreter exists anywhere on PATH (a MINIMAL system PATH with
+        # no python at all, #1130 item 7: the old version of this test appended the real
+        # _SYS_PATH, which on this host already has a real /usr/bin/python3 and would have let
+        # the walk find THAT instead, never actually testing the WindowsApps-only case it
+        # claimed to). The walk finds nothing, so the unmodified candidate loop below falls
+        # back to the WindowsApps interpreter, the only one that exists -- it must run exactly
+        # once, not be refused just for living under WindowsApps.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            os.makedirs(windowsapps_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
+            path = os.pathsep.join([windowsapps_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            decision = json.loads(out)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the only interpreter available is under WindowsApps; it must "
+                             "still be used via the ordinary candidate loop, not refused")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("windowsapps"), 1,
+                             "the WindowsApps interpreter is the only one available and must run")
+
+    def test_windowsapps_match_is_whole_component_and_case_insensitive(self):
+        # #1130 item 6: a bare substring match both misses a differently-cased WindowsApps
+        # directory AND wrongly excludes an unrelated directory that merely contains the
+        # substring as part of a longer name, not as its own path component.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            lowercase_dir = os.path.join(base, "windowsapps")
+            lookalike_dir = os.path.join(base, "MyWindowsAppsTools", "bin")
+            os.makedirs(lowercase_dir)
+            os.makedirs(lookalike_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(lowercase_dir, "python3"), marker_file, "lowercase_alias")
+            _fake_recording_python(os.path.join(lookalike_dir, "python3"), marker_file, "lookalike_real")
+            path = os.pathsep.join([lowercase_dir, lookalike_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            decision = json.loads(out)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("lowercase_alias"), 0,
+                             "windowsapps in lowercase is still the WindowsApps component and must be skipped")
+            self.assertEqual(ran.count("lookalike_real"), 1,
+                             "MyWindowsAppsTools is not the windowsapps path component and must be used")
+
+    def test_relative_path_entry_is_not_used(self):
+        # #1130 item 1: a relative PATH entry (here, the CWD via ".") must not be treated as a
+        # non-WindowsApps candidate, even when it is the only non-WindowsApps-looking entry.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            cwd_dir = os.path.join(base, "cwd")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(cwd_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
+            _fake_recording_python(os.path.join(cwd_dir, "python3"), marker_file, "cwd_relative")
+            path = os.pathsep.join([_windows_uname_dir(), windowsapps_dir, ".", _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            env = {"PATH": path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND,
+                   "CLAUDE_PROJECT_DIR": ws}
+            proc = subprocess.run(
+                [_SH, LAUNCHER], input=json.dumps(payload), env=env, cwd=cwd_dir,
+                capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+            )
+            self.assertEqual(proc.returncode, 0, f"err={proc.stderr!r}")
+            decision = json.loads(proc.stdout)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the walk must skip the relative entry and still fall back to WindowsApps")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("cwd_relative"), 0,
+                             "a relative PATH entry must never be treated as a candidate")
+            self.assertEqual(ran.count("windowsapps"), 1,
+                             "must fall back to the WindowsApps alias since the relative entry was skipped")
+
+    def test_glob_metacharacters_in_path_entry_are_not_expanded(self):
+        # #1130 item 2: a PATH entry containing glob metacharacters must be matched literally,
+        # not pathname-expanded. The literal directory "[ab]" does not exist; "a" does, with a
+        # real interpreter in it, and would be reachable if the PATH entry were glob-expanded.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            glob_target_dir = os.path.join(base, "a")
+            os.makedirs(glob_target_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(glob_target_dir, "python3"), marker_file, "glob_target")
+            literal_entry = os.path.join(base, "[ab]")
+            path = os.pathsep.join([literal_entry, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out), PASS_THROUGH,
+                             "a glob-metacharacter PATH entry must not resolve to an unrelated "
+                             "real directory; with no usable interpreter found, must pass through")
+            self.assertFalse(os.path.exists(marker_file),
+                             "the interpreter reachable only via glob-expansion must never run")
+
+    def test_preferred_candidate_failure_degrades_to_passthrough_not_retried(self):
+        # #1130 item 4 / round 2 item 5: a non-WindowsApps candidate that prints the marker
+        # and then fails (a broken guard run, simulated by a candidate that prints the marker
+        # then exits non-zero with no valid JSON after it) must degrade to pass-through for
+        # this call, not retry under another candidate. A HEALTHY WindowsApps python3 is
+        # placed BEFORE the broken one on PATH (round 2 item 5): the walk still excludes the
+        # WindowsApps directory from discovery and finds only the broken candidate, so it
+        # fails and correctly stops there. But if the stop-on-failure branch were removed, the
+        # fallback would reach the old loop, whose `command -v python3` resolves to whichever
+        # directory is first on PATH, here the healthy WindowsApps one, producing a DETECTABLE
+        # "deny" instead of today's pass-through, rather than silently re-running the same
+        # broken file the walk already tried, which a reversed PATH order could mask.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            broken_dir = os.path.join(base, "broken")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(broken_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
+            broken_path = os.path.join(broken_dir, "python3")
+            _write_exec(broken_path,
+                        f'#!/bin/sh\necho broken >> "{marker_file}"\n'
+                        'printf "ARS_PY_OK\\n"\nexit 1\n')
+            path = os.pathsep.join([windowsapps_dir, broken_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out), PASS_THROUGH,
+                             "a preferred candidate that prints the marker then fails must "
+                             "degrade to pass-through, not fall back to another candidate")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("broken"), 1, "the broken candidate must run once")
+            self.assertEqual(ran.count("windowsapps"), 0,
+                             "the guard must not be retried under the WindowsApps candidate "
+                             "after a preferred candidate already printed the marker and failed")
+
+    def test_preferred_candidate_timeout_after_marker_degrades_to_passthrough_not_retried(self):
+        # Same scenario as above, but the preferred candidate TIMES OUT after printing the
+        # marker (hangs) instead of exiting non-zero (#1130 round 2 item 5: the PR description
+        # also covers this case). run_bounded reports TIMEOUT_STATUS, not 0, so try_candidate
+        # must take the same "stop, do not retry" path as a plain post-marker failure.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            hanging_dir = os.path.join(base, "hanging")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(hanging_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
+            hanging_path = os.path.join(hanging_dir, "python3")
+            _write_exec(hanging_path,
+                        f'#!/bin/sh\necho hanging >> "{marker_file}"\n'
+                        'printf "ARS_PY_OK\\n"\nsleep 60\n')
+            path = os.pathsep.join([windowsapps_dir, hanging_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            start = time.monotonic()
+            code, out, err = self._run_with_path(path, payload,
+                                                 extra_env={"CLAUDE_PROJECT_DIR": ws},
+                                                 probe_bound=_HANG_PROBE_BOUND)
+            self.assertLess(time.monotonic() - start, 30, "must not wait out the bound twice")
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out), PASS_THROUGH,
+                             "a preferred candidate that times out after the marker must "
+                             "degrade to pass-through, not fall back to another candidate")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("hanging"), 1, "the hanging candidate must run once")
+            self.assertEqual(ran.count("windowsapps"), 0,
+                             "the guard must not be retried under the WindowsApps candidate "
+                             "after a preferred candidate already printed the marker and timed out")
+
+    def test_walk_tries_only_the_first_match(self):
+        # #1130 round 3: the walk stops at the first absolute, non-WindowsApps match and does
+        # not keep looking for a healthier one further down PATH. A broken first match (one
+        # that never even prints the marker) falls through to the unmodified old loop below,
+        # which is a separate, independent mechanism (see test_preferred_candidate_failure_
+        # degrades_to_passthrough_not_retried for the "marker then fails" case, and the "known
+        # limit" note in run_guard.sh for what the old loop does next); this test is only about
+        # discovery itself never considering the later, healthy entry as a candidate at all.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            broken_dir = os.path.join(base, "broken")
+            healthy_dir = os.path.join(base, "healthy")
+            os.makedirs(broken_dir)
+            os.makedirs(healthy_dir)
+            marker_file = os.path.join(base, "ran.log")
+            # A "broken" shim: executable, but does not understand -I/-c and so never prints
+            # the marker at all (try_candidate sees no marker -> status 2).
+            _write_exec(os.path.join(broken_dir, "python3"), "#!/bin/sh\nexit 1\n")
+            _fake_recording_python(os.path.join(healthy_dir, "python3"), marker_file, "healthy")
+            # No WindowsApps directory anywhere on this PATH: the only way the healthy
+            # candidate could ever run is if the walk kept looking past the first match.
+            path = os.pathsep.join([broken_dir, healthy_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("healthy"), 0,
+                             "the walk must stop at the first match and never consider a "
+                             "later, healthier candidate")
+
+    def test_walk_is_directory_first_not_name_first(self):
+        # #1130 round 4 item 1: the walk must try every name in one directory before moving
+        # to the next directory, not try one name across the whole PATH before trying the
+        # next name. An early directory holding only python3, and a later directory holding a
+        # py that records its run, distinguishes the two orders: directory-first finds the
+        # early python3 and never reaches the later directory at all; name-first would walk
+        # the whole PATH looking for py first and find the later one before ever trying the
+        # early python3.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            early_dir = os.path.join(base, "early")
+            later_dir = os.path.join(base, "later")
+            os.makedirs(early_dir)
+            os.makedirs(later_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(early_dir, "python3"), marker_file, "early_python3")
+            # A fake `py` launcher: strips a leading -3 (real CPython does not understand it)
+            # before delegating, the same way the real Windows py launcher consumes -3 to pick
+            # a version rather than forwarding it to the interpreter it starts.
+            py_path = os.path.join(later_dir, "py")
+            _write_exec(py_path,
+                        f'#!/bin/sh\necho later_py >> "{marker_file}"\n'
+                        f'[ "$1" = "-3" ] && shift\nexec "{REAL_PY}" "$@"\n')
+            path = os.pathsep.join([early_dir, later_dir, _minimal_sys_path()])
+            full_path = os.pathsep.join([_windows_uname_dir(), path])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            env = {"PATH": full_path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND, "CLAUDE_PROJECT_DIR": ws}
+            proc = subprocess.run(
+                [_SH, LAUNCHER], input=json.dumps(payload), env=env,
+                capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+            )
+            self.assertEqual(proc.returncode, 0, f"err={proc.stderr!r}")
+            decision = json.loads(proc.stdout)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the early python3 must actually run the guard")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("early_python3"), 1,
+                             "directory-first: the early directory's python3 must run")
+            self.assertEqual(ran.count("later_py"), 0,
+                             "directory-first: the later directory's py must never be reached")
+
+    def test_walk_selects_py_and_passes_dash_three(self):
+        # #1130 round 5 item 1: no existing test ever selects `py` through the walk, so the
+        # `-3` branch (try_non_windowsapps_candidates passes `-3` only when the matched name
+        # is `py`) is untested; removing `py` from the walk's candidate names, or dropping the
+        # `-3` it should receive, would still pass every other test in this file. A WindowsApps
+        # `py` sits first on PATH so a walk that skips `py` or drops `-3` falls through to the
+        # unmodified old loop, which finds and runs THAT one instead, failing this test.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            ordinary_dir = os.path.join(base, "Program Files", "PythonLauncher")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(ordinary_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "py"), marker_file, "windowsapps_py")
+            # A fake `py` that records its first argument, fails unless it is exactly -3, and
+            # only then shifts it off and runs a real interpreter, so the test can tell apart
+            # "ran, but without -3" from "ran, with -3" rather than just "ran".
+            ordinary_py = os.path.join(ordinary_dir, "py")
+            _write_exec(ordinary_py,
+                        f'#!/bin/sh\necho "ordinary_py $1" >> "{marker_file}"\n'
+                        f'[ "$1" = "-3" ] || exit 99\nshift\nexec "{REAL_PY}" "$@"\n')
+            path = os.pathsep.join([windowsapps_dir, ordinary_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = self._run_with_path(path, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
+            self.assertEqual(code, 0, f"err={err!r}")
+            decision = json.loads(out)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the ordinary py must actually run the guard, not just exit 99")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("ordinary_py -3"), 1,
+                             "the walk must select py through the ordinary directory and pass -3")
+            self.assertEqual(ran.count("windowsapps_py"), 0,
+                             "the WindowsApps py must never run when an ordinary py is found")
+
+    def test_trailing_slash_path_entry_does_not_build_double_slash(self):
+        # #1130 round 1 smaller item / round 2 item 5: a PATH entry ending in "/" must build
+        # ".../name", not ".../name" with a doubled slash (which MSYS can read as a UNC or
+        # network path). Runs the REAL launcher end to end rather than an isolated copy of the
+        # trailing-slash-stripping snippet, and checks the exact argv0 the fake interpreter was
+        # invoked with, which is where a stray "//" would actually show up. A literal PATH
+        # entry of exactly "/" would need an executable written into the filesystem root, which
+        # a test must not do; a real directory with an explicit trailing slash on its PATH
+        # entry exercises the identical code path (the walk strips a trailing "/" off `dir`
+        # before building `$dir/$name`), without that.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            real_dir = os.path.join(base, "realpy")
+            os.makedirs(real_dir)
+            argv0_file = os.path.join(base, "argv0.log")
+            real_path = os.path.join(real_dir, "python3")
+            _write_exec(real_path,
+                        f'#!/bin/sh\nprintf %s "$0" > "{argv0_file}"\nexec "{REAL_PY}" "$@"\n')
+            path = os.pathsep.join([real_dir + os.sep, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            full_path = os.pathsep.join([_windows_uname_dir(), path])
+            env = {"PATH": full_path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND, "CLAUDE_PROJECT_DIR": ws}
+            proc = subprocess.run(
+                [_SH, LAUNCHER], input=json.dumps(payload), env=env,
+                capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+            )
+            self.assertEqual(proc.returncode, 0, f"err={proc.stderr!r}")
+            decision = json.loads(proc.stdout)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertTrue(os.path.exists(argv0_file), "the real interpreter must have run")
+            argv0 = Path(argv0_file).read_text()
+            self.assertEqual(argv0, real_path, "must be invoked with a single slash before the name")
+            self.assertNotIn("//", argv0, "must never build a doubled-slash path")
+
+    def test_walk_is_inert_without_windows_shell(self):
+        # #1130 round 2 item 5: on a host that is not a real MINGW/MSYS/Cygwin shell, the walk
+        # must not engage at all, and a REAL non-WindowsApps interpreter being present must not
+        # change that -- the old test only had a WindowsApps python3 on PATH, so it could not
+        # tell "the walk correctly stayed off" apart from "the walk ran and found nothing
+        # better anyway". With both present, this proves the unmodified pre-#1025 PATH order
+        # wins: `command -v python3` (not the walk) resolves to whichever is FIRST on PATH.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            real_dir = os.path.join(base, "Program Files", "Python312")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(real_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
+            _fake_recording_python(os.path.join(real_dir, "python3"), marker_file, "real")
+            path = os.pathsep.join([windowsapps_dir, real_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            full_path = os.pathsep.join([_linux_uname_dir(), path])
+            env = {"PATH": full_path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND, "CLAUDE_PROJECT_DIR": ws}
+            # A stubbed `uname -s` reports a plain Linux kernel string, so this test proves
+            # the walk stays off regardless of what the real test host's own uname reports.
+            proc = subprocess.run(
+                [_SH, LAUNCHER], input=json.dumps(payload), env=env,
+                capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+            )
+            self.assertEqual(proc.returncode, 0, f"err={proc.stderr!r}")
+            decision = json.loads(proc.stdout)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the unmodified candidate loop must still find and use whatever "
+                             "`command -v python3` resolves to, exactly as before #1025")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("windowsapps"), 1,
+                             "walk off: command -v finds the first PATH match, WindowsApps")
+            self.assertEqual(ran.count("real"), 0,
+                             "walk off: the real interpreter later on PATH must not run")
+
+    def test_walk_engages_on_stubbed_windows_shell(self):
+        # Same PATH layout as test_walk_is_inert_without_windows_shell, but with a fake
+        # `uname` reporting a MINGW kernel string: the walk now engages, excludes the
+        # WindowsApps directory from discovery, and must use the real interpreter instead.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws:
+            windowsapps_dir = os.path.join(base, "AppData", "Local", "Microsoft", "WindowsApps")
+            real_dir = os.path.join(base, "Program Files", "Python312")
+            os.makedirs(windowsapps_dir)
+            os.makedirs(real_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(windowsapps_dir, "python3"), marker_file, "windowsapps")
+            _fake_recording_python(os.path.join(real_dir, "python3"), marker_file, "real")
+            path = os.pathsep.join([windowsapps_dir, real_dir, _minimal_sys_path()])
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            full_path = os.pathsep.join([_windows_uname_dir(), path])
+            env = {"PATH": full_path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND, "CLAUDE_PROJECT_DIR": ws}
+            proc = subprocess.run(
+                [_SH, LAUNCHER], input=json.dumps(payload), env=env,
+                capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+            )
+            self.assertEqual(proc.returncode, 0, f"err={proc.stderr!r}")
+            decision = json.loads(proc.stdout)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the walk must skip the WindowsApps directory and use the real one")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("real"), 1, "walk on: the real interpreter must run")
+            self.assertEqual(ran.count("windowsapps"), 0,
+                             "walk on: the WindowsApps directory must never be tried")
+
+
+    def test_empty_path_entries_are_not_treated_as_absolute_in_the_walk(self):
+        # A PATH with a bare "::" (an empty entry mid-string) and a trailing ":" (an empty
+        # entry at the end) must never be treated as an absolute candidate BY THE WALK,
+        # consistent with round 1 item 1's absolute-paths-only rule: an empty PATH entry is
+        # the one way a relative-looking "path" can appear without even a "." character. This
+        # is scoped to the walk specifically: POSIX `command -v` (used, unmodified, by the old
+        # loop per round 2 item 2) treats an empty PATH entry as the current directory, which
+        # is pre-existing behavior this PR must not change, so a real, absolute, non-
+        # WindowsApps candidate is placed where the walk must find and use it BEFORE the old
+        # loop (and its own, separate, out-of-scope CWD convention) ever runs at all.
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as ws, \
+             tempfile.TemporaryDirectory() as cwd_dir:
+            real_dir = os.path.join(base, "Program Files", "Python312")
+            os.makedirs(real_dir)
+            marker_file = os.path.join(base, "ran.log")
+            _fake_recording_python(os.path.join(real_dir, "python3"), marker_file, "real")
+            _fake_recording_python(os.path.join(cwd_dir, "python3"), marker_file, "cwd")
+            path = "::" + os.pathsep.join([real_dir, _minimal_sys_path()]) + ":"
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            full_path = os.pathsep.join([_windows_uname_dir(), path])
+            env = {"PATH": full_path, "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND, "CLAUDE_PROJECT_DIR": ws}
+            proc = subprocess.run(
+                [_SH, LAUNCHER], input=json.dumps(payload), env=env, cwd=cwd_dir,
+                capture_output=True, text=True, timeout=_LAUNCHER_TIMEOUT,
+            )
+            self.assertEqual(proc.returncode, 0, f"err={proc.stderr!r}")
+            decision = json.loads(proc.stdout)
+            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
+                             "the walk must skip the empty entries and use the real candidate")
+            ran = Path(marker_file).read_text().splitlines() if os.path.exists(marker_file) else []
+            self.assertEqual(ran.count("cwd"), 0,
+                             "an empty PATH entry must never be treated as a candidate by the walk")
+            self.assertEqual(ran.count("real"), 1,
+                             "the walk must find and use the real candidate, not fall through "
+                             "to the old loop at all")
 
 
 if __name__ == "__main__":

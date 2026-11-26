@@ -258,6 +258,163 @@ os._exit(0)
 # (gemini round-6 P1). If mktemp can't give us a private file, degrade safely to pass-through.
 GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 
+# --- #1025: prefer a non-WindowsApps interpreter over the alias candidates --------------
+# On Windows with the Python Install Manager, `py` is an App Execution Alias; each launch
+# through the alias makes AppXSvc run an update check that leaks memory (python/pymanager#396,
+# #1015). If a real interpreter is already reachable on PATH outside WindowsApps, using it
+# instead avoids the alias path entirely, rather than only cutting launches per call (#1015).
+#
+# We only ever look at PATH entries' own filesystem paths, never a candidate's printed output:
+# an approach that took the interpreter path FROM a probe's output kept raising new review
+# findings across three rounds in #1019 and was replaced, so this repeats that lesson rather
+# than the rejected approach.
+#
+# #1130 review (round 3) simplified this to the smallest version that still helps:
+#  - it only runs on MINGW/MSYS/Cygwin shells (round 1 item 3). Tests exercise this by
+#    stubbing `uname` on the test PATH to print a MINGW/MSYS/CYGWIN string; there is no
+#    production env-var override, since one was tried in round 2 and any non-empty value of
+#    it, including "0", turned the walk on everywhere, including WSL and Linux, bringing back
+#    the exact pass-through this gate exists to prevent. On WSL, Windows-PATH interop can put
+#    a Windows py.exe on PATH; it prints the marker, then cannot open this script's own Linux
+#    guard path, so try_candidate returns 1 and every write degrades to pass-through. macOS,
+#    Linux and plain WSL keep the unmodified pre-#1025 candidate order instead of running
+#    this walk at all.
+#  - it only accepts ABSOLUTE PATH entries (round 1 item 1): a relative entry such as `.`
+#    would let a WindowsApps-preceding CWD executable win.
+#  - it splits PATH without word-splitting/globbing (round 1 item 2): the previous
+#    `set -- $PATH` under IFS=: does pathname expansion with no `set -f` in effect, so an
+#    entry such as `/opt/kits/[ab]` could glob-expand to a path that was never actually on
+#    PATH.
+#  - it matches WindowsApps as a whole, case-insensitive path COMPONENT (round 1 item 6): a
+#    bare `*WindowsApps*` substring match both misses `.../windowsapps` and wrongly excludes
+#    an unrelated directory such as `/opt/MyWindowsAppsTools/bin`.
+#  - it STOPS AT THE FIRST absolute, non-WindowsApps directory on PATH that holds `py`,
+#    `python3` or `python` (round 3: trying every candidate and skipping ones already tried,
+#    per round 1 item 5, and the matching key needed to make that safe across `.exe` and
+#    `/./` path variants, per round 2 item 3, each produced new edge cases of their own; a
+#    single first match is simpler and has none of them). A broken first match is NOT
+#    retried against a later, healthier one here; see the known limit below.
+#  - the discovery itself (finding that one candidate path, starting no interpreter) is
+#    bounded by a single `run_bounded` call (round 2 item 4): the walk can look at more
+#    directories than the old lookup ever reached, so a stalled network-mounted PATH entry
+#    must not be able to stall a stat() check outside any bound. If the discovery step
+#    itself overruns the bound, or finds nothing, the launcher falls straight through to the
+#    unmodified old loop below.
+#
+# A preferred candidate that prints the marker and then fails or times out is NOT retried
+# under the next candidate (round 1 item 4): the launcher degrades to pass-through for that
+# call instead, since running the guard a second time is not safe in general (a second run
+# could reach a different decision, including one it should have denied). See
+# test_preferred_candidate_failure_degrades_to_passthrough_not_retried and
+# test_preferred_candidate_timeout_after_marker_degrades_to_passthrough_not_retried.
+#
+# Known limit: the old loop below has no knowledge of what this walk already tried, so if the
+# one non-WindowsApps candidate this walk finds exists but is itself broken (not merely
+# missing, which the old loop's own `command -v` would also fail on), the old loop can select
+# that exact same broken file again under its own `command -v` resolution and pay the probe
+# bound a second time before falling through to the WindowsApps alias. This costs at most one
+# extra bounded wait, only in that one case, never more.
+
+# uname -s reliably reports an uppercase MINGW*/MSYS*/CYGWIN* prefix on those shells.
+_ARS_WINDOWS_SHELL=
+case $(uname -s 2>/dev/null) in
+    MINGW*|MSYS*|CYGWIN*) _ARS_WINDOWS_SHELL=1 ;;
+esac
+
+# Try one candidate: "$@" is the interpreter argv prefix (e.g. `py -3`, or one resolved path,
+# possibly with its own `-3`). Echoes the forwarded decision and returns 0 on a healthy guard
+# decision (caller should exit 0 right after); returns 1 to mean "stop trying candidates, guard
+# is broken" (the old `break`); returns 2 to mean "try the next candidate" (the old `continue`).
+# Defined before try_non_windowsapps_candidates below, which calls it: a shell function must
+# already be defined by the time a CALL to it runs, not merely appear earlier in the file text.
+try_candidate() {
+    GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$@" -I -c "$GUARD_RUNNER" "$GUARD" 2>"$GUARD_ERR")
+    GUARD_STATUS=$?
+    case $GUARD_OUT in
+        "$MARKER" | "$MARKER$NL"*) ;;
+        *) return 2 ;;
+    esac
+    [ "$GUARD_STATUS" -eq 0 ] || return 1
+    [ "$GUARD_OUT" = "$MARKER" ] && return 1
+    case $GUARD_OUT in
+        "$MARKER$NL"*"$NL$END_MARKER") ;;
+        *) return 2 ;;
+    esac
+    DECISION=${GUARD_OUT#"$MARKER$NL"}
+    DECISION=${DECISION%"$NL$END_MARKER"}
+    case $DECISION in
+        *"$NL"*) return 2 ;;
+        "{"*"}")
+            [ -s "$GUARD_ERR" ] && cat "$GUARD_ERR" >&2
+            rm -f "$GUARD_ERR" 2>/dev/null
+            printf '%s\n' "$DECISION"
+            return 0
+            ;;
+    esac
+    return 2
+}
+
+# Discovery script run under run_bounded, in its own `sh -c`: walks PATH by hand (absolute
+# entries only, WindowsApps excluded as a whole path component, bare name tried before its
+# `.exe` form) and prints the FIRST matching "name path" pair, then exits immediately,
+# starting no interpreter. PATH is inherited from the parent shell's environment.
+_ARS_DISCOVER_SCRIPT='
+_rest=$PATH
+while [ -n "$_rest" ]; do
+    case $_rest in
+        *:*) dir=${_rest%%:*}; _rest=${_rest#*:} ;;
+        *)   dir=$_rest; _rest= ;;
+    esac
+    case $dir in
+        /*) ;;
+        *) continue ;;
+    esac
+    case "/$dir/" in
+        */[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]/*) continue ;;
+    esac
+    case $dir in
+        */) dir=${dir%/} ;;
+    esac
+    for name in py python3 python; do
+        for cand_path in "$dir/$name" "$dir/$name.exe"; do
+            if [ -f "$cand_path" ] && [ -x "$cand_path" ]; then
+                printf "%s %s\n" "$name" "$cand_path"
+                exit 0
+            fi
+        done
+    done
+done
+'
+
+try_non_windowsapps_candidates() {
+    [ -n "$_ARS_WINDOWS_SHELL" ] || return 1
+    _discovered=$(run_bounded sh -c "$_ARS_DISCOVER_SCRIPT" 2>/dev/null)
+    [ $? -eq 0 ] || return 1
+    [ -n "$_discovered" ] || return 1
+    _cand_name=${_discovered%% *}
+    cand_path=${_discovered#* }
+    # Defensive: if run_bounded's own mktemp fails inside the discovery subshell, it can
+    # print pass-through JSON with status 0 instead of a "name path" line; a malformed,
+    # non-absolute "path" parsed out of that must never reach try_candidate.
+    case $cand_path in
+        /*) ;;
+        *) return 1 ;;
+    esac
+    if [ "$_cand_name" = "py" ]; then
+        try_candidate "$cand_path" -3
+    else
+        try_candidate "$cand_path"
+    fi
+    case $? in
+        0) exit 0 ;;
+        1) rm -f "$GUARD_ERR" 2>/dev/null; emit_passthrough_and_exit ;;
+    esac
+    # status 2: this one candidate did not produce a usable decision; fall through to the
+    # unmodified old loop below, same as if discovery had found nothing at all.
+    return 1
+}
+try_non_windowsapps_candidates
+
 # Candidates in order; `py -3` first (the Windows launcher). For each one:
 #   * no marker line first (stub, missing interpreter, hang before start) -> next candidate;
 #   * marker, exit 0, one line of JSON object, and the end line -> forward that decision;
@@ -266,36 +423,23 @@ GUARD_ERR=$(mktemp 2>/dev/null) || emit_passthrough_and_exit
 #     the next candidate runs, as a probe that printed more than the marker was skipped before;
 #   * marker and a non-zero exit, a timeout, or nothing after it (the guard ended the process
 #     itself) -> the guard is BROKEN; per the maintainer
-#     decision (§3.2.1) degrade to pass-through + exit 0, never block, and do not run the
-#     guard again under another candidate.
+#     decision (section 3.2.1) degrade to pass-through + exit 0, never block, and do not run
+#     the guard again under another candidate.
+# This loop behaves as it did before #1025, on every platform, whether or not the
+# walk above ran: exactly `command -v "$1" >/dev/null 2>&1 || continue` then `try_candidate
+# "$@"`. It has no knowledge of what the walk above already tried (see the known limit noted
+# where the walk is introduced); round 2 added a resolved-path/skip-list variant of this loop
+# that this round removed again, since it made the loop's behavior platform-dependent and
+# every fix to keep it correct produced a new edge case of its own.
 for cand in "py -3" "python3" "python"; do
     # shellcheck disable=SC2086  # intentional word-split: "py -3" -> py with arg -3
     set -- $cand
     command -v "$1" >/dev/null 2>&1 || continue
-    GUARD_OUT=$(printf '%s' "$PAYLOAD" | run_bounded "$@" -I -c "$GUARD_RUNNER" "$GUARD" 2>"$GUARD_ERR")
-    GUARD_STATUS=$?
-    case $GUARD_OUT in
-        "$MARKER" | "$MARKER$NL"*) ;;
-        *) continue ;;
-    esac
-    [ "$GUARD_STATUS" -eq 0 ] || break
-    [ "$GUARD_OUT" = "$MARKER" ] && break
-    case $GUARD_OUT in
-        "$MARKER$NL"*"$NL$END_MARKER") ;;
-        *) continue ;;
-    esac
-    DECISION=${GUARD_OUT#"$MARKER$NL"}
-    DECISION=${DECISION%"$NL$END_MARKER"}
-    case $DECISION in
-        *"$NL"*) ;;
-        "{"*"}")
-            # Healthy guard decision: relay its stderr advisories, then forward it.
-            [ -s "$GUARD_ERR" ] && cat "$GUARD_ERR" >&2
-            rm -f "$GUARD_ERR" 2>/dev/null
-            printf '%s\n' "$DECISION"
-            exit 0
-            ;;
-    esac
+    try_candidate "$@"
+    _tc_status=$?
+    [ "$_tc_status" -eq 2 ] && continue
+    [ "$_tc_status" -eq 0 ] && exit 0
+    break
 done
 
 # Guard broke / timed out / produced invalid output. Degrade, don't block, don't spam.
