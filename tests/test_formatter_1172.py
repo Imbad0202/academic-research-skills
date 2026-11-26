@@ -9,10 +9,11 @@ NUMBERED_CONVERSION_BULLET = (
     "- Replace author-year citations, MLA 9 author-page citations, and "
     "the citations in Chicago Notes-Bibliography footnotes with [Number] "
     "for IEEE and (Number) for Vancouver. Keep a page number or other "
-    "locator with the number in the target style's form (IEEE `[1, p. 47]`), "
-    "and keep any other text from the footnote. In `full` mode, retain "
-    "verbatim a citation that a reported incoming mismatch names and that "
-    "cannot be numbered without changing its content."
+    "locator with the number in the target style's form (IEEE `[1, p. 47]`). "
+    "In `full` mode, retain verbatim a citation that a reported incoming "
+    "mismatch names and that cannot be numbered without changing its "
+    "content. If the footnote retains other text or a verbatim citation, "
+    "keep the note and its marker."
 )
 
 CONTENT_INTEGRITY_FAILURE_HANDLING = (

@@ -112,10 +112,13 @@ Preferred behavior:
 - If Pandoc is unavailable, provide complete markdown + DOCX conversion instructions
 - Include a style mapping guide (Heading 1 = Level 1, etc.)
 - Include font/margin/spacing specifications
-- Select the Pandoc command under Markdown -> DOCX Conversion Rules. In `full` mode with retained uncited entries, use its citation-processing command and `nocite` metadata.
+- Use Pandoc command: `pandoc input.md -o output.docx --reference-doc=template.docx`
 
 ### 4. PDF (via LaTeX)
-- Build the PDF from the generated `paper.tex` and its `references.bib` using the PDF command in the Output Package. Follow Step 1.2 for the Stage 5 confirmation before compilation.
+- Build the PDF from the generated `paper.tex` and its `references.bib`. Follow Step 1.2 for the Stage 5 confirmation before compilation. Run the build in the directory containing both files. Select the bibliography backend from the generated `paper.tex`:
+  - For biblatex with its default or explicit Biber backend, including a style package that loads biblatex, run `xelatex paper.tex && biber paper && xelatex paper.tex && xelatex paper.tex`. The biblatex option `natbib=true` enables `\citep` and `\citet` and does not select BibTeX.
+  - For a template using `\bibliography{...}` with BibTeX, run `xelatex paper.tex && bibtex paper && xelatex paper.tex && xelatex paper.tex`. This includes the natbib reference template, `\documentclass[man,12pt,natbib]{apa7}`, and journal templates that use this bibliography interface. Also use BibTeX if the generated biblatex configuration explicitly selects `backend=bibtex`.
+  - If a non-APA, non-zh-TW template calls for pdfLaTeX, substitute `pdflatex` for `xelatex` in all three TeX passes.
 - For zh-TW content: use XeLaTeX with CJK font support
 
 ### 5. Combined (All formats)
@@ -317,7 +320,7 @@ Step 4: Verification
 | In-text style | (Author, Year) | (Author Year) | Footnote superscript | (Author Page) | [Number] | (Number) |
 | Reference list name | References | References | Bibliography | Works Cited | References | References |
 | Author format | Last, F. M. | Last, First | Last, First | Last, First | F. M. Last | Last FM |
-| Year position | After author | After author | After publisher (book); after volume and issue (journal article) | After volume and issue, before pages and DOI (journal article) | After pages, before DOI (journal); after publisher (book) | After journal title (journal article); after publisher (book) |
+| Year position | After author | After author | After publisher (book); after volume and issue (journal article) | After volume and issue, before pages and DOI (journal article); after publisher (book) | After pages, before DOI (journal); after publisher (book) | After journal title (journal article); after publisher (book) |
 | Title case | Sentence case | Headline case | Headline case | Headline case | Sentence case | Sentence case |
 | Journal title | Italic | Italic | Italic | Italic | Italic | Abbreviated |
 | DOI format | https://doi.org/... | https://doi.org/... | https://doi.org/... | https://doi.org/... | doi:... | doi:... |
@@ -333,15 +336,15 @@ When converting **to** Chicago Notes-Bibliography:
 When converting **from** Chicago Notes-Bibliography:
 - Extract bibliographic data from footnotes and bibliography
 - Convert to parenthetical or numbered citations as required by target format
-- Remove footnote markers; insert appropriate in-text citations
+- Insert the converted citations in the text. Remove a footnote and its marker only when the note held nothing but citations that were converted. If the note retains other text or a verbatim citation, keep the note and its marker.
 
 ### Handling Numbered References (IEEE / Vancouver)
 
-When converting between IEEE and Vancouver in either direction, keep the existing reference numbers and list the entries in numeric order. Change only the in-text form and the reference-list entry format to match the target style. Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and (Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` mode, keep a citation verbatim when a reported incoming mismatch requires it, and keep any reported uncited-entry warning in the Output Package. If the incoming numbers do not follow the order of first appearance, renumber by first appearance (in `full` mode, uncited entries after cited ones), and keep every citation linked to the same entry.
+When converting between IEEE and Vancouver in either direction, keep the existing reference numbers and list the entries in numeric order. Format the in-text citations and reference-list entries in the target style. Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and (Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` mode, keep a citation verbatim when a reported incoming mismatch requires it, and keep any reported uncited-entry warning in the Output Package. If the incoming numbers do not follow the order of first appearance, renumber by first appearance (in `full` mode, uncited entries after cited ones), and keep every citation linked to the same entry.
 
 When converting from APA 7, Chicago, or MLA 9 **to** numbered formats:
 - Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package.
-- Replace author-year citations, MLA 9 author-page citations, and the citations in Chicago Notes-Bibliography footnotes with [Number] for IEEE and (Number) for Vancouver. Keep a page number or other locator with the number in the target style's form (IEEE `[1, p. 47]`), and keep any other text from the footnote. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
+- Replace author-year citations, MLA 9 author-page citations, and the citations in Chicago Notes-Bibliography footnotes with [Number] for IEEE and (Number) for Vancouver. Keep a page number or other locator with the number in the target style's form (IEEE `[1, p. 47]`). In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content. If the footnote retains other text or a verbatim citation, keep the note and its marker.
 - Reorder the reference list numerically
 
 When converting **from** numbered formats to APA 7, Chicago, or MLA 9:
@@ -572,8 +575,8 @@ Do not call a draft "passed peer review" unless its line is `Accepted in Round N
 [Completed checklist with all items checked]
 
 ### Conversion Commands (if applicable)
-- DOCX: Provide the applicable command from Markdown -> DOCX Conversion Rules, including the citation-processing command and `nocite` metadata when `full` mode retains uncited entries.
-- PDF: Run `xelatex paper.tex && biber paper && xelatex paper.tex && xelatex paper.tex` in the directory containing the generated `paper.tex` and `references.bib`. For zh-TW content, configure the CJK font in `paper.tex` before compilation.
+- DOCX: `pandoc paper.md -o paper.docx --reference-doc=template.docx`
+- PDF: Include the build command only when both `paper.tex` and `references.bib` are delivered. Give the exact command selected for the generated `paper.tex` under PDF (via LaTeX), to run in the directory containing both files. For zh-TW content, configure the CJK font in `paper.tex` before compilation.
 ```
 
 ## Detailed Execution Algorithm
@@ -651,13 +654,15 @@ Step 6: Package Output
 | Math `$...$` | `$...$` | Preserved directly |
 | Code `` `code` `` | `\texttt{code}` | |
 
+In `full` mode, for every LaTeX template, insert one `\nocite{key}` for each retained reference-list entry with no in-text citation. Use the entry's actual key from `references.bib`. Place these commands after the body citations and before the template's bibliography command (`\printbibliography` or `\bibliography{...}`). Emit the keys in the order the entries take in the converted reference list. For IEEE and Vancouver, use ascending final reference number. When converting from APA 7, Chicago, or MLA 9 to a numbered style, number uncited entries after all cited entries, in their original reference-list order, as specified under Handling Numbered References.
+
 **LaTeX document structure template**:
 
 ```latex
 \documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,graphicx,hyperref,booktabs}
-\usepackage[style=apa,backend=biber,natbib=true]{biblatex} % APA example. Set style to the target biblatex style. Some target styles use their own package, such as biblatex-chicago.
+\usepackage[style=apa,backend=biber,natbib=true]{biblatex} % APA example. Keep natbib=true for \citep and \citet when selecting another biblatex style or loading a style package such as biblatex-chicago.
 % IF zh-TW content -> add xeCJK (see Chinese settings below)
 \addbibresource{references.bib}
 
@@ -669,23 +674,11 @@ Step 6: Package Output
 \maketitle
 \begin{abstract}...\end{abstract}
 % Body sections
-% In full mode, insert one \nocite{key} here for each retained reference-list entry with no in-text citation, in incoming reference-list order. Replace key with the entry's actual key from references.bib.
 \printbibliography
 \end{document}
 ```
 
 ### Markdown -> DOCX Conversion Rules
-
-In `full` mode, when the incoming reference list retains entries with no in-text citation, use the citation-processing command below. In the Phase 7 `paper.md` used as Pandoc input, merge a top-level `nocite` field into the YAML front matter. List each retained uncited entry once, in incoming reference-list order, using its actual `references.bib` key prefixed with `@`. For example, for two such keys:
-
-```yaml
----
-nocite: |
-  @FirstKey, @SecondKey
----
-```
-
-Use explicit keys only. Add this field only when there are retained uncited entries. For Chinese DOCX output in this case, use the same citation-processing command with `--reference-doc=template_zh.docx`. If providing conversion instructions, include the prepared Markdown, bibliography, and applicable command. Keep the Output Package warning for each reported mismatch.
 
 **Pandoc conversion commands**:
 
@@ -799,10 +792,10 @@ When the output format is APA 7.0 LaTeX, the formatter **MUST** use the `apa7` d
 ```
 
 **PDF compilation** (mandatory):
+- Compile the generated APA `paper.tex` with XeLaTeX and BibTeX. The mandatory `apa7` class option `natbib` selects the BibTeX route under PDF (via LaTeX).
 ```
-tectonic paper.tex
+xelatex paper.tex && bibtex paper && xelatex paper.tex && xelatex paper.tex
 ```
-- PDF **MUST** be compiled from LaTeX via `tectonic` or `xelatex`
 - HTML-to-PDF is **PROHIBITED** for academic papers
 
 **Verbatim blocks** (e.g., score cards, code):
@@ -835,11 +828,8 @@ tectonic paper.tex
 % \setCJKmainfont{Noto Serif CJK TC}
 % \setCJKsansfont{Noto Sans CJK TC}
 
-% Compilation commands (must use xelatex or lualatex):
-% xelatex paper.tex
-% biber paper
-% xelatex paper.tex
-% xelatex paper.tex (3 times total, to ensure citations and TOC are correct)
+% Compile with XeLaTeX using the command under PDF (via LaTeX) for this paper.tex.
+% Use the bibliography backend selected there, then run XeLaTeX twice more.
 ```
 
 **Common Chinese LaTeX issues**:
