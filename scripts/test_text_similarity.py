@@ -158,10 +158,15 @@ def _pre_fix_exact_normalized_title(a: str, b: str) -> bool:
     Used as an oracle: the repair is only allowed to change the verdict for a
     pair where BOTH sides carry a Han ideograph. Everywhere else it must agree
     with this function byte-for-byte. Written out in full (rather than captured
-    from the module) so the oracle cannot drift with the code it checks."""
+    from the module) so the oracle cannot drift with the code it checks.
+    The typographic-punctuation forms are not CJK-gated and are part of the
+    formula off the CJK path."""
+    a_t, b_t = ts._fold_typographic(a), ts._fold_typographic(b)
     return (
         ts._normalize_title(a) == ts._normalize_title(b)
         or ts._normalize_title_acronym(a) == ts._normalize_title_acronym(b)
+        or ts._normalize_title(a_t) == ts._normalize_title(b_t)
+        or ts._normalize_title_acronym(a_t) == ts._normalize_title_acronym(b_t)
     )
 
 
@@ -207,6 +212,36 @@ _NON_CJK_PAIRS = [
     ("《Attention Is All You Need》", "Attention Is All You Need"),
     ("《A Study of Foo》", "A Study of Foo"),
 ]
+
+
+class TypographicPunctuationTest(unittest.TestCase):
+    """Unicode dashes and quotation marks are the typeset forms of the ASCII
+    `-`, `'` and `"` that the base form already turns into spaces. Crossref
+    and OpenAlex serve `Dose–Response` (en dash) where a reference often has
+    `Dose-Response`; the exact-title gate must treat them the same."""
+
+    def test_typeset_and_ascii_spellings_are_exact_matches(self) -> None:
+        for left, right in [
+            ("Dose-Response Relationship in Radiation Carcinogenesis",
+             "Dose\u2013Response Relationship in Radiation Carcinogenesis"),
+            ("The origin of extracellular fields and currents - EEG, ECoG, LFP and spikes",
+             "The origin of extracellular fields and currents \u2014 EEG, ECoG, LFP and spikes"),
+            ("Alzheimer's disease: a review", "Alzheimer\u2019s disease: a review"),
+            ('"Why Should I Trust You?" Explaining the Predictions of Any Classifier',
+             "\u201cWhy Should I Trust You?\u201d Explaining the Predictions of Any Classifier"),
+            ("Foo: A Study", "Foo \u2014 A Study"),
+        ]:
+            with self.subTest(pair=(left, right)):
+                self.assertTrue(ts.exact_normalized_title(left, right))
+                self.assertTrue(ts.exact_normalized_title(right, left))
+
+    def test_distinct_works_still_rejected(self) -> None:
+        for left, right in [
+            ("Deep Learning, Part I", "Deep Learning \u2013 Part II"),
+            ("A Study of Foo", "A Study of Bar \u2014 Revisited"),
+        ]:
+            with self.subTest(pair=(left, right)):
+                self.assertFalse(ts.exact_normalized_title(left, right))
 
 
 class CjkNonDestructiveTest(unittest.TestCase):

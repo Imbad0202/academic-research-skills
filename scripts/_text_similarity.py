@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 import string
+import unicodedata
 from difflib import SequenceMatcher
 
 
@@ -65,6 +66,16 @@ def _normalize_title_acronym(s: str) -> str:
     equal, which under the gate would wrongly fall to `unresolvable`."""
     collapsed = _DOTTED_ACRONYM.sub(lambda m: m.group(0).replace(".", ""), s)
     return _normalize_title(collapsed)
+
+
+def _fold_typographic(s: str) -> str:
+    """Unicode dashes and quotation marks (categories Pd, Pi, Pf: `–`, `—`,
+    `’`, `“`, `”`) become spaces, as their ASCII forms `-`, `'`, `"` do in
+    `_normalize_title`. Indexes serve `Dose–Response` where a reference
+    often has `Dose-Response`."""
+    return "".join(
+        " " if unicodedata.category(ch) in ("Pd", "Pi", "Pf") else ch for ch in s
+    )
 
 
 # CJK Unified Ideographs (U+4E00-U+9FFF). Extension blocks are deliberately not
@@ -268,6 +279,10 @@ def exact_normalized_title(a: str, b: str) -> bool:
         # this way — there is no translation oracle here, so a cross-script
         # difference must stay a non-match rather than become evidence.
         or _cjk_titles_match(a, b)
+        # Typeset dashes and quotes compare as their ASCII forms do.
+        or _normalize_title(_fold_typographic(a)) == _normalize_title(_fold_typographic(b))
+        or _normalize_title_acronym(_fold_typographic(a))
+        == _normalize_title_acronym(_fold_typographic(b))
     )
 
 

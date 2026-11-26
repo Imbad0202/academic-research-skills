@@ -38,6 +38,7 @@ TITLE_FORMS = (
     "The title check passes if the two titles are equal under any of the three forms "
     "used by `exact_normalized_title` in `scripts/_text_similarity.py`. "
     "The base form lowercases, replaces ASCII punctuation with spaces, and collapses and trims whitespace. "
+    "Both forms also count a Unicode dash or quotation mark (`–`, `—`, `’`, `“`, `”`) as the ASCII punctuation it stands for. "
     "The dotted-acronym form first removes the dots in a run that starts at a word boundary and consists of two or more contiguous dotted ASCII letters, "
     "then applies the base form (`R.A.G.` equals `RAG`). "
     "When both titles contain a Han ideograph in U+4E00-U+9FFF, `_cjk_titles_match` also accepts equal, nonempty Chinese-aware forms. "
