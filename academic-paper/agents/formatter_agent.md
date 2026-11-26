@@ -729,8 +729,11 @@ When the output format is APA 7.0 LaTeX, the formatter **MUST** use the `apa7` d
 ```latex
 \usepackage{fontspec}
 \setmainfont{Times New Roman}
-\usepackage{xeCJK}
-\setCJKmainfont{Source Han Serif TC VF}
+% Only if the paper contains CJK text, include both commands below in the preamble.
+% Replace <installed font> with an installed main font for the target OS
+% from "Chinese LaTeX Compilation Settings" below, then uncomment both lines.
+% \usepackage{xeCJK}
+% \setCJKmainfont{<installed font>}
 \setmonofont{Courier New}
 ```
 
