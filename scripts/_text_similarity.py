@@ -68,14 +68,33 @@ def _normalize_title_acronym(s: str) -> str:
     return _normalize_title(collapsed)
 
 
+# Low-9 quotation marks open a quotation but are category Ps, not Pi.
+_LOW_9_QUOTES = frozenset("\u201a\u201e")
+
+
 def _fold_typographic(s: str) -> str:
     """Unicode dashes and quotation marks (categories Pd, Pi, Pf: `–`, `—`,
-    `’`, `“`, `”`) become spaces, as their ASCII forms `-`, `'`, `"` do in
-    `_normalize_title`. Indexes serve `Dose–Response` where a reference
-    often has `Dose-Response`."""
+    `’`, `“`, `”`; plus the low-9 marks `‚` and `„`) become spaces, as their
+    ASCII forms `-`, `'`, `"` do in `_normalize_title`. Indexes serve
+    `Dose–Response` where a reference often has `Dose-Response`."""
     return "".join(
-        " " if unicodedata.category(ch) in ("Pd", "Pi", "Pf") else ch for ch in s
+        " "
+        if ch in _LOW_9_QUOTES or unicodedata.category(ch) in ("Pd", "Pi", "Pf")
+        else ch
+        for ch in s
     )
+
+
+def _typographic_titles_match(a: str, b: str) -> bool:
+    """The base and dotted-acronym forms compared after `_fold_typographic`.
+    An empty folded form never matches: `—` and `“”` both fold to "" and are
+    not the same work."""
+    a, b = _fold_typographic(a), _fold_typographic(b)
+    left, right = _normalize_title(a), _normalize_title(b)
+    if left and left == right:
+        return True
+    left, right = _normalize_title_acronym(a), _normalize_title_acronym(b)
+    return bool(left) and left == right
 
 
 # CJK Unified Ideographs (U+4E00-U+9FFF). Extension blocks are deliberately not
@@ -267,6 +286,9 @@ def exact_normalized_title(a: str, b: str) -> bool:
     side is a contiguous initialism — `D.H. Lawrence` vs `D. H. Lawrence`
     normalizes byte-equal under the base form (`d h lawrence`) but NOT under the
     acronym form (`dh` vs `d h`), and would wrongly fall to `unresolvable`.
+    Both forms are also compared after typeset dashes and quotation marks are
+    folded to spaces (`_typographic_titles_match`), so `Dose–Response` matches
+    `Dose-Response`; an empty folded form never matches.
     Legitimate punctuation / case / subtitle-spacing / `R.A.G.`→`RAG` acronym
     variants all match here; a distinct related work (different subtitle, Part I
     vs Part II, a correction-notice prefix) matches under neither and stays
@@ -280,9 +302,7 @@ def exact_normalized_title(a: str, b: str) -> bool:
         # difference must stay a non-match rather than become evidence.
         or _cjk_titles_match(a, b)
         # Typeset dashes and quotes compare as their ASCII forms do.
-        or _normalize_title(_fold_typographic(a)) == _normalize_title(_fold_typographic(b))
-        or _normalize_title_acronym(_fold_typographic(a))
-        == _normalize_title_acronym(_fold_typographic(b))
+        or _typographic_titles_match(a, b)
     )
 
 
@@ -322,5 +342,9 @@ def generic_title(title: str) -> bool:
     the closed generic set. Under the exact-or-bust gate an exact title match
     that is *also* generic accepts only when an ID/DOI corroborates; otherwise
     it is `unresolvable` (a bare `Editorial` collides across thousands of
-    distinct works)."""
-    return _normalize_title(title) in _GENERIC_TITLES
+    distinct works). A typeset dash or quotation mark is folded as in
+    `exact_normalized_title`, so `“Editorial”` is generic too."""
+    return (
+        _normalize_title(title) in _GENERIC_TITLES
+        or _normalize_title(_fold_typographic(title)) in _GENERIC_TITLES
+    )

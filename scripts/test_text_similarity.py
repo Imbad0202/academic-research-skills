@@ -162,11 +162,12 @@ def _pre_fix_exact_normalized_title(a: str, b: str) -> bool:
     The typographic-punctuation forms are not CJK-gated and are part of the
     formula off the CJK path."""
     a_t, b_t = ts._fold_typographic(a), ts._fold_typographic(b)
+    base_t, acr_t = ts._normalize_title(a_t), ts._normalize_title_acronym(a_t)
     return (
         ts._normalize_title(a) == ts._normalize_title(b)
         or ts._normalize_title_acronym(a) == ts._normalize_title_acronym(b)
-        or ts._normalize_title(a_t) == ts._normalize_title(b_t)
-        or ts._normalize_title_acronym(a_t) == ts._normalize_title_acronym(b_t)
+        or (bool(base_t) and base_t == ts._normalize_title(b_t))
+        or (bool(acr_t) and acr_t == ts._normalize_title_acronym(b_t))
     )
 
 
@@ -230,6 +231,8 @@ class TypographicPunctuationTest(unittest.TestCase):
             ('"Why Should I Trust You?" Explaining the Predictions of Any Classifier',
              "\u201cWhy Should I Trust You?\u201d Explaining the Predictions of Any Classifier"),
             ("Foo: A Study", "Foo \u2014 A Study"),
+            ('Das "Neue" in der Physik', "Das \u201eNeue\u201c in der Physik"),
+            ("RAG-based retrieval", "R.A.G.\u2013based retrieval"),
         ]:
             with self.subTest(pair=(left, right)):
                 self.assertTrue(ts.exact_normalized_title(left, right))
@@ -239,9 +242,18 @@ class TypographicPunctuationTest(unittest.TestCase):
         for left, right in [
             ("Deep Learning, Part I", "Deep Learning \u2013 Part II"),
             ("A Study of Foo", "A Study of Bar \u2014 Revisited"),
+            ("Storage at 20 \u00b0C", "Storage at \u221220 \u00b0C"),
         ]:
             with self.subTest(pair=(left, right)):
                 self.assertFalse(ts.exact_normalized_title(left, right))
+
+    def test_titles_folding_to_empty_never_match(self) -> None:
+        self.assertFalse(ts.exact_normalized_title("\u2014", "\u201c\u201d"))
+
+    def test_quoted_or_dashed_generic_title_is_generic(self) -> None:
+        for title in ("\u201cEditorial\u201d", "Book Review \u2014"):
+            with self.subTest(title=title):
+                self.assertTrue(ts.generic_title(title))
 
 
 class CjkNonDestructiveTest(unittest.TestCase):
