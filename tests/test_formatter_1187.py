@@ -3,24 +3,40 @@ element check, and blind-review section completeness (#1187)."""
 
 from __future__ import annotations
 
+import pytest
+
 from tests.test_formatter_1071 import FORMATTER, _rows_with_first_cell
 
-YEAR_POSITION_ROW = (
-    "| Year position | After author | After author | After publisher or "
-    "volume/issue (bibliography) | End of entry | End of journal entry | "
-    "After journal title |"
+YEAR_POSITION_CELLS = (
+    (
+        "Chicago (Notes-Bib)",
+        "After publisher (book); after volume and issue (journal article)",
+    ),
+    (
+        "IEEE",
+        "After pages, before DOI (journal); after publisher (book)",
+    ),
+    (
+        "Vancouver",
+        "After journal title (journal article); after publisher (book)",
+    ),
 )
 
 IEEE_VANCOUVER_PARAGRAPH = (
     "When converting between IEEE and Vancouver in either direction, keep "
     "the existing reference numbers and list order. Change only the in-text "
-    "form ([Number] for IEEE, (Number) for Vancouver) and the reference-list "
-    "entry format to match the target style."
+    "form and the reference-list entry format to match the target style. "
+    "Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and "
+    "(Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` "
+    "mode, keep a citation verbatim when a reported incoming mismatch "
+    "requires it, and keep any reported uncited-entry warning in the Output "
+    "Package."
 )
 
 LATEX_BIBLATEX_LINE = (
     r"\usepackage[style=apa,backend=biber]{biblatex} % APA example. "
-    "Set style to the target biblatex style."
+    "Set style to the target biblatex style. Some target styles use their "
+    "own package, such as biblatex-chicago."
 )
 
 PANDOC_CSL_EXAMPLE = """\
@@ -35,20 +51,22 @@ pandoc paper.md -o paper.docx \\
 ELEMENT_CHECK = (
     "  - Element check: compare the extracted elements with the intermediate "
     "representation. Preserve every extracted value there, including all "
-    "supplied author names when the target style truncates the rendered list."
+    "supplied author names when the target style truncates the rendered list. "
+    "Verify that every element the target style shows appears in the rendered "
+    "entry, with only the omissions that the target style requires (such as "
+    "`et al.` past its author limit)."
 )
 
 CONTENT_INTEGRITY_SECTIONS = (
     "- [ ] All sections present and complete except, in the blind-review "
-    "version only, whole author-information sections removed as directed by "
-    "the Author Information step."
+    "version only, author information removed as directed by the Author "
+    "Information step."
 )
 
 PREOUTPUT_SECTIONS = (
     "□ All sections exist and are complete (compare with Draft section by "
-    "section) except, in the blind-review version only, whole "
-    "author-information sections removed as directed by the Author "
-    "Information step."
+    "section) except, in the blind-review version only, author information "
+    "removed as directed by the Author Information step."
 )
 
 
@@ -60,12 +78,26 @@ def _paragraphs(text: str) -> list[str]:
     return [block.strip("\n") for block in text.split("\n\n") if block.strip()]
 
 
-def test_year_position_row() -> None:
+def _markdown_cells(line: str) -> list[str]:
+    cells = [cell.strip() for cell in line.split("|")]
+    if cells and cells[0] == "":
+        cells = cells[1:]
+    if cells and cells[-1] == "":
+        cells = cells[:-1]
+    return cells
+
+
+@pytest.mark.parametrize(("column", "expected"), YEAR_POSITION_CELLS)
+def test_year_position_cell(column: str, expected: str) -> None:
     text = FORMATTER.read_text(encoding="utf-8")
     features = _section(text, "### Format-Specific Features\n", "\n### ")
     rows = _rows_with_first_cell(features, "Year position")
     assert len(rows) == 1
-    assert rows[0] == YEAR_POSITION_ROW
+    header = _markdown_cells(
+        next(line for line in features.splitlines() if line.startswith("|"))
+    )
+    cells = _markdown_cells(rows[0])
+    assert cells[header.index(column)] == expected
 
 
 def test_ieee_vancouver_keeps_numbers_and_order() -> None:

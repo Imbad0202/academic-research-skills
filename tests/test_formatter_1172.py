@@ -95,8 +95,12 @@ def test_numbered_conversion_follows_style_table() -> None:
         "### Handling Numbered References (IEEE / Vancouver)\n", 1
     )[1].split("\n### ", 1)[0]
     to_instructions = section.split(
-        "When converting **to** numbered formats:\n", 1
-    )[1].split("When converting **from** numbered formats:", 1)[0]
+        "When converting from APA 7, Chicago, or MLA 9 **to** numbered formats:\n",
+        1,
+    )[1].split(
+        "When converting **from** numbered formats to APA 7, Chicago, or MLA 9:",
+        1,
+    )[0]
     bullets = [
         line
         for line in to_instructions.splitlines()
