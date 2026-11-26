@@ -300,7 +300,7 @@ Step 3: Regenerate in Target Format
 
 Step 4: Verification
   - Count check: input citation count == output citation count
-  - Element check: all bibliographic elements survived conversion
+  - Element check: compare the extracted elements with the intermediate representation. Preserve every extracted value there, including all supplied author names when the target style truncates the rendered list. Verify that the rendered entry shows every element that the input supplies and that the target style, including an applicable journal requirement, shows. Allow only the omissions that rule requires (such as `et al.` past its author limit).
   - Cross-reference check: conversion preserves the incoming citation-to-entry links
     and list entries; in `full` mode, carry forward any reported input mismatches
     (in other modes, check that each in-text citation has a list entry)
@@ -318,7 +318,7 @@ Step 4: Verification
 | In-text style | (Author, Year) | (Author Year) | Footnote superscript | (Author Page) | [Number] | (Number) |
 | Reference list name | References | References | Bibliography | Works Cited | References | References |
 | Author format | Last, F. M. | Last, First | Last, First | Last, First | F. M. Last | Last FM |
-| Year position | After author | After author | After author (bib) | End of entry | After author | After author |
+| Year position | After author | After author | After publisher (book); after volume and issue (journal article) | End of entry | After pages, before DOI (journal); after publisher (book) | After journal title (journal article); after publisher (book) |
 | Title case | Sentence case | Headline case | Headline case | Headline case | Sentence case | Sentence case |
 | Journal title | Italic | Italic | Italic | Italic | Italic | Abbreviated |
 | DOI format | https://doi.org/... | https://doi.org/... | https://doi.org/... | doi:... | doi:... | doi:... |
@@ -338,14 +338,16 @@ When converting **from** Chicago Notes-Bibliography:
 
 ### Handling Numbered References (IEEE / Vancouver)
 
-When converting **to** numbered formats:
+When converting between IEEE and Vancouver in either direction, keep the existing reference numbers and list the entries in numeric order. Change only the in-text form and the reference-list entry format to match the target style. Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and (Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` mode, keep a citation verbatim when a reported incoming mismatch requires it, and keep any reported uncited-entry warning in the Output Package. If the incoming numbers do not follow the order of first appearance, renumber by first appearance (in `full` mode, uncited entries after cited ones), and keep every citation linked to the same entry.
+
+When converting from APA 7, Chicago, or MLA 9 **to** numbered formats:
 - Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package.
-- Replace author-year citations with [Number] for IEEE and (Number) for Vancouver. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
+- Replace author-year citations, MLA 9 author-page citations, and the citations in Chicago Notes-Bibliography footnotes with [Number] for IEEE and (Number) for Vancouver. Keep a page number or other locator with the number in the target style's form (IEEE `[1, p. 47]`), and keep any other text from the footnote. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
 - Reorder the reference list numerically
 
-When converting **from** numbered formats:
+When converting **from** numbered formats to APA 7, Chicago, or MLA 9:
 - Look up each numbered reference in the reference list
-- Convert to author-year or author-page format as required
+- Convert to author-year, MLA 9 author-page, or Chicago Notes-Bibliography footnote format as required
 - Reorder the reference list alphabetically (if target format requires it)
 
 ### Verification Checklist
@@ -370,7 +372,7 @@ After conversion, verify all of the following:
 Before delivering the output, verify:
 
 ### Content Integrity
-- [ ] All sections present and complete
+- [ ] All sections present and complete except, in the blind-review version only, author information removed as directed by the Author Information step.
 - [ ] No content lost during formatting. In the blind-review version only, all author information removed as directed by the Author Information step is an allowed difference.
 - [ ] Tables and figures preserved
 - [ ] In `full` mode, citation content and all incoming reference-list entries preserved during formatting. In other modes, citations intact and correctly formatted, and the reference list complete.
@@ -656,7 +658,7 @@ Step 6: Package Output
 \documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,graphicx,hyperref,booktabs}
-\usepackage[style=apa,backend=biber]{biblatex}
+\usepackage[style=apa,backend=biber]{biblatex} % APA example. Set style to the target biblatex style. Some target styles use their own package, such as biblatex-chicago.
 % IF zh-TW content -> add xeCJK (see Chinese settings below)
 \addbibresource{references.bib}
 
@@ -680,7 +682,7 @@ Step 6: Package Output
 # Basic conversion
 pandoc paper.md -o paper.docx --reference-doc=template.docx
 
-# With citation processing (using CSL)
+# APA example. Set --csl to the CSL file for the target style.
 pandoc paper.md -o paper.docx \
   --reference-doc=template.docx \
   --citeproc \
@@ -903,7 +905,7 @@ Template D: "The data that support the findings of this study are available from
 
 ```
 === Content Integrity ===
-□ All sections exist and are complete (compare with Draft section by section)
+□ All sections exist and are complete (compare with Draft section by section) except, in the blind-review version only, author information removed as directed by the Author Information step.
 □ Format conversion did not lose, duplicate, or add content (compare word counts before and after conversion; a deviation of 1% or more triggers a section-by-section comparison with the Draft, the selected reference list, and the bilingual abstracts and keywords; a word-count deviation alone does not fail this item, but any lost content does, and so does text the conversion duplicated and text it added that is in none of those inputs; a section this file tells the formatter to add, such as the Data Availability Statement or the AI Disclosure Statement, may be added once when the Draft does not already have it, and a second copy still fails; a missing Abstract or Limitations section is reported, not written (Step 2.4 / 2.6); an existing AI Disclosure Statement that is incomplete may be completed in place with the standard text; a word-count change from converting the citation style, for example author-year to numbered or numbered to author-year, or from reformatting reference-list entries to the target style, for example abbreviated journal titles or `et al.`, is neither lost nor added content; stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss, since it is machine transport, consumed upstream by the abstract stage. In the blind-review version only, removing all author information as directed by the Author Information step is an allowed difference)
 □ Tables fully preserved (row and column counts match)
 □ Figure reference paths correct

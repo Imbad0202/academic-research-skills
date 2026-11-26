@@ -6,10 +6,13 @@ from __future__ import annotations
 from tests.test_formatter_1071 import FORMATTER, _rows_with_first_cell
 
 NUMBERED_CONVERSION_BULLET = (
-    "- Replace author-year citations with [Number] for IEEE and (Number) for "
-    "Vancouver. In `full` mode, retain verbatim a citation that a reported "
-    "incoming mismatch names and that cannot be numbered without changing its "
-    "content."
+    "- Replace author-year citations, MLA 9 author-page citations, and "
+    "the citations in Chicago Notes-Bibliography footnotes with [Number] "
+    "for IEEE and (Number) for Vancouver. Keep a page number or other "
+    "locator with the number in the target style's form (IEEE `[1, p. 47]`), "
+    "and keep any other text from the footnote. In `full` mode, retain "
+    "verbatim a citation that a reported incoming mismatch names and that "
+    "cannot be numbered without changing its content."
 )
 
 CONTENT_INTEGRITY_FAILURE_HANDLING = (
@@ -95,8 +98,12 @@ def test_numbered_conversion_follows_style_table() -> None:
         "### Handling Numbered References (IEEE / Vancouver)\n", 1
     )[1].split("\n### ", 1)[0]
     to_instructions = section.split(
-        "When converting **to** numbered formats:\n", 1
-    )[1].split("When converting **from** numbered formats:", 1)[0]
+        "When converting from APA 7, Chicago, or MLA 9 **to** numbered formats:\n",
+        1,
+    )[1].split(
+        "When converting **from** numbered formats to APA 7, Chicago, or MLA 9:",
+        1,
+    )[0]
     bullets = [
         line
         for line in to_instructions.splitlines()
