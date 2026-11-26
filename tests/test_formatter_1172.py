@@ -6,10 +6,11 @@ from __future__ import annotations
 from tests.test_formatter_1071 import FORMATTER, _rows_with_first_cell
 
 NUMBERED_CONVERSION_BULLET = (
-    "- Replace author-year citations with [Number] for IEEE and (Number) for "
-    "Vancouver. In `full` mode, retain verbatim a citation that a reported "
-    "incoming mismatch names and that cannot be numbered without changing its "
-    "content."
+    "- Replace author-year citations, MLA 9 author-page citations, and "
+    "Chicago Notes-Bibliography footnotes with [Number] for IEEE and "
+    "(Number) for Vancouver. In `full` mode, retain verbatim a citation that "
+    "a reported incoming mismatch names and that cannot be numbered without "
+    "changing its content."
 )
 
 CONTENT_INTEGRITY_FAILURE_HANDLING = (

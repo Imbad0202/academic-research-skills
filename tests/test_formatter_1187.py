@@ -30,7 +30,30 @@ IEEE_VANCOUVER_PARAGRAPH = (
     "(Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` "
     "mode, keep a citation verbatim when a reported incoming mismatch "
     "requires it, and keep any reported uncited-entry warning in the Output "
-    "Package."
+    "Package. If the incoming numbers do not follow the order of first "
+    "appearance, renumber by first appearance (in `full` mode, uncited "
+    "entries after cited ones), and keep every citation linked to the same "
+    "entry."
+)
+
+SCOPED_NUMBERED_HEADINGS = (
+    "When converting from APA 7, Chicago, or MLA 9 **to** numbered formats:",
+    "When converting **from** numbered formats to APA 7, Chicago, or MLA 9:",
+)
+
+OLD_UNSCOPED_NUMBERED_HEADINGS = (
+    "When converting **to** numbered formats:",
+    "When converting **from** numbered formats:",
+)
+
+SCOPED_CONVERSION_BULLETS = (
+    "- Replace author-year citations, MLA 9 author-page citations, and "
+    "Chicago Notes-Bibliography footnotes with [Number] for IEEE and "
+    "(Number) for Vancouver. In `full` mode, retain verbatim a citation that "
+    "a reported incoming mismatch names and that cannot be numbered without "
+    "changing its content.",
+    "- Convert to author-year, MLA 9 author-page, or Chicago "
+    "Notes-Bibliography footnote format as required",
 )
 
 LATEX_BIBLATEX_LINE = (
@@ -52,9 +75,10 @@ ELEMENT_CHECK = (
     "  - Element check: compare the extracted elements with the intermediate "
     "representation. Preserve every extracted value there, including all "
     "supplied author names when the target style truncates the rendered list. "
-    "Verify that every element the target style shows appears in the rendered "
-    "entry, with only the omissions that the target style requires (such as "
-    "`et al.` past its author limit)."
+    "Verify that the rendered entry shows every element that the input "
+    "supplies and that the target style, including an applicable journal "
+    "requirement, shows. Allow only the omissions that rule requires (such "
+    "as `et al.` past its author limit)."
 )
 
 CONTENT_INTEGRITY_SECTIONS = (
@@ -113,6 +137,12 @@ def test_ieee_vancouver_keeps_numbers_and_order() -> None:
         if paragraph == IEEE_VANCOUVER_PARAGRAPH
     ]
     assert matches == [IEEE_VANCOUVER_PARAGRAPH]
+    for heading in SCOPED_NUMBERED_HEADINGS:
+        assert section.count(heading) == 1
+    for heading in OLD_UNSCOPED_NUMBERED_HEADINGS:
+        assert section.count(heading) == 0
+    for bullet in SCOPED_CONVERSION_BULLETS:
+        assert section.count(bullet) == 1
 
 
 def test_latex_template_marks_apa_biblatex_example() -> None:
