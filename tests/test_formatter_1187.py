@@ -60,7 +60,7 @@ SCOPED_CONVERSION_BULLETS = (
 )
 
 LATEX_BIBLATEX_LINE = (
-    r"\usepackage[style=apa,backend=biber]{biblatex} % APA example. "
+    r"\usepackage[style=apa,backend=biber,natbib=true]{biblatex} % APA example. "
     "Set style to the target biblatex style. Some target styles use their "
     "own package, such as biblatex-chicago."
 )
@@ -155,7 +155,7 @@ def test_latex_template_marks_apa_biblatex_example() -> None:
     lines = [
         line
         for line in block.splitlines()
-        if line.startswith(r"\usepackage[style=apa,backend=biber]{biblatex}")
+        if line.startswith(r"\usepackage[style=apa,backend=biber,natbib=true]{biblatex}")
     ]
     assert lines == [LATEX_BIBLATEX_LINE]
 

@@ -112,11 +112,10 @@ Preferred behavior:
 - If Pandoc is unavailable, provide complete markdown + DOCX conversion instructions
 - Include a style mapping guide (Heading 1 = Level 1, etc.)
 - Include font/margin/spacing specifications
-- Use Pandoc command: `pandoc input.md -o output.docx --reference-doc=template.docx`
+- Select the Pandoc command under Markdown -> DOCX Conversion Rules. In `full` mode with retained uncited entries, use its citation-processing command and `nocite` metadata.
 
-### 4. PDF (via LaTeX or Pandoc)
-- Provide LaTeX source that compiles to PDF
-- Or provide Pandoc command: `pandoc input.md -o output.pdf --pdf-engine=xelatex`
+### 4. PDF (via LaTeX)
+- Build the PDF from the generated `paper.tex` and its `references.bib` using the PDF command in the Output Package. Follow Step 1.2 for the Stage 5 confirmation before compilation.
 - For zh-TW content: use XeLaTeX with CJK font support
 
 ### 5. Combined (All formats)
@@ -318,10 +317,10 @@ Step 4: Verification
 | In-text style | (Author, Year) | (Author Year) | Footnote superscript | (Author Page) | [Number] | (Number) |
 | Reference list name | References | References | Bibliography | Works Cited | References | References |
 | Author format | Last, F. M. | Last, First | Last, First | Last, First | F. M. Last | Last FM |
-| Year position | After author | After author | After publisher (book); after volume and issue (journal article) | End of entry | After pages, before DOI (journal); after publisher (book) | After journal title (journal article); after publisher (book) |
+| Year position | After author | After author | After publisher (book); after volume and issue (journal article) | After volume and issue, before pages and DOI (journal article) | After pages, before DOI (journal); after publisher (book) | After journal title (journal article); after publisher (book) |
 | Title case | Sentence case | Headline case | Headline case | Headline case | Sentence case | Sentence case |
 | Journal title | Italic | Italic | Italic | Italic | Italic | Abbreviated |
-| DOI format | https://doi.org/... | https://doi.org/... | https://doi.org/... | doi:... | doi:... | doi:... |
+| DOI format | https://doi.org/... | https://doi.org/... | https://doi.org/... | https://doi.org/... | doi:... | doi:... |
 | Ordering | Alphabetical | Alphabetical | Alphabetical | Alphabetical | Order of appearance | Order of appearance |
 
 ### Handling Footnotes (Chicago Notes-Bibliography)
@@ -573,8 +572,8 @@ Do not call a draft "passed peer review" unless its line is `Accepted in Round N
 [Completed checklist with all items checked]
 
 ### Conversion Commands (if applicable)
-- DOCX: `pandoc paper.md -o paper.docx --reference-doc=template.docx`
-- PDF: `pandoc paper.md -o paper.pdf --pdf-engine=xelatex -V CJKmainfont="Noto Sans CJK TC"`
+- DOCX: Provide the applicable command from Markdown -> DOCX Conversion Rules, including the citation-processing command and `nocite` metadata when `full` mode retains uncited entries.
+- PDF: Run `xelatex paper.tex && biber paper && xelatex paper.tex && xelatex paper.tex` in the directory containing the generated `paper.tex` and `references.bib`. For zh-TW content, configure the CJK font in `paper.tex` before compilation.
 ```
 
 ## Detailed Execution Algorithm
@@ -658,7 +657,7 @@ Step 6: Package Output
 \documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,graphicx,hyperref,booktabs}
-\usepackage[style=apa,backend=biber]{biblatex} % APA example. Set style to the target biblatex style. Some target styles use their own package, such as biblatex-chicago.
+\usepackage[style=apa,backend=biber,natbib=true]{biblatex} % APA example. Set style to the target biblatex style. Some target styles use their own package, such as biblatex-chicago.
 % IF zh-TW content -> add xeCJK (see Chinese settings below)
 \addbibresource{references.bib}
 
@@ -670,11 +669,23 @@ Step 6: Package Output
 \maketitle
 \begin{abstract}...\end{abstract}
 % Body sections
+% In full mode, insert one \nocite{key} here for each retained reference-list entry with no in-text citation, in incoming reference-list order. Replace key with the entry's actual key from references.bib.
 \printbibliography
 \end{document}
 ```
 
 ### Markdown -> DOCX Conversion Rules
+
+In `full` mode, when the incoming reference list retains entries with no in-text citation, use the citation-processing command below. In the Phase 7 `paper.md` used as Pandoc input, merge a top-level `nocite` field into the YAML front matter. List each retained uncited entry once, in incoming reference-list order, using its actual `references.bib` key prefixed with `@`. For example, for two such keys:
+
+```yaml
+---
+nocite: |
+  @FirstKey, @SecondKey
+---
+```
+
+Use explicit keys only. Add this field only when there are retained uncited entries. For Chinese DOCX output in this case, use the same citation-processing command with `--reference-doc=template_zh.docx`. If providing conversion instructions, include the prepared Markdown, bibliography, and applicable command. Keep the Output Package warning for each reported mismatch.
 
 **Pandoc conversion commands**:
 

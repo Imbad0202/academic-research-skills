@@ -795,3 +795,7 @@ path = "scripts/test_check_author_letter.py"
 [[pytest]]
 id = "1187-formatter"
 path = "tests/test_formatter_1187.py"
+
+[[pytest]]
+id = "1192-1194-formatter"
+path = "tests/test_formatter_1192_1194.py"
