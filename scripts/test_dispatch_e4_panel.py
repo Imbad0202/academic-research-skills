@@ -818,6 +818,7 @@ def test_isolated_extraction_supplies_the_anchor_grammar():
     for anchor_type in ("text", "table", "figure", "equation", "dataset", "absence"):
         assert f"`{anchor_type}:`" in system
     assert 'text: §<section> "<verbatim excerpt>"' in system
+    assert "table: Table <id>, row <label>, column <label>" in system
     assert "25 words" in system
     assert "absence: <where> — expected <item>; checked <surfaces>" in system
 
@@ -826,6 +827,8 @@ def test_isolated_extraction_supplies_the_anchor_grammar():
 def test_each_paper_visible_seat_is_told_to_return_its_criteria_disclosure(role):
     builder = harness.PromptBuilder(CONTRACT_JSON, json.dumps(METADATA))
     system = builder.phase2(role, "plan", MANUSCRIPT, None).system
+    assert "In your final `## Review Body`," in system
+    assert "copy your own Phase 1 criteria disclosure on standalone lines" in system
     assert "`criteria_binding_unavailable`" in system
     assert "`criteria_parallel_conflicts:`" in system
     assert "`[REVIEW-TARGET-BINDING v1]`" in system

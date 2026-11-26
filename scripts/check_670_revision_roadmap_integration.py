@@ -85,7 +85,7 @@ RUNTIME_HASHES = {
 # challenges and 1 severity calibration; no detection-rule change).
 # Re-pinned for #1107 (domain_reviewer judges literature coverage as of the
 # manuscript's stated date; no severity, score, or output-grammar change).
-# Re-pinned for the E4 handoff fix (ARS-Codex #52): each seat copies its own
+# Re-pinned for #1195 (ARS-Codex #52): each seat copies its own
 # Phase 1 criteria disclosure into its Phase 2 Review Body, and the
 # methodology Phase 2E anchor line names the six anchor types; no detection,
 # severity, or score change.

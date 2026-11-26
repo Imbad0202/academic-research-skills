@@ -118,7 +118,9 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # the second v3.17-style content lock; exact canonical→mirror equality is the
 # first. Re-pinned for #1098: the DA Phase 2 fragment states that a premise
 # the argument depends on and the paper does not support must be a CRITICAL
-# or MAJOR issue row; prose alone does not satisfy the rule.
+# or MAJOR issue row; prose alone does not satisfy the rule. Re-pinned for
+# #1195: each Phase 2 fragment tells its seat to copy its own Phase 1 criteria
+# disclosure into Review Body, and the Phase 2E anchor line names the six types.
 CANONICAL_CONTENT_SHA256 = "8b830de7ad467ef8d8c7ae0384177dd6fdd525c5d8379b740056cb93ed562863"
 
 
