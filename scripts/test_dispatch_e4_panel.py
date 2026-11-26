@@ -829,7 +829,10 @@ def test_each_paper_visible_seat_is_told_to_return_its_criteria_disclosure(role)
     system = builder.phase2(role, "plan", MANUSCRIPT, None).system
     assert "In your final `## Review Body`," in system
     assert "copy your own Phase 1 criteria disclosure on standalone lines" in system
-    assert "at the start of `## Review Body`, before any finding or table, and keep them" in system
+    assert (
+        "Put these lines at the start of `## Review Body`, before any finding "
+        "or table, and keep them when you check your output."
+    ) in " ".join(system.split())
     assert "`criteria_binding_unavailable`" in system
     assert "`criteria_parallel_conflicts:`" in system
     assert "`[REVIEW-TARGET-BINDING v1]`" in system
