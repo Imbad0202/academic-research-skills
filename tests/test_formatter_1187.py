@@ -24,7 +24,8 @@ YEAR_POSITION_CELLS = (
 
 IEEE_VANCOUVER_PARAGRAPH = (
     "When converting between IEEE and Vancouver in either direction, keep "
-    "the existing reference numbers and list order. Change only the in-text "
+    "the existing reference numbers and list the entries in numeric order. "
+    "Change only the in-text "
     "form and the reference-list entry format to match the target style. "
     "Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and "
     "(Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` "
@@ -48,10 +49,12 @@ OLD_UNSCOPED_NUMBERED_HEADINGS = (
 
 SCOPED_CONVERSION_BULLETS = (
     "- Replace author-year citations, MLA 9 author-page citations, and "
-    "Chicago Notes-Bibliography footnotes with [Number] for IEEE and "
-    "(Number) for Vancouver. In `full` mode, retain verbatim a citation that "
-    "a reported incoming mismatch names and that cannot be numbered without "
-    "changing its content.",
+    "the citations in Chicago Notes-Bibliography footnotes with [Number] "
+    "for IEEE and (Number) for Vancouver. Keep a page number or other "
+    "locator with the number in the target style's form (IEEE `[1, p. 47]`), "
+    "and keep any other text from the footnote. In `full` mode, retain "
+    "verbatim a citation that a reported incoming mismatch names and that "
+    "cannot be numbered without changing its content.",
     "- Convert to author-year, MLA 9 author-page, or Chicago "
     "Notes-Bibliography footnote format as required",
 )

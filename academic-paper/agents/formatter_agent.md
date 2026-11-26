@@ -338,11 +338,11 @@ When converting **from** Chicago Notes-Bibliography:
 
 ### Handling Numbered References (IEEE / Vancouver)
 
-When converting between IEEE and Vancouver in either direction, keep the existing reference numbers and list order. Change only the in-text form and the reference-list entry format to match the target style. Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and (Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` mode, keep a citation verbatim when a reported incoming mismatch requires it, and keep any reported uncited-entry warning in the Output Package. If the incoming numbers do not follow the order of first appearance, renumber by first appearance (in `full` mode, uncited entries after cited ones), and keep every citation linked to the same entry.
+When converting between IEEE and Vancouver in either direction, keep the existing reference numbers and list the entries in numeric order. Change only the in-text form and the reference-list entry format to match the target style. Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and (Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` mode, keep a citation verbatim when a reported incoming mismatch requires it, and keep any reported uncited-entry warning in the Output Package. If the incoming numbers do not follow the order of first appearance, renumber by first appearance (in `full` mode, uncited entries after cited ones), and keep every citation linked to the same entry.
 
 When converting from APA 7, Chicago, or MLA 9 **to** numbered formats:
 - Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package.
-- Replace author-year citations, MLA 9 author-page citations, and Chicago Notes-Bibliography footnotes with [Number] for IEEE and (Number) for Vancouver. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
+- Replace author-year citations, MLA 9 author-page citations, and the citations in Chicago Notes-Bibliography footnotes with [Number] for IEEE and (Number) for Vancouver. Keep a page number or other locator with the number in the target style's form (IEEE `[1, p. 47]`), and keep any other text from the footnote. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
 - Reorder the reference list numerically
 
 When converting **from** numbered formats to APA 7, Chicago, or MLA 9:
