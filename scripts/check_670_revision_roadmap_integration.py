@@ -86,20 +86,20 @@ RUNTIME_HASHES = {
 # Re-pinned for #1107 (domain_reviewer judges literature coverage as of the
 # manuscript's stated date; no severity, score, or output-grammar change).
 # Re-pinned for #1195 (ARS-Codex #52): each seat copies its own
-# Phase 1 criteria disclosure into its Phase 2 Review Body, and the
+# Phase 1 criteria disclosure into the start of its Phase 2 Review Body, and the
 # methodology Phase 2E anchor line names the six anchor types; no detection,
 # severity, or score change.
 DETECTION_HASHES = {
     Path("academic-paper-reviewer/agents/eic_agent.md"):
-        "61c2625eaeb1899a7b9e01d4752d3209c59109067edefb0e69897798caeee4e2",
+        "649f5766403aad8b659584bc1999aff8f9e1f2e85cc56e6c221d6d48aea22280",
     Path("academic-paper-reviewer/agents/methodology_reviewer_agent.md"):
-        "e409c2d1a79d9c56baf2ffab6a1466b50635f8c49bf34ac62b9b3bf1f97bc137",
+        "571761bc68b4f75e7d6ff7a1a1baae6e0e5daaed9fc39785815ab369c01fa7e4",
     Path("academic-paper-reviewer/agents/domain_reviewer_agent.md"):
-        "b06bc1a90dadc35bb6f4427c6935921302da4cb7c3c351c1cee87ea3e612b4c4",
+        "0dba1aed343bf134a9261e92037e99aab1af34aa81115193dc8a95aa587e23a0",
     Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
-        "6ab94def3c626a1e94dddce0c080fc31d4f826574857d496a0041ef3d07146a1",
+        "64302e367fd60868bc2be2e9f527f286bda88806003fcceb1fadd3b61d73e8ac",
     Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
-        "8d234e1fd722a47f89e99b3e87713b82f0f9e976c8373e45182d36cd7edf27bf",
+        "f2961077a042efe8272a3f4e6ec8d4010181941af3e8012672ef52264c89b6f2",
     Path("academic-paper-reviewer/templates/peer_review_report_template.md"):
         "5da1f9d24d6e321cec5f38c13fa03fe23b9363b1842cb0d8111c5e39a810c7d1",
 }

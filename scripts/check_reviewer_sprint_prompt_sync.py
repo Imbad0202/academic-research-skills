@@ -120,8 +120,9 @@ DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
 # the argument depends on and the paper does not support must be a CRITICAL
 # or MAJOR issue row; prose alone does not satisfy the rule. Re-pinned for
 # #1195: each Phase 2 fragment tells its seat to copy its own Phase 1 criteria
-# disclosure into Review Body, and the Phase 2E anchor line names the six types.
-CANONICAL_CONTENT_SHA256 = "8b830de7ad467ef8d8c7ae0384177dd6fdd525c5d8379b740056cb93ed562863"
+# disclosure into the start of Review Body and keep it, and the Phase 2E anchor
+# line names the six types.
+CANONICAL_CONTENT_SHA256 = "0692f68709c772b0c2b9401266a790df7138f7fcfb4bc0f5f3476b7fdd4643a4"
 
 
 def _parse_fragments(text: str, errors: list[str]) -> dict[str, str]:
