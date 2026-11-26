@@ -812,6 +812,33 @@ def test_phase2_receives_the_reviewer_configuration_cards():
     assert "CARD: EIC of a fictional journal" in prompt
 
 
+def test_isolated_extraction_supplies_the_anchor_grammar():
+    builder = harness.PromptBuilder(CONTRACT_JSON, json.dumps(METADATA))
+    system = builder.extraction("methodology", MANUSCRIPT).system
+    for anchor_type in ("text", "table", "figure", "equation", "dataset", "absence"):
+        assert f"`{anchor_type}:`" in system
+    assert 'text: §<section> "<verbatim excerpt>"' in system
+    assert "table: Table <id>, row <label>, column <label>" in system
+    assert "25 words" in system
+    assert "absence: <where> — expected <item>; checked <surfaces>" in system
+
+
+@pytest.mark.parametrize("role", SEATS)
+def test_each_paper_visible_seat_is_told_to_return_its_criteria_disclosure(role):
+    builder = harness.PromptBuilder(CONTRACT_JSON, json.dumps(METADATA))
+    system = builder.phase2(role, "plan", MANUSCRIPT, None).system
+    assert "In your final `## Review Body`," in system
+    assert "copy your own Phase 1 criteria disclosure on standalone lines" in system
+    assert (
+        "Put these lines at the start of `## Review Body`, before any finding "
+        "or table, and keep them when you check your output."
+    ) in " ".join(system.split())
+    assert "`criteria_binding_unavailable`" in system
+    assert "`criteria_parallel_conflicts:`" in system
+    assert "`[REVIEW-TARGET-BINDING v1]`" in system
+    assert "checking them against" in system and "supplied authority" in system
+
+
 def test_phase1_never_receives_the_configuration_cards():
     """Cards are paper-derived, so a blind call must not see one."""
     builder = harness.PromptBuilder(CONTRACT_JSON, json.dumps(METADATA))
