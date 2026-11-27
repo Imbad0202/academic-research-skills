@@ -340,6 +340,30 @@ class FailureHandlingTest(unittest.TestCase):
     def _raise_http(self, code: int):
         return urllib.error.HTTPError("u", code, "msg", {}, io.BytesIO(b""))
 
+    def test_unusable_200_body_raises_unavailable_without_latching(self) -> None:
+        """#1184 items 2-3: a body that is not UTF-8, not JSON, or not a JSON
+        object is S2 degradation. It is not a network outage, so the next
+        lookup still goes out."""
+        for body in (b"\xff\xfe garbage", b"<html>503</html>", b"null", b"[]"):
+            with self.subTest(body=body):
+                client = ssc.SemanticScholarClient(sleep=MagicMock())
+                resp = MagicMock()
+                resp.read.return_value = body
+                resp.__enter__ = MagicMock(return_value=resp)
+                resp.__exit__ = MagicMock(return_value=False)
+                urlopen = MagicMock(return_value=resp)
+                with patch("urllib.request.urlopen", urlopen):
+                    with self.assertRaises(SemanticScholarUnavailable):
+                        client.lookup({"title": "AI in education", "doi": "10.1/y"})
+                self.assertEqual(urlopen.call_count, 1)
+                hit = _mock_urlopen_returning(
+                    {"paperId": "doi-hit", "title": "AI in education"}
+                )
+                with patch("urllib.request.urlopen", hit):
+                    result = client.lookup({"title": "AI in education", "doi": "10.1/y"})
+                self.assertEqual(hit.call_count, 1)
+                self.assertEqual(result, {"matched": True, "paperId": "doi-hit"})
+
     def test_429_backoff_then_recover(self) -> None:
         """Per protocol: HTTP 429 → 2s backoff × 3 retries before
         giving up. The retry is transparent — successful retry returns

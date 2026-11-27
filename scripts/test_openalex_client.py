@@ -574,3 +574,48 @@ def test_rejects_non_openalex_api_url_before_urlopen(monkeypatch):
             client.title_search("anything")
 
     assert urlopen.call_count == 0
+
+
+def _openalex_200(body: bytes) -> MagicMock:
+    resp = MagicMock()
+    resp.read.return_value = body
+    resp.__enter__ = MagicMock(return_value=resp)
+    resp.__exit__ = MagicMock(return_value=None)
+    return resp
+
+
+# ---------- #1184 items 3-4: 200 bodies the client cannot use ----------
+
+
+@pytest.mark.parametrize("body", [b"null", b"[]", b'"maintenance"'])
+def test_non_object_json_body_raises_unavailable(body):
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    with patch("urllib.request.urlopen", return_value=_openalex_200(body)):
+        client = OpenAlexClient()
+        with pytest.raises(OpenAlexUnavailable):
+            client.title_search("Attention Is All You Need")
+        with pytest.raises(OpenAlexUnavailable):
+            client.doi_lookup_with_title_check("10.1/x", "Attention Is All You Need")
+
+
+@pytest.mark.parametrize("payload", [{"error": "maintenance"}, {}, {"results": None}])
+def test_title_search_error_object_raises_unavailable(payload):
+    """A 200 error object has no results list; it is not an empty result."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    body = json.dumps(payload).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_openalex_200(body)):
+        with pytest.raises(OpenAlexUnavailable):
+            OpenAlexClient().title_search("Attention Is All You Need")
+
+
+def test_title_search_empty_results_and_404_stay_a_miss():
+    from openalex_client import OpenAlexClient
+
+    body = json.dumps({"meta": {"count": 0}, "results": []}).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_openalex_200(body)):
+        assert OpenAlexClient().title_search("Attention Is All You Need") is None
+    not_found = urllib.error.HTTPError("u", 404, "Not Found", {}, None)
+    with patch("urllib.request.urlopen", side_effect=not_found):
+        assert OpenAlexClient().title_search("Attention Is All You Need") is None

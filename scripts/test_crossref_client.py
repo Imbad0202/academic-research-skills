@@ -648,3 +648,54 @@ def test_title_search_matches_an_en_dash_title_typed_with_a_hyphen():
 
     assert result is not None, "hyphen spelling of an en-dash title fell through to unresolvable"
     assert result["DOI"] == "10.1038/189151a0"
+
+
+def _crossref_200(body: bytes) -> MagicMock:
+    resp = MagicMock()
+    resp.read.return_value = body
+    resp.__enter__ = MagicMock(return_value=resp)
+    resp.__exit__ = MagicMock(return_value=None)
+    return resp
+
+
+# ---------- #1184 items 3-4: 200 bodies the client cannot use ----------
+
+
+@pytest.mark.parametrize("body", [b"null", b"[]", b'"maintenance"'])
+def test_non_object_json_body_raises_unavailable(body):
+    """A null or [] DOI body used to read as a miss, and title search raised
+    AttributeError."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    with patch("urllib.request.urlopen", return_value=_crossref_200(body)):
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable):
+            client.title_search("Attention Is All You Need")
+        with pytest.raises(CrossrefUnavailable):
+            client.doi_lookup_with_title_check("10.1/x", "Attention Is All You Need")
+
+
+@pytest.mark.parametrize("payload", [
+    {"status": "error", "message": "maintenance"},
+    {"status": "ok", "message": {"total-results": 0}},
+    {"status": "ok", "message": {"items": None}},
+    {},
+])
+def test_title_search_without_items_raises_unavailable(payload):
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    body = json.dumps(payload).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_crossref_200(body)):
+        with pytest.raises(CrossrefUnavailable):
+            CrossrefClient().title_search("Attention Is All You Need")
+
+
+def test_title_search_empty_items_and_404_stay_a_miss():
+    from crossref_client import CrossrefClient
+
+    body = json.dumps({"status": "ok", "message": {"items": []}}).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_crossref_200(body)):
+        assert CrossrefClient().title_search("Attention Is All You Need") is None
+    not_found = urllib.error.HTTPError("u", 404, "Not Found", {}, None)
+    with patch("urllib.request.urlopen", side_effect=not_found):
+        assert CrossrefClient().title_search("Attention Is All You Need") is None
