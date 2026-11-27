@@ -37,8 +37,8 @@
 4. Only when a PDF was asked for, convert to LaTeX and compile PDF:
    - pandoc MD -> LaTeX body
    - Package complete LaTeX document (with cover page, table of contents, headers/footers)
-   - tectonic compile PDF
    - If the record contains CJK text, load xeCJK and set \setCJKmainfont to an installed main font for the target OS from “Chinese LaTeX Compilation Settings” in ../../academic-paper/agents/formatter_agent.md.
+   - Use tectonic when installed; otherwise run xelatex twice on the same generated record .tex file so the table of contents resolves.
 
 5. Terminal acknowledgement (pipeline terminal checkpoint):
    - After delivering the process record, prompt the user to close the pipeline.
@@ -212,4 +212,4 @@ For dimensions with no findings, state the null result in one sentence. Expand o
 - **LaTeX template**: `article` class, 12pt, A4, Times New Roman. For CJK text, load `xeCJK` and use an installed CJK main font for the target OS from “Chinese LaTeX Compilation Settings” in `../../academic-paper/agents/formatter_agent.md`.
 - **Includes table of contents**: `\tableofcontents`
 - **Header**: left = document title (italic), right = date
-- **Compilation**: tectonic (same toolchain as Stage 5)
+- **Compilation**: tectonic when installed; otherwise run `xelatex` twice on the same generated record `.tex` file so the table of contents resolves

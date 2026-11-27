@@ -22,18 +22,21 @@ OLD_STAGE5_CLAUSE = "say so instead of substituting another route"
 OLD_FONT = "Source Han Serif TC VF"
 
 BASIC_CJK_COMMENT = (
-    "% Only if the paper contains CJK text, include both commands below "
-    "in the preamble.\n"
-    "% Replace <installed font> with an installed main font for the target OS\n"
-    '% from "Chinese LaTeX Compilation Settings" in ../agents/formatter_agent.md,\n'
-    "% then uncomment both lines.\n"
+    "% Only if the paper contains CJK text, choose an installed main font "
+    "for the target OS\n"
+    "% and an installed sans font for the target OS, then uncomment all "
+    "three lines.\n"
+    "% Replace <installed font> and <installed sans font> with those fonts\n"
+    '% from "Chinese LaTeX Compilation Settings" in ../agents/formatter_agent.md.\n'
     "% \\usepackage{xeCJK}\n"
-    "% \\setCJKmainfont{<installed font>}"
+    "% \\setCJKmainfont{<installed font>}\n"
+    "% \\setCJKsansfont{<installed sans font>}"
 )
 XELATEX_INTRO = (
     "For zh-TW content, replace `<installed font>` below with an installed "
-    "main font for the target OS from “Chinese LaTeX Compilation Settings” "
-    f"in `{TEMPLATE_PATH}`."
+    "main font for the target OS and `<installed sans font>` with an "
+    "installed sans font for the target OS from “Chinese LaTeX Compilation "
+    f"Settings” in `{TEMPLATE_PATH}`."
 )
 PANDOC_INTRO = (
     "Replace `<installed font>` with an installed main font for the target "
@@ -112,18 +115,20 @@ def _protocol_latex_template(text: str) -> str:
 
 
 @pytest.mark.parametrize(
-    ("extract", "condition", "font_choice"),
+    ("extract", "condition", "font_choice", "require_font_command"),
     [
         pytest.param(
             _protocol_generation_bullet,
             "If the record contains CJK text",
             "installed main font for the target OS",
+            True,
             id="generation-bullet",
         ),
         pytest.param(
             _protocol_latex_template,
             "For CJK text",
             "installed CJK main font for the target OS",
+            False,
             id="latex-template",
         ),
     ],
@@ -132,6 +137,7 @@ def test_process_record_uses_formatter_cjk_main_font(
     extract,
     condition: str,
     font_choice: str,
+    require_font_command: bool,
 ) -> None:
     """Each process-record font instruction points at the formatter list."""
     snippet = extract(PROTOCOL.read_text(encoding="utf-8"))
@@ -141,6 +147,8 @@ def test_process_record_uses_formatter_cjk_main_font(
     assert FORMATTER_SECTION in snippet
     assert PROTOCOL_PATH in snippet
     assert OLD_FONT not in snippet
+    if require_font_command:
+        assert r"\setCJKmainfont" in snippet
 
 
 def _template_section(text: str, start: str, end: str) -> str:
@@ -189,7 +197,12 @@ def test_non_apa_examples_use_installed_cjk_main_font(
             for line in section.splitlines()
             if line.strip() and not line.strip().startswith("%")
         ]
-        assert not any("xeCJK" in line or r"\setCJKmainfont" in line for line in active)
+        assert not any(
+            "xeCJK" in line
+            or r"\setCJKmainfont" in line
+            or r"\setCJKsansfont" in line
+            for line in active
+        )
     elif kind == "active":
         assert XELATEX_INTRO in section
         active = [
@@ -199,6 +212,7 @@ def test_non_apa_examples_use_installed_cjk_main_font(
         ]
         assert r"\usepackage{xeCJK}" in active
         assert r"\setCJKmainfont{<installed font>}" in active
+        assert r"\setCJKsansfont{<installed sans font>}" in active
     else:
         assert PANDOC_INTRO in section
         assert "--pdf-engine=xelatex" in section

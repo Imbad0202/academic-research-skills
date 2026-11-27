@@ -21,12 +21,13 @@ Used by `formatter_agent` for LaTeX output generation.
 \usepackage{url}                      % URL formatting
 \usepackage{float}                    % Figure placement
 
-% Only if the paper contains CJK text, include both commands below in the preamble.
-% Replace <installed font> with an installed main font for the target OS
-% from "Chinese LaTeX Compilation Settings" in ../agents/formatter_agent.md,
-% then uncomment both lines.
+% Only if the paper contains CJK text, choose an installed main font for the target OS
+% and an installed sans font for the target OS, then uncomment all three lines.
+% Replace <installed font> and <installed sans font> with those fonts
+% from "Chinese LaTeX Compilation Settings" in ../agents/formatter_agent.md.
 % \usepackage{xeCJK}
 % \setCJKmainfont{<installed font>}
+% \setCJKsansfont{<installed sans font>}
 
 % === Settings ===
 \doublespacing                        % APA requires double spacing
@@ -313,12 +314,13 @@ Where N = `(number_of_columns - 1) × 2`
 
 ## XeLaTeX for Chinese Content
 
-For zh-TW content, replace `<installed font>` below with an installed main font for the target OS from “Chinese LaTeX Compilation Settings” in `../agents/formatter_agent.md`.
+For zh-TW content, replace `<installed font>` below with an installed main font for the target OS and `<installed sans font>` with an installed sans font for the target OS from “Chinese LaTeX Compilation Settings” in `../agents/formatter_agent.md`.
 
 ```latex
 \documentclass[12pt, a4paper]{article}
 \usepackage{xeCJK}
 \setCJKmainfont{<installed font>}
+\setCJKsansfont{<installed sans font>}
 
 % Compile with: xelatex paper.tex
 ```
