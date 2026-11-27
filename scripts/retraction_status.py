@@ -11,7 +11,7 @@ import json
 import re
 import sqlite3
 from contextlib import closing
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping, NamedTuple, Sequence
 
@@ -25,6 +25,7 @@ SCHEMA_VERSION = "bibliographic-integrity-signal/1.1"
 CACHE_SCHEMA_VERSION = "retraction-status-cache/1.0"
 CACHE_REVALIDATE_DAYS = 30
 _DOI_PREFIX = re.compile(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", re.I)
+_CALENDAR_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _EVENT_TYPES = {
     "retraction": "retraction",
     "retracted": "retraction",
@@ -109,11 +110,8 @@ def _event_date(event: Mapping[str, Any]) -> tuple[str | None, str | None]:
 
 
 def _names_only_a_day(value: str) -> bool:
-    try:
-        date.fromisoformat(value)
-    except ValueError:
-        return False
-    return True
+    # Not date.fromisoformat: it also reads 20240210 and the week date 2024-W06.
+    return _CALENDAR_DATE.fullmatch(value) is not None
 
 
 def _end_of_utc_day(year: int, month: int, day: int) -> datetime:

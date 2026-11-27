@@ -300,6 +300,20 @@ def test_date_only_timestamp_is_a_full_date() -> None:
     assert crossref["event_date"] == "2024-02-10T00:00:00Z"
 
 
+def test_full_date_parts_win_over_a_date_only_timestamp() -> None:
+    event = _date_parts_event("retraction", [2024, 2, 10])
+    event["updated"]["date-time"] = "2024-02-11"
+    signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(event))
+    crossref = signal["retraction_context"]["resolver_observations"][1]
+    assert crossref["event_date"] == "2024-02-10T00:00:00Z"
+
+
+@pytest.mark.parametrize("stamp", ["20240210", "2024-W06"], ids=["basic-format", "week-date"])
+def test_only_a_calendar_date_names_a_day(stamp: str) -> None:
+    assert not status._names_only_a_day(stamp)
+    assert status._names_only_a_day("2024-02-10")
+
+
 @pytest.mark.parametrize("reverse_order", [False, True], ids=["input-order", "reversed"])
 def test_date_only_timestamp_overlaps_a_timestamp_on_the_same_day(reverse_order: bool) -> None:
     # "2024-02-10" names the whole day, so it is not known to precede 15:00.
