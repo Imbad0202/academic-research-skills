@@ -78,6 +78,8 @@ sudo apt-get install pandoc
 
 PDF output requires [tectonic](https://tectonic-typesetting.github.io/) and specific fonts. **This is optional** — Markdown output and DOCX conversion instructions work without any of this.
 
+For a biblatex file using the Biber backend, also install `biber` so tectonic can call it.
+
 ```bash
 # macOS
 brew install tectonic

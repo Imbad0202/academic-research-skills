@@ -25,8 +25,8 @@ YEAR_POSITION_CELLS = (
 IEEE_VANCOUVER_PARAGRAPH = (
     "When converting between IEEE and Vancouver in either direction, keep "
     "the existing reference numbers and list the entries in numeric order. "
-    "Change only the in-text "
-    "form and the reference-list entry format to match the target style. "
+    "Format the in-text citations and reference-list entries in the target "
+    "style. "
     "Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and "
     "(Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` "
     "mode, keep a citation verbatim when a reported incoming mismatch "
@@ -51,18 +51,22 @@ SCOPED_CONVERSION_BULLETS = (
     "- Replace author-year citations, MLA 9 author-page citations, and "
     "the citations in Chicago Notes-Bibliography footnotes with [Number] "
     "for IEEE and (Number) for Vancouver. Keep a page number or other "
-    "locator with the number in the target style's form (IEEE `[1, p. 47]`), "
-    "and keep any other text from the footnote. In `full` mode, retain "
-    "verbatim a citation that a reported incoming mismatch names and that "
-    "cannot be numbered without changing its content.",
+    "locator with the number in the target style's form (IEEE `[1, p. 47]`). "
+    "In `full` mode, retain verbatim a citation that a reported incoming "
+    "mismatch names and that cannot be numbered without changing its "
+    "content. If the footnote retains other text or a verbatim citation, "
+    "convert the citations that can be numbered inside the note and keep "
+    "the note and its marker. Only when the note held nothing but citations "
+    "that were converted, move those citations into the text and remove the "
+    "note and its marker.",
     "- Convert to author-year, MLA 9 author-page, or Chicago "
     "Notes-Bibliography footnote format as required",
 )
 
 LATEX_BIBLATEX_LINE = (
-    r"\usepackage[style=apa,backend=biber]{biblatex} % APA example. "
-    "Set style to the target biblatex style. Some target styles use their "
-    "own package, such as biblatex-chicago."
+    r"\usepackage[style=apa,backend=biber,natbib=true]{biblatex} % APA example. "
+    r"Keep natbib=true for \citep and \citet when selecting another "
+    "biblatex style or loading a style package such as biblatex-chicago."
 )
 
 PANDOC_CSL_EXAMPLE = """\
@@ -155,7 +159,7 @@ def test_latex_template_marks_apa_biblatex_example() -> None:
     lines = [
         line
         for line in block.splitlines()
-        if line.startswith(r"\usepackage[style=apa,backend=biber]{biblatex}")
+        if line.startswith(r"\usepackage[style=apa,backend=biber,natbib=true]{biblatex}")
     ]
     assert lines == [LATEX_BIBLATEX_LINE]
 

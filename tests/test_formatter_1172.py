@@ -5,14 +5,26 @@ from __future__ import annotations
 
 from tests.test_formatter_1071 import FORMATTER, _rows_with_first_cell
 
+NUMBER_ASSIGNMENT_BULLET = (
+    "- Assign numbers based on order of first appearance in the text. In "
+    "`full` mode, number incoming entries with no in-text citation after all "
+    "cited entries, in their original reference-list order. Keep any reported "
+    "uncited-entry warning in the Output Package. A citation kept inside a "
+    "note counts at the position of the note's marker."
+)
+
 NUMBERED_CONVERSION_BULLET = (
     "- Replace author-year citations, MLA 9 author-page citations, and "
     "the citations in Chicago Notes-Bibliography footnotes with [Number] "
     "for IEEE and (Number) for Vancouver. Keep a page number or other "
-    "locator with the number in the target style's form (IEEE `[1, p. 47]`), "
-    "and keep any other text from the footnote. In `full` mode, retain "
-    "verbatim a citation that a reported incoming mismatch names and that "
-    "cannot be numbered without changing its content."
+    "locator with the number in the target style's form (IEEE `[1, p. 47]`). "
+    "In `full` mode, retain verbatim a citation that a reported incoming "
+    "mismatch names and that cannot be numbered without changing its "
+    "content. If the footnote retains other text or a verbatim citation, "
+    "convert the citations that can be numbered inside the note and keep "
+    "the note and its marker. Only when the note held nothing but citations "
+    "that were converted, move those citations into the text and remove the "
+    "note and its marker."
 )
 
 CONTENT_INTEGRITY_FAILURE_HANDLING = (
@@ -111,6 +123,7 @@ def test_numbered_conversion_follows_style_table() -> None:
     ]
     assert len(bullets) == 1
     assert bullets[0] == NUMBERED_CONVERSION_BULLET
+    assert to_instructions.splitlines().count(NUMBER_ASSIGNMENT_BULLET) == 1
 
 
 def test_content_integrity_failure_handling_allows_blind_review_removal() -> None:
