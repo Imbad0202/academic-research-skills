@@ -58,7 +58,7 @@ v3.3 的靈感來自 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（So
 
 - [Claude Code](https://docs.claude.com/en/docs/claude-code/setup)（建議最新版；plugin packaging 需要近期版本）
 - 已 export `ANTHROPIC_API_KEY`，或第一次跑 `claude` 時設定
-- *選用：* Pandoc 用於 DOCX 輸出，tectonic + 思源宋體 TC 用於 APA 7.0 PDF（純 Markdown 輸出兩個都不需要）
+- *選用：* Pandoc 用於 DOCX 輸出，tectonic 用於 APA 7.0 PDF（純 Markdown 輸出兩個都不需要）。含中日韓文字的論文在輸出 PDF 時還需要 [CJK 字型](docs/SETUP.md)。
 
 **Plugin 安裝（v3.7.0+，推薦）：**
 

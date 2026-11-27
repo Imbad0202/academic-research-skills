@@ -56,7 +56,7 @@ El documento de arquitectura sustituye a la extensa descripción del pipeline qu
 
 - [Claude Code](https://docs.claude.com/en/docs/claude-code/setup) (última versión; el empaquetado como plugin requiere versiones recientes)
 - `ANTHROPIC_API_KEY` exportada, o definida en la primera ejecución de `claude`
-- *Opcional:* Pandoc para DOCX, tectonic + Source Han Serif TC para PDF en APA 7.0 (la salida en Markdown funciona sin ninguno de los dos)
+- *Opcional:* Pandoc para DOCX, tectonic para PDF en APA 7.0 (la salida en Markdown funciona sin ninguno de los dos). Los artículos con texto en chino, japonés o coreano también necesitan una [fuente CJK](docs/SETUP.md) para generar el PDF.
 - *Opcional (Python real):* solo lo necesitan el guard de write-scope y algunos comandos opcionales; las skills principales están guiadas por prompts. Los detalles, incluidas las notas para Windows sobre Git Bash y el marcador de posición de Python de la Microsoft Store, están en [docs/SETUP.md § Python (optional)](docs/SETUP.md#python-optional) (en inglés).
 
 > **¿Qué controles están activos en *tu* canal de instalación?** La disponibilidad varía según el canal de instalación. Consulta el mapa por canal: [docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md).

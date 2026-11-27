@@ -48,7 +48,7 @@ v3.3은 [**PaperOrchestra**](https://arxiv.org/abs/2604.05018) (Song, Song, Pfis
 
 - [Claude Code](https://docs.claude.com/en/docs/claude-code/setup) (최신 버전. 플러그인 패키징은 최근 버전을 요구합니다)
 - `ANTHROPIC_API_KEY`를 export하거나, 첫 `claude` 실행 시 설정
-- *선택:* DOCX용 Pandoc, APA 7.0 PDF용 tectonic + Source Han Serif TC (Markdown 출력은 둘 다 없어도 동작)
+- *선택:* DOCX용 Pandoc, APA 7.0 PDF용 tectonic (Markdown 출력은 둘 다 없어도 동작). 중국어·일본어·한국어 문자가 포함된 논문을 PDF로 출력하려면 [CJK 글꼴](docs/SETUP.md)도 필요합니다.
 - *선택(실제 Python):* write-scope guard와 몇몇 옵트인 명령에만 필요합니다. 핵심 스킬은 프롬프트 기반입니다. Windows의 Git Bash와 Microsoft Store Python 자리표시자에 관한 설명을 포함한 자세한 내용은 [docs/SETUP.md § Python (optional)](docs/SETUP.md#python-optional)(영어)을 참조하세요.
 
 **플러그인 설치(v3.7.0+, 권장):**

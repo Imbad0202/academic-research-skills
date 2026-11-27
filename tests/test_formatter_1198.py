@@ -159,6 +159,94 @@ def test_setup_guides_list_per_os_cjk_main_fonts(
         )
     assert len(after_bullets) == len(OS_MAIN_FONTS)
     for bullet, (os_name, font) in zip(after_bullets, OS_MAIN_FONTS, strict=True):
-        assert os_name in bullet and font in bullet, (
+        assert os_name in bullet and f"**{font}**" in bullet, (
             f"{os_name} and {font} are not on the same bullet"
         )
+
+
+PIPELINE = ROOT / "academic-pipeline" / "SKILL.md"
+STAGE5_FONT_LINE = (
+    "  - Fonts: Times New Roman (English) + Courier New (monospace). "
+    "For CJK text, use the installed CJK main font for the target OS from "
+    '"Chinese LaTeX Compilation Settings" in '
+    "academic-paper/agents/formatter_agent.md."
+)
+README_CJK_SENTENCES = (
+    pytest.param(
+        "README.md",
+        "Papers containing CJK text also need a [CJK font](docs/SETUP.md) "
+        "for PDF output.",
+        id="en",
+    ),
+    pytest.param(
+        "README.zh-TW.md",
+        "含中日韓文字的論文在輸出 PDF 時還需要 [CJK 字型](docs/SETUP.md)。",
+        id="zh-TW",
+    ),
+    pytest.param(
+        "README.es-ES.md",
+        "Los artículos con texto en chino, japonés o coreano también "
+        "necesitan una [fuente CJK](docs/SETUP.md) para generar el PDF.",
+        id="es-ES",
+    ),
+    pytest.param(
+        "README.pt-BR.md",
+        "Artigos com texto em chinês, japonês ou coreano também precisam "
+        "de uma [fonte CJK](docs/SETUP.md) para gerar o PDF.",
+        id="pt-BR",
+    ),
+    pytest.param(
+        "README.ja-JP.md",
+        "中国語・日本語・韓国語の文字を含む論文を PDF に出力する場合は、"
+        "[CJK フォント](docs/SETUP.md)も必要です。",
+        id="ja-JP",
+    ),
+    pytest.param(
+        "README.ko-KR.md",
+        "중국어·일본어·한국어 문자가 포함된 논문을 PDF로 출력하려면 "
+        "[CJK 글꼴](docs/SETUP.md)도 필요합니다.",
+        id="ko-KR",
+    ),
+)
+
+
+def test_pipeline_stage_5_points_to_formatter_cjk_fonts() -> None:
+    """Stage 5 names the formatter's per-OS CJK list, not one CJK font."""
+    block = _between(
+        PIPELINE.read_text(encoding="utf-8"),
+        "Stage 5: academic-paper (format-convert mode)\n",
+        "\n```",
+    )
+    font_lines = [
+        line for line in block.splitlines() if line.startswith("  - Fonts:")
+    ]
+    assert len(font_lines) == 1
+    line = font_lines[0]
+    for font in LATIN_FONTS:
+        assert font in line
+    assert "For CJK text" in line
+    assert "target OS" in line
+    assert "Chinese LaTeX Compilation Settings" in line
+    assert "academic-paper/agents/formatter_agent.md" in line
+    assert "Source Han Serif TC" not in line
+    assert line == STAGE5_FONT_LINE
+
+
+@pytest.mark.parametrize(("filename", "cjk_sentence"), README_CJK_SENTENCES)
+def test_readme_install_line_explains_cjk_font(
+    filename: str,
+    cjk_sentence: str,
+) -> None:
+    """The install bullet points CJK papers at the setup guide."""
+    bullets = [
+        line
+        for line in (ROOT / filename).read_text(encoding="utf-8").splitlines()
+        if line.startswith("- ") and "Pandoc" in line and "tectonic" in line
+    ]
+    assert len(bullets) == 1
+    bullet = bullets[0]
+    for token in ("DOCX", "APA 7.0", "PDF", "Markdown"):
+        assert token in bullet
+    assert cjk_sentence in bullet
+    assert "Source Han Serif TC" not in bullet
+    assert "思源宋體 TC" not in bullet
