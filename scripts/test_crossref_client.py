@@ -628,3 +628,23 @@ def test_title_search_does_not_match_a_cross_script_shadow_title():
         result = CrossrefClient().title_search(_CN_CITED)
 
     assert result is None
+
+
+def test_title_search_matches_an_en_dash_title_typed_with_a_hyphen():
+    """Crossref serves this 1961 Nature title with an en dash
+    (10.1038/189151a0); a reference typed with an ASCII hyphen is the same
+    title and must not fall through to `unresolvable`."""
+    from crossref_client import CrossrefClient
+
+    response = _crossref_response(
+        {"message": {"items": [{
+            "title": ["Dose\u2013Response Relationship in Radiation Carcinogenesis"],
+            "DOI": "10.1038/189151a0",
+        }]}}
+    )
+    with patch("urllib.request.urlopen", return_value=response):
+        result = CrossrefClient().title_search(
+            "Dose-Response Relationship in Radiation Carcinogenesis")
+
+    assert result is not None, "hyphen spelling of an en-dash title fell through to unresolvable"
+    assert result["DOI"] == "10.1038/189151a0"

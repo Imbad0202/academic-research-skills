@@ -40,6 +40,8 @@ TITLE_FORMS = (
     "The base form lowercases, replaces ASCII punctuation with spaces, and collapses and trims whitespace. "
     "The dotted-acronym form first removes the dots in a run that starts at a word boundary and consists of two or more contiguous dotted ASCII letters, "
     "then applies the base form (`R.A.G.` equals `RAG`). "
+    "The base and dotted-acronym forms also count a Unicode dash or quotation mark (`–`, `—`, `’`, `“`, `”`, `„`, `‚`) as the ASCII punctuation it stands for. "
+    "An empty folded form never matches. "
     "When both titles contain a Han ideograph in U+4E00-U+9FFF, `_cjk_titles_match` also accepts equal, nonempty Chinese-aware forms. "
     "This form folds fullwidth ASCII (`甲Ａ` equals `甲A`), strips one of the wrapper pairs `《》`, `「」`, `『』`, `【】`, `“”`, or `‘’` only when that pair encloses the whole title, "
     "strips the terminal marks `。` and `.`, normalizes whitespace, removes spaces touching Han characters, and preserves letter case."
