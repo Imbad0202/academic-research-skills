@@ -26,6 +26,7 @@ CACHE_SCHEMA_VERSION = "retraction-status-cache/1.0"
 CACHE_REVALIDATE_DAYS = 30
 _DOI_PREFIX = re.compile(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", re.I)
 _CALENDAR_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+_ISO_DATE_PREFIX = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}(?:$|[T ])")
 _EVENT_TYPES = {
     "retraction": "retraction",
     "retracted": "retraction",
@@ -98,7 +99,7 @@ def _event_date(event: Mapping[str, Any]) -> tuple[str | None, str | None]:
         return parts_stamp
     value = updated.get("date-time")
     parsed = _parse_datetime(value)
-    if parsed is not None:
+    if parsed is not None and _ISO_DATE_PREFIX.match(value):
         if not _names_only_a_day(value):
             return value, "date-time"
         # A date-time that holds only a date names a day, not its midnight.

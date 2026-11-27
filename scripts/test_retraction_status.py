@@ -497,8 +497,20 @@ def test_invalid_timestamp_does_not_replace_partial_date_parts() -> None:
 
 @pytest.mark.parametrize(
     "stamp",
-    ["not-a-date", "9999-12-31T23:30:00-01:00", "0001-01-01T00:30:00+01:00"],
-    ids=["unparseable", "past-year-9999-in-utc", "before-year-1-in-utc"],
+    [
+        "not-a-date",
+        "9999-12-31T23:30:00-01:00",
+        "0001-01-01T00:30:00+01:00",
+        "20240210",
+        "2024-W06",
+    ],
+    ids=[
+        "unparseable",
+        "past-year-9999-in-utc",
+        "before-year-1-in-utc",
+        "basic-format",
+        "week-date",
+    ],
 )
 def test_invalid_timestamp_falls_back_to_full_date_parts(stamp: str) -> None:
     event = _date_parts_event("retraction", [2024, 6, 2])
