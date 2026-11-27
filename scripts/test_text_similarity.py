@@ -232,6 +232,7 @@ class TypographicPunctuationTest(unittest.TestCase):
              "\u201cWhy Should I Trust You?\u201d Explaining the Predictions of Any Classifier"),
             ("Foo: A Study", "Foo \u2014 A Study"),
             ('Das "Neue" in der Physik', "Das \u201eNeue\u201c in der Physik"),
+            ("Das 'Neue' in der Physik", "Das \u201aNeue\u2018 in der Physik"),
             ("RAG-based retrieval", "R.A.G.\u2013based retrieval"),
         ]:
             with self.subTest(pair=(left, right)):
