@@ -1000,6 +1000,103 @@ def test_short_write_is_completed_and_zero_write_fails_cleanly(
     assert not zero_path.exists()
 
 
+def test_write_paths_do_not_open_a_directory(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """init-store, append-run and delete-store work where a directory cannot be opened.
+
+    Windows cannot ``os.open()`` a directory, and the three write paths each
+    fsynced the parent that way, so every one of them failed after its data was
+    already in place: ``init-store`` exited WRITE with the store created,
+    ``append-run``/``delete-runs`` exited WRITE with the new bytes committed,
+    and ``delete-store`` exited WRITE with the store already unlinked.  CI has
+    no Windows job, so this fixture reproduces the platform fact on any host.
+    """
+    real_open = activity.os.open
+
+    def fake_open(path, flags, mode=0o777, *, dir_fd=None):
+        if isinstance(path, (str, activity.os.PathLike)) and activity.os.path.isdir(path):
+            raise PermissionError(13, "Permission denied", str(path))
+        return real_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(activity.os, "open", fake_open)
+
+    root = tmp_path / "artifacts"
+    state = _terminal_state(root, "run-no-dir-open")
+    manifest = _seal_and_build(capsys, root, state, _empty_rows("unavailable"))
+    store = tmp_path / "activity.json"
+
+    code, stdout, stderr = _call(capsys, "init-store", "--store", str(store), "--store-id", STORE_ID)
+    assert (code, stderr) == (0, "")
+    assert "initialized store_id=" in stdout
+    assert store.exists()
+
+    code, stdout, stderr = _append(capsys, root, store, manifest)
+    assert (code, stderr) == (0, "")
+    assert "append_sequence=1; revision=1" in stdout
+
+    sha = hashlib.sha256(store.read_bytes()).hexdigest()
+    code, stdout, stderr = _call(
+        capsys,
+        "delete-store",
+        "--store",
+        str(store),
+        "--store-id",
+        STORE_ID,
+        "--expect-store-sha256",
+        sha,
+        "--confirm",
+        "DELETE-ADJUDICATION-ACTIVITY-STORE",
+    )
+    assert (code, stderr) == (0, "")
+    assert stdout.strip() == "[ARS-ADJUDICATION-ACTIVITY] deleted_store=true"
+    assert not store.exists()
+
+
+@pytest.mark.skipif(
+    not activity._anchored_open.descriptor_relative_supported(),
+    reason="parent directory flush requires descriptor-relative opens",
+)
+def test_write_commands_flush_parent_directory(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "artifacts"
+    run_id = "run-directory-flush"
+    state = _terminal_state(root, run_id)
+    activity.seal_terminal_inventory(state, root, _empty_rows("unavailable"))
+    manifest = root / "input.json"
+    store = tmp_path / "activity.json"
+    flushed: list[Path] = []
+    real_fsync_directory = activity._anchored_open.fsync_directory
+
+    def record_fsync_directory(path: Path) -> None:
+        real_fsync_directory(path)
+        flushed.append(path)
+
+    monkeypatch.setattr(activity._anchored_open, "fsync_directory", record_fsync_directory)
+    store_args = ("--store", str(store), "--store-id", STORE_ID)
+    code, _, stderr = _call(
+        capsys, "build-input", "--state", str(state), "--artifact-root", str(root),
+        "--store-id", STORE_ID, "--output", str(manifest),
+    )
+    assert (code, stderr, flushed) == (0, "", [root])
+    code, _, stderr = _call(capsys, "init-store", *store_args)
+    assert (code, stderr, flushed) == (0, "", [root, store.parent])
+    code, _, stderr = _append(capsys, root, store, manifest)
+    assert (code, stderr, flushed) == (0, "", [root, store.parent, store.parent])
+    code, _, stderr = _call(
+        capsys, "delete-runs", *store_args, "--run-id", run_id,
+        "--expect-store-sha256", hashlib.sha256(store.read_bytes()).hexdigest(),
+    )
+    assert (code, stderr, flushed) == (0, "", [root, store.parent, store.parent, store.parent])
+    code, _, stderr = _call(
+        capsys, "delete-store", *store_args,
+        "--expect-store-sha256", hashlib.sha256(store.read_bytes()).hexdigest(),
+        "--confirm", "DELETE-ADJUDICATION-ACTIVITY-STORE",
+    )
+    assert (code, stderr, flushed) == (0, "", [root, store.parent, store.parent, store.parent, store.parent])
+
+
 def test_short_read_is_reassembled(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

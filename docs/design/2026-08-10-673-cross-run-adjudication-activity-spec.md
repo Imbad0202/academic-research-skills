@@ -907,7 +907,12 @@ A writer performs, while holding the lock:
 4. create a mode-`0600` temporary regular file in the same directory;
 5. write canonical bytes plus one LF, flush, and `fsync` it;
 6. atomically `replace` the selected store path; and
-7. `fsync` the parent directory before reporting success.
+7. `fsync` the parent directory before reporting success when
+   `_anchored_open.descriptor_relative_supported()` is true.
+
+Where descriptor-relative opens are unavailable (including Windows), the
+parent directory is not flushed. A crash immediately after creating,
+replacing, or unlinking a file can lose the directory change.
 
 Any failure before step 6 leaves the old bytes untouched. A fault at or after
 replace is reported as `WRITE`; tests reopen the path and accept only the full
