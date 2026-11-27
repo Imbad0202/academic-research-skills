@@ -29,6 +29,7 @@ try:
         _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
         _similarity,
         exact_normalized_title,
         generic_title,
@@ -38,6 +39,7 @@ except ImportError:
         _BACKOFF_SECONDS,
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
         _similarity,
         exact_normalized_title,
         generic_title,
@@ -67,9 +69,15 @@ def _require_api_url(url: str) -> None:
 
 
 def _extract_title(message_or_item: Mapping[str, Any]) -> str:
-    """Crossref returns `title` as a list of language variants. Take first or empty."""
+    """Crossref returns `title` as a list of language variants. Take first or empty.
+
+    A null first variant is a missing title. A later variant is not used in
+    its place (#1171).
+    """
     titles = message_or_item.get("title") or []
-    return titles[0] if titles else ""
+    if not titles or titles[0] is None:
+        return ""
+    return titles[0]
 
 
 def _extract_year(item: Mapping[str, Any]) -> int | None:
@@ -166,13 +174,13 @@ class CrossrefClient:
                     self._last_request_at = time.monotonic()
                     continue
                 raise CrossrefUnavailable(f"Crossref HTTP {e.code}: {e.reason}") from e
-            except (urllib.error.URLError, TimeoutError) as e:
+            except (OSError, http.client.HTTPException) as e:
                 raise CrossrefUnavailable(f"Crossref network error: {e}") from e
 
         raise CrossrefUnavailable("Crossref rate limit exhausted after retries")
 
     def doi_lookup_with_title_check(
-        self, doi: str, expected_title: str,
+        self, doi: str, expected_title: str | None,
     ) -> dict[str, Any] | None:
         """DOI lookup with mandatory Levenshtein 0.70 title cross-check.
 
@@ -184,12 +192,18 @@ class CrossrefClient:
             return None
         message = data.get("message", {})
         title = _extract_title(message)
-        if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
+        # A blank title on either side was not cross-checked. Two empty
+        # strings score 1.0, so require text before scoring (#1163).
+        # A null reference title is that same empty text (#1171).
+        reference_title = expected_title or ""
+        if not _normalize_title(title) or not _normalize_title(reference_title):
+            return None
+        if _similarity(title, reference_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return message
         return None  # DOI_MISMATCH
 
     def title_search(
-        self, title: str, year: int | None = None,
+        self, title: str | None, year: int | None = None,
     ) -> dict[str, Any] | None:
         """Title search under the #431 exact-title-or-bust gate.
 
@@ -204,6 +218,10 @@ class CrossrefClient:
         exact-but-generic title (§0.12.2) is NOT promoted either. The loop
         returns the best exact candidate, or None → the resolver reduces a
         title-keyed miss to `unresolvable` (never a false `matched`)."""
+        # A null or empty-normalized title matches a missing or punctuation-only
+        # hit at similarity 1.0. Do not send that search (#1177).
+        if title is None or not _normalize_title(title):
+            return None
         if generic_title(title):
             return None
         data = self._get("/works", {"query.title": title, "rows": "5"})

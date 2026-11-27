@@ -37,6 +37,7 @@ try:
     from _text_similarity import (
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
         _similarity,
         exact_normalized_title,
         generic_title,
@@ -45,6 +46,7 @@ except ImportError:
     from scripts._text_similarity import (
         _MAX_RETRIES,
         _TITLE_SIMILARITY_THRESHOLD,
+        _normalize_title,
         _similarity,
         exact_normalized_title,
         generic_title,
@@ -169,13 +171,13 @@ class ArxivClient:
                     self._last_request_at = time.monotonic()
                     continue
                 raise ArxivUnavailable(f"arXiv HTTP {e.code}: {e.reason}") from e
-            except (urllib.error.URLError, TimeoutError) as e:
+            except (OSError, http.client.HTTPException) as e:
                 raise ArxivUnavailable(f"arXiv network error: {e}") from e
 
         raise ArxivUnavailable("arXiv rate limit exhausted after retries")
 
     def arxiv_id_lookup(
-        self, arxiv_id: str, expected_title: str,
+        self, arxiv_id: str, expected_title: str | None,
     ) -> dict[str, Any] | None:
         """arXiv ID lookup with mandatory 0.70 title cross-check.
 
@@ -187,12 +189,18 @@ class ArxivClient:
             return None
         entry = entries[0]
         title = _extract_title(entry)
-        if _similarity(title, expected_title) >= _TITLE_SIMILARITY_THRESHOLD:
+        # A blank title on either side was not cross-checked. Two empty
+        # strings score 1.0, so require text before scoring (#1163).
+        # A null reference title is that same empty text (#1171).
+        reference_title = expected_title or ""
+        if not _normalize_title(title) or not _normalize_title(reference_title):
+            return None
+        if _similarity(title, reference_title) >= _TITLE_SIMILARITY_THRESHOLD:
             return _entry_to_dict(entry)
         return None  # ID_MISMATCH
 
     def title_search(
-        self, title: str, year: int | None = None,
+        self, title: str | None, year: int | None = None,
     ) -> dict[str, Any] | None:
         """Title search under the #431 exact-title-or-bust gate.
 
@@ -202,6 +210,10 @@ class ArxivClient:
         corroborate, so an exact-but-generic title (§0.12.2) is not promoted.
         Returns the best exact candidate, or None → resolver reduces the
         title-keyed miss to `unresolvable`. See crossref_client.title_search."""
+        # A null or empty-normalized title matches a missing or punctuation-only
+        # hit at similarity 1.0. Do not send that search (#1177).
+        if title is None or not _normalize_title(title):
+            return None
         if generic_title(title):
             return None
         entries = self._get({"search_query": f'ti:"{title}"', "max_results": "5"})

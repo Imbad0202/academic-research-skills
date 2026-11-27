@@ -8,6 +8,7 @@ failure modes.
 """
 from __future__ import annotations
 
+import http.client
 import io
 import json
 import sys
@@ -146,6 +147,107 @@ class DoiLookupTest(unittest.TestCase):
             )
         self.assertEqual(result, {"matched": True, "paperId": "title-hit"})
 
+    def _lookup_doi_hit(
+        self, reference_title: str, returned_title: str | None,
+    ) -> tuple[dict, MagicMock]:
+        """DOI lookup whose hit carries a paperId. `returned_title` None omits title."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        payload: dict = {"paperId": "doi-hit"}
+        if returned_title is not None:
+            payload["title"] = returned_title
+        urlopen = MagicMock(return_value=_mock_response(payload))
+        with patch("urllib.request.urlopen", urlopen):
+            result = client.lookup({
+                "title": reference_title,
+                "doi": "10.1234/xyz",
+            })
+        return result, urlopen
+
+    def test_doi_hit_empty_reference_and_missing_title_is_miss(self) -> None:
+        """#1163: both titles empty is an identifier miss, and no title search."""
+        result, urlopen = self._lookup_doi_hit("", None)
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_empty_reference_and_populated_title_is_miss(self) -> None:
+        """An empty reference title does not match a populated returned title."""
+        result, urlopen = self._lookup_doi_hit("", "Attention Is All You Need")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_whitespace_reference_and_missing_title_is_miss(self) -> None:
+        """Whitespace-only reference text is empty and does not match a missing title."""
+        result, urlopen = self._lookup_doi_hit("   ", None)
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_whitespace_reference_and_populated_title_is_miss(self) -> None:
+        """Whitespace alone cannot trigger a title search after the DOI hit."""
+        result, urlopen = self._lookup_doi_hit("   ", "Attention Is All You Need")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_empty_reference_and_whitespace_title_is_miss(self) -> None:
+        """A whitespace-only returned title is empty on that side too."""
+        result, urlopen = self._lookup_doi_hit("", "   ")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_whitespace_reference_and_whitespace_title_is_miss(self) -> None:
+        """Whitespace-only text on both sides is not an identifier match."""
+        result, urlopen = self._lookup_doi_hit("   ", "   ")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def test_doi_hit_punctuation_only_titles_is_miss(self) -> None:
+        result, urlopen = self._lookup_doi_hit("---", "...")
+        self.assertEqual(result, {"matched": False, "paperId": None})
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("/paper/DOI:", urlopen.call_args.args[0].full_url)
+
+    def _lookup_doi_then_search(
+        self, returned_title: str | None,
+    ) -> tuple[dict, MagicMock]:
+        """Populated reference title; DOI hit title is missing or blank; search hits."""
+        client = ssc.SemanticScholarClient(sleep=MagicMock())
+        doi_payload: dict = {"paperId": "doi-hit"}
+        if returned_title is not None:
+            doi_payload["title"] = returned_title
+        title_payload = {
+            "data": [
+                {"paperId": "search-hit", "title": "AI in education", "year": 2024}
+            ]
+        }
+        urlopen = MagicMock(side_effect=[
+            _mock_response(doi_payload),
+            _mock_response(title_payload),
+        ])
+        with patch("urllib.request.urlopen", urlopen):
+            result = client.lookup({
+                "title": "AI in education",
+                "doi": "10.1234/xyz",
+                "year": 2024,
+            })
+        return result, urlopen
+
+    def test_doi_hit_missing_returned_title_uses_title_search(self) -> None:
+        """A usable reference title still searches when the DOI record has no title."""
+        result, urlopen = self._lookup_doi_then_search(None)
+        self.assertEqual(result, {"matched": True, "paperId": "search-hit"})
+        self.assertEqual(urlopen.call_count, 2)
+
+    def test_doi_hit_whitespace_returned_title_uses_title_search(self) -> None:
+        """A whitespace-only returned title is a DOI miss, then title search may match."""
+        result, urlopen = self._lookup_doi_then_search("   ")
+        self.assertEqual(result, {"matched": True, "paperId": "search-hit"})
+        self.assertEqual(urlopen.call_count, 2)
+
     def test_doi_404_and_title_404_returns_no_match(self) -> None:
         """Both endpoints miss: now legitimate unmatched."""
         client = ssc.SemanticScholarClient(sleep=MagicMock())
@@ -194,6 +296,44 @@ class TitleSearchTest(unittest.TestCase):
         ):
             result = client.lookup({"title": "Unknown paper"})
         self.assertEqual(result, {"matched": False, "paperId": None})
+
+    def test_exact_hit_without_paper_id_is_no_match(self) -> None:
+        """#1171: lookup with no DOI does not match an exact hit that has no paperId."""
+        client = ssc.SemanticScholarClient(
+            min_interval_seconds=0, sleep=lambda _seconds: None
+        )
+        papers = (
+            {"title": "AI in education", "year": 2024},
+            {"paperId": None, "title": "AI in education", "year": 2024},
+            {"paperId": "", "title": "AI in education", "year": 2024},
+        )
+        for paper in papers:
+            with self.subTest(paperId=paper.get("paperId", "omitted")):
+                payload = {"data": [paper]}
+                with patch(
+                    "urllib.request.urlopen", _mock_urlopen_returning(payload)
+                ):
+                    result = client.lookup({"title": "AI in education", "year": 2024})
+                self.assertEqual(result, {"matched": False, "paperId": None})
+
+    def test_idless_hit_does_not_hide_later_hit_with_paper_id(self) -> None:
+        """#1171: an earlier exact hit without a paperId yields to a later one that has one.
+
+        The two hits share a title and year, so the tie keeps whichever eligible
+        hit is seen first.
+        """
+        client = ssc.SemanticScholarClient()
+        payload = {
+            "data": [
+                {"title": "AI in education", "year": 2024},
+                {"paperId": "second-id", "title": "AI in education", "year": 2024},
+            ]
+        }
+        with patch(
+            "urllib.request.urlopen", _mock_urlopen_returning(payload)
+        ):
+            result = client.lookup({"title": "AI in education", "year": 2024})
+        self.assertEqual(result, {"matched": True, "paperId": "second-id"})
 
 
 class FailureHandlingTest(unittest.TestCase):
@@ -478,6 +618,26 @@ class OutageLatchTest(unittest.TestCase):
             with self.assertRaises(SemanticScholarUnavailable):
                 client.lookup({"title": "Other", "doi": "10.1/z"})
             self.assertEqual(urlopen.call_count, 1, "latched call must skip network")
+
+    def test_urlopen_transport_failure_raises_unavailable(self) -> None:
+        """A drop before the status line or a bare garbled status line at
+        urlopen latches the batch. The first lookup chains the injected
+        instance; the second lookup fails without another request."""
+        cases = (
+            http.client.RemoteDisconnected("closed before status"),
+            http.client.BadStatusLine("garbled status"),
+        )
+        for exc in cases:
+            with self.subTest(type(exc).__name__):
+                client = ssc.SemanticScholarClient(sleep=MagicMock())
+                urlopen = MagicMock(side_effect=exc)
+                with patch("urllib.request.urlopen", urlopen):
+                    with self.assertRaises(SemanticScholarUnavailable) as ctx:
+                        client.lookup({"title": "T", "doi": "10.1/y"})
+                    self.assertIs(ctx.exception.__cause__, exc)
+                    with self.assertRaises(SemanticScholarUnavailable):
+                        client.lookup({"title": "Other", "doi": "10.1/z"})
+                    self.assertEqual(urlopen.call_count, 1)
 
     def test_reset_outage_latch_restores_normal_behavior(self) -> None:
         """A long-running tool between passport batches can call

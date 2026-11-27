@@ -2,6 +2,7 @@
 """Tests for Crossref client per deep-research/references/crossref_api_protocol.md."""
 from __future__ import annotations
 
+import http.client
 import json
 import urllib.error
 from unittest.mock import MagicMock, patch
@@ -54,6 +55,32 @@ def test_title_search_no_match_below_threshold(monkeypatch):
     assert result is None
 
 
+@pytest.mark.parametrize(
+    "title",
+    [
+        pytest.param(None, id="none"),
+        pytest.param("", id="empty"),
+        pytest.param("   ", id="whitespace"),
+        pytest.param("---", id="punctuation"),
+    ],
+)
+def test_title_search_blank_title_does_not_query(title):
+    """#1177: a null or empty-normalized title is a miss and sends no request.
+
+    The configured hit has a punctuation-only title, which normalizes to the
+    same empty string and would otherwise match.
+    """
+    from crossref_client import CrossrefClient
+
+    client = CrossrefClient()
+    client._get = MagicMock(return_value={
+        "message": {"items": [{"title": ["---"], "DOI": "10.0000/punct"}]}
+    })
+
+    assert client.title_search(title) is None
+    client._get.assert_not_called()
+
+
 def test_doi_lookup_with_title_cross_check(monkeypatch):
     """DOI hit MUST pass Levenshtein 0.70 title cross-check (DOI_MISMATCH)."""
     from crossref_client import CrossrefClient
@@ -76,6 +103,100 @@ def test_doi_lookup_with_title_cross_check(monkeypatch):
         )
 
     assert result is None  # DOI_MISMATCH
+
+
+@pytest.mark.parametrize(
+    ("expected_title", "titles"),
+    [
+        pytest.param("", [], id="both-empty"),
+        pytest.param("   ", [], id="whitespace-expected-missing-returned"),
+        pytest.param("Attention Is All You Need", [], id="populated-expected-missing-returned"),
+        pytest.param("", ["Attention Is All You Need"], id="empty-expected-populated-returned"),
+        pytest.param("   ", ["Attention Is All You Need"], id="whitespace-expected-populated-returned"),
+        pytest.param("Attention Is All You Need", ["   "], id="populated-expected-whitespace-returned"),
+        pytest.param("", ["   "], id="empty-expected-whitespace-returned"),
+        pytest.param("   ", ["   "], id="both-whitespace"),
+        pytest.param(None, ["Attention Is All You Need"], id="null-expected-populated-returned"),
+    ],
+)
+def test_doi_lookup_blank_title_is_not_a_match(expected_title, titles):
+    """#1163: a DOI hit requires text on both titles. An empty title list is missing."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "title": titles,
+            "DOI": "10.5555/3295222.3295349",
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.doi_lookup_with_title_check(
+            doi="10.5555/3295222.3295349",
+            expected_title=expected_title,
+        )
+
+    assert result is None
+
+
+def test_doi_lookup_null_first_title_variant_is_miss():
+    """#1171: a null first Crossref title variant is a missing title.
+
+    A later language variant is not consulted. The first-variant rule still
+    applies when that first element is null.
+    """
+    from crossref_client import CrossrefClient
+
+    for titles in ([None], [None, "Attention Is All You Need"]):
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "message": {
+                "title": titles,
+                "DOI": "10.5555/3295222.3295349",
+            }
+        }).encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=None)
+
+        with patch("urllib.request.urlopen", return_value=mock_response):
+            client = CrossrefClient()
+            result = client.doi_lookup_with_title_check(
+                doi="10.5555/3295222.3295349",
+                expected_title="Attention Is All You Need",
+            )
+
+        assert result is None
+
+
+def test_title_search_null_first_variant_reaches_later_exact_candidate():
+    """#1171: a null title on the first candidate must not hide a later exact hit."""
+    from crossref_client import CrossrefClient
+
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps({
+        "message": {
+            "items": [
+                {"title": [None], "DOI": "10.0000/null-title"},
+                {
+                    "title": ["Attention Is All You Need"],
+                    "DOI": "10.5555/3295222.3295349",
+                },
+            ]
+        }
+    }).encode("utf-8")
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=None)
+
+    with patch("urllib.request.urlopen", return_value=mock_response):
+        client = CrossrefClient()
+        result = client.title_search("Attention Is All You Need")
+
+    assert result is not None
+    assert result["DOI"] == "10.5555/3295222.3295349"
 
 
 def test_doi_lookup_with_matching_title(monkeypatch):
@@ -226,6 +347,30 @@ def test_polite_pool_email_in_user_agent(monkeypatch):
 
 
 # ---------- v3.9.1: #129 response-read failure wrapping (Crossref) ----------
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        http.client.RemoteDisconnected("closed before status"),
+        http.client.BadStatusLine("garbled status"),
+        OSError("connection failed"),
+    ],
+    ids=["RemoteDisconnected", "BadStatusLine", "OSError"],
+)
+def test_urlopen_transport_failure_raises_unavailable(exc):
+    """urlopen itself raises before a response arrives. A drop before the
+    status line, a garbled status line, or a bare OSError must become
+    CrossrefUnavailable, with the injected instance as the cause."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    with patch("urllib.request.urlopen", side_effect=exc) as urlopen:
+        client = CrossrefClient()
+        with pytest.raises(CrossrefUnavailable) as raised:
+            client.title_search("any title")
+
+    assert raised.value.__cause__ is exc
+    assert urlopen.call_count == 1
 
 
 def test_oserror_during_read_raises_unavailable(monkeypatch):
@@ -483,3 +628,23 @@ def test_title_search_does_not_match_a_cross_script_shadow_title():
         result = CrossrefClient().title_search(_CN_CITED)
 
     assert result is None
+
+
+def test_title_search_matches_an_en_dash_title_typed_with_a_hyphen():
+    """Crossref serves this 1961 Nature title with an en dash
+    (10.1038/189151a0); a reference typed with an ASCII hyphen is the same
+    title and must not fall through to `unresolvable`."""
+    from crossref_client import CrossrefClient
+
+    response = _crossref_response(
+        {"message": {"items": [{
+            "title": ["Dose\u2013Response Relationship in Radiation Carcinogenesis"],
+            "DOI": "10.1038/189151a0",
+        }]}}
+    )
+    with patch("urllib.request.urlopen", return_value=response):
+        result = CrossrefClient().title_search(
+            "Dose-Response Relationship in Radiation Carcinogenesis")
+
+    assert result is not None, "hyphen spelling of an en-dash title fell through to unresolvable"
+    assert result["DOI"] == "10.1038/189151a0"

@@ -129,6 +129,16 @@ You MUST:
    - Under the required `## Review Body`, each finding with a Severity has its own `### W<n>: <title>` subsection, exactly one `**Severity**:` line, and its own `**Evidence Anchor**:` line when Critical or Major. Findings never share an anchor. Strength subsections never carry a `**Severity**:` field or a `Severity: Strength` sentinel; Severity is weakness-only.
    - Finding fields may be unindented or Markdown-list-indented, and may be separate lines or pipe-delimited on one line. The complete typed anchor value, including its type and locator, may be bare, backtick-wrapped, or square-bracketed; these presentation variants do not weaken the one-finding/one-Severity/one-anchor gate.
    - Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar. An opening backtick or `[` immediately before `<type>` starts an outer wrapper and requires its matching closer; nothing may appear between the type and its colon, so `` `text`: §3 `` and `` `text` — §3 `` are both invalid. Wrapper-like characters inside a locator are content and must be locally balanced — a bracketed locator such as `equation: Eq. [3]` and a locator naming inline code such as ``text: §3 "quote" per `df``` are valid. A `text:` anchor contains one or more verbatim excerpts, each inside a balanced pair of straight or curly double quotes, and every quoted excerpt is at most 25 words. Before output, confirm at least one quoted excerpt exists, count each quoted excerpt in a `text:` anchor, and shorten any excerpt over 25 words; never place commentary inside the quotation. An `absence:` anchor uses the exact grammar `absence: <where> — expected <item>; checked <surfaces>`, including the literal single space after the semicolon and non-empty content for every placeholder. The reserved ` — expected ` and `; checked ` separator sequences each occur exactly once.
+**Criteria disclosure for synthesis (#684).** In your final `## Review Body`,
+copy your own Phase 1 criteria disclosure on standalone lines. Put these lines
+at the start of `## Review Body`, before any finding or table, and keep them
+when you check your output. For an unbound
+review, copy the exact line `criteria_binding_unavailable`. For a bound review,
+copy your `criteria_parallel_conflicts:` line and complete role-specific
+`[REVIEW-TARGET-BINDING v1]` marker byte-for-byte after checking them against
+the supplied authority. Report missing or conflicting authority as a handoff
+failure. Never construct a marker from the paper or another reviewer's card.
+
 **Criteria-aware constructive findings (#684).** When a bound call identifies a
 Critical or Major weakness, also populate the caller-requested
 `constructive-review-findings/1.0` companion artifact. It uses only exact
@@ -214,7 +224,7 @@ Your entire response is exactly one `## Recompute Extraction` H2 section: no pre
 - If the manuscript reports no statistic any bounded procedure covers, the section instead contains exactly one `no_recomputable_statistics: <one-line basis naming what you checked>` line and no `### RR<n>` subsection. The declaration is mandatory; whether it is TRUE is judged at adjudication.
 - Every RR carries these four lines, each exactly once:
   - `procedure_id: <p_from_test_statistic|grim|grimmer|n_from_df>`
-  - `evidence_anchor: <type>: <locator>` — the same six-type anchor grammar as findings; it identifies where the transcribed values are reported.
+  - `evidence_anchor: <type>: <locator>` — choose exactly one type: `text:`, `table:`, `figure:`, `equation:`, `dataset:`, or `absence:`. For a number in prose use `evidence_anchor: text: §<section> "<verbatim excerpt>"`, with balanced double quotes around each excerpt of at most 25 words. For a table use `evidence_anchor: table: Table <id>, row <label>, column <label>`. Replace placeholders with actual source locations and wording. A missing item uses `absence: <where> — expected <item>; checked <surfaces>`. Section numbers and quotations are locators, never types. Check the type in every RR before sending.
   - `reported_inputs: <every manuscript value used, verbatim>` (single line)
   - `assumptions: <only assumptions the paper licenses — no silent equal-variance, two-tailed, integer-scale, or sample-SD default>` (single line)
 - `p_from_test_statistic` additionally requires, each exactly once: `test_family: <t|z|F|chi_square|unavailable>`; `statistic_value: <decimal|unavailable>`; `df: <integer | df1,df2 for F | none for z | unavailable>`; `reported_p_comparator: <equals|less_than|less_than_or_equal|greater_than|greater_than_or_equal>`; `reported_p_value: <decimal>`; `tail_convention: <two-tailed|one-tailed|upper-tail|unstated>`, naming what the PAPER states.
@@ -254,6 +264,16 @@ You MUST:
    - A `block` on a mandatory dimension carries `block_class: <fatal|repairable>`; `fatal` must bind to `what_triggers_fatal`, is forbidden on a dissented dimension, and no non-mandatory dimension carries `block_class`.
    - Under the required `## Review Body`, emit exactly one `#### CRITICAL` section and exactly one `#### MAJOR` section, always present even when empty. Each is a Markdown table whose header includes exact `#` and `Evidence Anchor` columns; every data row is outer-pipe-delimited and has exactly the header column count; CRITICAL IDs are unique and dense `C1..Cn`, and are the synthesizer's machine-addressable adjudication keys. Standalone `**Severity**:` declarations are forbidden: every DA Critical or Major issue must be a row in its matching band table. Do not create any other H4 issue-table band. These tables are the terminal suffix of `## Review Body`: put every prose paragraph before `#### CRITICAL`; after the CRITICAL table emit only blank lines until `#### MAJOR`, and after the MAJOR table emit only blank lines to the end of Review Body. Do not emit HTML comments anywhere in a DA report.
    - Every Evidence Anchor value begins with the literal `<type>: <locator>` grammar. An opening backtick or `[` immediately before `<type>` starts an outer wrapper and requires its matching closer; nothing may appear between the type and its colon, so `` `text`: §3 `` and `` `text` — §3 `` are both invalid. Wrapper-like characters inside a locator are content and must be locally balanced — a bracketed locator such as `equation: Eq. [3]` and a locator naming inline code such as ``text: §3 "quote" per `df``` are valid. A `text:` anchor contains one or more verbatim excerpts, each inside a balanced pair of straight or curly double quotes, and every quoted excerpt is at most 25 words. Before output, confirm at least one quoted excerpt exists, count each quoted excerpt in a `text:` anchor, and shorten any excerpt over 25 words; never place commentary inside the quotation. An `absence:` anchor uses the exact grammar `absence: <where> — expected <item>; checked <surfaces>`, including the literal single space after the semicolon and non-empty content for every placeholder. The reserved ` — expected ` and `; checked ` separator sequences each occur exactly once.
+**Criteria disclosure for synthesis (#684).** In your final `## Review Body`,
+copy your own Phase 1 criteria disclosure on standalone lines. Put these lines
+at the start of `## Review Body`, before any finding or table, and keep them
+when you check your output. For an unbound
+review, copy the exact line `criteria_binding_unavailable`. For a bound review,
+copy your `criteria_parallel_conflicts:` line and complete role-specific
+`[REVIEW-TARGET-BINDING v1]` marker byte-for-byte after checking them against
+the supplied authority. Report missing or conflicting authority as a handoff
+failure. Never construct a marker from the paper or another reviewer's card.
+
 **Criteria-aware constructive findings (#684).** Every bound DA Critical or
 Major row also enters the caller-requested `constructive-review-findings/1.0`
 companion artifact under the same contract as another seat: exact criterion

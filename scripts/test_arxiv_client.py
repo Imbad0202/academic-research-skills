@@ -99,6 +99,46 @@ def test_arxiv_id_lookup_with_title_cross_check():
     assert result is None  # ID_MISMATCH
 
 
+def _identified_entry(title_xml: str) -> str:
+    """One Atom entry with an arXiv id. `title_xml` is the raw title element."""
+    return (
+        "<entry>"
+        "<id>http://arxiv.org/abs/1706.03762v5</id>"
+        f"{title_xml}"
+        "<published>2017-06-12T00:00:00Z</published>"
+        "</entry>"
+    )
+
+
+@pytest.mark.parametrize(
+    ("expected_title", "title_xml"),
+    [
+        pytest.param("", "<title/>", id="both-empty"),
+        pytest.param("   ", "<title/>", id="whitespace-expected-missing-returned"),
+        pytest.param("Attention Is All You Need", "<title/>", id="populated-expected-missing-returned"),
+        pytest.param("", "<title>Attention Is All You Need</title>", id="empty-expected-populated-returned"),
+        pytest.param("   ", "<title>Attention Is All You Need</title>", id="whitespace-expected-populated-returned"),
+        pytest.param("Attention Is All You Need", "<title>   </title>", id="populated-expected-whitespace-returned"),
+        pytest.param("", "<title>   </title>", id="empty-expected-whitespace-returned"),
+        pytest.param("   ", "<title>   </title>", id="both-whitespace"),
+        pytest.param(None, "<title>Attention Is All You Need</title>", id="null-expected-populated-returned"),
+    ],
+)
+def test_arxiv_id_lookup_blank_title_is_not_a_match(expected_title, title_xml):
+    """#1163: an ID hit requires text on both titles. An empty title element is missing."""
+    from arxiv_client import ArxivClient
+
+    body = _atom([_identified_entry(title_xml)])
+    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
+        client = ArxivClient()
+        result = client.arxiv_id_lookup(
+            arxiv_id="1706.03762",
+            expected_title=expected_title,
+        )
+
+    assert result is None
+
+
 def test_arxiv_id_lookup_with_matching_title():
     """ID hit + matching title -> success (returns the entry dict)."""
     from arxiv_client import ArxivClient
@@ -180,17 +220,32 @@ def test_arxiv_id_as_full_url_falls_through_to_title():
         assert title_hit is not None
 
 
-def test_title_search_empty_title_is_miss_not_crash():
-    """An empty title produces a ti:"" query; the client must not crash and
-    returns None (no candidate meets the 0.70 threshold against "")."""
+@pytest.mark.parametrize(
+    "title",
+    [
+        pytest.param(None, id="none"),
+        pytest.param("", id="empty"),
+        pytest.param("   ", id="whitespace"),
+        pytest.param("---", id="punctuation"),
+    ],
+)
+def test_title_search_blank_title_does_not_query(title):
+    """#1177: a null or empty-normalized title is a miss and sends no request.
+
+    The configured hit has a punctuation-only title, which normalizes to the
+    same empty string and would otherwise match.
+    """
+    import xml.etree.ElementTree as ET
+
     from arxiv_client import ArxivClient
 
-    body = _atom([])  # arXiv returns no entries for an empty title query
-    with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
-        client = ArxivClient()
-        result = client.title_search("")
+    root = ET.fromstring(_atom([_entry("---")]))
+    entries = root.findall("{http://www.w3.org/2005/Atom}entry")
+    client = ArxivClient()
+    client._get = MagicMock(return_value=entries)
 
-    assert result is None
+    assert client.title_search(title) is None
+    client._get.assert_not_called()
 
 
 def test_title_search_prefers_matching_year():
@@ -268,6 +323,30 @@ def test_network_error_raises_unavailable():
         client = ArxivClient()
         with pytest.raises(ArxivUnavailable):
             client.title_search("anything")
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        http.client.RemoteDisconnected("closed before status"),
+        http.client.BadStatusLine("garbled status"),
+        OSError("connection failed"),
+    ],
+    ids=["RemoteDisconnected", "BadStatusLine", "OSError"],
+)
+def test_urlopen_transport_failure_raises_unavailable(exc):
+    """urlopen itself raises before a response arrives. A drop before the
+    status line, a garbled status line, or a bare OSError must become
+    ArxivUnavailable, with the injected instance as the cause."""
+    from arxiv_client import ArxivClient, ArxivUnavailable
+
+    with patch("urllib.request.urlopen", side_effect=exc) as urlopen:
+        client = ArxivClient()
+        with pytest.raises(ArxivUnavailable) as raised:
+            client.title_search("anything")
+
+    assert raised.value.__cause__ is exc
+    assert urlopen.call_count == 1
 
 
 def test_malformed_xml_body_raises_unavailable():

@@ -413,7 +413,8 @@ def _atomic_replace(path: Path, raw: bytes, *, expected_identity: tuple[int, int
     try:
         fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
         try:
-            os.fchmod(fd, 0o600)
+            if hasattr(os, "fchmod"):
+                os.fchmod(fd, 0o600)
             _write_all(fd, raw)
             os.fsync(fd)
         finally:
@@ -442,7 +443,8 @@ def _atomic_create(path: Path, raw: bytes) -> None:
     try:
         fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
         try:
-            os.fchmod(fd, 0o600)
+            if hasattr(os, "fchmod"):
+                os.fchmod(fd, 0o600)
             _write_all(fd, raw)
             os.fsync(fd)
         finally:

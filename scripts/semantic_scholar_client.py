@@ -14,6 +14,7 @@ tool can switch over without code changes.
 """
 from __future__ import annotations
 
+import http.client
 import os
 import time
 import urllib.error
@@ -153,7 +154,8 @@ class SemanticScholarClient:
                 return doi_result
             # DOI miss or DOI_MISMATCH: fall through to title search
             # per protocol §Vector 2 "neither DOI nor title" rule.
-        if title:
+        # Whitespace-only text is blank and must not start a title search (#1163).
+        if _normalize_title(title):
             return self._lookup_by_title(title, entry.get("year"))
         return {"matched": False, "paperId": None}
 
@@ -220,7 +222,7 @@ class SemanticScholarClient:
                 # batch on network error.
                 self._latched_unavailable = True
                 raise SemanticScholarUnavailable(f"S2 API network error: {e}") from e
-            except (OSError, TimeoutError) as e:
+            except (OSError, http.client.HTTPException) as e:
                 # Response-body read timeouts (socket.timeout subclasses
                 # OSError; TimeoutError is the 3.10+ alias) and other
                 # transient I/O failures during resp.read() must be
@@ -237,7 +239,7 @@ class SemanticScholarClient:
                 # entry × N entries.
                 self._latched_unavailable = True
                 raise SemanticScholarUnavailable(
-                    f"S2 API I/O failure during response read: {e}"
+                    f"S2 API I/O failure during request: {e}"
                 ) from e
         raise SemanticScholarUnavailable(f"S2 API exhausted {_MAX_RETRIES} retries")
 
@@ -250,6 +252,10 @@ class SemanticScholarClient:
         # Per protocol: cross-check title; DOI_MISMATCH counts as no-match
         # for this binary signal.
         returned_title = data.get("title") or ""
+        # A blank title on either side was not cross-checked. Two empty
+        # strings score 1.0, so require text before scoring (#1163).
+        if not _normalize_title(expected_title) or not _normalize_title(returned_title):
+            return {"matched": False, "paperId": None}
         if _similarity(expected_title, returned_title) < _TITLE_SIMILARITY_THRESHOLD:
             return {"matched": False, "paperId": None}
         return {"matched": True, "paperId": data["paperId"]}
@@ -275,6 +281,11 @@ class SemanticScholarClient:
         candidates = data.get("data") or []
         best: tuple[float, dict[str, Any]] | None = None
         for cand in candidates:
+            # A hit with no paperId cannot match, and must not keep a tie
+            # ahead of a later hit that has one (#1171). Same eligibility
+            # check as _lookup_by_doi.
+            if not cand.get("paperId"):
+                continue
             cand_title = cand.get("title") or ""
             sim = _similarity(title, cand_title)
             if sim < _TITLE_SIMILARITY_THRESHOLD:
