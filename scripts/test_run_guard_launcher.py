@@ -718,6 +718,33 @@ class LauncherHangingCandidateTest(unittest.TestCase):
             self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
                              "watchdog must kill the hanging py and fall through to python3")
 
+    def test_zero_bound_still_cuts_off_a_hanging_candidate(self):
+        """#1184 item 5: ARS_PROBE_BOUND=0 is a bare integer, but `timeout 0s` means no limit,
+        so a hanging candidate held the hook until it exited. Zero falls back to the default."""
+        with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
+            _write_exec(os.path.join(bin_dir, "py"), "#!/bin/sh\nsleep 60\n")
+            _fake_real_python(os.path.join(bin_dir, "python3"))
+            payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+            code, out, err = _run_launcher(bin_dir, payload,
+                                           extra_env={"CLAUDE_PROJECT_DIR": ws, "ARS_PROBE_BOUND": "0"})
+            self.assertEqual(code, 0, f"err={err!r}")
+            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+
+    def test_zero_bound_on_the_watchdog_path_still_runs_the_guard(self):
+        """#1184 item 5, watchdog half: with a zero bound `sleep 0` killed every run at once,
+        so the real python3 never verified and the guard's deny was lost to pass-through."""
+        for bound in ("0", "00"):
+            with self.subTest(bound=bound), tempfile.TemporaryDirectory() as bin_dir, \
+                    tempfile.TemporaryDirectory() as ws:
+                _fake_real_python(os.path.join(bin_dir, "python3"))
+                payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
+                code, out, err = _run_launcher(bin_dir, payload,
+                                               extra_env={"CLAUDE_PROJECT_DIR": ws,
+                                                          "ARS_GUARD_FORCE_WATCHDOG": "1",
+                                                          "ARS_PROBE_BOUND": bound})
+                self.assertEqual(code, 0, f"err={err!r}")
+                self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+
 
 class LauncherSlowInterpreterTest(unittest.TestCase):
     """#545 regression pin: a SLOW but working interpreter (what a loaded machine
