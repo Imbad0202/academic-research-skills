@@ -90,11 +90,16 @@ curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh
 # Windows — download from https://tectonic-typesetting.github.io/en-US/install.html
 ```
 
-**所需字型**（APA 7.0 中文輸出）：
+**所需字型**（APA 7.0 PDF 輸出）：
 
 - **Times New Roman**：macOS/Windows 通常已內建；Linux 安裝 `ttf-mscorefonts-installer`
-- **Source Han Serif TC VF**（思源宋體）：從 [Google Fonts](https://fonts.google.com/specimen/Noto+Serif+TC) 或 [Adobe GitHub](https://github.com/adobe-fonts/source-han-serif) 下載
 - **Courier New**：通常已內建
+
+只有含中日韓文字（CJK）的論文才需要額外的字型。請依作業系統使用排版代理程式在 [Chinese LaTeX Compilation Settings](../academic-paper/agents/formatter_agent.md#chinese-latex-compilation-settings) 中列出的主要字型：
+
+- **macOS**：系統隨附 **Songti TC**（宋體）；需要時可在「字體簿」中下載。
+- **Windows**：系統隨附 **DFKai-SB**（標楷體）；需要時可在「選用功能」中安裝繁體中文補充字型。
+- **Linux**：使用 **Noto Serif CJK TC**。Debian/Ubuntu 可安裝 `fonts-noto-cjk` 套件，也可從 [Noto CJK](https://github.com/notofonts/noto-cjk) 下載。
 
 > 如果只需要 Markdown 輸出或 DOCX 轉換說明，可完全跳過此步驟。直接產出 `.docx` 需要 Pandoc，PDF 需要 `tectonic`。
 
