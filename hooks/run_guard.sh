@@ -63,10 +63,13 @@ NL='
 '
 # Per-candidate (and guard) wall-clock bound, seconds. A small ops knob; validated to be a
 # bare integer so it can't smuggle anything into the `timeout`/`sleep` args. Default 3.
+# Zero is rejected too: GNU `timeout 0s` means no limit at all, and the watchdog's `sleep 0`
+# kills every run at once, so the guard would either hang the hook or never run.
 PROBE_BOUND=${ARS_PROBE_BOUND:-3}
 case "$PROBE_BOUND" in
     ''|*[!0-9]*) PROBE_BOUND=3 ;;
 esac
+[ "$PROBE_BOUND" -gt 0 ] 2>/dev/null || PROBE_BOUND=3
 
 # ARS_GUARD_FORCE_WATCHDOG=1 forces the no-`timeout` watchdog path even on hosts that HAVE
 # `timeout`. This is a test/debug switch: it only changes the BOUNDING MECHANISM (timeout
