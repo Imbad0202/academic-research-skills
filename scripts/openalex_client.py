@@ -150,7 +150,7 @@ class OpenAlexClient:
                     # not abort the whole backfill).
                     try:
                         body = resp.read()
-                        return json.loads(body.decode("utf-8"))
+                        data = json.loads(body.decode("utf-8"))
                     except (
                         OSError,
                         http.client.HTTPException,
@@ -164,6 +164,12 @@ class OpenAlexClient:
                         raise OpenAlexUnavailable(
                             f"OpenAlex response read/parse failed: {e}"
                         ) from e
+                    # Callers read the body as an object (#1184 item 3).
+                    if not isinstance(data, dict):
+                        raise OpenAlexUnavailable(
+                            f"OpenAlex response is a JSON {type(data).__name__}, not an object"
+                        )
+                    return data
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     return {}
@@ -226,6 +232,10 @@ class OpenAlexClient:
             "per-page": "5",
             "select": _FIELDS,
         })
+        # A 404 comes back as {} and is a miss. A 200 without a results list,
+        # such as {"error": "maintenance"}, is not (#1184 item 4).
+        if data and not isinstance(data.get("results"), list):
+            raise OpenAlexUnavailable("OpenAlex search response has no results list")
         candidates = data.get("results", [])
         scored = []
         for cand in candidates:

@@ -194,7 +194,20 @@ class SemanticScholarClient:
                 # URL is fixed-host HTTPS after _require_api_url().
                 with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
                     import json
-                    return json.loads(resp.read().decode("utf-8"))
+                    body = resp.read()
+                    # A garbled 200 body is S2 degradation, not a crash and not
+                    # a network outage, so it does not latch (#1184 items 2-3).
+                    try:
+                        data = json.loads(body.decode("utf-8"))
+                    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                        raise SemanticScholarUnavailable(
+                            f"S2 API response parse failed: {e}"
+                        ) from e
+                    if not isinstance(data, dict):
+                        raise SemanticScholarUnavailable(
+                            f"S2 API response is a JSON {type(data).__name__}, not an object"
+                        )
+                    return data
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     return {}

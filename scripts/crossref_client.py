@@ -149,7 +149,7 @@ class CrossrefClient:
                     # not abort the whole backfill). Mirrors openalex_client.
                     try:
                         body = resp.read()
-                        return json.loads(body.decode("utf-8"))
+                        data = json.loads(body.decode("utf-8"))
                     except (
                         OSError,
                         http.client.HTTPException,
@@ -163,6 +163,12 @@ class CrossrefClient:
                         raise CrossrefUnavailable(
                             f"Crossref response read/parse failed: {e}"
                         ) from e
+                    # Callers read the body as an object (#1184 item 3).
+                    if not isinstance(data, dict):
+                        raise CrossrefUnavailable(
+                            f"Crossref response is a JSON {type(data).__name__}, not an object"
+                        )
+                    return data
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     return {}
@@ -225,6 +231,11 @@ class CrossrefClient:
         if generic_title(title):
             return None
         data = self._get("/works", {"query.title": title, "rows": "5"})
+        # A 404 comes back as {} and is a miss. A 200 without message.items,
+        # such as {"status": "error"}, is not (#1184 item 4).
+        message = data.get("message")
+        if data and not (isinstance(message, dict) and isinstance(message.get("items"), list)):
+            raise CrossrefUnavailable("Crossref search response has no message.items list")
         candidates = data.get("message", {}).get("items", [])
         scored = []
         for cand in candidates:
