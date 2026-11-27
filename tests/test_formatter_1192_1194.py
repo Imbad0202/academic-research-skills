@@ -23,29 +23,44 @@ BIBTEX_RULE = (
     "this bibliography interface. Also use BibTeX if the generated biblatex "
     "configuration explicitly selects `backend=bibtex`."
 )
-ENGINE_RULE = (
-    "If a non-APA, non-zh-TW template calls for pdfLaTeX, substitute "
-    "`pdflatex` for `xelatex` in all three TeX passes."
+TECTONIC_RULE = (
+    "- When tectonic is installed, run `tectonic paper.tex`. For a biblatex "
+    "file using its default or explicit Biber backend, also install `biber`: "
+    "tectonic calls it during the build."
+)
+OTHERWISE_LINE = (
+    "- Otherwise, use XeLaTeX and select the bibliography backend from the "
+    "generated `paper.tex`:"
+)
+COMPILABILITY_ROW = (
+    "| LaTeX compilability | The selected build command under PDF (via LaTeX) "
+    "completes without errors (warnings acceptable) | Fix compilation errors |"
 )
 
 PDF_DELIVERY_LINE = (
-    "- PDF: Include the build command only when both `paper.tex` and "
-    "`references.bib` are delivered. Give the exact command selected for the "
-    "generated `paper.tex` under PDF (via LaTeX), to run in the directory "
+    "- PDF: When the formatter does not deliver a requested compiled PDF, "
+    "deliver `paper.tex` and `references.bib` with the build command. "
+    "Whenever both files are delivered, give the exact command selected for "
+    "the generated `paper.tex` under PDF (via LaTeX), to run in the directory "
     "containing both files. For zh-TW content, configure the CJK font in "
     "`paper.tex` before compilation."
 )
+PDF_ONLY_SOURCE_LINES = (
+    "      │            deliver paper.tex and references.bib when "
+    "output_format includes LaTeX or Combined,\n"
+    "      │            or when PDF-only output was requested and the "
+    "formatter does not deliver a compiled PDF"
+)
 
 APA_BIBTEX_PROSE = (
-    "- Compile the generated APA `paper.tex` with XeLaTeX and BibTeX. The "
-    "mandatory `apa7` class option `natbib` selects the BibTeX route under "
-    "PDF (via LaTeX)."
+    "- When tectonic is installed, run `tectonic paper.tex`. The mandatory "
+    "`apa7` class option `natbib` uses BibTeX, which tectonic runs itself.\n"
+    "- Otherwise, compile the generated APA `paper.tex` with XeLaTeX and "
+    "BibTeX:"
 )
 
 CHINESE_COMPILE = (
-    "% Compile with XeLaTeX using the command under PDF (via LaTeX) for this "
-    "paper.tex.\n"
-    "% Use the bibliography backend selected there, then run XeLaTeX twice more."
+    "% Compile using the command under PDF (via LaTeX) for this paper.tex."
 )
 
 NOCITE_RULE = (
@@ -71,9 +86,10 @@ DOCX_COMMANDS_LINE = (
 BASIC_PANDOC = "pandoc paper.md -o paper.docx --reference-doc=template.docx"
 
 CHICAGO_FROM_BULLET = (
-    "- Insert the converted citations in the text. Remove a footnote and its "
-    "marker only when the note held nothing but citations that were converted. "
-    "If the note retains other text or a verbatim citation, keep the note and "
+    "- If the note retains other text or a verbatim citation, convert the "
+    "citations that can be converted inside the note and keep the note and "
+    "its marker. Only when the note held nothing but citations that were "
+    "converted, move those citations into the text and remove the note and "
     "its marker."
 )
 
@@ -83,9 +99,13 @@ def test_pdf_selects_backend_from_generated_tex() -> None:
     overview = text.split("### 4. PDF (via LaTeX)\n", 1)[1].split("\n### ", 1)[0]
     assert "generated `paper.tex` and its `references.bib`" in overview
     assert "Stage 5 confirmation before compilation" in overview
+    assert TECTONIC_RULE in overview.splitlines()
+    assert OTHERWISE_LINE in overview.splitlines()
+    otherwise_at = overview.index(OTHERWISE_LINE)
+    assert otherwise_at < overview.index(BIBER_RULE)
+    assert otherwise_at < overview.index(BIBTEX_RULE)
     assert BIBER_RULE in overview
     assert BIBTEX_RULE in overview
-    assert ENGINE_RULE in overview
     assert overview.count(BIBER_SEQUENCE) == 1
     assert overview.count(BIBTEX_SEQUENCE) == 1
     assert BIBER_SEQUENCE in BIBER_RULE
@@ -94,9 +114,12 @@ def test_pdf_selects_backend_from_generated_tex() -> None:
     assert BIBTEX_SEQUENCE not in BIBER_RULE
     assert "pandoc paper.md -o paper.pdf" not in text
     assert "pandoc input.md -o output.pdf" not in text
+    assert "pdflatex" not in overview.lower()
+    checklist = text.split("### Pass Criteria\n", 1)[1].split("\n### ", 1)[0]
+    assert COMPILABILITY_ROW in checklist.splitlines()
 
 
-def test_pdf_command_requires_both_delivered_sources() -> None:
+def test_pdf_delivery_includes_sources_and_build_command() -> None:
     text = FORMATTER.read_text(encoding="utf-8")
     commands = text.split("### Conversion Commands (if applicable)\n", 1)[1]
     commands = commands.split("\n```", 1)[0]
@@ -109,25 +132,24 @@ def test_pdf_command_requires_both_delivered_sources() -> None:
         "LaTeX -> generated from the Markdown when output_format includes "
         "LaTeX, PDF, or Combined;"
     ) in step
-    assert (
-        "the .tex file is delivered only when output_format includes LaTeX "
-        "or Combined"
-    ) in step
+    assert PDF_ONLY_SOURCE_LINES in step
 
 
-def test_apa_pdf_uses_the_bibtex_build() -> None:
+def test_apa_pdf_uses_tectonic_or_xelatex_with_bibtex() -> None:
     text = FORMATTER.read_text(encoding="utf-8")
     apa = text.split(
         "### APA 7.0 LaTeX (`apa7` Class) — Mandatory Rules\n", 1
     )[1].split("\n### ", 1)[0]
     assert r"\documentclass[man,12pt,natbib]{apa7}" in apa
     assert APA_BIBTEX_PROSE in apa
-    command = apa.split("**PDF compilation** (mandatory):\n", 1)[1]
-    command = command.split("```\n", 1)[1].split("\n```", 1)[0]
+    pdf = apa.split("**PDF compilation** (mandatory):\n", 1)[1]
+    tectonic_bullet = APA_BIBTEX_PROSE.split("\n", 1)[0]
+    assert tectonic_bullet in pdf.split("```", 1)[0].splitlines()
+    assert pdf.index(tectonic_bullet) < pdf.index("```")
+    command = pdf.split("```\n", 1)[1].split("\n```", 1)[0]
     assert command == BIBTEX_SEQUENCE
     overview = text.split("### 4. PDF (via LaTeX)\n", 1)[1].split("\n### ", 1)[0]
     assert f"run `{BIBTEX_SEQUENCE}`" in overview
-    assert "tectonic paper.tex" not in apa
 
 
 def test_chinese_pdf_follows_selected_backend() -> None:
@@ -135,6 +157,7 @@ def test_chinese_pdf_follows_selected_backend() -> None:
     section = text.split("### Chinese LaTeX Compilation Settings\n", 1)[1]
     section = section.split("\n### ", 1)[0]
     assert CHINESE_COMPILE in section
+    assert "then run XeLaTeX twice more" not in section
     assert "% biber paper" not in section
 
 
@@ -166,17 +189,17 @@ def test_docx_uses_basic_conversion_for_phase_7_markdown() -> None:
     text = FORMATTER.read_text(encoding="utf-8")
     docx_format = text.split("### 3. DOCX (via Pandoc when available)\n", 1)[1]
     docx_format = docx_format.split("\n### ", 1)[0]
-    assert DOCX_BASIC_BULLET in docx_format
+    assert DOCX_BASIC_BULLET in docx_format.splitlines()
     assert "nocite" not in docx_format
 
     commands = text.split("### Conversion Commands (if applicable)\n", 1)[1]
     commands = commands.split("\n```", 1)[0]
-    assert DOCX_COMMANDS_LINE in commands
+    assert DOCX_COMMANDS_LINE in commands.splitlines()
     assert "nocite" not in commands
 
     section = text.split("### Markdown -> DOCX Conversion Rules\n", 1)[1]
     section = section.split("**Style Mapping", 1)[0]
-    assert BASIC_PANDOC in section
+    assert section.split("# Basic conversion\n", 1)[1].splitlines()[0] == BASIC_PANDOC
     assert "nocite" not in section
     assert "retained uncited" not in section
     assert "Use explicit keys only." not in section

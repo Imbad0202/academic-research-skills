@@ -55,7 +55,10 @@ SCOPED_CONVERSION_BULLETS = (
     "In `full` mode, retain verbatim a citation that a reported incoming "
     "mismatch names and that cannot be numbered without changing its "
     "content. If the footnote retains other text or a verbatim citation, "
-    "keep the note and its marker.",
+    "convert the citations that can be numbered inside the note and keep "
+    "the note and its marker. Only when the note held nothing but citations "
+    "that were converted, move those citations into the text and remove the "
+    "note and its marker.",
     "- Convert to author-year, MLA 9 author-page, or Chicago "
     "Notes-Bibliography footnote format as required",
 )
