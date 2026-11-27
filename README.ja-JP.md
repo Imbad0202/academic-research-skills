@@ -48,7 +48,7 @@ v3.3 は [**PaperOrchestra**](https://arxiv.org/abs/2604.05018)（Song, Song, Pf
 
 - [Claude Code](https://docs.claude.com/en/docs/claude-code/setup)（最新版。プラグインパッケージングは最近のバージョンが必要）
 - `ANTHROPIC_API_KEY` をエクスポート、または初回 `claude` 実行時に設定
-- *オプション:* DOCX 用の Pandoc、APA 7.0 PDF 用の tectonic + Source Han Serif TC（Markdown 出力はどちらがなくても動作）
+- *オプション:* DOCX 用の Pandoc、APA 7.0 PDF 用の tectonic（Markdown 出力はどちらがなくても動作）。中国語・日本語・韓国語の文字を含む論文を PDF に出力する場合は、[CJK フォント](docs/SETUP.md)も必要です。
 
 **プラグインインストール（v3.7.0+、推奨）:**
 

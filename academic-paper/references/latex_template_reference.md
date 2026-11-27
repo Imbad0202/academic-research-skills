@@ -116,8 +116,12 @@ When APA 7.0 format is requested, use the `apa7` document class instead of `arti
 % === Fonts (XeTeX) ===
 \usepackage{fontspec}
 \setmainfont{Times New Roman}
-\usepackage{xeCJK}
-\setCJKmainfont{Source Han Serif TC VF}
+% Only if the paper contains CJK text, include both commands below in the preamble.
+% Replace <installed font> with an installed main font for the target OS
+% from "Chinese LaTeX Compilation Settings" in ../agents/formatter_agent.md,
+% then uncomment both lines.
+% \usepackage{xeCJK}
+% \setCJKmainfont{<installed font>}
 \setmonofont{Courier New}
 
 % === Additional packages ===
