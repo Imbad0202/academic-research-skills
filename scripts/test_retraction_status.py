@@ -293,6 +293,23 @@ def test_separable_crossref_date_precisions_keep_the_later_notice(
     assert context["effective_status"] == verdict
 
 
+def test_date_only_timestamp_is_a_full_date() -> None:
+    signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(_event("retraction", "2024-02-10")))
+    crossref = signal["retraction_context"]["resolver_observations"][1]
+    assert crossref["verdict"] == "retracted"
+    assert crossref["event_date"] == "2024-02-10T00:00:00Z"
+
+
+@pytest.mark.parametrize("reverse_order", [False, True], ids=["input-order", "reversed"])
+def test_date_only_timestamp_overlaps_a_timestamp_on_the_same_day(reverse_order: bool) -> None:
+    # "2024-02-10" names the whole day, so it is not known to precede 15:00.
+    retraction = _event("retraction", "2024-02-10")
+    reinstatement = _event("reinstatement", "2024-02-10T15:00:00Z")
+    notices = [reinstatement, retraction] if reverse_order else [retraction, reinstatement]
+    signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(*notices))
+    _assert_disputed_crossref(signal)
+
+
 def test_same_notice_at_year_and_day_precision_remains_disputed() -> None:
     year_only = _date_parts_event("retraction", [2024])
     february = _date_parts_event("retraction", [2024, 2, 10])
@@ -464,9 +481,14 @@ def test_invalid_timestamp_does_not_replace_partial_date_parts() -> None:
     assert context["timing_vs_acquisition"] == "before_acquisition"
 
 
-def test_invalid_timestamp_falls_back_to_full_date_parts() -> None:
+@pytest.mark.parametrize(
+    "stamp",
+    ["not-a-date", "9999-12-31T23:30:00-01:00", "0001-01-01T00:30:00+01:00"],
+    ids=["unparseable", "past-year-9999-in-utc", "before-year-1-in-utc"],
+)
+def test_invalid_timestamp_falls_back_to_full_date_parts(stamp: str) -> None:
     event = _date_parts_event("retraction", [2024, 6, 2])
-    event["updated"]["date-time"] = "not-a-date"
+    event["updated"]["date-time"] = stamp
     signal = _resolve(openalex={"status": "degraded"}, crossref=_cr(event))
     crossref = signal["retraction_context"]["resolver_observations"][1]
     assert crossref["verdict"] == "retracted"

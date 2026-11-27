@@ -11,7 +11,7 @@ import json
 import re
 import sqlite3
 from contextlib import closing
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping, NamedTuple, Sequence
 
@@ -41,11 +41,12 @@ def _parse_datetime(value: str | None) -> datetime | None:
         return None
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        # An offset near year 1 or 9999 can push the UTC instant out of range.
+        return parsed.astimezone(timezone.utc)
+    except (ValueError, OverflowError):
         return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
 
 
 def normalize_doi(value: Any) -> str | None:
@@ -95,11 +96,24 @@ def _event_date(event: Mapping[str, Any]) -> tuple[str | None, str | None]:
     if parts_stamp is not None and parts_stamp[1] in {"year", "year-month"}:
         return parts_stamp
     value = updated.get("date-time")
-    if isinstance(value, str) and _parse_datetime(value) is not None:
-        return value, "date-time"
+    parsed = _parse_datetime(value)
+    if parsed is not None:
+        if not _names_only_a_day(value):
+            return value, "date-time"
+        # A date-time that holds only a date names a day, not its midnight.
+        if parts_stamp is None:
+            return _day_stamp(parsed), "full-date"
     if parts_stamp is not None:
         return parts_stamp
     return None, None
+
+
+def _names_only_a_day(value: str) -> bool:
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _end_of_utc_day(year: int, month: int, day: int) -> datetime:
