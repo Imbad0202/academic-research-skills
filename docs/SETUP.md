@@ -78,6 +78,8 @@ sudo apt-get install pandoc
 
 PDF output requires [tectonic](https://tectonic-typesetting.github.io/) and specific fonts. **This is optional** — Markdown output and DOCX conversion instructions work without any of this.
 
+For a biblatex file using the Biber backend, also install `biber` so tectonic can call it.
+
 ```bash
 # macOS
 brew install tectonic
@@ -88,11 +90,16 @@ curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh
 # Windows — download from https://tectonic-typesetting.github.io/en-US/install.html
 ```
 
-**Required fonts** (for APA 7.0 CJK output):
+**Required fonts** (for APA 7.0 PDF output):
 
 - **Times New Roman** — usually pre-installed on macOS/Windows; on Linux install `ttf-mscorefonts-installer`
-- **Source Han Serif TC VF** (思源宋體) — download from [Google Fonts](https://fonts.google.com/specimen/Noto+Serif+TC) or [Adobe GitHub](https://github.com/adobe-fonts/source-han-serif)
 - **Courier New** — usually pre-installed
+
+Only papers containing CJK text need an additional font. Use the main font for your operating system from the formatter’s [Chinese LaTeX Compilation Settings](../academic-paper/agents/formatter_agent.md#chinese-latex-compilation-settings):
+
+- **macOS** — **Songti TC** ships with macOS. If needed, download it in Font Book.
+- **Windows** — **DFKai-SB** ships with Windows. If needed, install the Traditional Chinese supplemental fonts in Optional features.
+- **Linux** — **Noto Serif CJK TC** is available in the Debian/Ubuntu package `fonts-noto-cjk` or from [Noto CJK](https://github.com/notofonts/noto-cjk).
 
 > If you only need Markdown output or DOCX conversion instructions, skip this entirely. Direct `.docx` generation requires Pandoc, and PDF generation requires `tectonic`.
 
