@@ -11,6 +11,7 @@ PIPELINE = ROOT / "academic-pipeline" / "SKILL.md"
 PROTOCOL = (
     ROOT / "academic-pipeline" / "references" / "process_summary_protocol.md"
 )
+AUDIT = ROOT / "academic-pipeline" / "references" / "reproducibility_audit.md"
 TEMPLATE = (
     ROOT / "academic-paper" / "references" / "latex_template_reference.md"
 )
@@ -20,6 +21,10 @@ PROTOCOL_PATH = "../../academic-paper/agents/formatter_agent.md"
 TEMPLATE_PATH = "../agents/formatter_agent.md"
 OLD_STAGE5_CLAUSE = "say so instead of substituting another route"
 OLD_FONT = "Source Han Serif TC VF"
+PROCESS_RECORD_COMPILE_RULE = (
+    "Use tectonic when installed; otherwise run xelatex twice on the same "
+    "generated record .tex file so the table of contents resolves."
+)
 
 BASIC_CJK_COMMENT = (
     "% Only if the paper contains CJK text, choose an installed main font "
@@ -94,12 +99,16 @@ def test_stage5_output_follows_formatter_pdf_route() -> None:
     ) in bullet
 
 
-def _protocol_generation_bullet(text: str) -> str:
-    step = _between(
+def _protocol_pdf_step(text: str) -> str:
+    return _between(
         text,
         "4. Only when a PDF was asked for, convert to LaTeX and compile PDF:\n",
         "\n5. Terminal acknowledgement",
     )
+
+
+def _protocol_generation_bullet(text: str) -> str:
+    step = _protocol_pdf_step(text)
     bullets = [line for line in step.splitlines() if "xeCJK" in line or "CJK" in line]
     assert len(bullets) == 1
     return bullets[0]
@@ -149,6 +158,41 @@ def test_process_record_uses_formatter_cjk_main_font(
     assert OLD_FONT not in snippet
     if require_font_command:
         assert r"\setCJKmainfont" in snippet
+
+
+def test_process_record_compile_rule_follows_cjk_font_guidance() -> None:
+    protocol = PROTOCOL.read_text(encoding="utf-8")
+    step_bullets = [
+        line
+        for line in _protocol_pdf_step(protocol).splitlines()
+        if line.startswith("   - ")
+    ]
+    font_bullet = _protocol_generation_bullet(protocol)
+    compile_bullet = f"   - {PROCESS_RECORD_COMPILE_RULE}"
+    assert r"\setCJKmainfont" in font_bullet
+    assert compile_bullet in step_bullets
+    assert step_bullets.index(font_bullet) < step_bullets.index(compile_bullet)
+
+    specs = protocol.split("## Output Specifications\n", 1)[1]
+    compilation = [
+        line for line in specs.splitlines() if line.startswith("- **Compilation**:")
+    ]
+    assert len(compilation) == 1
+    assert (
+        "tectonic when installed; otherwise run `xelatex` twice on the same "
+        "generated record `.tex` file" in compilation[0]
+    )
+    assert "same toolchain as Stage 5" not in compilation[0]
+
+    audit = AUDIT.read_text(encoding="utf-8")
+    finalize = [
+        line for line in audit.splitlines() if line.startswith("Stage 5 FINALIZE:")
+    ]
+    assert len(finalize) == 1
+    assert (
+        "tectonic when installed, otherwise XeLaTeX with the bibliography backend "
+        "selected from the generated paper.tex" in finalize[0]
+    )
 
 
 def _template_section(text: str, start: str, end: str) -> str:
