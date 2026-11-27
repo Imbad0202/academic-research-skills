@@ -21,11 +21,12 @@ Used by `formatter_agent` for LaTeX output generation.
 \usepackage{url}                      % URL formatting
 \usepackage{float}                    % Figure placement
 
-% === CJK Support (for zh-TW content) ===
-% Uncomment for Chinese content:
+% Only if the paper contains CJK text, include both commands below in the preamble.
+% Replace <installed font> with an installed main font for the target OS
+% from "Chinese LaTeX Compilation Settings" in ../agents/formatter_agent.md,
+% then uncomment both lines.
 % \usepackage{xeCJK}
-% \setCJKmainfont{Noto Sans CJK TC}
-% \setCJKsansfont{Noto Sans CJK TC}
+% \setCJKmainfont{<installed font>}
 
 % === Settings ===
 \doublespacing                        % APA requires double spacing
@@ -312,14 +313,12 @@ Where N = `(number_of_columns - 1) × 2`
 
 ## XeLaTeX for Chinese Content
 
-When the paper includes zh-TW content:
+For zh-TW content, replace `<installed font>` below with an installed main font for the target OS from “Chinese LaTeX Compilation Settings” in `../agents/formatter_agent.md`.
 
 ```latex
 \documentclass[12pt, a4paper]{article}
 \usepackage{xeCJK}
-\setCJKmainfont{Noto Sans CJK TC}     % or 'AR PL UMing TW'
-\setCJKsansfont{Noto Sans CJK TC}
-\setCJKmonofont{Noto Sans Mono CJK TC}
+\setCJKmainfont{<installed font>}
 
 % Compile with: xelatex paper.tex
 ```
@@ -370,9 +369,10 @@ pandoc paper.md -o paper.pdf --pdf-engine=xelatex \
 ```
 
 ### Markdown → PDF (with Chinese)
+Replace `<installed font>` with an installed main font for the target OS from “Chinese LaTeX Compilation Settings” in `../agents/formatter_agent.md`.
 ```bash
 pandoc paper.md -o paper.pdf --pdf-engine=xelatex \
-  -V CJKmainfont="Noto Sans CJK TC" \
+  -V CJKmainfont="<installed font>" \
   --bibliography=references.bib --csl=apa.csl
 ```
 

@@ -803,3 +803,7 @@ path = "tests/test_formatter_1187.py"
 [[pytest]]
 id = "1192-1194-formatter"
 path = "tests/test_formatter_1192_1194.py"
+
+[[pytest]]
+id = "1184-pipeline-pdf-cjk"
+path = "tests/test_pipeline_pdf_cjk_1184.py"
