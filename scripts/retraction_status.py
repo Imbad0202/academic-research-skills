@@ -25,6 +25,8 @@ SCHEMA_VERSION = "bibliographic-integrity-signal/1.1"
 CACHE_SCHEMA_VERSION = "retraction-status-cache/1.0"
 CACHE_REVALIDATE_DAYS = 30
 _DOI_PREFIX = re.compile(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", re.I)
+_CALENDAR_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+_ISO_DATE_PREFIX = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}(?:$|[T ])")
 _EVENT_TYPES = {
     "retraction": "retraction",
     "retracted": "retraction",
@@ -41,11 +43,12 @@ def _parse_datetime(value: str | None) -> datetime | None:
         return None
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        # An offset near year 1 or 9999 can push the UTC instant out of range.
+        return parsed.astimezone(timezone.utc)
+    except (ValueError, OverflowError):
         return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
 
 
 def normalize_doi(value: Any) -> str | None:
@@ -95,11 +98,21 @@ def _event_date(event: Mapping[str, Any]) -> tuple[str | None, str | None]:
     if parts_stamp is not None and parts_stamp[1] in {"year", "year-month"}:
         return parts_stamp
     value = updated.get("date-time")
-    if isinstance(value, str) and _parse_datetime(value) is not None:
-        return value, "date-time"
+    parsed = _parse_datetime(value)
+    if parsed is not None and _ISO_DATE_PREFIX.match(value):
+        if not _names_only_a_day(value):
+            return value, "date-time"
+        # A date-time that holds only a date names a day, not its midnight.
+        if parts_stamp is None:
+            return _day_stamp(parsed), "full-date"
     if parts_stamp is not None:
         return parts_stamp
     return None, None
+
+
+def _names_only_a_day(value: str) -> bool:
+    # Not date.fromisoformat: it also reads 20240210 and the week date 2024-W06.
+    return _CALENDAR_DATE.fullmatch(value) is not None
 
 
 def _end_of_utc_day(year: int, month: int, day: int) -> datetime:
