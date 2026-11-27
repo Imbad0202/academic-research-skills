@@ -32,8 +32,8 @@ FIXTURES = (
 )
 RESOLVER_HASHES = {
     Path("scripts/semantic_scholar_client.py"): "86e13cec8035d55ebde62a349ebbfb476f12506279828e9a8870a28ff6153aec",
-    Path("scripts/openalex_client.py"): "bc08d659054418299b40a651dd91557c385d06ada1663c3a420e7085aff4e2ec",
-    Path("scripts/crossref_client.py"): "59077cee271db441a0a183cd42536fe747177820041990ea481fd89287aa6936",
+    Path("scripts/openalex_client.py"): "c8aaa3bb8b991d47e50fe8181cfc63c55947085d58adbad3f731721f0104d271",
+    Path("scripts/crossref_client.py"): "111d8cfef5ff0d79c7c094e7c44916e3e2da9941e7a595e6d370117bbb13cc16",
     Path("scripts/arxiv_client.py"): "db0ea54ef47fa8404e16c5066aea0ef00c782a1e6ce3b8b31ab97d082d1c2d72",
 }
 ALLOWED_RUNTIME_DIRECT_IMPORTS = {

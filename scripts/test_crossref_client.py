@@ -678,6 +678,8 @@ def test_non_object_json_body_raises_unavailable(body):
 @pytest.mark.parametrize("payload", [
     {"status": "error", "message": "maintenance"},
     {"status": "ok", "message": {"total-results": 0}},
+    {"status": "ok", "message": {"items": None}},
+    {},
 ])
 def test_title_search_without_items_raises_unavailable(payload):
     from crossref_client import CrossrefClient, CrossrefUnavailable

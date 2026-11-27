@@ -599,11 +599,12 @@ def test_non_object_json_body_raises_unavailable(body):
             client.doi_lookup_with_title_check("10.1/x", "Attention Is All You Need")
 
 
-def test_title_search_error_object_raises_unavailable():
+@pytest.mark.parametrize("payload", [{"error": "maintenance"}, {}, {"results": None}])
+def test_title_search_error_object_raises_unavailable(payload):
     """A 200 error object has no results list; it is not an empty result."""
     from openalex_client import OpenAlexClient, OpenAlexUnavailable
 
-    body = json.dumps({"error": "maintenance"}).encode("utf-8")
+    body = json.dumps(payload).encode("utf-8")
     with patch("urllib.request.urlopen", return_value=_openalex_200(body)):
         with pytest.raises(OpenAlexUnavailable):
             OpenAlexClient().title_search("Attention Is All You Need")

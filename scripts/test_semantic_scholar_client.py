@@ -351,10 +351,18 @@ class FailureHandlingTest(unittest.TestCase):
                 resp.read.return_value = body
                 resp.__enter__ = MagicMock(return_value=resp)
                 resp.__exit__ = MagicMock(return_value=False)
-                with patch("urllib.request.urlopen", MagicMock(return_value=resp)):
+                urlopen = MagicMock(return_value=resp)
+                with patch("urllib.request.urlopen", urlopen):
                     with self.assertRaises(SemanticScholarUnavailable):
                         client.lookup({"title": "AI in education", "doi": "10.1/y"})
-                self.assertFalse(client._latched_unavailable)
+                self.assertEqual(urlopen.call_count, 1)
+                hit = _mock_urlopen_returning(
+                    {"paperId": "doi-hit", "title": "AI in education"}
+                )
+                with patch("urllib.request.urlopen", hit):
+                    result = client.lookup({"title": "AI in education", "doi": "10.1/y"})
+                self.assertEqual(hit.call_count, 1)
+                self.assertEqual(result, {"matched": True, "paperId": "doi-hit"})
 
     def test_429_backoff_then_recover(self) -> None:
         """Per protocol: HTTP 429 → 2s backoff × 3 retries before

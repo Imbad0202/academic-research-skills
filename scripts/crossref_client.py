@@ -163,10 +163,12 @@ class CrossrefClient:
                         raise CrossrefUnavailable(
                             f"Crossref response read/parse failed: {e}"
                         ) from e
-                    # Callers read the body as an object (#1184 item 3).
-                    if not isinstance(data, dict):
+                    # Callers read the body as an object (#1184 item 3). A 200
+                    # is never an empty one, and `{}` is what a 404 returns.
+                    if not isinstance(data, dict) or not data:
+                        kind = "an empty JSON object" if data == {} else f"a JSON {type(data).__name__}"
                         raise CrossrefUnavailable(
-                            f"Crossref response is a JSON {type(data).__name__}, not an object"
+                            f"Crossref response is {kind}, not a usable object"
                         )
                     return data
             except urllib.error.HTTPError as e:
