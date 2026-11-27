@@ -39,16 +39,18 @@ COMPILABILITY_ROW = (
 
 PDF_DELIVERY_LINE = (
     "- PDF: When the formatter does not deliver a requested compiled PDF, "
-    "deliver `paper.tex` and `references.bib` with the build command. "
-    "Whenever both files are delivered, give the exact command selected for "
-    "the generated `paper.tex` under PDF (via LaTeX), to run in the directory "
-    "containing both files. For zh-TW content, configure the CJK font in "
-    "`paper.tex` before compilation."
+    "deliver `paper.tex` and `references.bib`. Give a build command only "
+    "when both files are delivered, to run in the directory containing both "
+    "files. If the formatter compiled the PDF, give the command it used. If "
+    "it did not, give both routes under PDF (via LaTeX): `tectonic paper.tex`, "
+    "and the XeLaTeX sequence for the bibliography backend of the generated "
+    "`paper.tex`. For zh-TW content, configure the CJK font in `paper.tex` "
+    "before compilation."
 )
-PDF_ONLY_SOURCE_LINES = (
+PDF_SOURCE_DELIVERY_LINES = (
     "      │            deliver paper.tex and references.bib when "
     "output_format includes LaTeX or Combined,\n"
-    "      │            or when PDF-only output was requested and the "
+    "      │            or when output_format includes PDF and the "
     "formatter does not deliver a compiled PDF"
 )
 
@@ -123,7 +125,7 @@ def test_pdf_delivery_includes_sources_and_build_command() -> None:
     text = FORMATTER.read_text(encoding="utf-8")
     commands = text.split("### Conversion Commands (if applicable)\n", 1)[1]
     commands = commands.split("\n```", 1)[0]
-    assert PDF_DELIVERY_LINE in commands
+    assert PDF_DELIVERY_LINE in commands.splitlines()
     assert "- PDF: Run `" not in commands
 
     step = text.split("1.2 Determine which files to generate:\n", 1)[1]
@@ -132,7 +134,7 @@ def test_pdf_delivery_includes_sources_and_build_command() -> None:
         "LaTeX -> generated from the Markdown when output_format includes "
         "LaTeX, PDF, or Combined;"
     ) in step
-    assert PDF_ONLY_SOURCE_LINES in step
+    assert PDF_SOURCE_DELIVERY_LINES in step
 
 
 def test_apa_pdf_uses_tectonic_or_xelatex_with_bibtex() -> None:

@@ -344,7 +344,7 @@ When converting **from** Chicago Notes-Bibliography:
 When converting between IEEE and Vancouver in either direction, keep the existing reference numbers and list the entries in numeric order. Format the in-text citations and reference-list entries in the target style. Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and (Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` mode, keep a citation verbatim when a reported incoming mismatch requires it, and keep any reported uncited-entry warning in the Output Package. If the incoming numbers do not follow the order of first appearance, renumber by first appearance (in `full` mode, uncited entries after cited ones), and keep every citation linked to the same entry.
 
 When converting from APA 7, Chicago, or MLA 9 **to** numbered formats:
-- Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package.
+- Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package. A citation kept inside a note counts at the position of the note's marker.
 - Replace author-year citations, MLA 9 author-page citations, and the citations in Chicago Notes-Bibliography footnotes with [Number] for IEEE and (Number) for Vancouver. Keep a page number or other locator with the number in the target style's form (IEEE `[1, p. 47]`). In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content. If the footnote retains other text or a verbatim citation, convert the citations that can be numbered inside the note and keep the note and its marker. Only when the note held nothing but citations that were converted, move those citations into the text and remove the note and its marker.
 - Reorder the reference list numerically
 
@@ -577,7 +577,7 @@ Do not call a draft "passed peer review" unless its line is `Accepted in Round N
 
 ### Conversion Commands (if applicable)
 - DOCX: `pandoc paper.md -o paper.docx --reference-doc=template.docx`
-- PDF: When the formatter does not deliver a requested compiled PDF, deliver `paper.tex` and `references.bib` with the build command. Whenever both files are delivered, give the exact command selected for the generated `paper.tex` under PDF (via LaTeX), to run in the directory containing both files. For zh-TW content, configure the CJK font in `paper.tex` before compilation.
+- PDF: When the formatter does not deliver a requested compiled PDF, deliver `paper.tex` and `references.bib`. Give a build command only when both files are delivered, to run in the directory containing both files. If the formatter compiled the PDF, give the command it used. If it did not, give both routes under PDF (via LaTeX): `tectonic paper.tex`, and the XeLaTeX sequence for the bibliography backend of the generated `paper.tex`. For zh-TW content, configure the CJK font in `paper.tex` before compilation.
 ```
 
 ## Detailed Execution Algorithm
@@ -597,7 +597,7 @@ Step 1: Confirm Output Requirements
       ├── Markdown -> always generated (as base format)
       ├── LaTeX -> generated from the Markdown when output_format includes LaTeX, PDF, or Combined;
       │            deliver paper.tex and references.bib when output_format includes LaTeX or Combined,
-      │            or when PDF-only output was requested and the formatter does not deliver a compiled PDF
+      │            or when output_format includes PDF and the formatter does not deliver a compiled PDF
       ├── DOCX -> when output_format includes DOCX or Combined: generate via Pandoc when
       │           available; otherwise provide conversion instructions
       ├── PDF -> compiled from that LaTeX when output_format includes PDF or Combined;
