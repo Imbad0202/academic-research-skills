@@ -58,7 +58,7 @@ The architecture doc supersedes the sprawling pipeline description that used to 
 
 - [Claude Code](https://docs.claude.com/en/docs/claude-code/setup) (latest; plugin packaging requires recent versions)
 - `ANTHROPIC_API_KEY` exported, or set on first `claude` run
-- *Optional:* Pandoc for DOCX, tectonic + Source Han Serif TC for APA 7.0 PDF (Markdown output works without either)
+- *Optional:* Pandoc for DOCX, tectonic for APA 7.0 PDF (Markdown output works without either). Papers containing CJK text also need a [CJK font](docs/SETUP.md) for PDF output.
 - *Optional (real Python):* needed only for the write-scope guard and a few opt-in commands; the core skills are prompt-driven. Details, including the Windows notes on Git Bash and the Microsoft Store Python stub, are in [docs/SETUP.md § Python (optional)](docs/SETUP.md#python-optional).
 
 > **Which controls are active in *your* install channel?** Availability varies by install channel. See the per-channel map: [docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md).

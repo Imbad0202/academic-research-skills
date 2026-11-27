@@ -114,10 +114,13 @@ Preferred behavior:
 - Include font/margin/spacing specifications
 - Use Pandoc command: `pandoc input.md -o output.docx --reference-doc=template.docx`
 
-### 4. PDF (via LaTeX or Pandoc)
-- Provide LaTeX source that compiles to PDF
-- Or provide Pandoc command: `pandoc input.md -o output.pdf --pdf-engine=xelatex`
-- For zh-TW content: use XeLaTeX with CJK font support
+### 4. PDF (via LaTeX)
+- Build the PDF from the generated `paper.tex` and its `references.bib`. Follow Step 1.2 for the Stage 5 confirmation before compilation. Run the build in the directory containing both files.
+- When tectonic is installed, run `tectonic paper.tex`. For a biblatex file using its default or explicit Biber backend, also install `biber`: tectonic calls it during the build.
+- Otherwise, use XeLaTeX and select the bibliography backend from the generated `paper.tex`:
+  - For biblatex with its default or explicit Biber backend, including a style package that loads biblatex, run `xelatex paper.tex && biber paper && xelatex paper.tex && xelatex paper.tex`. The biblatex option `natbib=true` enables `\citep` and `\citet` and does not select BibTeX.
+  - For a template using `\bibliography{...}` with BibTeX, run `xelatex paper.tex && bibtex paper && xelatex paper.tex && xelatex paper.tex`. This includes the natbib reference template, `\documentclass[man,12pt,natbib]{apa7}`, and journal templates that use this bibliography interface. Also use BibTeX if the generated biblatex configuration explicitly selects `backend=bibtex`.
+- For zh-TW content, configure CJK font support in `paper.tex` for the selected build command.
 
 ### 5. Combined (All formats)
 - Generate Markdown + LaTeX + conversion instructions for DOCX and PDF
@@ -318,10 +321,10 @@ Step 4: Verification
 | In-text style | (Author, Year) | (Author Year) | Footnote superscript | (Author Page) | [Number] | (Number) |
 | Reference list name | References | References | Bibliography | Works Cited | References | References |
 | Author format | Last, F. M. | Last, First | Last, First | Last, First | F. M. Last | Last FM |
-| Year position | After author | After author | After publisher (book); after volume and issue (journal article) | End of entry | After pages, before DOI (journal); after publisher (book) | After journal title (journal article); after publisher (book) |
+| Year position | After author | After author | After publisher (book); after volume and issue (journal article) | After volume and issue, before pages and DOI (journal article); after publisher (book) | After pages, before DOI (journal); after publisher (book) | After journal title (journal article); after publisher (book) |
 | Title case | Sentence case | Headline case | Headline case | Headline case | Sentence case | Sentence case |
 | Journal title | Italic | Italic | Italic | Italic | Italic | Abbreviated |
-| DOI format | https://doi.org/... | https://doi.org/... | https://doi.org/... | doi:... | doi:... | doi:... |
+| DOI format | https://doi.org/... | https://doi.org/... | https://doi.org/... | https://doi.org/... | doi:... | doi:... |
 | Ordering | Alphabetical | Alphabetical | Alphabetical | Alphabetical | Order of appearance | Order of appearance |
 
 ### Handling Footnotes (Chicago Notes-Bibliography)
@@ -334,15 +337,15 @@ When converting **to** Chicago Notes-Bibliography:
 When converting **from** Chicago Notes-Bibliography:
 - Extract bibliographic data from footnotes and bibliography
 - Convert to parenthetical or numbered citations as required by target format
-- Remove footnote markers; insert appropriate in-text citations
+- If the note retains other text or a verbatim citation, convert the citations that can be converted inside the note and keep the note and its marker. Only when the note held nothing but citations that were converted, move those citations into the text and remove the note and its marker.
 
 ### Handling Numbered References (IEEE / Vancouver)
 
-When converting between IEEE and Vancouver in either direction, keep the existing reference numbers and list the entries in numeric order. Change only the in-text form and the reference-list entry format to match the target style. Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and (Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` mode, keep a citation verbatim when a reported incoming mismatch requires it, and keep any reported uncited-entry warning in the Output Package. If the incoming numbers do not follow the order of first appearance, renumber by first appearance (in `full` mode, uncited entries after cited ones), and keep every citation linked to the same entry.
+When converting between IEEE and Vancouver in either direction, keep the existing reference numbers and list the entries in numeric order. Format the in-text citations and reference-list entries in the target style. Use [Number] for IEEE, with grouped forms [1], [2] and [1]–[3], and (Number) for Vancouver, with grouped forms (1, 2) and (1–3). In `full` mode, keep a citation verbatim when a reported incoming mismatch requires it, and keep any reported uncited-entry warning in the Output Package. If the incoming numbers do not follow the order of first appearance, renumber by first appearance (in `full` mode, uncited entries after cited ones), and keep every citation linked to the same entry.
 
 When converting from APA 7, Chicago, or MLA 9 **to** numbered formats:
-- Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package.
-- Replace author-year citations, MLA 9 author-page citations, and the citations in Chicago Notes-Bibliography footnotes with [Number] for IEEE and (Number) for Vancouver. Keep a page number or other locator with the number in the target style's form (IEEE `[1, p. 47]`), and keep any other text from the footnote. In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content.
+- Assign numbers based on order of first appearance in the text. In `full` mode, number incoming entries with no in-text citation after all cited entries, in their original reference-list order. Keep any reported uncited-entry warning in the Output Package. A citation kept inside a note counts at the position of the note's marker.
+- Replace author-year citations, MLA 9 author-page citations, and the citations in Chicago Notes-Bibliography footnotes with [Number] for IEEE and (Number) for Vancouver. Keep a page number or other locator with the number in the target style's form (IEEE `[1, p. 47]`). In `full` mode, retain verbatim a citation that a reported incoming mismatch names and that cannot be numbered without changing its content. If the footnote retains other text or a verbatim citation, convert the citations that can be numbered inside the note and keep the note and its marker. Only when the note held nothing but citations that were converted, move those citations into the text and remove the note and its marker.
 - Reorder the reference list numerically
 
 When converting **from** numbered formats to APA 7, Chicago, or MLA 9:
@@ -574,7 +577,7 @@ Do not call a draft "passed peer review" unless its line is `Accepted in Round N
 
 ### Conversion Commands (if applicable)
 - DOCX: `pandoc paper.md -o paper.docx --reference-doc=template.docx`
-- PDF: `pandoc paper.md -o paper.pdf --pdf-engine=xelatex -V CJKmainfont="Noto Sans CJK TC"`
+- PDF: When the formatter does not deliver a requested compiled PDF, deliver `paper.tex` and `references.bib`. Give a build command only when both files are delivered, to run in the directory containing both files. If the formatter compiled the PDF, give the command it used. If it did not, give both routes under PDF (via LaTeX): `tectonic paper.tex`, and the XeLaTeX sequence for the bibliography backend of the generated `paper.tex`. For zh-TW content, configure the CJK font in `paper.tex` before compilation.
 ```
 
 ## Detailed Execution Algorithm
@@ -593,7 +596,8 @@ Step 1: Confirm Output Requirements
   1.2 Determine which files to generate:
       ├── Markdown -> always generated (as base format)
       ├── LaTeX -> generated from the Markdown when output_format includes LaTeX, PDF, or Combined;
-      │            the .tex file is delivered only when output_format includes LaTeX or Combined
+      │            deliver paper.tex and references.bib when output_format includes LaTeX or Combined,
+      │            or when output_format includes PDF and the formatter does not deliver a compiled PDF
       ├── DOCX -> when output_format includes DOCX or Combined: generate via Pandoc when
       │           available; otherwise provide conversion instructions
       ├── PDF -> compiled from that LaTeX when output_format includes PDF or Combined;
@@ -652,13 +656,15 @@ Step 6: Package Output
 | Math `$...$` | `$...$` | Preserved directly |
 | Code `` `code` `` | `\texttt{code}` | |
 
+In `full` mode, for every LaTeX template, insert one `\nocite{key}` for each retained reference-list entry with no in-text citation. Use the entry's actual key from `references.bib`. Place these commands after the body citations and before the template's bibliography command (`\printbibliography` or `\bibliography{...}`). Emit the keys in the order the entries take in the converted reference list. For IEEE and Vancouver, use ascending final reference number. When converting from APA 7, Chicago, or MLA 9 to a numbered style, number uncited entries after all cited entries, in their original reference-list order, as specified under Handling Numbered References.
+
 **LaTeX document structure template**:
 
 ```latex
 \documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,graphicx,hyperref,booktabs}
-\usepackage[style=apa,backend=biber]{biblatex} % APA example. Set style to the target biblatex style. Some target styles use their own package, such as biblatex-chicago.
+\usepackage[style=apa,backend=biber,natbib=true]{biblatex} % APA example. Keep natbib=true for \citep and \citet when selecting another biblatex style or loading a style package such as biblatex-chicago.
 % IF zh-TW content -> add xeCJK (see Chinese settings below)
 \addbibresource{references.bib}
 
@@ -729,8 +735,11 @@ When the output format is APA 7.0 LaTeX, the formatter **MUST** use the `apa7` d
 ```latex
 \usepackage{fontspec}
 \setmainfont{Times New Roman}
-\usepackage{xeCJK}
-\setCJKmainfont{Source Han Serif TC VF}
+% Only if the paper contains CJK text, include both commands below in the preamble.
+% Replace <installed font> with an installed main font for the target OS
+% from "Chinese LaTeX Compilation Settings" below, then uncomment both lines.
+% \usepackage{xeCJK}
+% \setCJKmainfont{<installed font>}
 \setmonofont{Courier New}
 ```
 
@@ -788,10 +797,11 @@ When the output format is APA 7.0 LaTeX, the formatter **MUST** use the `apa7` d
 ```
 
 **PDF compilation** (mandatory):
+- When tectonic is installed, run `tectonic paper.tex`. The mandatory `apa7` class option `natbib` uses BibTeX, which tectonic runs itself.
+- Otherwise, compile the generated APA `paper.tex` with XeLaTeX and BibTeX:
 ```
-tectonic paper.tex
+xelatex paper.tex && bibtex paper && xelatex paper.tex && xelatex paper.tex
 ```
-- PDF **MUST** be compiled from LaTeX via `tectonic` or `xelatex`
 - HTML-to-PDF is **PROHIBITED** for academic papers
 
 **Verbatim blocks** (e.g., score cards, code):
@@ -824,11 +834,7 @@ tectonic paper.tex
 % \setCJKmainfont{Noto Serif CJK TC}
 % \setCJKsansfont{Noto Sans CJK TC}
 
-% Compilation commands (must use xelatex or lualatex):
-% xelatex paper.tex
-% biber paper
-% xelatex paper.tex
-% xelatex paper.tex (3 times total, to ensure citations and TOC are correct)
+% Compile using the command under PDF (via LaTeX) for this paper.tex.
 ```
 
 **Common Chinese LaTeX issues**:
@@ -974,7 +980,7 @@ Template conflict handling:
 | Content integrity | Compare word counts before and after conversion. A deviation of 1% or more triggers a section-by-section comparison with the Draft, the selected reference list, and the bilingual abstracts and keywords. A word-count deviation alone does not fail this check; any lost content does, and so does text the conversion duplicated and text it added that is in none of those inputs. A section this file tells the formatter to add, such as the Data Availability Statement or the AI Disclosure Statement, may be added once when the Draft does not already have it; a second copy still fails. A missing Abstract or Limitations section is reported, not written (Step 2.4 / 2.6). An existing AI Disclosure Statement that is incomplete may be completed in place with the standard text. A word-count change from converting the citation style (for example author-year to numbered or numbered to author-year), or from reformatting reference-list entries to the target style (for example abbreviated journal titles or `et al.`), is neither lost nor added content. Stripping the `<!--protected-hedges: ...-->` control comment (#548) is required, not content loss. In the blind-review version only, removing all author information as directed by the Author Information step is an allowed difference. | Restore missing content. In the blind-review version only, leave out all author information removed as directed by the Author Information step. Remove text the conversion duplicated and any addition this check does not allow. |
 | Format compliance | 100% compliance with target format specifications. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, that citation satisfies this check. When such a mismatch requires preserving a reference-list entry, the entry still follows the target format; only a rule that would remove the entry does not apply to it. Continue formatting | Fix non-compliant format items one by one |
 | Citation preservation | All citations still present after conversion. In `full` mode, also preserve all incoming reference-list entries | Restore citations or entries lost during conversion |
-| LaTeX compilability | `xelatex` produces no errors (warnings acceptable) | Fix compilation errors |
+| LaTeX compilability | The selected build command under PDF (via LaTeX) completes without errors (warnings acceptable) | Fix compilation errors |
 | AI Disclosure | Present and complete | Insert the standard Disclosure text, or complete an existing statement in place with it |
 | Journal requirements | All verifiable requirements met. In `full` mode, when a reported incoming mismatch requires retaining a citation verbatim, a journal requirement that would change that citation does not apply to that citation. When such a mismatch requires preserving a reference-list entry, a journal requirement that would remove the entry does not apply to that entry, and every other requirement still does. The Output Package warning names each requirement not applied this way; all other citations and entries are checked as usual. Continue formatting | Adjust each other unmet item |
 | Final checklist | All items PASS, including any required Output Package warning | Fix formatting defects and raise content issues per Phase Boundary |
@@ -999,7 +1005,7 @@ Quality gate not passed ->
 └── Chinese compilation issues ->
     1. Verify xeCJK package is loaded
     2. Verify font paths are correct
-    3. Verify using xelatex (not pdflatex)
+    3. Verify using the selected build command under PDF (via LaTeX)
 ```
 
 ## Edge Case Handling
