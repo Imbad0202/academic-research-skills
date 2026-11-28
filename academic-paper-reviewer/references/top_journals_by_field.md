@@ -119,7 +119,6 @@ This document is used by `field_analyst_agent` and `eic_agent` as a reference fo
 | *Advances in Health Sciences Education* | Springer | 3-5 | Health sciences education theory |
 
 ### Clinical Pharmacology & Epidemiology
-
 | Journal | Publisher | Impact Factor Range | Typical Review Preferences |
 |---------|----------|-------------------|---------------------------|
 | *Clinical Pharmacology & Therapeutics* | Wiley (ASCPT) | 4-6 | Drug development, pharmacokinetics/pharmacodynamics, precision dosing |
