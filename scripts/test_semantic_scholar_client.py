@@ -734,5 +734,67 @@ class CLIWiringTest(unittest.TestCase):
         self.assertIsInstance(client, ssc.SemanticScholarClient)
 
 
+class UnusableRecordTest(unittest.TestCase):
+    """#1184 items 19-20: a 200 that is not a paper record or a result list."""
+
+    def test_doi_response_without_paper_id_field_raises_unavailable(self) -> None:
+        for payload in ({"error": "maintenance"}, {"title": "AI in education"}):
+            with self.subTest(payload=payload):
+                client = ssc.SemanticScholarClient(sleep=MagicMock())
+                urlopen = _mock_urlopen_returning(payload)
+                with patch("urllib.request.urlopen", urlopen):
+                    with self.assertRaises(SemanticScholarUnavailable):
+                        client.lookup({"title": "AI in education", "doi": "10.1/y"})
+                # No title-search fallback after the error, and no latch.
+                self.assertEqual(urlopen.call_count, 1)
+                hit = _mock_urlopen_returning(
+                    {"paperId": "doi-hit", "title": "AI in education"}
+                )
+                with patch("urllib.request.urlopen", hit):
+                    result = client.lookup({"title": "AI in education", "doi": "10.1/y"})
+                self.assertEqual(result, {"matched": True, "paperId": "doi-hit"})
+
+    def test_doi_response_with_null_or_empty_paper_id_is_still_a_miss(self) -> None:
+        for paper_id in (None, ""):
+            with self.subTest(paperId=paper_id):
+                client = ssc.SemanticScholarClient(sleep=MagicMock())
+                payload = {"paperId": paper_id, "title": "AI in education"}
+                # The DOI miss falls through to title search, which gets no hits.
+                urlopen = MagicMock(side_effect=[
+                    _mock_response(payload), _mock_response({"data": []}),
+                ])
+                with patch("urllib.request.urlopen", urlopen):
+                    result = client.lookup({"title": "AI in education", "doi": "10.1/y"})
+                self.assertEqual(urlopen.call_count, 2)
+                self.assertEqual(result, {"matched": False, "paperId": None})
+
+    def test_search_data_that_is_not_a_list_of_objects_raises_unavailable(self) -> None:
+        hit = {"paperId": "abc", "title": "AI in education", "year": 2024}
+        for data in (
+            "AI in education", {"paperId": "abc"}, "", {}, [None], [hit, "abc"], [hit, 7],
+        ):
+            with self.subTest(data=data):
+                client = ssc.SemanticScholarClient(sleep=MagicMock())
+                with patch(
+                    "urllib.request.urlopen", _mock_urlopen_returning({"data": data})
+                ):
+                    with self.assertRaises(SemanticScholarUnavailable):
+                        client.lookup({"title": "AI in education", "year": 2024})
+                # Not a network outage, so the next lookup still goes out.
+                with patch(
+                    "urllib.request.urlopen", _mock_urlopen_returning({"data": [hit]})
+                ):
+                    result = client.lookup({"title": "AI in education", "year": 2024})
+                self.assertEqual(result, {"matched": True, "paperId": "abc"})
+
+    def test_search_without_data_or_with_null_data_is_still_no_hits(self) -> None:
+        for payload in ({"total": 0, "offset": 0}, {"data": None}, {"data": []}):
+            with self.subTest(payload=payload):
+                client = ssc.SemanticScholarClient(sleep=MagicMock())
+                with patch("urllib.request.urlopen", _mock_urlopen_returning(payload)):
+                    result = client.lookup({"title": "AI in education", "year": 2024})
+                self.assertEqual(result, {"matched": False, "paperId": None})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -203,6 +203,11 @@ class OpenAlexClient:
         """DOI lookup with mandatory Levenshtein 0.70 title cross-check."""
         quoted_doi = urllib.parse.quote(doi, safe="")
         data = self._get(f"/works/doi:{quoted_doi}", {"select": _FIELDS})
+        # A 404 comes back as {} and is a miss. A 200 without a title field,
+        # such as {"error": "..."}, is not a work record (#1184 item 19). A
+        # null title is a work without one, which the blank check below handles.
+        if data and "title" not in data:
+            raise OpenAlexUnavailable("OpenAlex DOI response has no title field")
         title = data.get("title") or ""
         # A blank title on either side was not cross-checked. Two empty
         # strings score 1.0, so require text before scoring (#1163).
@@ -239,6 +244,9 @@ class OpenAlexClient:
         if data and not isinstance(data.get("results"), list):
             raise OpenAlexUnavailable("OpenAlex search response has no results list")
         candidates = data.get("results", [])
+        # A result that is not an object is not a work record (#1184 item 20).
+        if not all(isinstance(cand, dict) for cand in candidates):
+            raise OpenAlexUnavailable("OpenAlex search results hold a non-object entry")
         scored = []
         for cand in candidates:
             cand_title = cand.get("title") or ""

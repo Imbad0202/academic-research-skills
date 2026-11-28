@@ -198,7 +198,11 @@ class CrossrefClient:
         data = self._get(f"/works/{urllib.parse.quote(doi, safe='')}", {})
         if not data:  # 404 -> empty dict from _get
             return None
-        message = data.get("message", {})
+        message = data.get("message")
+        # A 200 whose message is missing or not an object, such as
+        # {"status": "error"} or a list, is not a work record (#1184 items 19, 21).
+        if not isinstance(message, dict):
+            raise CrossrefUnavailable("Crossref DOI response has no message object")
         title = _extract_title(message)
         # A blank title on either side was not cross-checked. Two empty
         # strings score 1.0, so require text before scoring (#1163).
@@ -239,6 +243,9 @@ class CrossrefClient:
         if data and not (isinstance(message, dict) and isinstance(message.get("items"), list)):
             raise CrossrefUnavailable("Crossref search response has no message.items list")
         candidates = data.get("message", {}).get("items", [])
+        # An item that is not an object is not a work record (#1184 item 20).
+        if not all(isinstance(cand, dict) for cand in candidates):
+            raise CrossrefUnavailable("Crossref search items hold a non-object entry")
         scored = []
         for cand in candidates:
             cand_title = _extract_title(cand)

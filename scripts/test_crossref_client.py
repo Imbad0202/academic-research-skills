@@ -699,3 +699,53 @@ def test_title_search_empty_items_and_404_stay_a_miss():
     not_found = urllib.error.HTTPError("u", 404, "Not Found", {}, None)
     with patch("urllib.request.urlopen", side_effect=not_found):
         assert CrossrefClient().title_search("Attention Is All You Need") is None
+
+
+# ---------- #1184 items 19–21: DOI error objects, non-object messages and items ----------
+
+
+@pytest.mark.parametrize("payload", [
+    {"status": "error"},
+    {"status": "error", "message": None},
+    {"status": "ok", "message": ["10.1/x"]},
+    {"status": "ok", "message": "maintenance"},
+])
+def test_doi_lookup_without_message_object_raises_unavailable(payload):
+    """A missing or non-object message used to read as a miss or raise AttributeError."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    body = json.dumps(payload).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_crossref_200(body)):
+        with pytest.raises(CrossrefUnavailable):
+            CrossrefClient().doi_lookup_with_title_check("10.1/x", "Attention Is All You Need")
+
+
+def test_doi_lookup_message_object_and_404_keep_their_results():
+    from crossref_client import CrossrefClient
+
+    message = {"DOI": "10.1/x", "title": ["Attention Is All You Need"]}
+    body = json.dumps({"status": "ok", "message": message}).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_crossref_200(body)):
+        assert CrossrefClient().doi_lookup_with_title_check(
+            "10.1/x", "Attention Is All You Need") == message
+    untitled = json.dumps({"status": "ok", "message": {"DOI": "10.1/x"}}).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_crossref_200(untitled)):
+        assert CrossrefClient().doi_lookup_with_title_check(
+            "10.1/x", "Attention Is All You Need") is None
+    not_found = urllib.error.HTTPError("u", 404, "Not Found", {}, None)
+    with patch("urllib.request.urlopen", side_effect=not_found):
+        assert CrossrefClient().doi_lookup_with_title_check(
+            "10.1/x", "Attention Is All You Need") is None
+
+
+@pytest.mark.parametrize("entry", [None, "Attention Is All You Need", ["10.1/x"], 7])
+def test_title_search_non_object_item_raises_unavailable(entry):
+    """A non-object item raised AttributeError in _extract_title, even beside a valid hit."""
+    from crossref_client import CrossrefClient, CrossrefUnavailable
+
+    hit = {"DOI": "10.1/x", "title": ["Attention Is All You Need"]}
+    for items in ([entry], [hit, entry]):
+        body = json.dumps({"status": "ok", "message": {"items": items}}).encode("utf-8")
+        with patch("urllib.request.urlopen", return_value=_crossref_200(body)):
+            with pytest.raises(CrossrefUnavailable):
+                CrossrefClient().title_search("Attention Is All You Need")
