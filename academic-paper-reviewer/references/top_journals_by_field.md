@@ -111,10 +111,20 @@ This document is used by `field_analyst_agent` and `eic_agent` as a reference fo
 |---------|----------|-------------------|---------------------------|
 | *The Lancet* | Elsevier | 90-170 | Highest standards, global health |
 | *BMJ (British Medical Journal)* | BMJ | 90-100 | Clinical research, public health policy |
+| *The New England Journal of Medicine* | Massachusetts Medical Society | 80-90 | Practice-changing clinical trials, general and internal medicine |
+| *JAMA* | American Medical Association | 60-70 | Clinical research across general medicine, public health |
 | *Medical Education* | Wiley | 5-7 | Medical education research |
 | *Academic Medicine* | AAMC | 6-8 | Medical education, academic medicine |
 | *BMC Medical Education* | Springer | 3-4 | Open access, medical education |
 | *Advances in Health Sciences Education* | Springer | 3-5 | Health sciences education theory |
+
+### Clinical Pharmacology & Epidemiology
+| Journal | Publisher | Impact Factor Range | Typical Review Preferences |
+|---------|----------|-------------------|---------------------------|
+| *Clinical Pharmacology & Therapeutics* | Wiley (ASCPT) | 4-6 | Drug development, pharmacokinetics/pharmacodynamics, precision dosing |
+| *British Journal of Clinical Pharmacology* | Wiley (BPS) | 2-4 | Clinical pharmacology, prescribing, medicines safety |
+| *American Journal of Epidemiology* | Oxford University Press | 4-5 | Epidemiologic methods and empirical findings |
+| *International Journal of Epidemiology* | Oxford University Press | 5-7 | Population health, cohort profiles, epidemiologic methods |
 
 ---
 

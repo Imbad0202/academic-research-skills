@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **`top_journals_by_field.md` §6 Medicine & Health Sciences adds NEJM and JAMA and a Clinical Pharmacology & Epidemiology subsection (4 journals).** Impact Factor ranges bracket each journal's 2025 JIF (Clarivate JCR 2026) as published by the journal or its distributor.
+
 ### Fixed
 
 - **Pipeline Stage 5 follows the formatter’s XeLaTeX fallback, and the process record and non-APA Chinese LaTeX examples use the formatter’s per-OS font guidance (#1184 items 16–18).** When tectonic is unavailable, Stage 5 uses XeLaTeX with the bibliography backend selected from the generated `paper.tex`. The process record uses tectonic when installed and otherwise runs `xelatex` twice on the same generated record `.tex` file so the table of contents resolves. The process-record protocol and the article, XeLaTeX, and Pandoc examples direct authors to an installed CJK main font for the target OS. The Basic Article and XeLaTeX examples also direct authors to an installed CJK sans font. Prompt and template change, unmeasured.
