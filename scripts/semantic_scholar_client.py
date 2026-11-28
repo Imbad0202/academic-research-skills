@@ -260,7 +260,13 @@ class SemanticScholarClient:
         data = self._request(
             f"/paper/DOI:{urllib.parse.quote(doi, safe='')}?fields={_FIELDS}"
         )
-        if not data or not data.get("paperId"):
+        if not data:  # 404 -> empty dict from _request
+            return {"matched": False, "paperId": None}
+        # A 200 without a paperId field, such as {"error": "..."}, is not a
+        # paper record (#1184 item 19). A null or empty paperId is a miss.
+        if "paperId" not in data:
+            raise SemanticScholarUnavailable("S2 API DOI response has no paperId field")
+        if not data.get("paperId"):
             return {"matched": False, "paperId": None}
         # Per protocol: cross-check title; DOI_MISMATCH counts as no-match
         # for this binary signal.
@@ -291,7 +297,16 @@ class SemanticScholarClient:
             f"&limit=5&fields={_FIELDS}"
         )
         data = self._request(path)
-        candidates = data.get("data") or []
+        # A response without data is still read as no hits. A data value that
+        # is not a list of objects is not a result list (#1184 item 20).
+        candidates = data.get("data")
+        if candidates is None:
+            candidates = []
+        elif not (
+            isinstance(candidates, list)
+            and all(isinstance(cand, dict) for cand in candidates)
+        ):
+            raise SemanticScholarUnavailable("S2 API search data is not a list of objects")
         best: tuple[float, dict[str, Any]] | None = None
         for cand in candidates:
             # A hit with no paperId cannot match, and must not keep a tie

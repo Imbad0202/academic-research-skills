@@ -619,3 +619,51 @@ def test_title_search_empty_results_and_404_stay_a_miss():
     not_found = urllib.error.HTTPError("u", 404, "Not Found", {}, None)
     with patch("urllib.request.urlopen", side_effect=not_found):
         assert OpenAlexClient().title_search("Attention Is All You Need") is None
+
+
+# ---------- #1184 items 19–20: DOI error objects and non-object hits ----------
+
+
+@pytest.mark.parametrize("payload", [
+    {"error": "maintenance"},
+    {"id": "https://openalex.org/W1", "doi": "https://doi.org/10.1/x"},
+])
+def test_doi_lookup_without_title_field_raises_unavailable(payload):
+    """A 200 DOI body without a title field is not a work record, so it is not a miss."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    body = json.dumps(payload).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_openalex_200(body)):
+        with pytest.raises(OpenAlexUnavailable):
+            OpenAlexClient().doi_lookup_with_title_check("10.1/x", "Attention Is All You Need")
+
+
+def test_doi_lookup_work_record_and_404_keep_their_results():
+    from openalex_client import OpenAlexClient
+
+    work = {"id": "https://openalex.org/W1", "title": "Attention Is All You Need"}
+    body = json.dumps(work).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_openalex_200(body)):
+        assert OpenAlexClient().doi_lookup_with_title_check(
+            "10.1/x", "Attention Is All You Need") == work
+    untitled = json.dumps({"id": "https://openalex.org/W1", "title": None}).encode("utf-8")
+    with patch("urllib.request.urlopen", return_value=_openalex_200(untitled)):
+        assert OpenAlexClient().doi_lookup_with_title_check(
+            "10.1/x", "Attention Is All You Need") is None
+    not_found = urllib.error.HTTPError("u", 404, "Not Found", {}, None)
+    with patch("urllib.request.urlopen", side_effect=not_found):
+        assert OpenAlexClient().doi_lookup_with_title_check(
+            "10.1/x", "Attention Is All You Need") is None
+
+
+@pytest.mark.parametrize("entry", [None, "Attention Is All You Need", ["W1"], 7])
+def test_title_search_non_object_result_raises_unavailable(entry):
+    """A non-object entry raised AttributeError on cand.get, even beside a valid hit."""
+    from openalex_client import OpenAlexClient, OpenAlexUnavailable
+
+    hit = {"id": "https://openalex.org/W1", "title": "Attention Is All You Need"}
+    for results in ([entry], [hit, entry]):
+        body = json.dumps({"results": results}).encode("utf-8")
+        with patch("urllib.request.urlopen", return_value=_openalex_200(body)):
+            with pytest.raises(OpenAlexUnavailable):
+                OpenAlexClient().title_search("Attention Is All You Need")
